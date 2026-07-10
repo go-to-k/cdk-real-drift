@@ -23,6 +23,11 @@ import {
   BatchGetProjectsCommand,
   BatchGetReportGroupsCommand,
   CodeBuildClient,
+  type ProjectArtifacts,
+  type ProjectBuildBatchConfig,
+  type ProjectSource,
+  type ProjectSourceVersion,
+  type Webhook,
 } from '@aws-sdk/client-codebuild';
 import { DescribeServicesCommand, ECSClient } from '@aws-sdk/client-ecs';
 import {
@@ -2197,6 +2202,100 @@ const readSchedulerSchedule: OverrideReader = async ({ physicalId, declared, reg
   };
 };
 
+// Map an SDK ProjectSource back to the CFn AWS::CodeBuild::Project.Source shape,
+// projecting ONLY the CFn-modeled fields and only when AWS returns them (present-only,
+// FP-safe). Shared by the primary `Source` and each `SecondarySources` entry — the SDK
+// shape is identical, the only difference being that a secondary source carries a
+// `SourceIdentifier`. InsecureSsl / ReportBuildStatus default false and fold via
+// isTrivialEmpty when a live false comes through.
+const projectCodeBuildSource = (src: ProjectSource): Record<string, unknown> => ({
+  ...(src.type !== undefined && { Type: src.type }),
+  ...(src.location !== undefined && { Location: src.location }),
+  ...(src.buildspec !== undefined && { BuildSpec: src.buildspec }),
+  ...(src.gitCloneDepth !== undefined && { GitCloneDepth: src.gitCloneDepth }),
+  ...(src.insecureSsl !== undefined && { InsecureSsl: src.insecureSsl }),
+  ...(src.reportBuildStatus !== undefined && { ReportBuildStatus: src.reportBuildStatus }),
+  ...(src.sourceIdentifier !== undefined && { SourceIdentifier: src.sourceIdentifier }),
+});
+
+// Map an SDK ProjectArtifacts back to the CFn AWS::CodeBuild::Project.Artifacts shape
+// (present-only). Shared by the primary `Artifacts` and each `SecondaryArtifacts` entry —
+// the SDK shape is identical. OverrideArtifactName / EncryptionDisabled default false and
+// fold via isTrivialEmpty when a live false comes through.
+const projectCodeBuildArtifacts = (art: ProjectArtifacts): Record<string, unknown> => ({
+  ...(art.type !== undefined && { Type: art.type }),
+  ...(art.location !== undefined && { Location: art.location }),
+  ...(art.name !== undefined && { Name: art.name }),
+  ...(art.namespaceType !== undefined && { NamespaceType: art.namespaceType }),
+  ...(art.packaging !== undefined && { Packaging: art.packaging }),
+  ...(art.path !== undefined && { Path: art.path }),
+  ...(art.artifactIdentifier !== undefined && { ArtifactIdentifier: art.artifactIdentifier }),
+  ...(art.overrideArtifactName !== undefined && {
+    OverrideArtifactName: art.overrideArtifactName,
+  }),
+  ...(art.encryptionDisabled !== undefined && { EncryptionDisabled: art.encryptionDisabled }),
+});
+
+// Map the SDK Webhook back to the CFn AWS::CodeBuild::Project.ProjectTriggers shape. A
+// project HAS a webhook iff BatchGetProjects returns a `webhook` object, so `Webhook: true`
+// is emitted whenever it is present (a webhook-triggered project's declared `Triggers:
+// {Webhook:true, FilterGroups:[…]}` — the standard GitHub/CodeCommit CI shape — otherwise
+// read back nothing and false-drifted `declared` with actual=undefined). Only the
+// CFn-modeled sub-fields (BuildType / FilterGroups / ScopeConfiguration) are projected; the
+// SDK Url / PayloadUrl / Secret / Status / LastModifiedSecret etc. are AWS-managed readOnly
+// noise the schema does not declare. FilterGroups is a list-of-list of WebhookFilter
+// {Type, Pattern, ExcludeMatchedPattern}.
+const projectCodeBuildTriggers = (w: Webhook): Record<string, unknown> => ({
+  Webhook: true,
+  ...(w.buildType !== undefined && { BuildType: w.buildType }),
+  ...(Array.isArray(w.filterGroups) && {
+    FilterGroups: w.filterGroups.map((group) =>
+      (group ?? []).map((f) => ({
+        ...(f.type !== undefined && { Type: f.type }),
+        ...(f.pattern !== undefined && { Pattern: f.pattern }),
+        ...(f.excludeMatchedPattern !== undefined && {
+          ExcludeMatchedPattern: f.excludeMatchedPattern,
+        }),
+      }))
+    ),
+  }),
+  ...(w.scopeConfiguration && {
+    ScopeConfiguration: {
+      ...(w.scopeConfiguration.name !== undefined && { Name: w.scopeConfiguration.name }),
+      ...(w.scopeConfiguration.domain !== undefined && { Domain: w.scopeConfiguration.domain }),
+      ...(w.scopeConfiguration.scope !== undefined && { Scope: w.scopeConfiguration.scope }),
+    },
+  }),
+});
+
+// Map the SDK ProjectBuildBatchConfig back to the CFn
+// AWS::CodeBuild::Project.ProjectBuildBatchConfig shape (present-only). CombineArtifacts
+// defaults false → folds via isTrivialEmpty; Restrictions maps the CFn-modeled
+// ComputeTypesAllowed / MaximumBuildsAllowed (FleetsAllowed is not in the CFn schema).
+const projectCodeBuildBatchConfig = (b: ProjectBuildBatchConfig): Record<string, unknown> => ({
+  ...(b.serviceRole !== undefined && { ServiceRole: b.serviceRole }),
+  ...(b.combineArtifacts !== undefined && { CombineArtifacts: b.combineArtifacts }),
+  ...(b.timeoutInMins !== undefined && { TimeoutInMins: b.timeoutInMins }),
+  ...(b.batchReportMode !== undefined && { BatchReportMode: b.batchReportMode }),
+  ...(b.restrictions && {
+    Restrictions: {
+      ...(b.restrictions.maximumBuildsAllowed !== undefined && {
+        MaximumBuildsAllowed: b.restrictions.maximumBuildsAllowed,
+      }),
+      ...(b.restrictions.computeTypesAllowed !== undefined && {
+        ComputeTypesAllowed: b.restrictions.computeTypesAllowed,
+      }),
+    },
+  }),
+});
+
+// Map an SDK ProjectSourceVersion back to the CFn
+// AWS::CodeBuild::Project.ProjectSourceVersion shape ({SourceIdentifier, SourceVersion}).
+const projectCodeBuildSourceVersion = (v: ProjectSourceVersion): Record<string, unknown> => ({
+  ...(v.sourceIdentifier !== undefined && { SourceIdentifier: v.sourceIdentifier }),
+  ...(v.sourceVersion !== undefined && { SourceVersion: v.sourceVersion }),
+});
+
 // AWS::CodeBuild::Project — Cloud Control GetResource throws
 // UnsupportedActionException (R84/R85, observed live on the harvest6 fixture).
 // Read via CodeBuild BatchGetProjects — the CFn physical id IS the project name.
@@ -2224,48 +2323,26 @@ const readCodeBuildProject: OverrideReader = async ({ physicalId, declared, regi
   if (p.queuedTimeoutInMinutes !== undefined)
     model.QueuedTimeoutInMinutes = p.queuedTimeoutInMinutes;
   if (p.encryptionKey !== undefined) model.EncryptionKey = p.encryptionKey;
-  const src = p.source;
-  if (src)
-    model.Source = {
-      ...(src.type !== undefined && { Type: src.type }),
-      ...(src.location !== undefined && { Location: src.location }),
-      ...(src.buildspec !== undefined && { BuildSpec: src.buildspec }),
-      ...(src.gitCloneDepth !== undefined && { GitCloneDepth: src.gitCloneDepth }),
-      // Security-relevant source flags omitted before, so an out-of-band flip was
-      // invisible: InsecureSsl disables TLS verification when cloning the source;
-      // ReportBuildStatus posts build status back to the source provider. Both default
-      // false and are projected only when present; a live false folds via isTrivialEmpty
-      // (nested undeclared), so a never-set project stays CLEAN and only a flip to true
-      // surfaces.
-      ...(src.insecureSsl !== undefined && { InsecureSsl: src.insecureSsl }),
-      ...(src.reportBuildStatus !== undefined && { ReportBuildStatus: src.reportBuildStatus }),
-    };
-  const art = p.artifacts;
-  if (art)
-    model.Artifacts = {
-      ...(art.type !== undefined && { Type: art.type }),
-      ...(art.location !== undefined && { Location: art.location }),
-      // The remaining CFn-declarable S3-artifact fields. They were omitted, so for an
-      // S3-artifacts project the template's declared Name / NamespaceType / Packaging /
-      // Path / ArtifactIdentifier had NO live counterpart → a false declared drift
-      // (actual=undefined), live-caught here. AWS echoes exactly the declared values, so
-      // projecting them makes the declared compare match; absent (CODEPIPELINE/NO_ARTIFACTS)
-      // → skipped, so no new noise. OverrideArtifactName is a boolean that folds via
-      // isTrivialEmpty when false.
-      ...(art.name !== undefined && { Name: art.name }),
-      ...(art.namespaceType !== undefined && { NamespaceType: art.namespaceType }),
-      ...(art.packaging !== undefined && { Packaging: art.packaging }),
-      ...(art.path !== undefined && { Path: art.path }),
-      ...(art.artifactIdentifier !== undefined && { ArtifactIdentifier: art.artifactIdentifier }),
-      ...(art.overrideArtifactName !== undefined && {
-        OverrideArtifactName: art.overrideArtifactName,
-      }),
-      // EncryptionDisabled turns OFF artifact encryption (security-relevant); omitted
-      // before, so disabling encryption out of band was undetectable. Same FP-safe shape
-      // as S3Logs.EncryptionDisabled below: a live false folds via isTrivialEmpty, true
-      // surfaces.
-      ...(art.encryptionDisabled !== undefined && { EncryptionDisabled: art.encryptionDisabled }),
-    };
+  // Source / Artifacts (and their Secondary* twins) map via the shared helpers above,
+  // projecting ONLY the CFn-modeled fields (present-only). Security-relevant source flags
+  // (InsecureSsl / ReportBuildStatus) and the S3-artifact fields (Name / NamespaceType /
+  // Packaging / Path / ArtifactIdentifier / OverrideArtifactName / EncryptionDisabled) were
+  // omitted before, so an out-of-band flip / a declared value read back nothing → a false
+  // declared drift, live-caught here.
+  if (p.source) model.Source = projectCodeBuildSource(p.source);
+  if (p.artifacts) model.Artifacts = projectCodeBuildArtifacts(p.artifacts);
+  // SecondarySources / SecondaryArtifacts — a multi-source / multi-output project declares
+  // these lists; the reader omitted them, so each declared entry had NO live counterpart
+  // (a false declared drift, actual=undefined, that SURVIVES record). Projected present-only
+  // (absent list → nothing emitted, so a single-source project stays clean).
+  if (Array.isArray(p.secondarySources) && p.secondarySources.length > 0)
+    model.SecondarySources = p.secondarySources.map(projectCodeBuildSource);
+  if (Array.isArray(p.secondaryArtifacts) && p.secondaryArtifacts.length > 0)
+    model.SecondaryArtifacts = p.secondaryArtifacts.map(projectCodeBuildArtifacts);
+  // SecondarySourceVersions — the {SourceIdentifier, SourceVersion} pins for the secondary
+  // sources; same false-declared-drift class, projected present-only.
+  if (Array.isArray(p.secondarySourceVersions) && p.secondarySourceVersions.length > 0)
+    model.SecondarySourceVersions = p.secondarySourceVersions.map(projectCodeBuildSourceVersion);
   const env = p.environment;
   if (env)
     model.Environment = {
@@ -2300,12 +2377,10 @@ const readCodeBuildProject: OverrideReader = async ({ physicalId, declared, regi
   // absent unless set, so no noise. FileSystemLocations — EFS mounts into the build
   // (Identifier/Type/Location/MountPoint/MountOptions are all USER-specified, no server
   // default), absent unless the project mounts a file system. Both were omitted, so an
-  // out-of-band change was invisible. (secondarySources / secondaryArtifacts /
-  // buildBatchConfig / autoRetryLimit are deliberately NOT projected yet: the read shapes
-  // diverge from the declared CFn shapes [secondaryArtifacts reads as BuildArtifacts —
-  // missing Type/Name/NamespaceType/Packaging], carry server defaults [autoRetryLimit=0,
-  // batch nested defaults], or are order-sensitive arrays — each needs its own FP-safe
-  // handling, added when a real gap surfaces per the "widen coverage as gaps surface" rule.)
+  // out-of-band change was invisible. (SecondarySources / SecondaryArtifacts /
+  // SecondarySourceVersions / BuildBatchConfig / AutoRetryLimit / Triggers are NOW projected
+  // above / below — each present-only against the CFn shape, so a project that never sets
+  // one stays clean and a declared value matches.)
   if (p.resourceAccessRole !== undefined) model.ResourceAccessRole = p.resourceAccessRole;
   if (p.fileSystemLocations !== undefined && p.fileSystemLocations.length > 0)
     model.FileSystemLocations = p.fileSystemLocations.map((f) => ({
@@ -2373,6 +2448,21 @@ const readCodeBuildProject: OverrideReader = async ({ physicalId, declared, regi
       ...(cache.location !== undefined && { Location: cache.location }),
       ...(cache.modes?.length && { Modes: cache.modes }),
     };
+  // Triggers — a webhook-triggered project (the standard GitHub/CodeCommit CI shape:
+  // `Triggers: {Webhook:true, FilterGroups:[…]}`) declares this, but the reader omitted it,
+  // so it false-drifted `declared` (actual=undefined) on every clean check + survived record.
+  // BatchGetProjects returns a `webhook` object iff a webhook is configured, so an untagged /
+  // non-webhook project emits nothing and stays clean; a declared one matches its template.
+  if (p.webhook) model.Triggers = projectCodeBuildTriggers(p.webhook);
+  // BuildBatchConfig — a batch-build project declares this; omitted before → false declared
+  // drift. Present-only (a non-batch project returns no buildBatchConfig, so it stays clean).
+  if (p.buildBatchConfig) model.BuildBatchConfig = projectCodeBuildBatchConfig(p.buildBatchConfig);
+  // AutoRetryLimit — the number of automatic build retries. AWS returns 0 on a project that
+  // never set it (the server default), and isTrivialEmpty does NOT drop a numeric 0, so it is
+  // projected ONLY when > 0 to keep a never-configured project clean (no CodeBuild
+  // KNOWN_DEFAULTS entry needed); a declared / out-of-band-changed non-zero limit surfaces.
+  if (typeof p.autoRetryLimit === 'number' && p.autoRetryLimit > 0)
+    model.AutoRetryLimit = p.autoRetryLimit;
   // Tags — BatchGetProjects returns the project's `tags` ([{key, value}]), but the
   // projection omitted them, so a project that DECLARES Tags (a CDK app almost always
   // stamps app/stack-level `Tags.of(app).add(...)` onto every Project) read back
@@ -2490,7 +2580,9 @@ const readServiceDiscoveryService: OverrideReader = async ({ physicalId, declare
 // DescribeDBClusters — the CFn physical id IS the DBClusterIdentifier. Project the
 // CFn-modeled props, mapping the SDK names back to CFn (EnabledCloudwatchLogsExports
 // -> EnableCloudwatchLogsExports, DBClusterParameterGroup -> DBClusterParameterGroupName,
-// VpcSecurityGroups[].VpcSecurityGroupId -> VpcSecurityGroupIds). Endpoint / Status /
+// VpcSecurityGroups[].VpcSecurityGroupId -> VpcSecurityGroupIds, DBSubnetGroup ->
+// DBSubnetGroupName). ServerlessV2ScalingConfiguration / StorageType / NetworkType are also
+// projected (#1303) — StorageType/NetworkType default-fold via KNOWN_DEFAULTS. Endpoint / Status /
 // ClusterCreateTime / DBClusterArn etc. are AWS-managed noise. AvailabilityZones is
 // deliberately NOT projected — it is create-only and AWS may reorder it, an FP surface
 // with no detection benefit (same rule as Subnet AZ). An absent cluster returns
@@ -2550,6 +2642,32 @@ const readDocDbCluster: OverrideReader = async ({ physicalId, declared, region, 
     .map((g) => g.VpcSecurityGroupId)
     .filter((s): s is string => s !== undefined);
   if (sgs.length > 0) model.VpcSecurityGroupIds = sgs;
+  // ServerlessV2ScalingConfiguration ({MinCapacity, MaxCapacity}) — a serverless DocDB
+  // cluster DECLARES this non-empty object, but the reader omitted it, so it read back
+  // undefined → a false `declared`-tier drift (desired={…} actual=undefined) that SURVIVES
+  // record on every serverless cluster. DescribeDBClusters returns it ONLY for serverless
+  // clusters, so a provisioned cluster gets nothing (present-only → stays clean); no fold
+  // needed (#1303).
+  if (cl.ServerlessV2ScalingConfiguration !== undefined)
+    model.ServerlessV2ScalingConfiguration = {
+      ...(cl.ServerlessV2ScalingConfiguration.MinCapacity !== undefined && {
+        MinCapacity: cl.ServerlessV2ScalingConfiguration.MinCapacity,
+      }),
+      ...(cl.ServerlessV2ScalingConfiguration.MaxCapacity !== undefined && {
+        MaxCapacity: cl.ServerlessV2ScalingConfiguration.MaxCapacity,
+      }),
+    };
+  // StorageType (standard | iopt1 — a mutable cost knob) and NetworkType (IPV4 | DUAL) are
+  // read back on every cluster; omitted before, so a declared one was a needless readGap and
+  // an out-of-band change was INVISIBLE. Projected present-only; the AWS defaults ('standard'
+  // / 'IPV4') fold to atDefault via KNOWN_DEFAULTS so an undeclared clean cluster stays clean,
+  // while a change to 'iopt1' / 'DUAL' still surfaces (#1303).
+  if (cl.StorageType !== undefined) model.StorageType = cl.StorageType;
+  if (cl.NetworkType !== undefined) model.NetworkType = cl.NetworkType;
+  // DBSubnetGroupName — the CFn prop; the SDK returns it under the `DBSubnetGroup` field.
+  // A cluster that DECLARES DBSubnetGroupName read back nothing (a benign readGap); projected
+  // present-only so a declared value matches and an out-of-band change surfaces.
+  if (cl.DBSubnetGroup !== undefined) model.DBSubnetGroupName = cl.DBSubnetGroup;
   // Tags — DescribeDBClusters does not carry them; DBClusterArn is the tag address (else
   // synthesize the RDS-family cluster ARN).
   const tagArn =
