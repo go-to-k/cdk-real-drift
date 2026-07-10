@@ -64,6 +64,7 @@ import {
   isEnumerableRoute,
   isQuickCreateHttpApi,
   routeDestination,
+  unqualifiedFunctionRef,
 } from '../src/read/child-enumerators.js';
 
 const API = 'abc123';
@@ -906,6 +907,41 @@ describe('diffLambdaFunctionChildren (Lambda event source mappings)', () => {
         ],
       })
     ).toEqual([]);
+  });
+});
+
+describe('unqualifiedFunctionRef (#803 alias/version-bound Lambda children)', () => {
+  const ARN = 'arn:aws:lambda:us-east-1:111122223333:function:my-fn';
+
+  it('strips an alias qualifier from a qualified ARN', () => {
+    expect(unqualifiedFunctionRef(`${ARN}:prod`)).toBe(ARN);
+  });
+
+  it('strips a numeric version qualifier from a qualified ARN', () => {
+    expect(unqualifiedFunctionRef(`${ARN}:1`)).toBe(ARN);
+  });
+
+  it('strips $LATEST from a qualified ARN', () => {
+    expect(unqualifiedFunctionRef(`${ARN}:$LATEST`)).toBe(ARN);
+  });
+
+  it('strips the qualifier from the short `name:qualifier` form', () => {
+    expect(unqualifiedFunctionRef('my-fn:prod')).toBe('my-fn');
+    expect(unqualifiedFunctionRef('my-fn:1')).toBe('my-fn');
+    expect(unqualifiedFunctionRef('my-fn:$LATEST')).toBe('my-fn');
+  });
+
+  it('preserves a bare function name (no colon)', () => {
+    expect(unqualifiedFunctionRef('my-fn')).toBe('my-fn');
+  });
+
+  it('preserves a full UNqualified ARN (does not strip the `function:` segment)', () => {
+    expect(unqualifiedFunctionRef(ARN)).toBe(ARN);
+  });
+
+  it('passes through non-string refs untouched', () => {
+    expect(unqualifiedFunctionRef(UNRESOLVED)).toBe(UNRESOLVED);
+    expect(unqualifiedFunctionRef(undefined)).toBe(undefined);
   });
 });
 
@@ -2521,6 +2557,153 @@ describe('child enumerators fail safe on an UNRESOLVED parent-ref (#962)', () =>
     const added = await enumerateSnsTopicChildren(ctx);
     expect(added).toEqual([]);
     sns.restore();
+  });
+});
+
+// #803: an EventSourceMapping (or Version) bound to an ALIAS/VERSION declares a QUALIFIED
+// FunctionName (`fn:prod`, `arn:…:function:fn:prod`), while the enumerator lists live
+// children by the UNqualified function name. Matching the parent linkage on the
+// unqualified function identity keeps the declared alias-bound child out of the `added`
+// tier, while a genuinely out-of-band child still surfaces.
+describe('Lambda alias/version-bound children match on unqualified function identity (#803)', () => {
+  const fnArn = 'arn:aws:lambda:us-east-1:111122223333:function:my-fn';
+
+  it('a declared ESM referencing an ALIAS (fn:prod) is NOT flagged added', async () => {
+    const declaredUuid = '11111111-2222-3333-4444-555555555555';
+    const lambda = mockClient(LambdaClient);
+    lambda
+      .on(ListEventSourceMappingsCommand)
+      .resolves({ EventSourceMappings: [{ UUID: declaredUuid, EventSourceArn: 'q' }] })
+      .on(ListFunctionUrlConfigsCommand)
+      .resolves({ FunctionUrlConfigs: [] })
+      .on(ListAliasesCommand)
+      .resolves({ Aliases: [] })
+      .on(ListVersionsByFunctionCommand)
+      .resolves({ Versions: [] });
+    const ctx = {
+      parent: { physicalId: 'my-fn', logicalId: 'Fn' },
+      desired: {
+        // The declared ESM targets the ALIAS: its FunctionName is the qualified ARN.
+        resources: [
+          {
+            resourceType: 'AWS::Lambda::EventSourceMapping',
+            physicalId: declaredUuid,
+            declared: { FunctionName: `${fnArn}:prod` },
+          },
+        ],
+        ctx: { liveAttrs: { Fn: { Arn: fnArn } } },
+      },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    const added = await enumerateLambdaFunctionChildren(ctx);
+    expect(added).toEqual([]);
+    lambda.restore();
+  });
+
+  it('a declared ESM by plain function name still matches its live mapping', async () => {
+    const declaredUuid = '99999999-8888-7777-6666-555555555555';
+    const lambda = mockClient(LambdaClient);
+    lambda
+      .on(ListEventSourceMappingsCommand)
+      .resolves({ EventSourceMappings: [{ UUID: declaredUuid, EventSourceArn: 'q' }] })
+      .on(ListFunctionUrlConfigsCommand)
+      .resolves({ FunctionUrlConfigs: [] })
+      .on(ListAliasesCommand)
+      .resolves({ Aliases: [] })
+      .on(ListVersionsByFunctionCommand)
+      .resolves({ Versions: [] });
+    const ctx = {
+      parent: { physicalId: 'my-fn', logicalId: 'Fn' },
+      desired: {
+        resources: [
+          {
+            resourceType: 'AWS::Lambda::EventSourceMapping',
+            physicalId: declaredUuid,
+            declared: { FunctionName: 'my-fn' },
+          },
+        ],
+        ctx: { liveAttrs: { Fn: { Arn: fnArn } } },
+      },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    const added = await enumerateLambdaFunctionChildren(ctx);
+    expect(added).toEqual([]);
+    lambda.restore();
+  });
+
+  it('a genuinely out-of-band ESM (no declared counterpart) IS still flagged added', async () => {
+    const declaredUuid = '11111111-2222-3333-4444-555555555555';
+    const rogueUuid = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+    const lambda = mockClient(LambdaClient);
+    lambda
+      .on(ListEventSourceMappingsCommand)
+      .resolves({
+        EventSourceMappings: [
+          { UUID: declaredUuid, EventSourceArn: 'q' },
+          { UUID: rogueUuid, EventSourceArn: 'rogue' },
+        ],
+      })
+      .on(ListFunctionUrlConfigsCommand)
+      .resolves({ FunctionUrlConfigs: [] })
+      .on(ListAliasesCommand)
+      .resolves({ Aliases: [] })
+      .on(ListVersionsByFunctionCommand)
+      .resolves({ Versions: [] });
+    const ctx = {
+      parent: { physicalId: 'my-fn', logicalId: 'Fn' },
+      desired: {
+        // Only ONE ESM is declared (alias-bound); the rogue mapping is not in the template.
+        resources: [
+          {
+            resourceType: 'AWS::Lambda::EventSourceMapping',
+            physicalId: declaredUuid,
+            declared: { FunctionName: `${fnArn}:prod` },
+          },
+        ],
+        ctx: { liveAttrs: { Fn: { Arn: fnArn } } },
+      },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    const added = await enumerateLambdaFunctionChildren(ctx);
+    expect(added.map((a) => a.identifier)).toEqual([rogueUuid]);
+    lambda.restore();
+  });
+
+  it('a declared Version whose FunctionName carries a qualifier is NOT flagged added', async () => {
+    const versionArn = `${fnArn}:3`;
+    const lambda = mockClient(LambdaClient);
+    lambda
+      .on(ListEventSourceMappingsCommand)
+      .resolves({ EventSourceMappings: [] })
+      .on(ListFunctionUrlConfigsCommand)
+      .resolves({ FunctionUrlConfigs: [] })
+      .on(ListAliasesCommand)
+      .resolves({ Aliases: [] })
+      .on(ListVersionsByFunctionCommand)
+      .resolves({
+        Versions: [
+          { FunctionArn: fnArn, Version: '$LATEST' }, // pseudo-version, skipped
+          { FunctionArn: versionArn, Version: '3' },
+        ],
+      });
+    const ctx = {
+      parent: { physicalId: 'my-fn', logicalId: 'Fn' },
+      desired: {
+        resources: [
+          {
+            resourceType: 'AWS::Lambda::Version',
+            physicalId: versionArn,
+            // A qualified FunctionName still targets this parent function.
+            declared: { FunctionName: `${fnArn}:prod` },
+          },
+        ],
+        ctx: { liveAttrs: { Fn: { Arn: fnArn } } },
+      },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    const added = await enumerateLambdaFunctionChildren(ctx);
+    expect(added).toEqual([]);
+    lambda.restore();
   });
 });
 

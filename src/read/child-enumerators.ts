@@ -155,6 +155,46 @@ function parentRefMatches(declaredValue: unknown, ...candidates: (string | undef
   return candidates.some((c) => c !== undefined && declaredValue === c);
 }
 
+// Drop a trailing `:qualifier` (an alias name, a numeric version, or `$LATEST`) from a
+// Lambda function reference — the bare name / unqualified ARN / short `name:qualifier`
+// form — returning the UNQUALIFIED function identity used for matching. An ESM bound to
+// an alias/version (`alias.addEventSource(...)`) declares its `FunctionName` as the
+// QUALIFIED ref (`fn:prod`, `arn:…:function:fn:prod`, `fn:1`, `fn:$LATEST`); its live
+// mapping reads back the same qualified ARN, so it matches NEITHER the bare function name
+// NOR the bare function ARN and the DECLARED alias-bound ESM is falsely flagged `added`
+// (#803). Only a qualifier that FOLLOWS the function name is stripped: the `function:`
+// ARN segment itself is preserved (`arn:…:function:fn` → unchanged), and a bare name / a
+// full unqualified ARN passes through untouched.
+export function unqualifiedFunctionRef(ref: unknown): unknown {
+  if (typeof ref !== 'string') return ref;
+  if (ref.startsWith('arn:')) {
+    // arn:partition:service:region:account:function:NAME[:QUALIFIER] — the resource id
+    // is segments 6..; a QUALIFIER present makes it segments 6 (NAME) + 7 (QUALIFIER).
+    const seg = ref.split(':');
+    if (seg.length >= 8 && seg[5] === 'function') return seg.slice(0, 7).join(':');
+    return ref;
+  }
+  // Short forms: `NAME:QUALIFIER` (single colon) → `NAME`. A bare `NAME` has no colon.
+  const i = ref.indexOf(':');
+  return i === -1 ? ref : ref.slice(0, i);
+}
+
+// `parentRefMatches`, but comparing on the UNQUALIFIED function identity of BOTH sides —
+// an alias/version-bound child's qualified `FunctionName` matches its unqualified parent
+// function (#803). Out-of-band detection is preserved: only the identity used for the
+// parent membership test is normalized; the per-child match downstream stays on the
+// UUID / versioned-ARN.
+function lambdaFunctionRefMatches(
+  declaredValue: unknown,
+  ...candidates: (string | undefined)[]
+): boolean {
+  const declaredUnqualified = unqualifiedFunctionRef(declaredValue);
+  return parentRefMatches(
+    declaredUnqualified,
+    ...candidates.map((c) => (c === undefined ? undefined : (unqualifiedFunctionRef(c) as string)))
+  );
+}
+
 // One out-of-band child resource: present live, absent from the template.
 export interface AddedChild {
   resourceType: string; // CC TypeName of the child (e.g. AWS::ApiGateway::Method)
@@ -1335,7 +1375,10 @@ export async function enumerateLambdaFunctionChildren(
   for (const r of desired.resources) {
     if (r.resourceType !== 'AWS::Lambda::EventSourceMapping' || !r.physicalId) continue;
     const fn = r.declared.FunctionName;
-    if (parentRefMatches(fn, functionName, fnArn)) {
+    // An ESM bound to an alias/version declares a QUALIFIED FunctionName (`fn:prod`,
+    // `arn:…:function:fn:prod`); compare on the UNQUALIFIED function identity so the
+    // declared alias-bound ESM matches this parent function (#803).
+    if (lambdaFunctionRefMatches(fn, functionName, fnArn)) {
       declaredMappingIds.push(r.physicalId);
     }
   }
@@ -1383,7 +1426,9 @@ export async function enumerateLambdaFunctionChildren(
   const declaredVersionArns: string[] = [];
   for (const r of desired.resources) {
     if (r.resourceType !== 'AWS::Lambda::Version' || !r.physicalId) continue;
-    if (parentRefMatches(r.declared.FunctionName, functionName, fnArn)) {
+    // Same unqualified-identity match as the ESM path: a Version whose declared
+    // FunctionName carries a qualifier still targets this parent function (#803).
+    if (lambdaFunctionRefMatches(r.declared.FunctionName, functionName, fnArn)) {
       declaredVersionArns.push(r.physicalId);
     }
   }
