@@ -86,7 +86,7 @@
       "constructPath": "CdkRealDriftIntegSfnDefinitionObject/Machine"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Machine",
       "resourceType": "AWS::StepFunctions::StateMachine",
       "path": "DefinitionString",

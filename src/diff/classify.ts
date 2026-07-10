@@ -630,6 +630,25 @@ function twinOverlapEchoes(
   return true;
 }
 
+// #712: apply an AWS::StepFunctions::StateMachine `DefinitionSubstitutions` map into a declared
+// `DefinitionString`, mirroring how CloudFormation resolves `${token}` placeholders at deploy time
+// (the live read echoes the substituted string). Each `${key}` for a declared substitution key is
+// replaced with its value (scalars stringified; a non-scalar value is left untouched, since Step
+// Functions substitutions are scalar). Text that is not a declared `${key}` token is preserved, so
+// a genuine out-of-band definition change still surfaces as declared drift.
+function applyDefinitionSubstitutions(
+  definitionString: string,
+  substitutions: Record<string, unknown>
+): string {
+  let out = definitionString;
+  for (const [key, value] of Object.entries(substitutions)) {
+    if (value === null || typeof value === 'object') continue;
+    const token = `\${${key}}`;
+    out = out.split(token).join(String(value));
+  }
+  return out;
+}
+
 // Per-type attachment-list properties handled by tier rather than a positional compare.
 // AWS::IAM::ManagedPolicy's `Roles`/`Users`/`Groups` name the principals a managed
 // policy is attached to — but the same policy is commonly attached from SEVERAL places
@@ -1707,9 +1726,47 @@ export function classifyResource(
   const twinSources: Record<string, unknown> = {};
   for (const src of Object.values(SHAPE_ECHO_TWIN[resourceType] ?? {}))
     if (isNestedObject(declared[src])) twinSources[src] = declared[src];
+  // #712: an AWS::StepFunctions::StateMachine declared with the OBJECT `Definition` form
+  // (writeOnly → readGap, above) reads back only the compiled `DefinitionString` — so the
+  // whole live definition otherwise surfaces as undeclared drift on a clean deploy. Snapshot
+  // the declared `Definition` object BEFORE the writeOnly strip drops it, so the undeclared
+  // loop can fold `DefinitionString` when it parses STRUCTURALLY EQUAL to the declared object
+  // (a genuine out-of-band definition change — live != declared — still surfaces).
+  const sfnDefinitionObject =
+    resourceType === 'AWS::StepFunctions::StateMachine' && isNestedObject(declared['Definition'])
+      ? declared['Definition']
+      : undefined;
+  // #712 (symptom B): `DefinitionSubstitutions` is a writeOnly map of `${token}` → value that
+  // CloudFormation applies into the declared `DefinitionString` at deploy time — so the LIVE
+  // read echoes the SUBSTITUTED definition while the declared `DefinitionString` still carries
+  // the literal `${token}` placeholders. That produces a false [CFn-Declared Drift] that
+  // SURVIVES record (record is undeclared-only) and, worse, a `revert` would write the literal
+  // `${token}` text back and break the state machine. The substitution is a DETERMINISTIC token
+  // replacement (tier-2 derived), so snapshot the map BEFORE the writeOnly strip and apply it to
+  // the declared `DefinitionString` below, so declared == live for a clean deploy while a real
+  // definition change still surfaces.
+  const sfnDefinitionSubstitutions =
+    resourceType === 'AWS::StepFunctions::StateMachine' &&
+    isNestedObject(declared['DefinitionSubstitutions'])
+      ? declared['DefinitionSubstitutions']
+      : undefined;
   // writeOnly cannot be read back: strip it from the DECLARED side too so it is never
   // compared (the LIVE side was already stripped by normalizeLiveModel above).
   deepStripPaths(declared, schema.writeOnlyPaths);
+  // #712 (symptom B): resolve the snapshotted `DefinitionSubstitutions` into the declared
+  // `DefinitionString` (each `${key}` → its value, stringified) BEFORE the declared compare, so
+  // the resolved declared string equals the substituted live string. Only literal `${key}`
+  // tokens for the declared substitution keys are replaced; any other text is untouched, so an
+  // out-of-band edit to the definition body still surfaces as declared drift.
+  if (
+    sfnDefinitionSubstitutions !== undefined &&
+    typeof declared['DefinitionString'] === 'string'
+  ) {
+    declared['DefinitionString'] = applyDefinitionSubstitutions(
+      declared['DefinitionString'],
+      sfnDefinitionSubstitutions
+    );
+  }
 
   // Sibling-managed inline Policies (the CDK pattern: grants land in a sibling
   // AWS::IAM::Policy resource, which reflects into the role's live Policies). Drop
@@ -2289,6 +2346,40 @@ export function classifyResource(
           note: 'declared but not returned by live read',
         });
       }
+      continue;
+    }
+    // #712: an AWS::StepFunctions::StateMachine's `DefinitionString` is a JSON document the
+    // service re-serializes (pretty-printed) on read, so the declared compact JSON and the live
+    // pretty-printed JSON are never BYTE-equal even for a clean deploy — the plain string compare
+    // below would false-flag every state machine. Compare the two STRUCTURALLY (parse both, then
+    // deepEqual, order-insensitive per the pipeline). The declared side already carries any
+    // `DefinitionSubstitutions` resolved in above (symptom B), so a clean deploy — whether
+    // declared with the string form, the string+substitutions form, or the object form (whose
+    // `DefinitionString` the live read supplies) — folds; a genuine out-of-band edit to the state
+    // machine body still fails the structural compare and surfaces as one declared finding at `k`.
+    if (
+      resourceType === 'AWS::StepFunctions::StateMachine' &&
+      k === 'DefinitionString' &&
+      typeof v === 'string' &&
+      typeof live[k] === 'string'
+    ) {
+      let declaredParsed: unknown;
+      let liveParsed: unknown;
+      try {
+        declaredParsed = JSON.parse(v);
+        liveParsed = JSON.parse(live[k] as string);
+      } catch {
+        declaredParsed = undefined;
+      }
+      if (declaredParsed !== undefined && deepEqual(declaredParsed, liveParsed)) continue;
+      findings.push({
+        tier: 'declared',
+        logicalId,
+        resourceType,
+        path: k,
+        desired: v,
+        actual: live[k],
+      });
       continue;
     }
     // #503: a JSON-STRING property into which the service INJECTS a constant default member
@@ -3246,6 +3337,25 @@ export function classifyResource(
     // (EncryptionConfiguration/CloudWatchLoggingOptions/S3BackupMode via KNOWN_DEFAULT_PATHS +
     // isTrivialEmpty) while surfacing any genuine non-default extended leaf. If the overlap does
     // NOT echo, skip the fold and let the whole twin surface below (detectable drift).
+    // #712: a StepFunctions StateMachine's undeclared live `DefinitionString` (the compiled
+    // JSON) MIRRORS the declared writeOnly `Definition` object form — the object was emitted
+    // as a readGap and stripped from `declared` above, so its live compilation would otherwise
+    // surface the WHOLE definition as undeclared drift on a clean deploy. Fold it atDefault
+    // when the parsed live JSON is STRUCTURALLY EQUAL to the declared object (order-insensitive
+    // via deepEqual — the pipeline's canonical deep compare). A genuine out-of-band change to
+    // the state machine definition (live !== declared) fails this equality and still surfaces.
+    if (sfnDefinitionObject !== undefined && k === 'DefinitionString' && typeof v === 'string') {
+      let liveDefParsed: unknown;
+      try {
+        liveDefParsed = JSON.parse(v);
+      } catch {
+        liveDefParsed = undefined;
+      }
+      if (liveDefParsed !== undefined && deepEqual(liveDefParsed, sfnDefinitionObject)) {
+        findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
+        continue;
+      }
+    }
     const twinSourceKey = SHAPE_ECHO_TWIN[resourceType]?.[k];
     // The source may have been writeOnly-stripped from `declared` (Firehose
     // S3DestinationConfiguration), so prefer the pre-strip snapshot; fall back to `declared`
