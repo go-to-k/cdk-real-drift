@@ -354,6 +354,60 @@ describe('SDK overrides', () => {
     });
   });
 
+  it('Lambda Permission (#1084): a deleted statement with a concrete Sid + siblings remaining -> ResourceGoneError (deleted, not a sibling match)', async () => {
+    // The policy still exists (siblings remain) but the declared permission's own
+    // statement (Sid `stack-ApiPermission-bbb`) was deleted out of band. A sibling
+    // shares Action + Principal, so the old Action+Principal fallback would have
+    // matched it and read back the WRONG SourceArn (hiding the deletion). Because
+    // the physical id IS a concrete StatementId, the exact-Sid miss is authoritative.
+    const fnPolicy = JSON.stringify({
+      Statement: [
+        {
+          Sid: 'stack-ApiPermissionTest-aaa',
+          Action: 'lambda:InvokeFunction',
+          Principal: { Service: 'apigateway.amazonaws.com' },
+          Condition: {
+            ArnLike: { 'AWS:SourceArn': 'arn:aws:execute-api:r:1:api/test-invoke-stage/POST/X' },
+          },
+        },
+      ],
+    });
+    lambda.on(LambdaGetPolicyCommand).resolves({ Policy: fnPolicy });
+    await expect(
+      SDK_OVERRIDES['AWS::Lambda::Permission'](
+        ctx(
+          {
+            FunctionName: 'f',
+            Action: 'lambda:InvokeFunction',
+            Principal: 'apigateway.amazonaws.com',
+          },
+          'stack-ApiPermission-bbb'
+        )
+      )
+    ).rejects.toBeInstanceOf(ResourceGoneError);
+  });
+
+  it('Lambda Permission (#1084): no usable StatementId (empty physical id) keeps the Action+Principal fallback', async () => {
+    // A pre-deploy / unresolved-ref read leaves the physical id empty, so there is no
+    // authoritative Sid to key on. The best-effort Action+Principal fallback must still
+    // run (unchanged behavior) — it must NOT throw ResourceGoneError.
+    const fnPolicy = JSON.stringify({
+      Statement: [
+        {
+          Sid: 'auto-generated-sid',
+          Action: 'lambda:InvokeFunction',
+          Principal: { Service: 's3.amazonaws.com' },
+        },
+      ],
+    });
+    lambda.on(LambdaGetPolicyCommand).resolves({ Policy: fnPolicy });
+    const out = await SDK_OVERRIDES['AWS::Lambda::Permission'](
+      // physicalId defaults to '' (not a usable StatementId)
+      ctx({ FunctionName: 'f', Action: 'lambda:InvokeFunction', Principal: 's3.amazonaws.com' })
+    );
+    expect(out).toMatchObject({ FunctionName: 'f', Action: 'lambda:InvokeFunction' });
+  });
+
   // R12: return the matched statement's REAL fields, never echo the declared template.
   it('Lambda Permission: returns the REAL statement Principal, not the declared echo', async () => {
     // declared Principal is stale ("old.amazonaws.com"); AWS actually has events
