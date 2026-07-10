@@ -1,3 +1,10 @@
+## [0.12.26](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.25...v0.12.26) (2026-07-10)
+
+
+### Bug Fixes
+
+* **read:** credential resolution honors [#1066](https://github.com/go-to-k/cdk-real-drift/issues/1066) request timeouts ([#1319](https://github.com/go-to-k/cdk-real-drift/issues/1319)) ([#1363](https://github.com/go-to-k/cdk-real-drift/issues/1363)) ([86e5682](https://github.com/go-to-k/cdk-real-drift/commit/86e568219338ee680671e3109022e708cd367e3e))
+
 ## [0.12.25](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.24...v0.12.25) (2026-07-10)
 
 
