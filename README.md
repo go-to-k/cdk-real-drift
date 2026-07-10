@@ -792,6 +792,10 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   `dms:DescribeEndpoints` + `dms:DescribeReplicationSubnetGroups` (read an
   `AWS::DMS::Endpoint` / `AWS::DMS::ReplicationSubnetGroup` — the classic DMS
   migration/CDC family, NON_PROVISIONABLE with no Cloud Control handlers),
+  `lakeformation:DescribeResource` (reads an `AWS::LakeFormation::Resource` — a
+  registered S3 data location whose Cloud Control `GetResource` returns
+  `UnsupportedActionException`; the physical id IS the location `ResourceArn`, and
+  the reader projects `RoleArn` / `WithFederation` / `HybridAccessEnabled`),
   `mediaconvert:GetQueue` + `mediaconvert:GetJobTemplate` (read an
   `AWS::MediaConvert::Queue` / `AWS::MediaConvert::JobTemplate` — a video-pipeline
   staple, NON_PROVISIONABLE with no Cloud Control handlers; the physical id IS the

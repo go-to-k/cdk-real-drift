@@ -83,6 +83,11 @@ import {
   ListEntitiesForPolicyCommand,
 } from '@aws-sdk/client-iam';
 import { ListResourceRecordSetsCommand, Route53Client } from '@aws-sdk/client-route-53';
+import {
+  DescribeResourceCommand as DescribeLakeFormationResourceCommand,
+  EntityNotFoundException as LakeFormationEntityNotFoundException,
+  LakeFormationClient,
+} from '@aws-sdk/client-lakeformation';
 import { LambdaClient, GetPolicyCommand as LambdaGetPolicyCommand } from '@aws-sdk/client-lambda';
 import { GetBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
 import { GetScheduleCommand, SchedulerClient } from '@aws-sdk/client-scheduler';
@@ -124,6 +129,7 @@ const ses = mockClient(SESClient);
 const cloudwatch = mockClient(CloudWatchClient);
 const dlm = mockClient(DLMClient);
 const dms = mockClient(DatabaseMigrationServiceClient);
+const lakeformation = mockClient(LakeFormationClient);
 const mediaconvert = mockClient(MediaConvertClient);
 const dax = mockClient(DAXClient);
 const elasticache = mockClient(ElastiCacheClient);
@@ -161,6 +167,7 @@ beforeEach(() => {
     cloudwatch,
     dlm,
     dms,
+    lakeformation,
     mediaconvert,
     dax,
     elasticache,
@@ -1408,6 +1415,57 @@ describe('SDK overrides', () => {
       dms.on(DescribeEndpointsCommand).resolves({ Endpoints: [] } as never);
       await expect(
         SDK_OVERRIDES['AWS::DMS::Endpoint'](ctx({}, 'src-mysql'))
+      ).rejects.toBeInstanceOf(ResourceGoneError);
+    });
+  });
+
+  describe('LakeFormation Resource (CC read gap, issue #930)', () => {
+    it('reads DescribeResource by ResourceArn and projects the CFn-declarable props', async () => {
+      lakeformation.on(DescribeLakeFormationResourceCommand).resolves({
+        ResourceInfo: {
+          ResourceArn: 'arn:aws:s3:::my-datalake-bucket',
+          RoleArn: 'arn:aws:iam::123456789012:role/LakeFormationRole',
+          WithFederation: true,
+          HybridAccessEnabled: false,
+          // read-only timestamp the projection must drop (first-run noise otherwise)
+          LastModified: new Date('2024-01-01T00:00:00Z'),
+        },
+      } as never);
+      const out = await SDK_OVERRIDES['AWS::LakeFormation::Resource'](
+        ctx({}, 'arn:aws:s3:::my-datalake-bucket')
+      );
+      expect(out).toEqual({
+        ResourceArn: 'arn:aws:s3:::my-datalake-bucket',
+        RoleArn: 'arn:aws:iam::123456789012:role/LakeFormationRole',
+        WithFederation: true,
+        HybridAccessEnabled: false,
+      });
+      const call = lakeformation.commandCalls(DescribeLakeFormationResourceCommand)[0]!;
+      expect(call.args[0].input).toEqual({
+        ResourceArn: 'arn:aws:s3:::my-datalake-bucket',
+      });
+    });
+
+    it('no physical id -> undefined (skipped, never a false read)', async () => {
+      expect(await SDK_OVERRIDES['AWS::LakeFormation::Resource'](ctx({}, ''))).toBeUndefined();
+    });
+
+    it('absent ResourceInfo -> ResourceGoneError (deregistered out of band)', async () => {
+      lakeformation.on(DescribeLakeFormationResourceCommand).resolves({} as never);
+      await expect(
+        SDK_OVERRIDES['AWS::LakeFormation::Resource'](ctx({}, 'arn:aws:s3:::gone'))
+      ).rejects.toBeInstanceOf(ResourceGoneError);
+    });
+
+    it('EntityNotFoundException -> ResourceGoneError (deleted out of band)', async () => {
+      lakeformation.on(DescribeLakeFormationResourceCommand).rejects(
+        new LakeFormationEntityNotFoundException({
+          message: 'not found',
+          $metadata: {},
+        })
+      );
+      await expect(
+        SDK_OVERRIDES['AWS::LakeFormation::Resource'](ctx({}, 'arn:aws:s3:::gone'))
       ).rejects.toBeInstanceOf(ResourceGoneError);
     });
   });
