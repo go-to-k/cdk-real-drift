@@ -148,6 +148,7 @@ export async function loadBaseline(
   // turning completeness quietly off). Same loud-vs-silent principle the ignore.yaml
   // validation applies (config-file.ts validateIgnoreEntry).
   parsed.recorded.forEach((entry, i) => validateRecordedEntry(entry, i, path));
+  validateRecordedUniqueness(parsed.recorded, path);
   validateCompleteResources(parsed.completeResources, path);
   validateRecordedPhysicalIds(parsed.recordedPhysicalIds, path);
   return parsed;
@@ -170,6 +171,39 @@ function validateRecordedEntry(entry: unknown, index: number, path: string): voi
   for (const k of ['logicalId', 'resourceType', 'path'] as const)
     if (typeof obj[k] !== 'string')
       throw new Error(`${at}: "${k}" is required and must be a string`);
+}
+
+/**
+ * #1047: reject duplicate `recorded` identity keys at load. The baseline is git-committed,
+ * hand-editable, and merge-conflictable, so a bad merge / hand-edit can leave TWO entries
+ * sharing the SAME identity — `(logicalId, path, resourceType)` — with DIFFERENT values. The
+ * #794 shape validation above proves each element is well-FORMED but never cross-checks
+ * identity, so such a file loads cleanly and then misbehaves: every match site
+ * (`recorded.find(...)` in applyBaseline / splitRecordedByBaseline) silently first-wins — so
+ * if LIVE equals the SECOND duplicate the finding is NOT suppressed and false-surfaces as
+ * confirmed drift — AND the removed-since-record loop iterates ALL entries, emitting TWO
+ * identical "baseline value removed since record" findings for the one path (an inflated
+ * drift count). The identity here is exactly the one the match sites compare on (see
+ * `entryMatches` / splitRecordedByBaseline's `.find`), so a collision is genuinely
+ * ambiguous — the file is corrupt. Fail LOUDLY (naming the duplicated identity) rather than
+ * silently pick the first, mirroring #794's loud-vs-silent principle. Entries are all
+ * shape-validated by this point, so `logicalId`/`resourceType`/`path` are known strings.
+ */
+function validateRecordedUniqueness(recorded: RecordedEntry[], path: string): void {
+  const seen = new Set<string>();
+  recorded.forEach((entry, i) => {
+    // key on the SAME three axes the match sites compare (logicalId + path + resourceType);
+    // JSON.stringify a tuple to keep the delimiter unambiguous across arbitrary field values.
+    const key = JSON.stringify([entry.logicalId, entry.path, entry.resourceType]);
+    if (seen.has(key))
+      throw new Error(
+        `baseline file ${path}: \`recorded\`[${i}] is a duplicate of an earlier entry with the same ` +
+          `identity (logicalId=${JSON.stringify(entry.logicalId)}, path=${JSON.stringify(entry.path)}, ` +
+          `resourceType=${JSON.stringify(entry.resourceType)}). Two recorded entries with the same identity ` +
+          'are ambiguous (a bad merge or hand-edit) — remove the stale one, or restore the correct file from git.'
+      );
+    seen.add(key);
+  });
 }
 
 /**
