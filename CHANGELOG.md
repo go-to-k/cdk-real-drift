@@ -1,3 +1,11 @@
+## [0.6.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.6.1...v0.6.2) (2026-07-10)
+
+
+### Bug Fixes
+
+* **diff:** gate DynamoDB/OpenSearch managed-key fold so an out-of-band CMK swap surfaces ([#704](https://github.com/go-to-k/cdk-real-drift/issues/704)) ([#1180](https://github.com/go-to-k/cdk-real-drift/issues/1180)) ([2b156cf](https://github.com/go-to-k/cdk-real-drift/commit/2b156cf393838507c2cdb747bf19775d913fa351))
+* **revert:** gate deletion of a recorded (endorsed) added resource behind --remove-unrecorded ([#764](https://github.com/go-to-k/cdk-real-drift/issues/764)) ([#1181](https://github.com/go-to-k/cdk-real-drift/issues/1181)) ([4ce09e3](https://github.com/go-to-k/cdk-real-drift/commit/4ce09e34114c3a0314493725934b2156f9df842e))
+
 ## [0.6.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.6.0...v0.6.1) (2026-07-10)
 
 
