@@ -1,3 +1,10 @@
+## [0.12.22](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.21...v0.12.22) (2026-07-10)
+
+
+### Bug Fixes
+
+* **config:** addIgnoreRules dedupes against the same snapshot it writes from ([#1290](https://github.com/go-to-k/cdk-real-drift/issues/1290)) ([#1368](https://github.com/go-to-k/cdk-real-drift/issues/1368)) ([4eab792](https://github.com/go-to-k/cdk-real-drift/commit/4eab792d40484601b6055424c69f98bac3c950d2))
+
 ## [0.12.21](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.20...v0.12.21) (2026-07-10)
 
 
