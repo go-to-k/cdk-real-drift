@@ -66,8 +66,10 @@ import {
   CognitoIdentityProviderClient,
   type GroupType,
   ListGroupsCommand,
+  ListIdentityProvidersCommand,
   ListResourceServersCommand,
   ListUserPoolClientsCommand,
+  type ProviderDescription,
   type ResourceServerType,
   type UserPoolClientDescription,
 } from '@aws-sdk/client-cognito-identity-provider';
@@ -1584,15 +1586,32 @@ async function pageUserPoolClients(
 export interface UserPoolGroupInput {
   userPoolId: string;
   declaredGroupNames: string[]; // physical ids (GroupNames) of AWS::Cognito::UserPoolGroup
+  // ProviderNames of AWS::Cognito::UserPoolIdentityProvider declared on this pool.
+  // When a federated user first signs in through one of these, Cognito auto-creates a
+  // `<userPoolId>_<ProviderName>` group (documented behavior) — that is NOT an
+  // out-of-band add, so it is skipped (#961). Gating on the DECLARED set preserves
+  // out-of-band detection: an auto-group for an IdP the template never declared still
+  // surfaces.
+  declaredProviderNames: string[];
   liveGroups: { name: string; label?: string | undefined }[];
 }
 
 export function diffUserPoolGroups(input: UserPoolGroupInput): AddedChild[] {
-  const { userPoolId, declaredGroupNames, liveGroups } = input;
+  const { userPoolId, declaredGroupNames, declaredProviderNames, liveGroups } = input;
   const declared = new Set(declaredGroupNames);
+  // The set of provider names whose `<userPoolId>_<ProviderName>` auto-group is
+  // legitimate: any DECLARED IdP provider name, PLUS the built-in social provider names
+  // Cognito uses (but only when they are ACTUALLY declared — a declared social IdP
+  // surfaces its provider name in declaredProviderNames). Only declared providers gate a
+  // skip, so an undeclared IdP's auto-group is still surfaced.
+  const autoGroupNames = new Set<string>();
+  for (const p of declaredProviderNames) {
+    if (typeof p === 'string' && p.length > 0) autoGroupNames.add(`${userPoolId}_${p}`);
+  }
   const added: AddedChild[] = [];
   for (const g of liveGroups) {
     if (declared.has(g.name)) continue;
+    if (autoGroupNames.has(g.name)) continue; // Cognito-auto-created federated group (#961)
     added.push({
       resourceType: 'AWS::Cognito::UserPoolGroup',
       identifier: `${userPoolId}|${g.name}`, // CC composite UserPoolId|GroupName
@@ -1666,6 +1685,65 @@ async function pageUserPoolResourceServers(
   return out;
 }
 
+// A UserPool also owns UserPoolIdentityProviders (the SAML / OIDC / Google / Facebook /
+// LoginWithAmazon / SignInWithApple federated IdPs wired onto the pool), each a separate
+// CloudFormation resource. A console / CLI `create-identity-provider` (someone wires a
+// rogue SAML / OIDC / social IdP onto a pool out of band) is invisible to cdk drift / CFn
+// drift detection — an auth backdoor that reads CLEAN (#1043). The UserPool model does NOT
+// reflect its IdPs inline, so there is no double-report to suppress. The CC
+// primaryIdentifier for AWS::Cognito::UserPoolIdentityProvider is the composite
+// `["/properties/UserPoolId","/properties/ProviderName"]`, so the `identifier` is the
+// composite `UserPoolId|ProviderName` — that is what CC GetResource / DeleteResource
+// consume. An IdP's CFn physical id (Ref) IS its ProviderName.
+
+// Cognito auto-creates a built-in `Cognito` provider (the pool's own native users) where
+// hosted UI is enabled — never an out-of-band add, so it is filtered (like the API GW
+// `Empty`/`Error` built-in models). The social / SAML / OIDC providers are user-declared
+// or rogue and are NOT filtered.
+const BUILTIN_COGNITO_PROVIDER_NAME = 'Cognito';
+
+// Pure diff: declared provider names + live inventory -> the added identity providers.
+export interface UserPoolIdentityProviderInput {
+  userPoolId: string;
+  // ProviderNames (Ref/physical id) of AWS::Cognito::UserPoolIdentityProvider declared on this pool.
+  declaredProviderNames: string[];
+  liveProviders: { providerName: string; label?: string | undefined }[];
+}
+
+export function diffUserPoolIdentityProviders(input: UserPoolIdentityProviderInput): AddedChild[] {
+  const { userPoolId, declaredProviderNames, liveProviders } = input;
+  const declared = new Set(declaredProviderNames);
+  const added: AddedChild[] = [];
+  for (const p of liveProviders) {
+    // The built-in `Cognito` native-users provider is AWS-managed — never an out-of-band add.
+    if (p.providerName === BUILTIN_COGNITO_PROVIDER_NAME) continue;
+    if (declared.has(p.providerName)) continue;
+    added.push({
+      resourceType: 'AWS::Cognito::UserPoolIdentityProvider',
+      identifier: `${userPoolId}|${p.providerName}`, // CC composite UserPoolId|ProviderName
+      label: p.label ?? p.providerName,
+      live: { ProviderName: p.providerName, UserPoolId: userPoolId },
+    });
+  }
+  return added;
+}
+
+async function pageUserPoolIdentityProviders(
+  client: CognitoIdentityProviderClient,
+  userPoolId: string
+): Promise<ProviderDescription[]> {
+  const out: ProviderDescription[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(
+      new ListIdentityProvidersCommand({ UserPoolId: userPoolId, NextToken: next, MaxResults: 60 })
+    );
+    out.push(...(res.Providers ?? []));
+    next = res.NextToken;
+  } while (next);
+  return out;
+}
+
 async function enumerateUserPoolChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
   const { parent, desired, region } = ctx;
   const userPoolId = parent.physicalId; // a UserPool's physical id IS its UserPoolId
@@ -1678,6 +1756,8 @@ async function enumerateUserPoolChildren(ctx: EnumeratorContext): Promise<AddedC
   const declaredGroupNames: string[] = [];
   // Declared resource servers of THIS pool. Matched by the Identifier value.
   const declaredResourceServerIdentifiers: string[] = [];
+  // Declared identity providers of THIS pool. Matched by the ProviderName (Ref/physical id).
+  const declaredProviderNames: string[] = [];
   for (const r of desired.resources) {
     if (
       r.resourceType === 'AWS::Cognito::UserPoolClient' &&
@@ -1698,6 +1778,13 @@ async function enumerateUserPoolChildren(ctx: EnumeratorContext): Promise<AddedC
       const identifier =
         typeof r.declared.Identifier === 'string' ? r.declared.Identifier : r.physicalId;
       if (identifier) declaredResourceServerIdentifiers.push(identifier);
+    } else if (
+      r.resourceType === 'AWS::Cognito::UserPoolIdentityProvider' &&
+      parentRefMatches(r.declared.UserPoolId, userPoolId)
+    ) {
+      const providerName =
+        typeof r.declared.ProviderName === 'string' ? r.declared.ProviderName : r.physicalId;
+      if (providerName) declaredProviderNames.push(providerName);
     }
   }
 
@@ -1715,7 +1802,12 @@ async function enumerateUserPoolChildren(ctx: EnumeratorContext): Promise<AddedC
   const liveGroups = groups
     .filter((g): g is GroupType & { GroupName: string } => typeof g.GroupName === 'string')
     .map((g) => ({ name: g.GroupName }));
-  const groupAdded = diffUserPoolGroups({ userPoolId, declaredGroupNames, liveGroups });
+  const groupAdded = diffUserPoolGroups({
+    userPoolId,
+    declaredGroupNames,
+    declaredProviderNames,
+    liveGroups,
+  });
 
   const resourceServers = await pageUserPoolResourceServers(client, userPoolId);
   const liveResourceServers = resourceServers
@@ -1729,7 +1821,19 @@ async function enumerateUserPoolChildren(ctx: EnumeratorContext): Promise<AddedC
     liveResourceServers,
   });
 
-  return [...clientAdded, ...groupAdded, ...resourceServerAdded];
+  const providers = await pageUserPoolIdentityProviders(client, userPoolId);
+  const liveProviders = providers
+    .filter(
+      (p): p is ProviderDescription & { ProviderName: string } => typeof p.ProviderName === 'string'
+    )
+    .map((p) => ({ providerName: p.ProviderName, label: p.ProviderName }));
+  const idpAdded = diffUserPoolIdentityProviders({
+    userPoolId,
+    declaredProviderNames,
+    liveProviders,
+  });
+
+  return [...clientAdded, ...groupAdded, ...resourceServerAdded, ...idpAdded];
 }
 
 // ── AppSync ──────────────────────────────────────────────────────────────────

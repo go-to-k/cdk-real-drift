@@ -892,7 +892,8 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
     `lambda:ListVersionsByFunction`
   - `AWS::Events::EventBus`: `events:ListRules`
   - `AWS::Cognito::UserPool`: `cognito-idp:ListUserPoolClients`,
-    `cognito-idp:ListGroups`, `cognito-idp:ListResourceServers`
+    `cognito-idp:ListGroups`, `cognito-idp:ListResourceServers`,
+    `cognito-idp:ListIdentityProviders`
   - `AWS::AppSync::GraphQLApi`: `appsync:ListDataSources`, `appsync:ListResolvers`,
     `appsync:ListFunctions`, `appsync:ListTypes`
   - `AWS::Logs::LogGroup`: `logs:DescribeSubscriptionFilters` (plus
