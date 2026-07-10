@@ -88,7 +88,7 @@
       "constructPath": "CdkRealDriftIntegCognitoUserPoolUserRich/User"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "User",
       "resourceType": "AWS::Cognito::UserPoolUser",
       "path": "UserAttributes[sub]",

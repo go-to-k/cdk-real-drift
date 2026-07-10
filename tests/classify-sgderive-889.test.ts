@@ -45,6 +45,13 @@ const CASES: Array<{ label: string; type: string; key: string }> = [
     type: 'AWS::ElasticLoadBalancingV2::LoadBalancer',
     key: 'SecurityGroups',
   },
+  // #976: Neptune DBCluster's undeclared VpcSecurityGroupIds defaults to the VPC default SG and is
+  // OOB-mutable (ModifyDBCluster) — same derived gate as ALB/ENI, not a value-independent fold.
+  {
+    label: 'Neptune DBCluster VpcSecurityGroupIds',
+    type: 'AWS::Neptune::DBCluster',
+    key: 'VpcSecurityGroupIds',
+  },
 ];
 
 for (const { label, type, key } of CASES) {
@@ -106,5 +113,21 @@ describe('#889 shouldFoldDefaultSgList (pure decision)', () => {
     expect(shouldFoldDefaultSgList(t, 'GroupSet', [ROGUE_SG], new Set())).toBe(true);
     // a non-gated (type, key) pair is not this gate's business
     expect(shouldFoldDefaultSgList(t, 'PrivateIpAddress', ['10.0.0.1'], defaultSgIds)).toBe(false);
+  });
+
+  it('#976: Neptune DBCluster VpcSecurityGroupIds folds single-default / surfaces swap / fails open', () => {
+    const n = 'AWS::Neptune::DBCluster';
+    const k = 'VpcSecurityGroupIds';
+    // single VPC-default SG → fold
+    expect(shouldFoldDefaultSgList(n, k, [DEFAULT_SG], defaultSgIds)).toBe(true);
+    // 2-element append → surface
+    expect(shouldFoldDefaultSgList(n, k, [DEFAULT_SG, ROGUE_SG], defaultSgIds)).toBe(false);
+    // single non-default (swap) → surface
+    expect(shouldFoldDefaultSgList(n, k, [ROGUE_SG], defaultSgIds)).toBe(false);
+    // fail open: no resolved ids → fold (empty or undefined)
+    expect(shouldFoldDefaultSgList(n, k, [ROGUE_SG], undefined)).toBe(true);
+    expect(shouldFoldDefaultSgList(n, k, [ROGUE_SG], new Set())).toBe(true);
+    // a DIFFERENT Neptune key is not this gate's business (only VpcSecurityGroupIds is gated)
+    expect(shouldFoldDefaultSgList(n, 'DBSubnetGroupName', ['x'], defaultSgIds)).toBe(false);
   });
 });

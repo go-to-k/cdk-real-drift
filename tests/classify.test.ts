@@ -8057,18 +8057,38 @@ describe('Cognito UserPoolUser UserAttributes identity-keyed subset (found by co
   const liveEmail = { Value: 'cdkrd@example.com', Name: 'email' }; // key order differs
   const liveSub = { Value: '04c894d8-20e1-70ed-175e-9a01d11f7f45', Name: 'sub' };
 
-  it('the AWS-injected sub attribute does NOT false-drift the whole UserAttributes array', () => {
+  it('the AWS-injected sub attribute folds atDefault (#844) — not undeclared, not declared drift', () => {
     const findings = classifyResource(
       user({ UserAttributes: [declaredEmail] }),
       { UserAttributes: [liveEmail, liveSub] },
       bare
     );
     expect(findings.filter((f) => f.tier === 'declared')).toEqual([]);
-    // sub surfaces as nested undeclared inventory, keyed by Name
-    const undeclared = findings.filter(
-      (f) => f.tier === 'undeclared' && f.path === 'UserAttributes[sub]'
+    // #844: sub is the AWS-assigned immutable user id — folds atDefault (value-independent),
+    // never surfaces as undeclared [Potential Drift] on a clean first check.
+    expect(
+      findings.filter((f) => f.tier === 'undeclared' && f.path === 'UserAttributes[sub]')
+    ).toHaveLength(0);
+    expect(
+      findings.filter((f) => f.tier === 'atDefault' && f.path === 'UserAttributes[sub]')
+    ).toHaveLength(1);
+  });
+
+  it('a non-sub OOB-added UserAttribute STILL surfaces as undeclared while sub folds (#844)', () => {
+    const findings = classifyResource(
+      user({ UserAttributes: [declaredEmail] }),
+      {
+        UserAttributes: [liveEmail, liveSub, { Name: 'custom:role', Value: 'admin' }],
+      },
+      bare
     );
-    expect(undeclared).toHaveLength(1);
+    // sub folds atDefault; the console/OOB-added custom:role must remain visible (security FN guard).
+    expect(
+      findings.filter((f) => f.tier === 'atDefault' && f.path === 'UserAttributes[sub]')
+    ).toHaveLength(1);
+    expect(
+      findings.filter((f) => f.tier === 'undeclared' && f.path === 'UserAttributes[custom:role]')
+    ).toHaveLength(1);
   });
 
   it('an out-of-band change to the DECLARED email attribute is reported as declared drift', () => {
