@@ -4512,6 +4512,134 @@ export function canonicalizeIdArraysDeep(v: unknown): unknown {
   return v;
 }
 
+// #981 — EC2 stores/echoes IPv6 CIDRs in RFC 5952 canonical form (lowercase hex,
+// leading zeros stripped per group, the LONGEST all-zero run compressed to `::`). A
+// template declaring an equivalent NON-canonical spelling — uppercase
+// (`2001:DB8::/32`), uncompressed (`2001:db8:0:0::/32`), `::0/0` /
+// `0:0:0:0:0:0:0:0/0` for all-v6 — otherwise false-flags declared drift on every
+// check (declared `2001:DB8:0:0::/32` vs live `2001:db8::/32`), survives record, and
+// the offered revert writes the non-canonical string back → EC2 re-canonicalizes →
+// the revert NEVER converges (the #877 `IpProtocol 'TCP' vs 'tcp'` loop, IPv6
+// edition). Fold BOTH compare sides to the one RFC 5952 form so an equivalent
+// spelling compares equal, while a GENUINELY different CIDR (`2001:db8::/32` vs
+// `2001:dead::/32`) still lands on distinct canonical forms and surfaces.
+//
+// FP-safety: this only transforms a string that passes a STRICT IPv6-CIDR parse gate
+// (`canonicalIpv6Cidr` returns undefined otherwise) — an IPv4 CIDR, an ARN (colon-
+// heavy but not a valid hextet structure), or any arbitrary string passes through
+// UNCHANGED. The embedded-IPv4 tail form (`::ffff:1.2.3.4`) is handled
+// conservatively: `parseIpv6Groups` rejects it (an IPv4 dotted tail is not a hextet),
+// so it is left unchanged. Because the gate is a strict parse, this is FP-safe to
+// apply UNSCOPED (deep over the whole model), exactly like the other deep
+// canonicalizers — no path table needed.
+
+// Parse an IPv6 address literal into its 8 16-bit groups, or undefined if it is not a
+// valid, unambiguous IPv6 address. Rejects: embedded-IPv4 tails, non-hex groups,
+// groups > 4 hex digits, multiple `::`, and any form that does not expand to exactly 8
+// groups. `::` expands the missing groups to zero (but only when it genuinely elides
+// ≥1 group — `1:2:3:4:5:6:7::` with `::` at the end eliding zero groups is rejected as
+// the non-canonical spelling of a full address's trailing group, which EC2 would never
+// echo, keeping the gate strict).
+function parseIpv6Groups(addr: string): number[] | undefined {
+  if (addr.includes('.')) return undefined; // reject embedded-IPv4 tail forms
+  const dc = addr.indexOf('::');
+  if (dc !== addr.lastIndexOf('::')) return undefined; // at most one `::`
+  const hextet = (part: string): number | undefined => {
+    if (!/^[0-9a-fA-F]{1,4}$/.test(part)) return undefined;
+    return Number.parseInt(part, 16);
+  };
+  if (dc === -1) {
+    const parts = addr.split(':');
+    if (parts.length !== 8) return undefined;
+    const groups: number[] = [];
+    for (const p of parts) {
+      const g = hextet(p);
+      if (g === undefined) return undefined;
+      groups.push(g);
+    }
+    return groups;
+  }
+  // `::` present: split into the head (before `::`) and tail (after `::`).
+  const head = addr.slice(0, dc);
+  const tail = addr.slice(dc + 2);
+  const headParts = head === '' ? [] : head.split(':');
+  const tailParts = tail === '' ? [] : tail.split(':');
+  const headGroups: number[] = [];
+  for (const p of headParts) {
+    const g = hextet(p);
+    if (g === undefined) return undefined;
+    headGroups.push(g);
+  }
+  const tailGroups: number[] = [];
+  for (const p of tailParts) {
+    const g = hextet(p);
+    if (g === undefined) return undefined;
+    tailGroups.push(g);
+  }
+  const missing = 8 - headGroups.length - tailGroups.length;
+  if (missing < 1) return undefined; // `::` must elide at least one group
+  return [...headGroups, ...new Array(missing).fill(0), ...tailGroups];
+}
+
+// RFC 5952-canonicalize an IPv6 CIDR string (`<addr>/<prefix>`), or undefined if it is
+// not a valid IPv6 CIDR. Lowercase hex, strip leading zeros per group, compress the
+// LONGEST run of ≥1 all-zero groups to `::` (leftmost on ties), reattach `/prefix`.
+export function canonicalIpv6Cidr(s: string): string | undefined {
+  const slash = s.indexOf('/');
+  if (slash === -1) return undefined; // must be a CIDR, not a bare address
+  const addr = s.slice(0, slash);
+  const prefixStr = s.slice(slash + 1);
+  if (!/^\d{1,3}$/.test(prefixStr)) return undefined;
+  const prefix = Number.parseInt(prefixStr, 10);
+  if (prefix < 0 || prefix > 128) return undefined;
+  const groups = parseIpv6Groups(addr);
+  if (!groups) return undefined;
+  // Find the longest run of consecutive all-zero groups (length ≥ 2 to compress).
+  let bestStart = -1;
+  let bestLen = 0;
+  let curStart = -1;
+  let curLen = 0;
+  for (let i = 0; i < 8; i++) {
+    if (groups[i] === 0) {
+      if (curStart === -1) curStart = i;
+      curLen++;
+      if (curLen > bestLen) {
+        bestLen = curLen;
+        bestStart = curStart;
+      }
+    } else {
+      curStart = -1;
+      curLen = 0;
+    }
+  }
+  const hex = groups.map((g) => g.toString(16));
+  let addrOut: string;
+  if (bestLen >= 2) {
+    const before = hex.slice(0, bestStart).join(':');
+    const after = hex.slice(bestStart + bestLen).join(':');
+    addrOut = `${before}::${after}`;
+  } else {
+    addrOut = hex.join(':');
+  }
+  return `${addrOut}/${prefix}`;
+}
+
+// Deep-walk every string value, RFC 5952-canonicalizing any that unambiguously parses
+// as an IPv6 CIDR and passing everything else through unchanged (see block comment
+// above). Applied to BOTH compare sides in `canonicalizeForCompare` so equivalent
+// spellings fold, mirroring `canonicalizeIdArraysDeep`'s structure.
+export function canonicalizeIpv6CidrsDeep(v: unknown): unknown {
+  if (typeof v === 'string') return canonicalIpv6Cidr(v) ?? v;
+  if (Array.isArray(v)) return v.map(canonicalizeIpv6CidrsDeep);
+  if (v && typeof v === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(v as Record<string, unknown>))
+      out[k] = canonicalizeIpv6CidrsDeep(val);
+    return out;
+  }
+  return v;
+}
+
 // Per-type SCALAR-array props AWS treats as UNORDERED SETS but whose elements
 // match none of the content-shape canonicalizers above (not ids/ARNs, not HTTP
 // verbs, no identity field): the service stores a set and echoes it in ITS
