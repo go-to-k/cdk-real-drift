@@ -1,3 +1,10 @@
+## [0.9.13](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.12...v0.9.13) (2026-07-10)
+
+
+### Bug Fixes
+
+* **diff:** fold EKS AccessEntry.Username via a derived gate, not value-independent ([#890](https://github.com/go-to-k/cdk-real-drift/issues/890)) ([#1227](https://github.com/go-to-k/cdk-real-drift/issues/1227)) ([a601be2](https://github.com/go-to-k/cdk-real-drift/commit/a601be244ad4adf044409b66a508a02d70173018))
+
 ## [0.9.12](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.11...v0.9.12) (2026-07-10)
 
 
