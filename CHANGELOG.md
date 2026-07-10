@@ -1,3 +1,10 @@
+## [0.5.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.5.2...v0.5.3) (2026-07-10)
+
+
+### Bug Fixes
+
+* **baseline:** recorded added-resource lifecycle — surface OOB deletion + carry-forward under throttled parent ([#791](https://github.com/go-to-k/cdk-real-drift/issues/791)) ([#1177](https://github.com/go-to-k/cdk-real-drift/issues/1177)) ([9990932](https://github.com/go-to-k/cdk-real-drift/commit/9990932f56010fe0436811fb87cf1d394944ed09))
+
 ## [0.5.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.5.1...v0.5.2) (2026-07-10)
 
 
