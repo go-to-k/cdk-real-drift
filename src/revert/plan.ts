@@ -958,13 +958,53 @@ export function buildRevertPlan(
   return { items, notRevertable };
 }
 
+// Raw CFn / SAM templates legally declare integers/booleans as STRINGS
+// (`"DelaySeconds": "300"`, `"Enabled": "true"` — CloudFormation coerces them to the
+// resource's real type at deploy). Detection folds `"300"` vs `100` fine (the global
+// stringly-equal guard), but a genuine drift's revert patch would write the STRING
+// `"300"` into an integer-typed Cloud Control model property, which CC rejects with
+// `ValidationException: expected type: Integer, found: String` — the drift is then
+// permanently unrevertable for raw-CFn/SAM users (#725).
+//
+// The target property's real JSON type is exactly the type CloudFormation already
+// coerced the live value to, so `live` (the finding's `actual`) IS the type oracle:
+// coerce a string `desired` toward `live`'s type when `live` is a number or boolean.
+// Only a CLEAN, LOSSLESS representation coerces (a finite numeric string for a number;
+// `"true"`/`"false"` for a boolean) — anything else (`"abc"` for an integer, an empty
+// string, whitespace) is left VERBATIM so a malformed declaration is never corrupted
+// (fail safe = today's behavior). A `desired` that is genuinely a string coerces
+// nothing, because when the property's real type is string the LIVE value is a string
+// too, so neither branch below fires. This changes ONLY the value written on the revert
+// path; detection/fold are untouched.
+function coerceDeclaredScalar(desired: unknown, live: unknown): unknown {
+  if (typeof desired !== 'string') return desired;
+  if (typeof live === 'number') {
+    // Number('') / Number('  ') are 0 (a silent, lossy coercion), so require the string
+    // to actually contain a digit before trusting Number().
+    const n = Number(desired);
+    if (Number.isFinite(n) && desired.trim() !== '') return n;
+    return desired;
+  }
+  if (typeof live === 'boolean') {
+    if (desired === 'true') return true;
+    if (desired === 'false') return false;
+    return desired;
+  }
+  // bigint live is out of scope (CC models use JSON number/integer); string/object/etc.
+  // targets are left verbatim.
+  return desired;
+}
+
 function revertOp(f: Finding, recorded: BaselineFile['recorded']): PatchOp {
   const pointer = toPointer(f.path);
   if (f.tier === 'declared') {
     return {
       op: 'add',
       path: pointer,
-      value: f.desired,
+      // Coerce a string-typed declared scalar toward the live value's real JSON type
+      // (#725) — see coerceDeclaredScalar. A non-scalar `desired` (whole object/array
+      // drift) passes straight through: coerceDeclaredScalar only touches a string.
+      value: coerceDeclaredScalar(f.desired, f.actual),
       // Carry the current live value as `prior`, exactly like the undeclared branches
       // below. A property-scoped SDK writer that reverts PER ENTRY needs it:
       // `writeIamRoleInlinePolicies` deletes every inline policy present in `prior`
