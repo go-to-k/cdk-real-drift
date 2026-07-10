@@ -1,3 +1,10 @@
+## [0.12.16](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.15...v0.12.16) (2026-07-10)
+
+
+### Bug Fixes
+
+* **revert:** refuse to write GetTemplate-masked declared values back to AWS ([#1354](https://github.com/go-to-k/cdk-real-drift/issues/1354)) ([134e96c](https://github.com/go-to-k/cdk-real-drift/commit/134e96ce49ab83778752b8048ae655e2abd77b6f))
+
 ## [0.12.15](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.14...v0.12.15) (2026-07-10)
 
 
