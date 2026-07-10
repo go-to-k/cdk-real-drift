@@ -1,3 +1,10 @@
+## [0.10.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.10.2...v0.10.3) (2026-07-10)
+
+
+### Bug Fixes
+
+* **normalize:** tolerate IPv6-CIDR representation variants (RFC 5952 canonicalization) ([#981](https://github.com/go-to-k/cdk-real-drift/issues/981)) ([#1239](https://github.com/go-to-k/cdk-real-drift/issues/1239)) ([add0634](https://github.com/go-to-k/cdk-real-drift/commit/add06344a46e19fff41f0c25d299605bc4ce27ce))
+
 ## [0.10.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.10.1...v0.10.2) (2026-07-10)
 
 
