@@ -539,6 +539,43 @@ export function buildSiblingUserGroups(desired: Desired): Record<string, string[
   return map;
 }
 
+// A standalone AWS::AutoScaling::LifecycleHook (`AutoScalingGroupName: <asg>`) attaches a hook to an
+// ASG; that hook then appears in the ASG's live `LifecycleHookSpecificationList` — origin-
+// indistinguishable from a hook the ASG declared INLINE. So a stack that mixes an inline
+// `LifecycleHookSpecificationList` with a standalone `CfnLifecycleHook` produces a DECLARED-tier FP
+// that survives `record` (the declared inline list never equals the inline+standalone live list),
+// and a standalone-ONLY ASG additionally FPs the whole list as UNDECLARED (#700). The standalone
+// hook is tracked + compared as its OWN resource, so classify subtracts sibling-declared hooks from
+// the ASG's live list BY NAME (see subtractSiblingLifecycleHooks) — leaving the inline-declared
+// hooks (and any out-of-band hook, matching no sibling) to compare. Keyed by the target ASG
+// identifier the classify finding uses (the ASG's physical id == AutoScalingGroupName; a
+// `{Ref: <asgLogicalId>}` resolves via the logical-id map). The hook NAME the live list echoes is
+// the LifecycleHook's physical id (== its name); fall back to a declared `LifecycleHookName`. Fail-
+// open: an unresolved ASG reference or a nameless hook is skipped (the ASG keeps the reflected hook
+// -> a one-time visible FP, never a hidden change).
+const LIFECYCLE_HOOK_TYPE = 'AWS::AutoScaling::LifecycleHook';
+export function buildSiblingLifecycleHooks(desired: Desired): Record<string, string[]> {
+  const byLogicalId = new Map<string, string>();
+  for (const r of desired.resources) if (r.physicalId) byLogicalId.set(r.logicalId, r.physicalId);
+  const map: Record<string, string[]> = {};
+  for (const r of desired.resources) {
+    if (r.resourceType !== LIFECYCLE_HOOK_TYPE) continue;
+    const decl = r.declared;
+    if (!decl || typeof decl !== 'object') continue;
+    const d = decl as Record<string, unknown>;
+    const asgKey = resolvePrincipalKey(d.AutoScalingGroupName, byLogicalId);
+    if (!asgKey) continue; // unresolved ASG reference -> fail-open
+    const name =
+      r.physicalId ??
+      (typeof d.LifecycleHookName === 'string' && d.LifecycleHookName
+        ? d.LifecycleHookName
+        : undefined);
+    if (!name) continue;
+    (map[asgKey] ??= []).push(name);
+  }
+  return map;
+}
+
 // Resolve an IAM principal/group reference to the concrete identity the live read echoes: a plain
 // string is the resolved name (== physical id); a `{Ref: logicalId}` resolves via the logical-id ->
 // physical-id map. Any other shape (an unresolved intrinsic) yields undefined -> the caller skips
@@ -949,6 +986,7 @@ export async function gatherFindings(
     siblingEventBusPolicies: buildSiblingEventBusPolicies(desired),
     siblingManagedPolicyAttachments: buildSiblingManagedPolicyAttachments(desired),
     siblingUserGroups: buildSiblingUserGroups(desired),
+    siblingLifecycleHooks: buildSiblingLifecycleHooks(desired),
     bucketNotificationManaged: buildBucketNotificationManaged(desired),
     clusterEchoModel: buildClusterEchoModels(desired),
     rdsOptionSettingDefaults: await buildRdsOptionSettingDefaults(desired, region),
@@ -1040,6 +1078,7 @@ export async function regatherTouched(
     siblingEventBusPolicies: buildSiblingEventBusPolicies(desired),
     siblingManagedPolicyAttachments: buildSiblingManagedPolicyAttachments(desired),
     siblingUserGroups: buildSiblingUserGroups(desired),
+    siblingLifecycleHooks: buildSiblingLifecycleHooks(desired),
     bucketNotificationManaged: buildBucketNotificationManaged(desired),
     clusterEchoModel: buildClusterEchoModels(desired),
     rdsOptionSettingDefaults: await buildRdsOptionSettingDefaults(desired, region),

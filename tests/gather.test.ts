@@ -18,6 +18,7 @@ import {
   buildBucketNotificationManaged,
   buildClusterEchoModels,
   buildSiblingEventBusPolicies,
+  buildSiblingLifecycleHooks,
   buildSiblingManagedPolicyAttachments,
   buildSiblingSgRules,
   buildSiblingUserGroups,
@@ -939,6 +940,86 @@ describe('buildSiblingUserGroups', () => {
           logicalId: 'Membership',
           resourceType: 'AWS::IAM::UserToGroupAddition',
           declared: { GroupName: { 'Fn::GetAtt': ['G', 'GroupName'] }, Users: ['user-a'] },
+        } as DesiredResource,
+      ])
+    );
+    expect(Object.keys(map)).toHaveLength(0);
+  });
+});
+
+describe('buildSiblingLifecycleHooks (#700)', () => {
+  const desiredWith = (resources: DesiredResource[]): Desired =>
+    ({
+      stackName: 's',
+      region: 'r',
+      accountId: '111111111111',
+      resources,
+      rawTemplate: '',
+      ctx: {} as ResolverContext,
+    }) as Desired;
+
+  it('keys the hook physical-id name by the resolved AutoScalingGroupName', () => {
+    const map = buildSiblingLifecycleHooks(
+      desiredWith([
+        {
+          logicalId: 'Hook',
+          resourceType: 'AWS::AutoScaling::LifecycleHook',
+          physicalId: 'standalone-terminate',
+          declared: { AutoScalingGroupName: 'asg-phys', LifecycleHookName: 'standalone-terminate' },
+        } as DesiredResource,
+      ])
+    );
+    expect(map['asg-phys']).toEqual(['standalone-terminate']);
+  });
+
+  it('resolves {Ref} to the ASG physical id and prefers the hook physical id over the declared name', () => {
+    const map = buildSiblingLifecycleHooks(
+      desiredWith([
+        {
+          logicalId: 'Asg',
+          resourceType: 'AWS::AutoScaling::AutoScalingGroup',
+          physicalId: 'asg-phys',
+          declared: {},
+        },
+        {
+          logicalId: 'Hook',
+          resourceType: 'AWS::AutoScaling::LifecycleHook',
+          physicalId: 'gen-hook-name', // AWS-generated name that the live list echoes
+          declared: { AutoScalingGroupName: { Ref: 'Asg' } }, // no LifecycleHookName declared
+        } as DesiredResource,
+      ])
+    );
+    expect(map['asg-phys']).toEqual(['gen-hook-name']);
+  });
+
+  it('groups multiple sibling hooks under the same ASG', () => {
+    const map = buildSiblingLifecycleHooks(
+      desiredWith([
+        {
+          logicalId: 'H1',
+          resourceType: 'AWS::AutoScaling::LifecycleHook',
+          physicalId: 'launch',
+          declared: { AutoScalingGroupName: 'asg-phys' },
+        } as DesiredResource,
+        {
+          logicalId: 'H2',
+          resourceType: 'AWS::AutoScaling::LifecycleHook',
+          physicalId: 'terminate',
+          declared: { AutoScalingGroupName: 'asg-phys' },
+        } as DesiredResource,
+      ])
+    );
+    expect(map['asg-phys']?.sort()).toEqual(['launch', 'terminate']);
+  });
+
+  it('skips a hook whose ASG reference is unresolved (fail-open)', () => {
+    const map = buildSiblingLifecycleHooks(
+      desiredWith([
+        {
+          logicalId: 'Hook',
+          resourceType: 'AWS::AutoScaling::LifecycleHook',
+          physicalId: 'h',
+          declared: { AutoScalingGroupName: { 'Fn::GetAtt': ['A', 'Name'] } },
         } as DesiredResource,
       ])
     );

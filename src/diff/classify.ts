@@ -597,6 +597,31 @@ function subtractSiblingUserGroups(live: Record<string, unknown>, siblingGroups:
   if (arr.length === 0) delete live[USER_GROUPS_PROP]; // empty == absent; no []-vs-absent FP
 }
 
+// An ASG's live `LifecycleHookSpecificationList` merges its INLINE-declared hooks with the hooks
+// applied by SIBLING standalone AWS::AutoScaling::LifecycleHook resources — origin-indistinguishable.
+// Remove each sibling-declared hook by its unique `LifecycleHookName` (AWS enforces per-ASG name
+// uniqueness, so name IS identity), leaving the inline-declared hooks (compared normally) and any
+// out-of-band hook (matching no sibling) to surface. If the list empties (a standalone-only ASG),
+// drop it — empty == absent, so no []-vs-absent undeclared FP.
+const LIFECYCLE_HOOK_SPEC_PROP = 'LifecycleHookSpecificationList';
+function subtractSiblingLifecycleHooks(
+  live: Record<string, unknown>,
+  siblingHookNames: string[]
+): void {
+  const arr = live[LIFECYCLE_HOOK_SPEC_PROP];
+  if (!Array.isArray(arr) || siblingHookNames.length === 0) return;
+  for (const name of siblingHookNames) {
+    const i = arr.findIndex(
+      (el) =>
+        el !== null &&
+        typeof el === 'object' &&
+        (el as Record<string, unknown>).LifecycleHookName === name
+    );
+    if (i >= 0) arr.splice(i, 1);
+  }
+  if (arr.length === 0) delete live[LIFECYCLE_HOOK_SPEC_PROP]; // empty == absent; no []-vs-absent FP
+}
+
 // Cloud Control returns an ALTERNATIVE representation of a declared value as a separate
 // live-only field. Keyed resourceType -> { liveOnlyField: declaredSiblingField }: drop the
 // live-only field when its declared sibling is present (the template already pins the value
@@ -1593,6 +1618,14 @@ export function classifyResource(
     // FP (the addition resource is itself a CC-gap skipped type, checked nowhere); an out-of-band
     // group matching no sibling still surfaces.
     siblingUserGroups?: Record<string, string[]>;
+    // LifecycleHook NAMES declared by SIBLING standalone AWS::AutoScaling::LifecycleHook resources
+    // targeting this ASG, keyed by the ASG identifier (== physical id == AutoScalingGroupName).
+    // Subtracted BY NAME from an AWS::AutoScaling::AutoScalingGroup's reflected live
+    // `LifecycleHookSpecificationList` (which merges inline + standalone hooks, origin-
+    // indistinguishable) so a mixed inline+standalone stack is not a declared-tier FP that survives
+    // record + a revert that would DELETE the sibling hook, and a standalone-only ASG is not an
+    // undeclared FP; an out-of-band hook matching no sibling still surfaces (#700).
+    siblingLifecycleHooks?: Record<string, string[]>;
     // Bucket physical ids whose S3 notifications are managed by a Custom::S3BucketNotifications
     // custom resource (see buildBucketNotificationManaged): the live bucket reflects the
     // CR-applied NotificationConfiguration the bucket resource never declares, so it is dropped
@@ -1712,6 +1745,17 @@ export function classifyResource(
       const sibGroups = physicalId ? opts.siblingUserGroups?.[physicalId] : undefined;
       if (sibGroups) subtractSiblingUserGroups(live, sibGroups);
     }
+  }
+  // Subtract from an ASG's reflected live `LifecycleHookSpecificationList` the hooks applied by
+  // SIBLING standalone AWS::AutoScaling::LifecycleHook resources (keyed by the ASG's physical id in
+  // opts.siblingLifecycleHooks). Runs regardless of whether the ASG declares an inline list — only
+  // sibling-NAMED hooks are removed, so the ASG's own inline hooks still compare (declared tier) and
+  // a hook added purely out of band (matching no sibling) still surfaces. The sibling hook is
+  // tracked + compared as its own resource, so leaving it on the ASG double-reports it, is a
+  // declared-tier FP that survives record, and a revert would DELETE the sibling-declared hook (#700).
+  if (resourceType === 'AWS::AutoScaling::AutoScalingGroup') {
+    const sibHooks = physicalId ? opts.siblingLifecycleHooks?.[physicalId] : undefined;
+    if (sibHooks) subtractSiblingLifecycleHooks(live, sibHooks);
   }
   // A bucket whose notifications are managed by a Custom::S3BucketNotifications CR reflects
   // the CR-applied NotificationConfiguration it never declares itself (CDK renders
