@@ -1,3 +1,11 @@
+## [0.12.28](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.27...v0.12.28) (2026-07-10)
+
+
+### Bug Fixes
+
+* **ignore:** ignore verb passes constructPathByLogical so removed-since-record findings match constructPath-form rules ([#1285](https://github.com/go-to-k/cdk-real-drift/issues/1285)) ([#1373](https://github.com/go-to-k/cdk-real-drift/issues/1373)) ([73083bb](https://github.com/go-to-k/cdk-real-drift/commit/73083bbe6eb64f645bc1d011e22eecfb4783b7ee))
+* **normalize:** add missing registry tag property names to TAG_PROPERTY_NAMES + map-shaped names to FREE_FORM_MAP_PARENTS ([#1300](https://github.com/go-to-k/cdk-real-drift/issues/1300)) ([#1374](https://github.com/go-to-k/cdk-real-drift/issues/1374)) ([49f7dd3](https://github.com/go-to-k/cdk-real-drift/commit/49f7dd3f33862a121033726a064528e2eab4e487))
+
 ## [0.12.27](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.26...v0.12.27) (2026-07-10)
 
 
