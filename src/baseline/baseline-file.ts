@@ -27,8 +27,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { deepEqual } from '../diff/drift-calculator.js';
-import { sortUnorderedObjectArray } from '../normalize/noise.js';
-import { canonicalizeForCompare } from '../normalize/pipeline.js';
+import { canonicalizeBaselineForCompare, canonicalizeForCompare } from '../normalize/pipeline.js';
 import type { ArrayDelta, Finding } from '../types.js';
 
 export interface RecordedEntry {
@@ -655,35 +654,24 @@ export function carryForwardUnreadable(
  * type-agnostic over UNDECLARED snapshot fragments, which never carry an
  * order-significant declared array, so an order-insensitive sort is safe here.
  */
+//
+// #766: additionally re-apply the DEEP, ROOT-AGNOSTIC strips the live value passes on its
+// way to `f.actual` (AWS-managed-field strip + `aws:*`-tag strip) and pass `resourceType`
+// through the shared pipeline, so a baseline recorded under OLDER rules re-canonicalizes to
+// match today's freshly-stripped live value — a pure cdkrd UPGRADE no longer resurfaces
+// committed baselines as false "changed/removed since record" drift. See
+// `canonicalizeBaselineForCompare` for which strips are (and are not) covered. `resourceType`
+// is optional: every call site has the recorded entry's / finding's type available and passes
+// it, but a type-less call stays correct (the type only tightens WAF/order-significant folds).
 export function baselineValueMatches(
   baselineValue: unknown,
-  currentCanonicalValue: unknown
+  currentCanonicalValue: unknown,
+  resourceType?: string
 ): boolean {
   return deepEqual(
-    sortObjectArraysDeep(canonicalizeForCompare(baselineValue)),
-    sortObjectArraysDeep(canonicalizeForCompare(currentCanonicalValue))
+    canonicalizeBaselineForCompare(baselineValue, resourceType),
+    canonicalizeBaselineForCompare(currentCanonicalValue, resourceType)
   );
-}
-
-// Deeply apply the SAME canonical-JSON total order the live side reaches (classify's
-// `sortUnorderedObjectArray`) to every plain-object array, so both compare sides of
-// `baselineValueMatches` converge on one order (#767). `sortUnorderedObjectArray`
-// only reorders a single array level and leaves non-arrays untouched, so this walk
-// recurses into every element / object value and sorts each object array it finds.
-// Applied to BOTH sides symmetrically, so it can never make two different values
-// compare equal — it only removes an ordering-only difference.
-function sortObjectArraysDeep(v: unknown): unknown {
-  if (Array.isArray(v)) {
-    const mapped = v.map(sortObjectArraysDeep);
-    return sortUnorderedObjectArray(mapped);
-  }
-  if (v && typeof v === 'object') {
-    const out: Record<string, unknown> = {};
-    for (const [k, val] of Object.entries(v as Record<string, unknown>))
-      out[k] = sortObjectArraysDeep(val);
-    return out;
-  }
-  return v;
 }
 
 // Identity fields for the ELEMENT-LEVEL DELTA display only (R128) — deliberately
@@ -778,7 +766,7 @@ export function splitRecordedByBaseline(
         a.path === entry.path &&
         a.resourceType === entry.resourceType
     );
-    if (baselineEntry && baselineValueMatches(baselineEntry.value, entry.value))
+    if (baselineEntry && baselineValueMatches(baselineEntry.value, entry.value, entry.resourceType))
       unchanged.push(entry);
     else changed.push(entry);
   }
@@ -1074,11 +1062,11 @@ export function applyBaseline(
         kept.push({ ...f, unrecorded: true });
         continue;
       }
-      if (entry && baselineValueMatches(entry.value, f.actual)) continue; // recorded, unchanged
+      if (entry && baselineValueMatches(entry.value, f.actual, f.resourceType)) continue; // recorded, unchanged
       if (entry) {
         kept.push({
           ...f,
-          desired: canonicalizeForCompare(entry.value),
+          desired: canonicalizeForCompare(entry.value, f.resourceType),
           note: f.note ? `${f.note}; changed since record` : 'changed since record',
         });
         continue;
@@ -1108,7 +1096,7 @@ export function applyBaseline(
     // (f.actual is already canonical from classify): a baseline recorded under older
     // normalization rules still matches today's live, so a cdkrd version bump alone
     // never resurfaces a suppressed value as false drift.
-    if (entry && baselineValueMatches(entry.value, f.actual)) continue; // recorded, unchanged
+    if (entry && baselineValueMatches(entry.value, f.actual, f.resourceType)) continue; // recorded, unchanged
     if (entry) {
       // recorded value CHANGED -> drift. This takes PRIORITY over the at-default fold
       // below: a recorded NON-default value reset out of band to the AWS default is a
@@ -1123,11 +1111,14 @@ export function applyBaseline(
       // the recorded→live diff is available to the report / --json / a re-record picker — the
       // user must see WHAT the out-of-band change was, not just the (possibly attacker-set)
       // live value under a bare label.
-      const delta = identityArrayDelta(canonicalizeForCompare(entry.value), f.actual);
+      const delta = identityArrayDelta(
+        canonicalizeForCompare(entry.value, f.resourceType),
+        f.actual
+      );
       kept.push({
         ...f,
         tier: 'undeclared',
-        desired: canonicalizeForCompare(entry.value),
+        desired: canonicalizeForCompare(entry.value, f.resourceType),
         ...(delta && { arrayDelta: delta }),
       });
       continue;
