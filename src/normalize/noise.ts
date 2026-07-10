@@ -2977,7 +2977,20 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   (undeclared on every one, no out-of-band edit). Equality is irrelevant — any window folds.
   'AWS::DocDB::DBCluster': new Set(['PreferredMaintenanceWindow', 'PreferredBackupWindow']),
   'AWS::DocDB::DBInstance': new Set(['PreferredMaintenanceWindow']),
-  'AWS::Neptune::DBCluster': new Set(['PreferredMaintenanceWindow', 'PreferredBackupWindow']),
+  //   AWS::Neptune::DBCluster.EngineVersion — a cluster that declares no EngineVersion reads
+  //   back the current GA Neptune engine version AWS provisioned ("1.4.7.0" today), which AWS
+  //   moves over time as it ships new GA versions — not a constant we can pin. Undeclared →
+  //   whatever GA AWS assigned is its default, never user intent; a user who pins a version
+  //   DECLARES it and it is then compared (VERSION_PREFIX_PATHS tolerates the declared
+  //   partial-vs-concrete echo, e.g. declared "1.3" vs live "1.3.5.0"). Undeclared-only, the
+  //   canonical moving-GA-version tier-3 case — sibling of the ElastiCache::ReplicationGroup /
+  //   DocDB EngineVersion folds. Live-confirmed undeclared on a fresh no-version Neptune cluster
+  //   (Cdkrd980Verify, us-east-1: "1.4.7.0"; #1186).
+  'AWS::Neptune::DBCluster': new Set([
+    'PreferredMaintenanceWindow',
+    'PreferredBackupWindow',
+    'EngineVersion',
+  ]),
   //   AWS::Neptune::DBInstance.AvailabilityZone — AWS places an undeclared instance in an AZ it
   //   picks (create-only, so it can never drift; never user intent when undeclared), exactly like
   //   AWS::RDS::DBInstance.AvailabilityZone above. A user who pins a placement DECLARES it and is
