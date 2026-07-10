@@ -24,6 +24,7 @@ import {
   diffApiGatewayGatewayResponses,
   diffApiGatewayModels,
   diffApiGatewayRequestValidators,
+  diffApiGatewayStages,
   diffAppConfigApplicationChildren,
   diffAppConfigProfiles,
   diffApiGatewayV2Authorizers,
@@ -521,6 +522,48 @@ describe('diffApiGatewayV2Authorizers (HTTP / WebSocket API authorizers)', () =>
       liveAuthorizers: [{ id: 'authX', label: undefined }],
     });
     expect(added[0]!.label).toBe('authX');
+  });
+});
+
+describe('diffApiGatewayStages (REST API stages, #1044)', () => {
+  const API = 'rest01';
+
+  it('flags an out-of-band Stage; identifier is the CC composite RestApiId|StageName', () => {
+    const added = diffApiGatewayStages({
+      apiId: API,
+      declaredStageNames: ['prod'],
+      liveStages: [
+        { name: 'prod', label: 'prod' },
+        { name: 'roguestage', label: 'roguestage' },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::ApiGateway::Stage',
+        identifier: `${API}|roguestage`,
+        label: 'roguestage',
+        live: { StageName: 'roguestage', RestApiId: API },
+      },
+    ]);
+  });
+
+  it('no drift when every live Stage is declared', () => {
+    expect(
+      diffApiGatewayStages({
+        apiId: API,
+        declaredStageNames: ['prod', 'staging'],
+        liveStages: [{ name: 'prod' }, { name: 'staging' }],
+      })
+    ).toEqual([]);
+  });
+
+  it('falls back to the StageName when the live Stage has no label', () => {
+    const added = diffApiGatewayStages({
+      apiId: API,
+      declaredStageNames: [],
+      liveStages: [{ name: 'stageX', label: undefined }],
+    });
+    expect(added[0]!.label).toBe('stageX');
   });
 });
 
