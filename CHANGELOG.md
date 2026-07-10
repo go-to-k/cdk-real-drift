@@ -1,3 +1,13 @@
+## [0.4.14](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.13...v0.4.14) (2026-07-10)
+
+
+### Bug Fixes
+
+* **normalize:** nested unordered-array sort missing from the live normalizer ([#808](https://github.com/go-to-k/cdk-real-drift/issues/808)) ([#1103](https://github.com/go-to-k/cdk-real-drift/issues/1103)) ([30ebc85](https://github.com/go-to-k/cdk-real-drift/commit/30ebc852c7a92862fec5d244fe7567da06bc363f))
+* **read:** API Gateway custom-domain mappings silently skipped ([#855](https://github.com/go-to-k/cdk-real-drift/issues/855)) ([#1101](https://github.com/go-to-k/cdk-real-drift/issues/1101)) ([4b0fde4](https://github.com/go-to-k/cdk-real-drift/commit/4b0fde4dd0f8887b40bc088e9c66f231fe8bbfe9))
+* **read:** project Tags in readCodeBuildProject so a declared-tags Project is not a false drift ([#1056](https://github.com/go-to-k/cdk-real-drift/issues/1056)) ([#1105](https://github.com/go-to-k/cdk-real-drift/issues/1105)) ([4b88635](https://github.com/go-to-k/cdk-real-drift/commit/4b886353480dbeea2bb1531185b959a4421a7be2))
+* **synth:** sibling context-lookup failure aborts named-stack check ([#905](https://github.com/go-to-k/cdk-real-drift/issues/905)) ([#1104](https://github.com/go-to-k/cdk-real-drift/issues/1104)) ([9390603](https://github.com/go-to-k/cdk-real-drift/commit/93906039e18545c8074fea82e4d4c80230d691e6))
+
 ## [0.4.13](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.12...v0.4.13) (2026-07-10)
 
 
