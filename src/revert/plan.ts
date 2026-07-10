@@ -11,6 +11,7 @@
 // CC-gap types (revert for those is a follow-up).
 import type { BaselineFile } from '../baseline/baseline-file.js';
 import { withinStackPath } from '../construct-path.js';
+import { TAG_PROPERTY_NAMES } from '../normalize/cc-api-strip.js';
 import { hasUnresolved, UNRESOLVED } from '../normalize/intrinsic-resolver.js';
 import {
   awsManagedTags,
@@ -1193,64 +1194,76 @@ export function writeOnlyReincludeOps(
 // passes through unchanged: a single-key `remove`/`add` leaves every OTHER key — including
 // the live `aws:*` managed ones — in Cloud Control's read-modify-write model, so the
 // provider never untags the managed keys (proven live on an SSM Parameter).
-const TAGS_POINTER = '/Tags';
 function asTagList(v: unknown): unknown[] {
   return Array.isArray(v) ? v : [];
+}
+// Rewrite ONE whole-property tag `add`/`remove` op so the revert re-attaches the live
+// `aws:*` managed tags it would otherwise strip. `pointer` is the op's own `/<Name>`
+// pointer and `liveTags` the live value read under that name — so this works for `/Tags`
+// AND every service-specific tag property (#862), MAP- or LIST-shaped.
+function preserveManagedTags(op: PatchOp, pointer: string, liveTags: unknown): PatchOp {
+  // MAP-shaped tags (key->value, e.g. SSM Parameter Tags, Cognito UserPoolTags): the
+  // managed tags are aws:* KEYS. A whole-map revert that dropped them -> AWS rejects
+  // ("aws: prefixed tag key names are not allowed for external use"). Preserve them.
+  if (liveTags !== null && typeof liveTags === 'object' && !Array.isArray(liveTags)) {
+    const managedMap = Object.fromEntries(
+      Object.entries(liveTags).filter(([k]) => k.startsWith('aws:'))
+    );
+    if (Object.keys(managedMap).length === 0) return op;
+    const userMap =
+      op.op === 'add' &&
+      op.value !== null &&
+      typeof op.value === 'object' &&
+      !Array.isArray(op.value)
+        ? Object.fromEntries(
+            Object.entries(op.value as Record<string, unknown>).filter(
+              ([k]) => !k.startsWith('aws:')
+            )
+          )
+        : {};
+    return {
+      op: 'add',
+      path: pointer,
+      value: { ...userMap, ...managedMap },
+      ...(op.prior !== undefined && { prior: op.prior }),
+      human: `${op.human} (preserving aws:* managed tags)`,
+    };
+  }
+  // LIST-shaped tags ({Key,Value}[]): the managed tags are aws:* ELEMENTS.
+  const managed = awsManagedTags(liveTags);
+  if (managed.length === 0) return op; // nothing managed to protect — leave the op as-is
+  // user (non-managed) tags the revert wants to KEEP: an `add` keeps its value's tags, a
+  // `remove` keeps none — either way, drop any aws:* entry from the value (it should never
+  // carry one, but be defensive) and re-attach the live managed set.
+  const userTags =
+    op.op === 'add' ? asTagList(op.value).filter((t) => awsManagedTags([t]).length === 0) : [];
+  return {
+    op: 'add',
+    path: pointer,
+    value: [...userTags, ...managed],
+    ...(op.prior !== undefined && { prior: op.prior }),
+    human: `${op.human} (preserving aws:* managed tags)`,
+  };
 }
 export function tagPreservingOps(
   ops: PatchOp[],
   liveRaw: Record<string, unknown> | undefined
 ): PatchOp[] {
-  const liveTags = liveRaw?.['Tags'];
-  // MAP-shaped Tags (key->value, e.g. AWS::SSM::Parameter): the managed tags are aws:*
-  // KEYS. awsManagedTags only understood the {Key,Value}[] list shape, so a map-shaped
-  // /Tags revert dropped the aws:* keys -> AWS rejects ("aws: prefixed tag key names are
-  // not allowed for external use"). Mirror stripTagsWalk/isAllAwsTags and preserve them.
-  if (liveTags !== null && typeof liveTags === 'object' && !Array.isArray(liveTags)) {
-    const managedMap = Object.fromEntries(
-      Object.entries(liveTags).filter(([k]) => k.startsWith('aws:'))
-    );
-    if (Object.keys(managedMap).length === 0) return ops;
-    return ops.map((op) => {
-      if (op.path !== TAGS_POINTER) return op;
-      const userMap =
-        op.op === 'add' &&
-        op.value !== null &&
-        typeof op.value === 'object' &&
-        !Array.isArray(op.value)
-          ? Object.fromEntries(
-              Object.entries(op.value as Record<string, unknown>).filter(
-                ([k]) => !k.startsWith('aws:')
-              )
-            )
-          : {};
-      return {
-        op: 'add',
-        path: TAGS_POINTER,
-        value: { ...userMap, ...managedMap },
-        ...(op.prior !== undefined && { prior: op.prior }),
-        human: `${op.human} (preserving aws:* managed tags)`,
-      };
-    });
-  }
-  const managed = awsManagedTags(liveTags);
-  if (managed.length === 0) return ops; // nothing managed to protect — leave ops as-is
-  return ops.map((op) => {
-    if (op.path !== TAGS_POINTER) return op;
-    // user (non-managed) tags the revert wants to KEEP: an `add` keeps its value's
-    // tags, a `remove` keeps none — either way, drop any aws:* entry from the value
-    // (it should never carry one, but be defensive — same per-element predicate as
-    // awsManagedTags) and re-attach the live managed set.
-    const userTags =
-      op.op === 'add' ? asTagList(op.value).filter((t) => awsManagedTags([t]).length === 0) : [];
-    return {
-      op: 'add',
-      path: TAGS_POINTER,
-      value: [...userTags, ...managed],
-      ...(op.prior !== undefined && { prior: op.prior }),
-      human: `${op.human} (preserving aws:* managed tags)`,
-    };
+  let changed = false;
+  const out = ops.map((op) => {
+    // Only a WHOLE-PROPERTY tag pointer `/<Name>` where Name is a known tag property is
+    // rewritten. A NESTED single-key op (`/Tags/<key>`, `/UserPoolTags/<key>`) passes
+    // through unchanged: it leaves every OTHER key — including the live aws:* managed ones
+    // — in Cloud Control's read-modify-write model, so the provider never untags them.
+    const name = /^\/([^/]+)$/.exec(op.path)?.[1];
+    if (name === undefined || !TAG_PROPERTY_NAMES.has(name)) return op;
+    const rewritten = preserveManagedTags(op, op.path, liveRaw?.[name]);
+    if (rewritten !== op) changed = true;
+    return rewritten;
   });
+  // Preserve the by-reference "nothing to protect" contract callers rely on (return the
+  // exact input array when no op was rewritten).
+  return changed ? out : ops;
 }
 
 // Service-echoed EMPTY sub-arrays that the service itself REJECTS when a Cloud Control
