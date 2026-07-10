@@ -283,7 +283,7 @@ snapshots its full live model and watches it, `ignore` accepts it, or `revert`
 - **AppSync**: data sources, resolvers, functions
 - **CloudWatch Logs**: metric filters, subscription filters
 - **ELBv2**: listeners, listener rules
-- **EC2**: VPC subnets, route table routes
+- **EC2**: VPC subnets, VPC endpoints, route table routes
 - **ECS**: cluster services
 - **KMS**: key aliases
 - **AppConfig**: application environments, configuration profiles
