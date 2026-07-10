@@ -37,6 +37,9 @@ vi.mock('../src/baseline/baseline-file.js', () => ({
   checkBaselineAccount: () => {},
   applyBaseline: (findings: unknown) => findings,
   declaredKeysByLogical: () => ({}),
+  // #1285: ignore.ts's ignoreApplyBaselineOpts now also calls this — stub it so the
+  // opts builder does not throw on an undefined import under this module mock.
+  constructPathsByLogical: () => new Map(),
   physicalIdsByLogical: () => ({}),
 }));
 
