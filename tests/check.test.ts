@@ -3,6 +3,7 @@ import {
   coverageWarning,
   finalCheckExit,
   hasCoverageGap,
+  isCustomResourceSkip,
   nestedStackWarning,
   preDeployFindings,
   reconcileBaseline,
@@ -376,6 +377,42 @@ describe('coverageWarning / hasCoverageGap (--strict + loud coverage gap)', () =
     expect(strictCoverageExit(true, clean, res)).toBe(0); // strict but no gap → 0
     // a nested stack is a coverage gap too (the value shared with the --pre-deploy path)
     expect(strictCoverageExit(true, clean, [dr('AWS::CloudFormation::Stack')])).toBe(1);
+  });
+
+  // #724: a Custom::* skip is a permanent-by-nature gap → informational, never fails --strict.
+  it('isCustomResourceSkip matches only skipped Custom::* / AWS::CloudFormation::CustomResource', () => {
+    expect(
+      isCustomResourceSkip(skipped('A', { resourceType: 'Custom::S3AutoDeleteObjects' }))
+    ).toBe(true);
+    expect(
+      isCustomResourceSkip(skipped('A', { resourceType: 'AWS::CloudFormation::CustomResource' }))
+    ).toBe(true);
+    // not a custom resource
+    expect(isCustomResourceSkip(skipped('A', { resourceType: 'AWS::SNS::Topic' }))).toBe(false);
+    // right type but not the skipped tier
+    expect(isCustomResourceSkip({ ...F('undeclared'), resourceType: 'Custom::LogRetention' })).toBe(
+      false
+    );
+  });
+
+  it('hasCoverageGap: a Custom::* skip does NOT fail --strict (permanent-by-nature gap, #724)', () => {
+    const custom = [skipped('AutoDelete', { resourceType: 'Custom::S3AutoDeleteObjects' })];
+    expect(hasCoverageGap(custom, [dr('AWS::S3::Bucket')])).toBe(false);
+    expect(strictCoverageExit(true, custom, [dr('AWS::S3::Bucket')])).toBe(0);
+  });
+
+  it('hasCoverageGap: an ACTIONABLE skip (read error / CC-unsupported) still fails --strict', () => {
+    const readGap = [skipped('X', { resourceType: 'AWS::Some::Unsupported' })];
+    expect(hasCoverageGap(readGap, [dr('AWS::SNS::Topic')])).toBe(true);
+    expect(strictCoverageExit(true, readGap, [dr('AWS::SNS::Topic')])).toBe(1);
+  });
+
+  it('hasCoverageGap: a Custom::* skip alongside a real read gap STILL fails (only the custom one is exempt)', () => {
+    const mixed = [
+      skipped('AutoDelete', { resourceType: 'Custom::S3AutoDeleteObjects' }),
+      skipped('X', { resourceType: 'AWS::Some::Unsupported' }),
+    ];
+    expect(hasCoverageGap(mixed, [dr('AWS::SNS::Topic')])).toBe(true);
   });
 });
 

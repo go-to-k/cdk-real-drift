@@ -143,6 +143,23 @@ export function isPendingCreationSkip(f: Finding): boolean {
   return f.tier === 'skipped' && f.note === 'no physical id';
 }
 
+// #724: a `Custom::*` / `AWS::CloudFormation::CustomResource` skip is a PERMANENT-by-nature
+// coverage gap — a custom resource has no cloud-side model to read (router.ts short-circuits
+// it), and nearly every real CDK app carries one (`Custom::S3AutoDeleteObjects`,
+// `Custom::LogRetention`, `Custom::CDKBucketDeployment`). Failing `--strict` on it would exit
+// 1 FOREVER on typical apps with nothing the user could record / ignore / fix — making the flag
+// unusable exactly in the CI it is meant for. So it is INFORMATIONAL: still surfaced in the
+// coverage warning + `skipped` footer (visibility preserved), but excluded from the `--strict`
+// exit gate. An ACTIONABLE gap (a CC-unsupported type with no override, a read error / throttle
+// / AccessDenied, an un-recursed nested stack) still fails `--strict`. Pure + exported.
+export function isCustomResourceSkip(f: Finding): boolean {
+  return (
+    f.tier === 'skipped' &&
+    (f.resourceType === 'AWS::CloudFormation::CustomResource' ||
+      f.resourceType.startsWith('Custom::'))
+  );
+}
+
 // Resources cdkrd could NOT read this run land in the `skipped` tier — a
 // CC-unsupported type with no SDK override, a read error (throttle / AccessDenied), a
 // missing physical id, a Custom resource. They are genuinely UNCHECKED, yet `skipped`
@@ -189,16 +206,22 @@ export function pendingCreationInfo(findings: Finding[], stackName: string): str
 // nested stack not recursed into. Under --pre-deploy (#727) a "no physical id" skip is a
 // not-yet-deployed local resource (pending creation), which is EXPECTED and therefore not
 // a gap — excluded so `--strict --pre-deploy` no longer false-fails on a feature branch
-// that merely ADDS a resource with zero real drift. Non-pre-deploy behavior is unchanged.
-// Pure + exported.
+// that merely ADDS a resource with zero real drift. A `Custom::*` skip (#724) is a
+// PERMANENT-by-nature gap (no cloud-side model exists) present in nearly every CDK app, so
+// it is EXCLUDED here too — it stays visible in the coverage warning + footer but never
+// fails `--strict` (else the flag would exit 1 forever on any app with `autoDeleteObjects` /
+// `LogRetention`). Non-custom / non-pending skips (CC-unsupported types, read errors) still
+// gap. Non-pre-deploy behavior is otherwise unchanged. Pure + exported.
 export function hasCoverageGap(
   findings: Finding[],
   resources: DesiredResource[],
   preDeploy = false
 ): boolean {
   return (
-    findings.some((f) => f.tier === 'skipped' && !(preDeploy && isPendingCreationSkip(f))) ||
-    resources.some((r) => r.resourceType === 'AWS::CloudFormation::Stack')
+    findings.some(
+      (f) =>
+        f.tier === 'skipped' && !(preDeploy && isPendingCreationSkip(f)) && !isCustomResourceSkip(f)
+    ) || resources.some((r) => r.resourceType === 'AWS::CloudFormation::Stack')
   );
 }
 
