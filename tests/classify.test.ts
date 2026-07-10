@@ -11588,3 +11588,70 @@ describe('#975 derived-echo folds (deterministic function of declared inputs)', 
     expect(assoc.undeclared).toEqual([]);
   });
 });
+
+describe('#890 EKS AccessEntry.Username derived fold (deterministic transform of PrincipalArn)', () => {
+  const emptySchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const entry = (principalArn: string): DesiredResource => ({
+    logicalId: 'Entry',
+    resourceType: 'AWS::EKS::AccessEntry',
+    physicalId: `${principalArn}|cdkrd-eks`,
+    declared: { PrincipalArn: principalArn, ClusterName: 'cdkrd-eks' },
+  });
+
+  it('a role PrincipalArn folds the derived assumed-role Username atDefault', () => {
+    const roleArn =
+      'arn:aws:iam::111111111111:role/CdkRealDriftIntegEksRich-EntryRole30BEEDCC-dB5Ek4';
+    const t = tiers(
+      classifyResource(
+        entry(roleArn),
+        {
+          Username:
+            'arn:aws:sts::111111111111:assumed-role/CdkRealDriftIntegEksRich-EntryRole30BEEDCC-dB5Ek4/{{SessionName}}',
+        },
+        emptySchema
+      )
+    );
+    expect(t.atDefault).toEqual(['Username']);
+    expect(t.undeclared).toEqual([]);
+  });
+
+  it('a role with a PATH strips the path to the bare role name', () => {
+    const roleArn = 'arn:aws:iam::111111111111:role/some/deep/path/MyRole';
+    const t = tiers(
+      classifyResource(
+        entry(roleArn),
+        { Username: 'arn:aws:sts::111111111111:assumed-role/MyRole/{{SessionName}}' },
+        emptySchema
+      )
+    );
+    expect(t.atDefault).toEqual(['Username']);
+  });
+
+  it('a user PrincipalArn echoes verbatim', () => {
+    const userArn = 'arn:aws:iam::111111111111:user/alice';
+    const t = tiers(classifyResource(entry(userArn), { Username: userArn }, emptySchema));
+    expect(t.atDefault).toEqual(['Username']);
+  });
+
+  it('an OUT-OF-BAND Username re-map (RBAC identity change) SURFACES as undeclared', () => {
+    const roleArn = 'arn:aws:iam::111111111111:role/EntryRole';
+    const t = tiers(
+      classifyResource(
+        entry(roleArn),
+        { Username: 'arn:aws:sts::111111111111:assumed-role/cluster-admin/{{SessionName}}' },
+        emptySchema
+      )
+    );
+    expect(t.undeclared).toEqual(['Username']);
+    expect(t.atDefault).toEqual([]);
+  });
+});

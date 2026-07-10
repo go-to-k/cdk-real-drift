@@ -1843,6 +1843,32 @@ export function classifyResource(
       ...(protocolVersion === 'GRPC' ? { Matcher: { GrpcCode: '12' } } : {}),
     };
   }
+  // #890: an EKS AccessEntry that declares no explicit Username reads back the value EKS
+  // DERIVES from the declared PrincipalArn — a DETERMINISTIC transform, not an opaque
+  // per-resource id, so it must be a tier-2 derived equality gate (not value-independent):
+  // Username is MUTABLE (`eks update-access-entry --username`) and RBAC-load-bearing, so an
+  // out-of-band re-map of a principal to a different Kubernetes identity must SURFACE.
+  //   - a role principal `arn:<p>:iam::<acct>:role/<path.../name>` derives
+  //     `arn:<p>:sts::<acct>:assumed-role/<name>/{{SessionName}}` (iam->sts, role/->
+  //     assumed-role/, the path stripped to the bare role name, `/{{SessionName}}` appended);
+  //   - any other principal (an IAM user ARN) echoes the PrincipalArn verbatim.
+  // Equality-gated: a custom Username the user set is declared and compared in the declared
+  // loop; a value that differs from the derived default falls through to `undeclared`.
+  if (resourceType === 'AWS::EKS::AccessEntry') {
+    const principalArn = declared['PrincipalArn'];
+    if (typeof principalArn === 'string') {
+      const roleMatch = /^arn:([^:]+):iam::([^:]*):role\/(.+)$/.exec(principalArn);
+      let derivedUsername = principalArn;
+      if (roleMatch) {
+        const partition = roleMatch[1] ?? 'aws';
+        const acct = roleMatch[2] ?? '';
+        const pathAndName = roleMatch[3] ?? '';
+        const roleName = pathAndName.split('/').pop() ?? pathAndName;
+        derivedUsername = `arn:${partition}:sts::${acct}:assumed-role/${roleName}/{{SessionName}}`;
+      }
+      knownDef = { ...knownDef, Username: derivedUsername };
+    }
+  }
   // AWS/CDK-generated values for THIS resource (its minted name, a default log group
   // derived from the physical id), with the live physical id substituted in — keyed
   // by property, consulted by the undeclared loop below. Empty when the type has no
