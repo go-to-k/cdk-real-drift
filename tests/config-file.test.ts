@@ -595,6 +595,46 @@ describe('loadConfig', () => {
     await expect(loadConfig()).rejects.toThrow(/not valid YAML/);
   });
 
+  it('an unresolved git merge-conflict marker → error carries the line/column diagnostic (#1049)', async () => {
+    // The #1 real-world damage to this shared merge-magnet file: a conflict marker left
+    // by a botched merge. The bare "is not valid YAML" gives the user nowhere to look;
+    // the fix appends the prettyErrors diagnostic, which pins the exact line + column.
+    await write(
+      [
+        'ignore:',
+        '<<<<<<< HEAD',
+        '  - path: A.x',
+        '=======',
+        '  - path: B.x',
+        '>>>>>>> branch',
+      ].join('\n')
+    );
+    let msg = '';
+    try {
+      await loadConfig();
+    } catch (e) {
+      msg = (e as Error).message;
+    }
+    expect(msg).toMatch(/not valid YAML/); // prefix preserved for continuity
+    expect(msg).toMatch(/line \d+, column \d+/); // actionable location, not the bare string
+  });
+
+  it('an unquoted "*"-glob path parses as a YAML alias → error surfaces the alias diagnostic + quote hint (#1049)', async () => {
+    // `- path: *.DesiredCount` collects ZERO doc.errors, then toJS() throws on the `*`
+    // alias. The old catch swallowed the message; the fix surfaces it AND adds the
+    // documented remedy (quote a glob that starts with `*` / `?`).
+    await write('ignore:\n  - path: *.DesiredCount\n');
+    let msg = '';
+    try {
+      await loadConfig();
+    } catch (e) {
+      msg = (e as Error).message;
+    }
+    expect(msg).toMatch(/not valid YAML/); // prefix preserved for continuity
+    expect(msg).toMatch(/alias/i); // the swallowed diagnostic is now surfaced
+    expect(msg).toMatch(/quoted/); // the actionable quote-glob hint
+  });
+
   it('ignore not a sequence → throws', async () => {
     await write('ignore:\n  path: x\n');
     await expect(loadConfig()).rejects.toThrow(/"ignore" must be an array/);

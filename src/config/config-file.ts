@@ -100,11 +100,31 @@ export async function loadConfig(): Promise<CdkrdConfig> {
   // them explicitly to fail fast. YAML is a JSON superset, so this also reads a legacy
   // all-JSON ignore.yaml.
   const doc = parseDocument(raw, { prettyErrors: true });
-  if (doc.errors.length > 0) throw new Error(`${CONFIG_PATH} is not valid YAML`);
+  const [firstError] = doc.errors;
+  if (firstError !== undefined) {
+    // `prettyErrors` renders each `doc.errors[i].message` with a line/column and a code
+    // (e.g. `MULTILINE_IMPLICIT_KEY`, `DUPLICATE_KEY`). Surfacing the FIRST diagnostic —
+    // not just the bare "is not valid YAML" — is the whole actionability fix (#1049): the
+    // #1 real-world damage to this shared merge-magnet file is an unresolved git conflict
+    // marker (`<<<<<<< HEAD`), which yields "Implicit keys need to be on a single line at
+    // line N, column M". Without the line/column the user can't find the damage. Append a
+    // count when there is more than one so they know the first is not the only one.
+    const more = doc.errors.length > 1 ? ` (+${doc.errors.length - 1} more)` : '';
+    throw new Error(`${CONFIG_PATH} is not valid YAML: ${firstError.message}${more}`);
+  }
   try {
     parsed = doc.toJS();
-  } catch {
-    throw new Error(`${CONFIG_PATH} is not valid YAML`);
+  } catch (e) {
+    // A file can collect ZERO `doc.errors` yet still fail here — the classic case is an
+    // unquoted glob whose first char is a YAML sigil: `- path: *.DesiredCount` parses the
+    // `*` as an ALIAS reference, so `toJS()` throws "Unresolved alias ...". Surface the
+    // message (was swallowed) and, for the alias/anchor case, add the documented remedy:
+    // quote a `path` that starts with `*` / `?` so it is a literal glob, not YAML syntax.
+    const msg = (e as Error).message;
+    const hint = /alias|anchor/i.test(msg)
+      ? ' — a glob path starting with "*" or "?" must be quoted (e.g. `path: "*.DesiredCount"`) so it is read as a literal, not YAML alias/anchor syntax'
+      : '';
+    throw new Error(`${CONFIG_PATH} is not valid YAML: ${msg}${hint}`);
   }
   // A file that is empty or only comments parses to null/undefined — an empty config,
   // not an error (the `ignore` verb writes a header-comment-only file before any rule).
