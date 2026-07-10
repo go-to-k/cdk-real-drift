@@ -1939,11 +1939,20 @@ export function classifyResource(
   // explains is an out-of-band `associate-address` HIJACK of the allocated static IP (#892), which
   // the old blanket value-independent fold silenced. `NetworkInterfaceId` is only ever present when
   // an association exists (an unassociated EIP has no such key), so no fold is needed when absent.
+  // The association can also be SELF-declared on THIS same EIP: a classic `new ec2.CfnEIP({ instanceId })`
+  // (or a declared `NetworkInterfaceId`) binds the address to a target, and AWS reflects that target's
+  // primary ENI onto the live `NetworkInterfaceId` with NO sibling to explain it (#1261). That
+  // reflected id is IaC intent too, so fold it when the EIP declares its own `InstanceId` or
+  // `NetworkInterfaceId` — an out-of-band re-associate still surfaces because the declared
+  // `InstanceId`/`NetworkInterfaceId` would then mismatch in the declared loop (detection preserved).
   if (resourceType === 'AWS::EC2::EIP' && 'NetworkInterfaceId' in live) {
     const explained =
       (physicalId !== undefined && opts.siblingEipAssociations?.has(physicalId)) ||
       opts.siblingEipAssociations?.has(logicalId);
-    if (explained) delete live.NetworkInterfaceId;
+    const declaresTarget = (v: unknown): boolean => v !== undefined && v !== null && v !== '';
+    const selfDeclared =
+      declaresTarget(declared.InstanceId) || declaresTarget(declared.NetworkInterfaceId);
+    if (explained || selfDeclared) delete live.NetworkInterfaceId;
   }
   // A bucket whose notifications are managed by a Custom::S3BucketNotifications CR reflects
   // the CR-applied NotificationConfiguration it never declares itself (CDK renders

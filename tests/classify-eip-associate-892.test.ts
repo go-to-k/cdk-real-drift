@@ -127,4 +127,51 @@ describe('#892 EIP NetworkInterfaceId sibling-derived association gate', () => {
     });
     expect(findings.some((f) => f.path === 'NetworkInterfaceId')).toBe(false);
   });
+
+  // #1261 (self-declared-target FN): #892's sibling gate misses the classic
+  // `new ec2.CfnEIP({ instanceId })` (or a declared NetworkInterfaceId) that binds the address on
+  // the EIP itself — NO sibling EIPAssociation / NatGateway exists, yet AWS reflects the target's
+  // primary ENI onto the live NetworkInterfaceId, so the empty sibling set surfaced it as a
+  // first-run FALSE POSITIVE (these EIPs folded pre-#892). The EIP's OWN declared InstanceId /
+  // NetworkInterfaceId is a self-explained association → fold.
+  it('(4) a self-declared InstanceId FOLDS the reflected NetworkInterfaceId (no sibling)', () => {
+    const eipWithInstance: DesiredResource = {
+      logicalId: 'Ip',
+      resourceType: 'AWS::EC2::EIP',
+      physicalId: '52.4.97.166',
+      declared: { Domain: 'vpc', InstanceId: 'i-0abc123def456789a' },
+    };
+    const findings = classifyResource(eipWithInstance, associatedLive(), eipSchema, {
+      siblingEipAssociations: new Set<string>(),
+    });
+    expect(findings.some((f) => f.path === 'NetworkInterfaceId')).toBe(false);
+    expect(niiFindings(findings, 'undeclared')).toEqual([]);
+    expect(niiFindings(findings, 'atDefault')).toEqual([]);
+  });
+
+  it('(4b) a self-declared NetworkInterfaceId FOLDS the reflected NetworkInterfaceId (no sibling)', () => {
+    const eipWithEni: DesiredResource = {
+      logicalId: 'Ip',
+      resourceType: 'AWS::EC2::EIP',
+      physicalId: '52.4.97.166',
+      declared: { Domain: 'vpc', NetworkInterfaceId: 'eni-0f1c51db64ee88129' },
+    };
+    const findings = classifyResource(eipWithEni, associatedLive(), eipSchema, {
+      siblingEipAssociations: new Set<string>(),
+    });
+    // Declared == live here, so it must not surface as undeclared drift either.
+    expect(niiFindings(findings, 'undeclared')).toEqual([]);
+    expect(niiFindings(findings, 'atDefault')).toEqual([]);
+  });
+
+  it('(4c) CONTROL: no self-declared target and no sibling → NetworkInterfaceId still SURFACES', () => {
+    // Unchanged #892 behavior: an association neither a sibling nor the EIP itself declares is a
+    // genuine out-of-band hijack and must remain visible.
+    const findings = classifyResource(eipResource, associatedLive(), eipSchema, {
+      siblingEipAssociations: new Set<string>(),
+    });
+    const surfaced = niiFindings(findings, 'undeclared');
+    expect(surfaced.length).toBe(1);
+    expect(surfaced[0]?.actual).toBe('eni-0f1c51db64ee88129');
+  });
 });
