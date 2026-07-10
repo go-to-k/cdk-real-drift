@@ -750,6 +750,16 @@ export interface RevertOutcome {
   aborted: boolean;
   reverted?: number; // #868: resources successfully reverted (for --json); absent = 0
   failed?: number; // #868: resources whose revert op failed (for --json); absent = 0
+  // #1096: under --dry-run the human "(dry-run) would apply N op(s) to M resource(s)"
+  // summary is silenced (out() is a no-op under --json), so a scripted consumer could not
+  // tell a would-apply-N-ops preview from a clean no-op. Carry the SAME counts the human
+  // summary computes so the --json element is self-describing. Present only on --dry-run.
+  plannedOps?: number; // ops a real revert would apply (Σ item.ops.length)
+  plannedResources?: number; // resources those ops touch (plan.items.length)
+  // #1096: why the revert refused to plan/apply anything — the "nothing revertable" reason
+  // (drift/unrecorded remains) or the non-interactive "pass --yes" refusal. Present only on a
+  // refusal so a scripted consumer sees WHY an exit-1/exit-2 element carries no reverted ops.
+  refusedReason?: string;
 }
 
 /**
@@ -857,8 +867,9 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
       ...(dc > 0 ? [`${dc} drift(s)`] : []),
       ...(uc > 0 ? [`${uc} unrecorded value(s)`] : []),
     ];
-    out('\n' + style.drift(`nothing revertable — ${parts.join(' + ')} remain.`));
-    return { exit: 1, aborted: false };
+    const reason = `nothing revertable — ${parts.join(' + ')} remain.`;
+    out('\n' + style.drift(reason));
+    return { exit: 1, aborted: false, refusedReason: reason };
   }
 
   if (dryRun) {
@@ -866,14 +877,16 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     out(
       `\n(dry-run) would apply ${opCount} op(s) to ${plan.items.length} resource(s). No changes made.`
     );
-    return { exit: 0, aborted: false };
+    // #1096: the human line above is silenced under --json — carry the same counts so the
+    // JSON element is not mistaken for a clean no-op.
+    return { exit: 0, aborted: false, plannedOps: opCount, plannedResources: plan.items.length };
   }
   if (!yes) {
     if (!interactive) {
-      console.error(
-        `\nrefusing to write to AWS non-interactively — pass --yes to apply (or --dry-run to preview).`
-      );
-      return { exit: 2, aborted: false };
+      const reason =
+        'refusing to write to AWS non-interactively — pass --yes to apply (or --dry-run to preview).';
+      console.error('\n' + reason);
+      return { exit: 2, aborted: false, refusedReason: reason };
     }
     // R57: pick WHICH op(s) to write — symmetric with record's multiselect.
     // RESTORE ops are pre-selected; REMOVE ops start unselected (an explicit

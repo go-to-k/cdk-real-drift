@@ -496,7 +496,12 @@ describe('revertStack exit semantics (R35 — drift with nothing revertable is e
 
   it('drift exists but nothing revertable (deleted-only) -> summary + exit 1', async () => {
     const { outcome, logs } = await captured([deleted()]);
-    expect(outcome).toEqual({ exit: 1, aborted: false });
+    // #1096: the refusal reason is carried on the outcome (for the --json element)
+    expect(outcome).toEqual({
+      exit: 1,
+      aborted: false,
+      refusedReason: 'nothing revertable — 1 drift(s) remain.',
+    });
     const out = logs.join('\n');
     expect(out).toContain('NOT revertable: 1 (deleted — recreate via cdk deploy)');
     expect(out).toContain('nothing revertable — 1 drift(s) remain.');
@@ -505,7 +510,7 @@ describe('revertStack exit semantics (R35 — drift with nothing revertable is e
   it('unrecorded values (no baseline) -> unrecorded guidance + exit 1, named as unrecorded not drift', async () => {
     // revertStack's own applyBaseline tags the no-baseline findings as unrecorded
     const { outcome, logs } = await captured([undeclared()]);
-    expect(outcome).toEqual({ exit: 1, aborted: false });
+    expect(outcome).toMatchObject({ exit: 1, aborted: false });
     const out = logs.join('\n');
     expect(out).toContain(
       'note: s has unrecorded value(s) — never recorded, so there is no recorded state to restore.'
@@ -521,7 +526,14 @@ describe('revertStack exit semantics (R35 — drift with nothing revertable is e
       removeUnrecorded: true,
       dryRun: true,
     });
-    expect(outcome).toEqual({ exit: 0, aborted: false });
+    // #1096: the dry-run outcome carries the would-apply counts (1 op on 1 resource) so the
+    // --json element is not mistaken for a clean no-op.
+    expect(outcome).toEqual({
+      exit: 0,
+      aborted: false,
+      plannedOps: 1,
+      plannedResources: 1,
+    });
     const out = logs.join('\n');
     expect(out).not.toContain('has unrecorded value(s) — never recorded');
     expect(out).toContain('remove (undeclared, not in baseline)'); // a real revert item is planned
@@ -545,8 +557,78 @@ describe('revertStack exit semantics (R35 — drift with nothing revertable is e
     const { outcome, logs } = await captured([undeclared()], {
       config: { ignore: [{ path: 'B.AccelerateConfiguration', account: '999999999999' }] },
     });
-    expect(outcome).toEqual({ exit: 1, aborted: false }); // still unrecorded drift, not ignored
+    expect(outcome).toMatchObject({ exit: 1, aborted: false }); // still unrecorded drift, not ignored
     expect(logs.join('\n')).toContain('unrecorded value(s) remain.');
+  });
+});
+
+describe('revertStack --json plan-info carriage (#1096 — dry-run counts + refused reason)', () => {
+  // A revertable DECLARED drift so the plan has real items (1 op on 1 resource): the bucket
+  // has a live template resource whose declared VersioningConfiguration diverged.
+  const gathered = () =>
+    ({
+      desired: {
+        accountId: '111122223333',
+        resources: [
+          {
+            logicalId: 'B',
+            resourceType: 'AWS::S3::Bucket',
+            physicalId: 'b-phys',
+            declared: { VersioningConfiguration: { Status: 'Enabled' } },
+          },
+        ],
+        rawTemplate: '',
+      },
+      findings: [declared()],
+      schemas: NO_SCHEMAS,
+    }) as unknown as GatherResult;
+
+  const params = (over: Partial<{ dryRun: boolean; yes: boolean; interactive: boolean }> = {}) => ({
+    stackName: 's',
+    region: 'r',
+    gathered: gathered(),
+    baseline: undefined,
+    config: { ignore: [] },
+    dryRun: over.dryRun ?? false,
+    yes: over.yes ?? true,
+    removeUnrecorded: false,
+    verbose: false,
+    interactive: over.interactive ?? true,
+  });
+
+  const run = async (over: Parameters<typeof params>[0] = {}) => {
+    const logs: string[] = [];
+    const errs: string[] = [];
+    const origLog = console.log;
+    const origErr = console.error;
+    console.log = (s: unknown) => logs.push(String(s));
+    console.error = (s: unknown) => errs.push(String(s));
+    try {
+      return { outcome: await revertStack(params(over)), logs, errs };
+    } finally {
+      console.log = origLog;
+      console.error = origErr;
+    }
+  };
+
+  it('--dry-run carries plannedOps + plannedResources (not a no-op-looking element)', async () => {
+    const { outcome, logs } = await run({ dryRun: true });
+    expect(outcome).toEqual({
+      exit: 0,
+      aborted: false,
+      plannedOps: 1,
+      plannedResources: 1,
+    });
+    // the human summary reports the SAME counts
+    expect(logs.join('\n')).toContain('(dry-run) would apply 1 op(s) to 1 resource(s).');
+  });
+
+  it('a non-interactive refusal (no --yes) carries refusedReason', async () => {
+    const { outcome, errs } = await run({ yes: false, interactive: false });
+    expect(outcome.exit).toBe(2);
+    expect(outcome.refusedReason).toContain('refusing to write to AWS non-interactively');
+    // reason still surfaces on stderr for a human
+    expect(errs.join('\n')).toContain('refusing to write to AWS non-interactively');
   });
 });
 
