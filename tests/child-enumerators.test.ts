@@ -1932,6 +1932,7 @@ describe('diffVpcNaclChildren (EC2 VPC network ACLs) — #1045', () => {
 describe('diffRdsClusterChildren (RDS DB cluster instances)', () => {
   it('flags an out-of-band DB instance added via the console (not in the template)', () => {
     const added = diffRdsClusterChildren({
+      clusterId: 'c1',
       declaredInstanceIds: ['cluster-writer'],
       liveInstances: [
         { id: 'cluster-writer', label: 'cluster-writer' },
@@ -1951,6 +1952,7 @@ describe('diffRdsClusterChildren (RDS DB cluster instances)', () => {
 
   it('identifier is the bare DBInstanceIdentifier (CC primaryIdentifier, not a composite)', () => {
     const added = diffRdsClusterChildren({
+      clusterId: 'c1',
       declaredInstanceIds: [],
       liveInstances: [{ id: 'reader-1', label: 'reader-1' }],
       clusterMemberIds: [],
@@ -1961,6 +1963,7 @@ describe('diffRdsClusterChildren (RDS DB cluster instances)', () => {
   it('no drift when every live DB instance is declared', () => {
     expect(
       diffRdsClusterChildren({
+        clusterId: 'c1',
         declaredInstanceIds: ['writer', 'reader'],
         liveInstances: [
           { id: 'writer', label: 'writer' },
@@ -1971,19 +1974,20 @@ describe('diffRdsClusterChildren (RDS DB cluster instances)', () => {
     ).toEqual([]);
   });
 
-  // #896: a Multi-AZ DB cluster implicitly materializes its writer + 2 reader instances
-  // (undeclared) — folded because the parent cluster reports them in DBClusterMembers; a
-  // genuinely out-of-band instance (NOT a member) still surfaces.
-  it('folds implicit cluster members (in DBClusterMembers) but still flags a non-member instance', () => {
+  // #985: the REALISTIC production state — `liveInstances` and `clusterMemberIds` are the SAME
+  // set (every instance in a cluster IS a member, and `DescribeDBInstances(db-cluster-id)`
+  // enumerates exactly the members). A rogue OOB instance (`aws rds create-db-instance
+  // --db-cluster-identifier`) is a member too, so folding on bare membership would drop it. We
+  // fold only the AWS-managed implicit members by their `<clusterId>-instance-<N>` signature; the
+  // rogue member, which matches neither a declared id nor the signature, must still surface.
+  it('folds `<cluster>-instance-N` managed members but surfaces a rogue member in the SAME set (#985)', () => {
+    const members = ['c1-instance-1', 'c1-instance-2', 'rogue-oob'];
     const added = diffRdsClusterChildren({
+      clusterId: 'c1',
       declaredInstanceIds: [],
-      liveInstances: [
-        { id: 'c1-instance-1', label: 'c1-instance-1' },
-        { id: 'c1-instance-2', label: 'c1-instance-2' },
-        { id: 'c1-instance-3', label: 'c1-instance-3' },
-        { id: 'rogue-oob', label: 'rogue-oob' },
-      ],
-      clusterMemberIds: ['c1-instance-1', 'c1-instance-2', 'c1-instance-3'],
+      liveInstances: members.map((id) => ({ id, label: id })),
+      // liveInstances and clusterMemberIds are the SAME set (the reachable production state).
+      clusterMemberIds: members,
     });
     expect(added).toEqual([
       {
@@ -1994,10 +1998,61 @@ describe('diffRdsClusterChildren (RDS DB cluster instances)', () => {
       },
     ]);
   });
+
+  // A declared instance still folds even though it is (like every instance) a cluster member.
+  it('folds a declared instance that is also a cluster member (#985)', () => {
+    const added = diffRdsClusterChildren({
+      clusterId: 'c1',
+      declaredInstanceIds: ['my-writer'],
+      liveInstances: [{ id: 'my-writer', label: 'my-writer' }],
+      clusterMemberIds: ['my-writer'],
+    });
+    expect(added).toEqual([]);
+  });
+
+  // The signature is only honored as a fold when the id IS a reported member — a
+  // `<cluster>-instance-N`-named instance that is NOT a member (defensive/unreachable) surfaces.
+  it('folds a signature-matching name only when it IS a cluster member (#985)', () => {
+    // Member + signature match → folded.
+    expect(
+      diffRdsClusterChildren({
+        clusterId: 'c1',
+        declaredInstanceIds: [],
+        liveInstances: [{ id: 'c1-instance-1', label: 'c1-instance-1' }],
+        clusterMemberIds: ['c1-instance-1'],
+      })
+    ).toEqual([]);
+    // Signature match but NOT a member → surfaces.
+    expect(
+      diffRdsClusterChildren({
+        clusterId: 'c1',
+        declaredInstanceIds: [],
+        liveInstances: [{ id: 'c1-instance-1', label: 'c1-instance-1' }],
+        clusterMemberIds: [],
+      }).map((a) => a.identifier)
+    ).toEqual(['c1-instance-1']);
+  });
+
+  // A member whose name does not match the `<clusterId>-instance-N` signature (a rogue attached
+  // via create-db-instance with an arbitrary id) surfaces even though it is a member — this is
+  // the core #985 FN: bare membership used to fold it.
+  it('surfaces a member whose name is not the managed signature (#985)', () => {
+    expect(
+      diffRdsClusterChildren({
+        clusterId: 'c1',
+        declaredInstanceIds: [],
+        liveInstances: [{ id: 'exfil-reader', label: 'exfil-reader' }],
+        clusterMemberIds: ['exfil-reader'],
+      }).map((a) => a.identifier)
+    ).toEqual(['exfil-reader']);
+  });
 });
 
-describe('enumerateRdsClusterChildren (DBClusterMembers fold, #896)', () => {
-  it('folds the Multi-AZ cluster member instances the parent reports, flags a non-member', async () => {
+describe('enumerateRdsClusterChildren (DBClusterMembers fold, #896/#985)', () => {
+  // #985: `DescribeDBInstances(db-cluster-id)` and `DBClusterMembers` enumerate the IDENTICAL
+  // set — the rogue instance is a member too. The managed `c1-instance-N` members fold by
+  // signature; the rogue member, whose name is not the signature, must still surface.
+  it('folds the Multi-AZ `c1-instance-N` members but surfaces a rogue member in the SAME set', async () => {
     const rds = mockClient(RDSClient);
     rds
       .on(DescribeDBInstancesCommand)
@@ -2013,10 +2068,13 @@ describe('enumerateRdsClusterChildren (DBClusterMembers fold, #896)', () => {
       .resolves({
         DBClusters: [
           {
+            // The rogue instance is a member too (create-db-instance --db-cluster-identifier
+            // makes it one immediately) — the realistic state the #985 fix must handle.
             DBClusterMembers: [
               { DBInstanceIdentifier: 'c1-instance-1' },
               { DBInstanceIdentifier: 'c1-instance-2' },
               { DBInstanceIdentifier: 'c1-instance-3' },
+              { DBInstanceIdentifier: 'rogue-oob' },
             ],
           },
         ],

@@ -3256,16 +3256,32 @@ async function enumerateEfsFileSystemChildren(ctx: EnumeratorContext): Promise<A
 
 // Pure diff: declared instance ids + live inventory -> the added DB instances.
 export interface RdsClusterChildInput {
+  clusterId: string; // the parent DBClusterIdentifier — anchors the implicit-member name signature
   declaredInstanceIds: string[]; // physical ids (DBInstanceIdentifiers) of AWS::RDS::DBInstance
   liveInstances: { id: string; label?: string | undefined }[];
   // DBInstanceIdentifiers the PARENT cluster reports as its own members (DBClusterMembers).
-  // These are AWS-managed cluster membership, NOT out-of-band additions: a Multi-AZ DB cluster
-  // (non-Aurora, DBClusterInstanceClass set) implicitly materializes its writer + reader
-  // instances (`<cluster>-instance-1/2/3`) that the template never declares, so they must fold
-  // (else 3 false `[Added]` on every clean deploy — the #801-class ZERO-drift violation, #896).
-  // The cluster itself is the authoritative source of truth for membership, so this needs no
-  // name-marker guess and still surfaces a genuinely out-of-band instance (one NOT a member).
+  // WARNING: membership ALONE cannot discriminate AWS-managed from out-of-band (#985). Every
+  // instance in a cluster is a member, AND our live inventory source (`DescribeDBInstances`
+  // filtered by `db-cluster-id`) enumerates the IDENTICAL set — so an out-of-band
+  // `create-db-instance --db-cluster-identifier <cluster>` instance is a member too. Folding
+  // on bare membership therefore drops EVERY instance and disables OOB detection (silent FN).
+  // Instead we fold only the AWS-managed implicit members by their creation SIGNATURE: a
+  // Multi-AZ DB cluster (non-Aurora, DBClusterInstanceClass set) materializes writer + reader
+  // instances named `<clusterId>-instance-<N>` (AWS's documented deterministic naming). Those
+  // must fold (else 3 false `[Added]` on every clean deploy — the #801-class ZERO-drift
+  // violation, #896). Membership is kept as a NECESSARY condition (fold only if the id IS a
+  // member AND matches the signature) — defensive: a non-member never folds by name alone.
+  // (Aurora autoscaling readers `application-autoscaling-<uuid>` are excluded UPSTREAM in
+  // enumerateRdsClusterChildren before the diff, so they do not reach here.)
   clusterMemberIds: string[];
+}
+
+// AWS's deterministic name for a Multi-AZ DB cluster's implicitly-materialized member instances:
+// `<clusterId>-instance-<N>` (N = 1, 2, 3). Anchored + regex-escape the clusterId so a cluster id
+// containing regex-special chars matches literally and an unrelated suffix does not slip through.
+function isImplicitClusterMemberName(clusterId: string, instanceId: string): boolean {
+  const escaped = clusterId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`^${escaped}-instance-\\d+$`).test(instanceId);
 }
 
 export function diffRdsClusterChildren(input: RdsClusterChildInput): AddedChild[] {
@@ -3273,7 +3289,14 @@ export function diffRdsClusterChildren(input: RdsClusterChildInput): AddedChild[
   const clusterMembers = new Set(input.clusterMemberIds);
   const added: AddedChild[] = [];
   for (const i of input.liveInstances) {
-    if (declared.has(i.id) || clusterMembers.has(i.id)) continue;
+    // Fold a declared instance, OR an AWS-managed implicit member — the latter ONLY when it is
+    // both a reported cluster member AND matches the `<clusterId>-instance-<N>` signature (#985:
+    // bare membership can't discriminate an out-of-band member from a managed one).
+    if (
+      declared.has(i.id) ||
+      (clusterMembers.has(i.id) && isImplicitClusterMemberName(input.clusterId, i.id))
+    )
+      continue;
     added.push({
       resourceType: 'AWS::RDS::DBInstance',
       identifier: i.id, // DBInstanceIdentifier IS the CC primaryIdentifier
@@ -3358,7 +3381,12 @@ export async function enumerateRdsClusterChildren(ctx: EnumeratorContext): Promi
     )
     .map((i) => ({ id: i.DBInstanceIdentifier, label: i.DBInstanceIdentifier }));
 
-  return diffRdsClusterChildren({ declaredInstanceIds, liveInstances, clusterMemberIds });
+  return diffRdsClusterChildren({
+    clusterId,
+    declaredInstanceIds,
+    liveInstances,
+    clusterMemberIds,
+  });
 }
 
 // ── Route53 ──────────────────────────────────────────────────────────────────
