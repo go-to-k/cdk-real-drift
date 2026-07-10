@@ -161,7 +161,45 @@ const MEANINGFUL_WHEN_OFF: Record<string, Record<string, (ctx: OffStateContext) 
   // default as false — the KNOWN_DEFAULTS pin), so an OFF state (a live/declared `false`) is an
   // out-of-band DISABLE of that monitoring toggle and is meaningful. Live-confirmed (#841/#925).
   'AWS::ApplicationInsights::Application': { CWEMonitorEnabled: () => true },
+  // #1092: a GuardDuty detector is created with its legacy DataSources surface FULLY enabled
+  // (the KNOWN_DEFAULTS pin: S3 protection, EKS audit logs, EBS-malware all true). A single-
+  // source disable already surfaces (the object keeps a `true` leaf, so it is not trivially
+  // empty). But disabling EVERY legacy source at once turns DataSources into an ALL-FALSE
+  // object, which isTrivialEmpty would swallow BEFORE the pin gate — hiding a wholesale
+  // security disable. It is unconditionally meaningful when off, so surface it.
+  'AWS::GuardDuty::Detector': { DataSources: () => true },
 };
+
+// #1092: GuardDuty protection Features whose new-detector default Status is DISABLED (not the
+// ENABLED norm) — a newer/preview protection AWS ships OFF by default. Its DISABLED state on a
+// clean detector is the default (folds), so only these names are exempt from the "ENABLED is the
+// default" rule below. Extend as AWS ships more OFF-by-default features.
+const GUARDDUTY_DEFAULT_DISABLED_FEATURES: ReadonlySet<string> = new Set(['AI_ANALYST']);
+// True when every GuardDuty Feature (and every nested AdditionalConfiguration entry) is at its
+// per-name default Status — ENABLED for every protection except the known OFF-by-default set.
+// Name-independent for UNKNOWN names (a brand-new protection AWS ships ENABLED still folds), but
+// an out-of-band disable of a protection whose default is ENABLED (RUNTIME_MONITORING,
+// RDS_LOGIN_EVENTS, LAMBDA_NETWORK_LOGS — none have a legacy DataSources mirror) surfaces. Errs
+// toward VISIBILITY: a future OFF-by-default feature not yet in the set surfaces (a recordable FP)
+// rather than hiding a real security downgrade.
+function guardDutyFeaturesAllAtDefault(features: unknown[]): boolean {
+  const atDefault = (node: unknown): boolean => {
+    if (Array.isArray(node)) return node.every(atDefault);
+    if (node !== null && typeof node === 'object') {
+      const rec = node as Record<string, unknown>;
+      if ('Status' in rec) {
+        const name = typeof rec['Name'] === 'string' ? rec['Name'] : '';
+        const defaultStatus = GUARDDUTY_DEFAULT_DISABLED_FEATURES.has(name)
+          ? 'DISABLED'
+          : 'ENABLED';
+        if (rec['Status'] !== defaultStatus) return false;
+      }
+      return Object.values(rec).every(atDefault);
+    }
+    return true;
+  };
+  return features.every(atDefault);
+}
 
 // Identity-keyed object arrays where the template declares only a SUBSET of the elements
 // AWS always returns — keyed by the property -> the element's identity field. Cognito
@@ -3178,6 +3216,20 @@ export function classifyResource(
       }
       continue;
     }
+    // #1092: GuardDuty Detector Features — fold atDefault ONLY when EVERY protection is
+    // ENABLED (the new-detector default). Replaces the old value-independent fold, which hid
+    // an out-of-band disable of a Features-only protection (a real security downgrade that
+    // never even got recorded). Name-independent, Status-gated (see guardDutyFeaturesAllEnabled).
+    if (resourceType === 'AWS::GuardDuty::Detector' && k === 'Features' && Array.isArray(v)) {
+      findings.push({
+        tier: guardDutyFeaturesAllAtDefault(v) ? 'atDefault' : 'undeclared',
+        logicalId,
+        resourceType,
+        path: k,
+        actual: v,
+      });
+      continue;
+    }
     // NOTE: no `schema.writeOnly.has(k)` guard — a top-level write-only key was
     // already stripped from `live` by writeOnlyPaths above, so it cannot reach here
     // (the old guard was dead code for top-level keys).
@@ -3434,7 +3486,16 @@ export function classifyResource(
     // is entirely AWS-materialized — fold the WHOLE object atDefault. Fail-closed: a single
     // non-default leaf (or any array) leaves it surfacing whole. Runs AFTER the per-type descends
     // above, so a type curated to fragment (Athena WorkGroupConfiguration) keeps that behavior.
-    if (isNestedObject(v) && Object.keys(v).length > 0 && allLeavesAtSchemaDefault(v, k)) {
+    // #1092: but NOT when the value is a meaningful-when-off divergence from its pin — an
+    // all-false object is trivially-empty, which allLeavesAtSchemaDefault would (wrongly) treat as
+    // "all at default" and fold, re-hiding the wholesale disable the trivial-drop guard above just
+    // preserved (a folded atDefault is never recorded, so record would never start watching).
+    if (
+      !offStateIsMeaningful &&
+      isNestedObject(v) &&
+      Object.keys(v).length > 0 &&
+      allLeavesAtSchemaDefault(v, k)
+    ) {
       findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
       continue;
     }

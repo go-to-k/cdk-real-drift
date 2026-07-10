@@ -90,13 +90,13 @@ describe('#879 GuardDuty::Detector undeclared first-run defaults', () => {
     expect(pathsByTier(f, 'undeclared')).not.toContain('DataSources');
   });
 
-  it('folds the Features list value-independently (folds AI_ANALYST + any future feature)', () => {
+  it('#1092: folds the Features list at its per-name defaults (AI_ANALYST DISABLED + ENABLED rest)', () => {
     const f = classifyResource(res, cleanLive, emptySchema);
     expect(pathsByTier(f, 'atDefault')).toContain('Features');
     expect(pathsByTier(f, 'undeclared')).not.toContain('Features');
   });
 
-  it('folds Features even after AWS adds a brand-new feature name', () => {
+  it('#1092: folds Features even after AWS adds a brand-new (ENABLED) feature name', () => {
     const withNewFeature = {
       ...cleanLive,
       Features: [...defaultFeatures, { Status: 'ENABLED', Name: 'BRAND_NEW_FEATURE_2027' }],
@@ -117,6 +117,51 @@ describe('#879 GuardDuty::Detector undeclared first-run defaults', () => {
     const changed = {
       ...cleanLive,
       DataSources: { ...defaultDataSources, S3Logs: { Enable: false } },
+    };
+    const f = classifyResource(res, changed, emptySchema);
+    expect(pathsByTier(f, 'undeclared')).toContain('DataSources');
+    expect(pathsByTier(f, 'atDefault')).not.toContain('DataSources');
+  });
+
+  // #1092: the security FNs the old value-independent Features fold + the trivial-empty drop hid.
+  it('#1092: surfaces an out-of-band disable of a Features-only protection (RUNTIME_MONITORING)', () => {
+    const changed = {
+      ...cleanLive,
+      Features: [
+        ...defaultFeatures,
+        { Status: 'ENABLED', Name: 'RDS_LOGIN_EVENTS' },
+        { Status: 'DISABLED', Name: 'RUNTIME_MONITORING' }, // ENABLED-by-default -> disable surfaces
+      ],
+    };
+    const f = classifyResource(res, changed, emptySchema);
+    expect(pathsByTier(f, 'undeclared')).toContain('Features');
+    expect(pathsByTier(f, 'atDefault')).not.toContain('Features');
+  });
+
+  it('#1092: surfaces a disable nested in a feature AdditionalConfiguration', () => {
+    const changed = {
+      ...cleanLive,
+      Features: [
+        ...defaultFeatures,
+        {
+          Status: 'ENABLED',
+          Name: 'RUNTIME_MONITORING',
+          AdditionalConfiguration: [{ Status: 'DISABLED', Name: 'EKS_ADDON_MANAGEMENT' }],
+        },
+      ],
+    };
+    const f = classifyResource(res, changed, emptySchema);
+    expect(pathsByTier(f, 'undeclared')).toContain('Features');
+  });
+
+  it('#1092: surfaces a WHOLESALE all-false DataSources (was trivial-empty-dropped, invisible)', () => {
+    const changed = {
+      ...cleanLive,
+      DataSources: {
+        MalwareProtection: { ScanEc2InstanceWithFindings: { EbsVolumes: false } },
+        S3Logs: { Enable: false },
+        Kubernetes: { AuditLogs: { Enable: false } },
+      },
     };
     const f = classifyResource(res, changed, emptySchema);
     expect(pathsByTier(f, 'undeclared')).toContain('DataSources');
