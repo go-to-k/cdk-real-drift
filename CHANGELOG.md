@@ -1,3 +1,10 @@
+## [0.4.42](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.41...v0.4.42) (2026-07-10)
+
+
+### Bug Fixes
+
+* **normalize:** fold an EMBEDDED {{resolve:...}} dynamic reference to UNRESOLVED, not only a whole-string token ([#722](https://github.com/go-to-k/cdk-real-drift/issues/722)) ([#1172](https://github.com/go-to-k/cdk-real-drift/issues/1172)) ([dbcb780](https://github.com/go-to-k/cdk-real-drift/commit/dbcb780b80514350012c5ab6498f50e8a5f551cf))
+
 ## [0.4.41](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.40...v0.4.41) (2026-07-10)
 
 
