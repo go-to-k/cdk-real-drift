@@ -1,3 +1,10 @@
+## [0.4.18](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.17...v0.4.18) (2026-07-10)
+
+
+### Bug Fixes
+
+* **report:** activate --pre-deploy pending-creation footer (follow-up [#883](https://github.com/go-to-k/cdk-real-drift/issues/883)) ([#1110](https://github.com/go-to-k/cdk-real-drift/issues/1110)) ([55c7d7e](https://github.com/go-to-k/cdk-real-drift/commit/55c7d7e56d58e331e6cac31507e94eaf2dd707d8))
+
 ## [0.4.17](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.16...v0.4.17) (2026-07-10)
 
 
