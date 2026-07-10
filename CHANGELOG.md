@@ -1,3 +1,10 @@
+## [0.4.44](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.43...v0.4.44) (2026-07-10)
+
+
+### Bug Fixes
+
+* **record:** stop silently pruning/blessing recorded drift on re-record ([#790](https://github.com/go-to-k/cdk-real-drift/issues/790), [#758](https://github.com/go-to-k/cdk-real-drift/issues/758)) ([#1174](https://github.com/go-to-k/cdk-real-drift/issues/1174)) ([e8214a4](https://github.com/go-to-k/cdk-real-drift/commit/e8214a4f2aff064d580b16c1273f0c81045af59c))
+
 ## [0.4.43](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.42...v0.4.43) (2026-07-10)
 
 
