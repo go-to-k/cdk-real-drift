@@ -33,6 +33,30 @@ export function parseTemplateBody(body: string): Record<string, unknown> {
   return parseCfnTemplate(body);
 }
 
+// #883: under --pre-deploy the declared source is the LOCAL synth template, so the
+// symmetric half of "resource in the template but not yet deployed" is "resource DEPLOYED
+// but absent from the template" — a live resource the next deploy will DELETE (a rename
+// X->Y, or a construct removed from the app). loadDesired iterates only template Resources,
+// so those deployed-only logical ids are otherwise invisible: the report shows the new
+// resource as pending creation and says NOTHING about the one being torn down (often a
+// stateful resource). Compute it from physIds (the live stack's resources) minus the local
+// template's logical ids — zero extra AWS calls. Returns the info line, or null when none.
+// Pure + exported for unit tests.
+export function deletedResourceInfo(
+  physIds: Record<string, string>,
+  template: Record<string, unknown>,
+  stackName: string
+): string | null {
+  const templateIds = new Set(Object.keys((template.Resources ?? {}) as Record<string, unknown>));
+  const deleted = Object.keys(physIds)
+    .filter((id) => !templateIds.has(id))
+    .sort();
+  if (deleted.length === 0) return null;
+  const shown = deleted.slice(0, 10);
+  const more = deleted.length > shown.length ? `, …(+${deleted.length - shown.length} more)` : '';
+  return `info: ${stackName}: ${deleted.length} deployed resource(s) absent from the local template — the next deploy will DELETE them: ${shown.join(', ')}${more}`;
+}
+
 // The AWS::Partition / AWS::URLSuffix pseudo-parameters are a deterministic function of the
 // region, NOT a commercial-partition constant. CDK env-agnostic stacks emit ${AWS::Partition}
 // inside nearly every Sub/Join-built ARN, so hard-coding `aws` / `amazonaws.com` mis-resolves
@@ -245,6 +269,17 @@ export async function loadDesired(
     // — same treatment as a dynamic reference we cannot resolve.
     if (value === '****') continue;
     stackParams[p.ParameterKey] = value;
+  }
+
+  // #883: under --pre-deploy (templateOverride set), surface deployed resources that are
+  // ABSENT from the local template — the next deploy will DELETE them. This is the symmetric
+  // half of the #727 pending-creation note (which surfaces template resources not yet
+  // deployed); together they answer "will this deploy fight reality?". stderr keeps --json
+  // stdout clean, mirroring the #727 note in check.ts. Only meaningful pre-deploy: on the
+  // deployed path the declared source IS the deployed template, so the two id sets match.
+  if (templateOverride) {
+    const deletedInfo = deletedResourceInfo(physIds, template, stackName);
+    if (deletedInfo) console.error(deletedInfo);
   }
 
   const ctx = buildResolverContext(

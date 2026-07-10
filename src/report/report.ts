@@ -99,7 +99,21 @@ export interface ReportOptions {
   json?: boolean;
   verbose?: boolean; // expand informational tiers (readGap/unresolved/skipped) to full lists
   expandAtDefault?: boolean; // expand ONLY the atDefault tier to a full list (--show-all inventory mode)
+  // --pre-deploy: a `skipped: no physical id` finding is a not-yet-deployed LOCAL resource
+  // (the declared source is the synth template), NOT a coverage gap — the next deploy will
+  // create it. When set, the footer renders those pending-creation skips as their OWN
+  // `pending creation` group instead of branding them "coverage incomplete", so the text
+  // report agrees with check.ts's #727 stderr note (#883). Genuine gaps (CC-unsupported,
+  // read errors) still render as "coverage incomplete".
+  preDeploy?: boolean;
   log?: (s: string) => void;
+}
+
+// #883: a `skipped: no physical id` finding is a not-yet-deployed LOCAL resource under
+// --pre-deploy (the same predicate check.ts's #727 fix uses). Kept local to the report so
+// the footer can peel pending-creation skips out of the "coverage incomplete" bucket.
+function isPendingCreationSkip(f: Finding): boolean {
+  return f.tier === 'skipped' && f.note === 'no physical id';
 }
 // Unrecorded values (R60, per finding since R62): an undeclared finding tagged
 // `unrecorded` by applyBaseline (no baseline entry, resource never
@@ -536,10 +550,31 @@ export function report(rawFindings: Finding[], header: string, opts: ReportOptio
       return `skipped=${items.length} — NOT checked (coverage incomplete: ${groupReasons(items)})`;
     return `${t}=${items.length} (${groupReasons(items)})`;
   };
+  // #883: under --pre-deploy a `skipped: no physical id` finding is a not-yet-deployed
+  // LOCAL resource (the next deploy creates it), NOT a coverage gap — so it must not carry
+  // the "coverage incomplete" framing (that would contradict check.ts's #727 stderr note).
+  // Peel those pending-creation skips out and render them as their own `pending creation`
+  // line; any GENUINE gap (CC-unsupported, read error) stays in the "coverage incomplete"
+  // skipped line. `pendingSkipSummary` returns null when there are none (non-pre-deploy runs
+  // and pre-deploy runs with only genuine gaps are byte-identical to before).
+  const skippedSummaryFor = (items: Finding[]): string[] => {
+    if (!opts.preDeploy) return [summaryFor('skipped', items)];
+    const pending = items.filter(isPendingCreationSkip);
+    const gaps = items.filter((f) => !isPendingCreationSkip(f));
+    const lines: string[] = [];
+    if (gaps.length > 0) lines.push(summaryFor('skipped', gaps));
+    if (pending.length > 0)
+      lines.push(
+        `pending creation=${pending.length} (not yet deployed — the next deploy will create them, not a coverage gap)`
+      );
+    return lines;
+  };
   const summaries = INFO_TIERS.filter((t) => !isExpanded(t))
-    .map((t) => {
+    .flatMap((t) => {
       const items = byTier(t);
-      return items.length ? summaryFor(t, items) : null;
+      if (items.length === 0) return [];
+      if (t === 'skipped') return skippedSummaryFor(items);
+      return [summaryFor(t, items)];
     })
     .filter((s): s is string => s !== null);
   // R96: the folded nested-unrecorded count joins the info: footer (--show-all lists them).
