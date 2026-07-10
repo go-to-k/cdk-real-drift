@@ -362,6 +362,10 @@ async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<AddedCh
   const declaredValidatorIds: string[] = [];
   // Declared gateway responses of THIS api, matched by ResponseType.
   const declaredResponseTypes: string[] = [];
+  // Fail-safe: a declared GatewayResponse whose IDENTITY (ResponseType) is UNRESOLVED can't be
+  // matched against the live responses — suppress gateway-response added-reporting for this api
+  // rather than false-flag a live DEFAULT_4XX/5XX as `added` with a DeleteResource offer (#1089).
+  let gatewayResponseTypeUnresolved = false;
   // Declared stages of THIS api. An AWS::ApiGateway::Stage's Ref/physical id IS its StageName.
   const declaredStageNames: string[] = [];
   for (const r of desired.resources) {
@@ -385,10 +389,13 @@ async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<AddedCh
       declaredValidatorIds.push(r.physicalId);
     } else if (
       r.resourceType === 'AWS::ApiGateway::GatewayResponse' &&
-      parentRefMatches(r.declared.RestApiId, apiId) &&
-      typeof r.declared.ResponseType === 'string'
+      parentRefMatches(r.declared.RestApiId, apiId)
     ) {
-      declaredResponseTypes.push(r.declared.ResponseType);
+      if (r.declared.ResponseType === UNRESOLVED || hasUnresolved(r.declared.ResponseType)) {
+        gatewayResponseTypeUnresolved = true;
+      } else if (typeof r.declared.ResponseType === 'string') {
+        declaredResponseTypes.push(r.declared.ResponseType);
+      }
     } else if (
       r.resourceType === 'AWS::ApiGateway::Stage' &&
       parentRefMatches(r.declared.RestApiId, apiId)
@@ -464,6 +471,7 @@ async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<AddedCh
     apiId,
     declaredResponseTypes,
     liveResponseTypes,
+    hasUnresolvedDeclaredResponseType: gatewayResponseTypeUnresolved,
   });
 
   // Stages — the V2 enumerator (enumerateHttpApiChildren) already sweeps + diffs Stages; the
@@ -681,11 +689,15 @@ export interface ApiGatewayGatewayResponseInput {
   apiId: string;
   declaredResponseTypes: string[]; // ResponseTypes of AWS::ApiGateway::GatewayResponse on this api
   liveResponseTypes: { type: string; label?: string | undefined }[];
+  // Fail-safe (#1089): a declared GatewayResponse's identity (ResponseType) was UNRESOLVED, so it
+  // could not be matched against the live responses — suppress ALL added for this api.
+  hasUnresolvedDeclaredResponseType?: boolean;
 }
 
 export function diffApiGatewayGatewayResponses(
   input: ApiGatewayGatewayResponseInput
 ): AddedChild[] {
+  if (input.hasUnresolvedDeclaredResponseType) return [];
   const { apiId, declaredResponseTypes, liveResponseTypes } = input;
   const declared = new Set(declaredResponseTypes);
   const added: AddedChild[] = [];
@@ -1634,9 +1646,14 @@ async function enumerateUserPoolChildren(ctx: EnumeratorContext): Promise<AddedC
 export interface GraphQLApiChildInput {
   declaredDataSourceNames: string[]; // Names of AWS::AppSync::DataSource declared on this api
   liveDataSources: { name: string; arn: string; label?: string | undefined }[];
+  // Fail-safe (#1089): a declared datasource's identity (Name) was UNRESOLVED, so it could not
+  // be matched against the live datasources — suppress ALL added for this api (a `revert
+  // --remove-unrecorded` would otherwise DeleteResource a declared datasource).
+  hasUnresolvedDeclaredDataSource?: boolean;
 }
 
 export function diffGraphQLApiChildren(input: GraphQLApiChildInput): AddedChild[] {
+  if (input.hasUnresolvedDeclaredDataSource) return [];
   const declared = new Set(input.declaredDataSourceNames);
   const added: AddedChild[] = [];
   for (const ds of input.liveDataSources) {
@@ -1669,9 +1686,13 @@ async function pageDataSources(client: AppSyncClient, apiId: string): Promise<Ap
 export interface GraphQLApiResolverInput {
   declaredResolverKeys: string[]; // `${typeName}|${fieldName}` of declared AWS::AppSync::Resolver
   liveResolvers: { key: string; arn: string; label?: string | undefined }[];
+  // Fail-safe (#1089): a declared resolver's identity (TypeName/FieldName) was UNRESOLVED, so it
+  // could not be matched against the live resolvers — suppress ALL added for this api.
+  hasUnresolvedDeclaredResolver?: boolean;
 }
 
 export function diffGraphQLApiResolvers(input: GraphQLApiResolverInput): AddedChild[] {
+  if (input.hasUnresolvedDeclaredResolver) return [];
   const declared = new Set(input.declaredResolverKeys);
   const added: AddedChild[] = [];
   for (const r of input.liveResolvers) {
@@ -1770,16 +1791,24 @@ async function enumerateGraphQLApiChildren(ctx: EnumeratorContext): Promise<Adde
   // DataSource's ApiId (Fn::GetAtt ApiId, resolved by gather) is the bare api id; tolerate
   // an ARN form too in case gather resolved it differently.
   const declaredDataSourceNames: string[] = [];
+  // Fail-safe: a declared datasource whose IDENTITY (Name) is UNRESOLVED can't be matched
+  // against the live datasources by name — suppress datasource added-reporting for this api
+  // rather than false-flag every live datasource as `added` with a DeleteResource offer
+  // (#1089, the identity-prop half of #962; #1016 covered only the parent ApiId ref).
+  let datasourceNameUnresolved = false;
   for (const r of desired.resources) {
-    if (r.resourceType !== 'AWS::AppSync::DataSource' || typeof r.declared.Name !== 'string') {
-      continue;
-    }
+    if (r.resourceType !== 'AWS::AppSync::DataSource') continue;
     // Fail-safe: an UNRESOLVED ApiId (dynamic ref / no-default Param / degraded ImportValue)
     // must not exclude a declared datasource (#962); only a RESOLVED, non-matching id does.
     const declaredApiId = r.declared.ApiId;
     if (declaredApiId !== UNRESOLVED && !hasUnresolved(declaredApiId)) {
       if (typeof declaredApiId !== 'string' || bareApiId(declaredApiId) !== apiId) continue;
     }
+    if (r.declared.Name === UNRESOLVED || hasUnresolved(r.declared.Name)) {
+      datasourceNameUnresolved = true;
+      continue;
+    }
+    if (typeof r.declared.Name !== 'string') continue;
     declaredDataSourceNames.push(r.declared.Name);
   }
 
@@ -1788,6 +1817,9 @@ async function enumerateGraphQLApiChildren(ctx: EnumeratorContext): Promise<Adde
   // unreliable). A declared Resolver's ApiId (Fn::GetAtt ApiId) is the bare api id;
   // tolerate an ARN form too in case gather resolved it differently.
   const declaredResolverKeys: string[] = [];
+  // Fail-safe: a declared resolver whose IDENTITY (TypeName/FieldName) is UNRESOLVED can't be
+  // matched against the live resolvers — suppress resolver added-reporting for this api (#1089).
+  let resolverKeyUnresolved = false;
   for (const r of desired.resources) {
     if (r.resourceType !== 'AWS::AppSync::Resolver') continue;
     // Fail-safe: an UNRESOLVED ApiId must not exclude a declared resolver (#962).
@@ -1796,6 +1828,15 @@ async function enumerateGraphQLApiChildren(ctx: EnumeratorContext): Promise<Adde
       if (typeof declaredApiId !== 'string' || bareApiId(declaredApiId) !== apiId) continue;
     }
     const { TypeName, FieldName } = r.declared;
+    if (
+      TypeName === UNRESOLVED ||
+      hasUnresolved(TypeName) ||
+      FieldName === UNRESOLVED ||
+      hasUnresolved(FieldName)
+    ) {
+      resolverKeyUnresolved = true;
+      continue;
+    }
     if (typeof TypeName !== 'string' || typeof FieldName !== 'string') continue;
     declaredResolverKeys.push(`${TypeName}|${FieldName}`);
   }
@@ -1827,7 +1868,11 @@ async function enumerateGraphQLApiChildren(ctx: EnumeratorContext): Promise<Adde
       arn: ds.dataSourceArn,
       label: ds.type ? `${ds.type} ${ds.name}` : ds.name,
     }));
-  const datasourceAdded = diffGraphQLApiChildren({ declaredDataSourceNames, liveDataSources });
+  const datasourceAdded = diffGraphQLApiChildren({
+    declaredDataSourceNames,
+    liveDataSources,
+    hasUnresolvedDeclaredDataSource: datasourceNameUnresolved,
+  });
 
   // Resolvers are scoped per type: list all types, then list resolvers per type.
   const types = await pageTypes(client, apiId);
@@ -1843,7 +1888,11 @@ async function enumerateGraphQLApiChildren(ctx: EnumeratorContext): Promise<Adde
       });
     }
   }
-  const resolverAdded = diffGraphQLApiResolvers({ declaredResolverKeys, liveResolvers });
+  const resolverAdded = diffGraphQLApiResolvers({
+    declaredResolverKeys,
+    liveResolvers,
+    hasUnresolvedDeclaredResolver: resolverKeyUnresolved,
+  });
 
   // Functions are listed per api (not per type).
   const functions = await pageAppSyncFunctions(client, apiId);
