@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (harvest4 fixture, R75): fresh-deploy AWS::ElasticLoadBalancingV2::TargetGroup model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "description": "RECORDED LIVE (harvest4 fixture, R75): fresh-deploy AWS::ElasticLoadBalancingV2::TargetGroup model; surviving raw-classify findings locked as-is. A change in this case's expected means the normalize/classify semantics for this type changed \u2014 review it.",
   "resource": {
     "logicalId": "Web3C8945DB",
     "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
@@ -288,15 +288,6 @@
       "actual": {
         "HttpCode": "200"
       },
-      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
-      "constructPath": "CdkrdIntegHarvest4/Web"
-    },
-    {
-      "tier": "generated",
-      "logicalId": "Web3C8945DB",
-      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
-      "path": "Targets",
-      "actual": [],
       "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdI-Web3C-B2EBJYBQ0UEJ/e8b4dd5daa1ce233",
       "constructPath": "CdkrdIntegHarvest4/Web"
     },

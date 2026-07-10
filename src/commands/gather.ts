@@ -385,6 +385,7 @@ interface ClassifyOpts {
   siblingManagedPolicyAttachments: Record<string, string[]>;
   siblingUserGroups: Record<string, string[]>;
   siblingEipAssociations: Set<string>;
+  siblingTargetGroupRegistrars: Set<string>;
   bucketNotificationManaged: Set<string>;
   clusterEchoModel: Record<string, Record<string, unknown>>;
   rdsOptionSettingDefaults: Record<string, Record<string, Record<string, string | null>>>;
@@ -716,6 +717,88 @@ export function buildSiblingEipAssociations(desired: Desired): Set<string> {
     }
   }
   return associated;
+}
+
+// An AWS::ElasticLoadBalancingV2::TargetGroup's live `Targets` reflects whatever is REGISTERED into
+// the group. When a DECLARED sibling dynamically registers targets — an AWS::ECS::Service
+// (`LoadBalancers[].TargetGroupArn`), an AWS::AutoScaling::AutoScalingGroup (`TargetGroupARNs`), or
+// the group's own `TargetType: lambda` (a lambda registration is managed by AWS) — the membership
+// is IaC-driven runtime churn (task IPs / instances recycle), NOT template intent, so classify
+// folds it. A group with NO such registrar and a NON-EMPTY live Targets is an out-of-band
+// `elbv2 register-targets` — traffic interception — and must SURFACE (#891). This set holds the
+// identities (logicalId AND physicalId == the TG ARN) of every TargetGroup a declared sibling (or
+// its own lambda TargetType) registers into. Fail-open: a reference that does not resolve to a
+// known TargetGroup is skipped (that group keeps a visible finding, never a hidden change).
+const ECS_SERVICE_TYPE = 'AWS::ECS::Service';
+const AUTO_SCALING_GROUP_TYPE = 'AWS::AutoScaling::AutoScalingGroup';
+const TARGET_GROUP_TYPE = 'AWS::ElasticLoadBalancingV2::TargetGroup';
+export function buildSiblingTargetGroupRegistrars(desired: Desired): Set<string> {
+  // Map every TargetGroup's logicalId to its own identities (logicalId + physicalId == TG ARN) and
+  // also index by physicalId, so a sibling referencing the TG by `{Ref}` (== the ARN), a GetAtt, an
+  // ImportValue, or the raw ARN string can be resolved to the identities classify looks it up by.
+  const tgIdentitiesByLogicalId = new Map<string, string[]>();
+  const tgLogicalIdByPhysicalId = new Map<string, string>();
+  for (const r of desired.resources) {
+    if (r.resourceType !== TARGET_GROUP_TYPE) continue;
+    const ids = [r.logicalId];
+    if (r.physicalId) {
+      ids.push(r.physicalId);
+      tgLogicalIdByPhysicalId.set(r.physicalId, r.logicalId);
+    }
+    tgIdentitiesByLogicalId.set(r.logicalId, ids);
+  }
+  const registered = new Set<string>();
+  const markTg = (ref: unknown): void => {
+    // A sibling names a TG by ARN: a `{Ref: <tgLogicalId>}` (resolves to the ARN), a
+    // `{Fn::GetAtt: [<tgLogicalId>, ...]}`, a `{Fn::ImportValue: ...}` (cross-stack — unresolvable
+    // to a local TG, skipped fail-open), or the resolved ARN string. Resolve any of these to the
+    // TG's identities and mark them all as sibling-registered.
+    let tgLogicalId: string | undefined;
+    if (ref && typeof ref === 'object') {
+      if ('Ref' in ref && typeof (ref as { Ref: unknown }).Ref === 'string') {
+        tgLogicalId = (ref as { Ref: string }).Ref;
+      } else if ('Fn::GetAtt' in ref) {
+        const g = (ref as { 'Fn::GetAtt': unknown })['Fn::GetAtt'];
+        if (Array.isArray(g) && typeof g[0] === 'string') tgLogicalId = g[0];
+      }
+      // A `{Fn::ImportValue: ...}` (or any other intrinsic) does not resolve to a local TG → skip.
+    }
+    if (tgLogicalId !== undefined) {
+      const ids = tgIdentitiesByLogicalId.get(tgLogicalId);
+      if (ids) for (const id of ids) registered.add(id);
+      return;
+    }
+    // A resolved ARN string (== the TG's physical id) — mark it and its logicalId directly.
+    if (typeof ref === 'string' && ref) {
+      registered.add(ref);
+      const logicalId = tgLogicalIdByPhysicalId.get(ref);
+      if (logicalId) registered.add(logicalId);
+    }
+  };
+  for (const r of desired.resources) {
+    const decl = r.declared;
+    if (!decl || typeof decl !== 'object') continue;
+    const d = decl as Record<string, unknown>;
+    if (r.resourceType === ECS_SERVICE_TYPE) {
+      // An ECS service dynamically registers its tasks into each LoadBalancers[].TargetGroupArn.
+      const lbs = d.LoadBalancers;
+      if (Array.isArray(lbs)) {
+        for (const lb of lbs) {
+          if (lb && typeof lb === 'object') markTg((lb as Record<string, unknown>).TargetGroupArn);
+        }
+      }
+    } else if (r.resourceType === AUTO_SCALING_GROUP_TYPE) {
+      // An ASG dynamically registers its instances into each of its TargetGroupARNs.
+      const arns = d.TargetGroupARNs;
+      if (Array.isArray(arns)) for (const arn of arns) markTg(arn);
+    } else if (r.resourceType === TARGET_GROUP_TYPE && d.TargetType === 'lambda') {
+      // A lambda target group's membership is a lambda registration AWS manages — treat the TG's
+      // own lambda TargetType as a registrar so its live `Targets` folds.
+      const ids = tgIdentitiesByLogicalId.get(r.logicalId);
+      if (ids) for (const id of ids) registered.add(id);
+    }
+  }
+  return registered;
 }
 
 // Per Aurora DBInstance physical id, the parent DBCluster's live model — the source for the
@@ -1128,6 +1211,7 @@ export async function gatherFindings(
     siblingLifecycleHooks: buildSiblingLifecycleHooks(desired),
     siblingListenerPorts: buildSiblingListenerPorts(desired),
     siblingEipAssociations: buildSiblingEipAssociations(desired),
+    siblingTargetGroupRegistrars: buildSiblingTargetGroupRegistrars(desired),
     bucketNotificationManaged: buildBucketNotificationManaged(desired),
     clusterEchoModel: buildClusterEchoModels(desired),
     rdsOptionSettingDefaults: await buildRdsOptionSettingDefaults(desired, region),
@@ -1230,6 +1314,7 @@ export async function regatherTouched(
     siblingLifecycleHooks: buildSiblingLifecycleHooks(desired),
     siblingListenerPorts: buildSiblingListenerPorts(desired),
     siblingEipAssociations: buildSiblingEipAssociations(desired),
+    siblingTargetGroupRegistrars: buildSiblingTargetGroupRegistrars(desired),
     bucketNotificationManaged: buildBucketNotificationManaged(desired),
     clusterEchoModel: buildClusterEchoModels(desired),
     rdsOptionSettingDefaults: await buildRdsOptionSettingDefaults(desired, region),

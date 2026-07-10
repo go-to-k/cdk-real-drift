@@ -317,15 +317,6 @@
       "constructPath": "CdkRealDriftHunt0708iMisc/GrpcTg"
     },
     {
-      "tier": "generated",
-      "logicalId": "GrpcTgF27A0024",
-      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
-      "path": "Targets",
-      "actual": [],
-      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-grpc/1165a745b9786029",
-      "constructPath": "CdkRealDriftHunt0708iMisc/GrpcTg"
-    },
-    {
       "tier": "atDefault",
       "logicalId": "GrpcTgF27A0024",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",

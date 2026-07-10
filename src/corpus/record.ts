@@ -87,6 +87,12 @@ export interface CorpusCase {
     // atDefault exactly as a real check does. Stored as an array (JSON has no Set); replay revives
     // it to a Set. Optional for back-compat (pre-#892 cases and non-EIP cases lack it).
     siblingEipAssociations?: string[];
+    // This TargetGroup's own identity (physicalId, else logicalId), present only when a declared
+    // sibling dynamically registers into it (an ECS Service, an ASG, or its own lambda TargetType),
+    // so replay reproduces the `generated` Targets fold and the case folds exactly as a real check
+    // does. Stored as an array (JSON has no Set); replay revives it to a Set. Optional for
+    // back-compat (pre-#891 cases and non-TargetGroup cases lack it).
+    siblingTargetGroupRegistrars?: string[];
     // The parent DBCluster's live model keyed by THIS instance's physical id — present only on a
     // CLUSTER_ECHO_CHILD case (an Aurora DBInstance echoing its cluster), so replay reproduces the
     // cluster-echo strip. Without it a fresh-harvested reader/writer replays the un-folded echo
@@ -133,6 +139,7 @@ export function buildCorpusCase(
     siblingSgRules?: Record<string, { ingress: unknown[]; egress: unknown[] }>;
     bucketNotificationManaged?: Set<string>;
     siblingEipAssociations?: Set<string>;
+    siblingTargetGroupRegistrars?: Set<string>;
     clusterEchoModel?: Record<string, Record<string, unknown>>;
     rdsOptionSettingDefaults?: Record<string, Record<string, Record<string, string | null>>>;
     siblingListenerPorts?: Record<string, number>;
@@ -158,6 +165,15 @@ export function buildCorpusCase(
     resource.physicalId && opts.siblingEipAssociations?.has(resource.physicalId)
       ? resource.physicalId
       : opts.siblingEipAssociations?.has(resource.logicalId)
+        ? resource.logicalId
+        : undefined;
+  // Carry ONLY this TG's own identity from the stack-wide registrar set. classify keys the
+  // Targets `generated` fold on the physicalId first, else the logicalId — carry the same one that
+  // is present, so replay folds the same way the live check did.
+  const tgRegistrarId =
+    resource.physicalId && opts.siblingTargetGroupRegistrars?.has(resource.physicalId)
+      ? resource.physicalId
+      : opts.siblingTargetGroupRegistrars?.has(resource.logicalId)
         ? resource.logicalId
         : undefined;
   const echoModel =
@@ -215,6 +231,7 @@ export function buildCorpusCase(
         : {}),
       ...(bucketNotif ? { bucketNotificationManaged: bucketNotif } : {}),
       ...(eipSiblingId ? { siblingEipAssociations: [eipSiblingId] } : {}),
+      ...(tgRegistrarId ? { siblingTargetGroupRegistrars: [tgRegistrarId] } : {}),
       ...(echoModel && resource.physicalId
         ? { clusterEchoModel: { [resource.physicalId]: echoModel } }
         : {}),
@@ -246,23 +263,33 @@ export function reviveSchema(s: CorpusCase['schema']): SchemaInfo {
 }
 
 /** Revive a case's stored opts into the shape classifyResource expects: the JSON case stores
- *  `bucketNotificationManaged` / `siblingEipAssociations` as arrays (JSON has no Set) but classify
- *  wants Sets, so convert them; every other opts field passes through unchanged. Both replay call
- *  sites (corpus-replay + measure-noise) go through here so they stay in lockstep. */
+ *  `bucketNotificationManaged` / `siblingEipAssociations` / `siblingTargetGroupRegistrars` as arrays
+ *  (JSON has no Set) but classify wants Sets, so convert them; every other opts field passes through
+ *  unchanged. Both replay call sites (corpus-replay + measure-noise) go through here so they stay in
+ *  lockstep. */
 export function reviveOpts(o: CorpusCase['opts']): Omit<
   CorpusCase['opts'],
-  'bucketNotificationManaged' | 'siblingEipAssociations'
+  'bucketNotificationManaged' | 'siblingEipAssociations' | 'siblingTargetGroupRegistrars'
 > & {
   bucketNotificationManaged?: Set<string>;
   siblingEipAssociations?: Set<string>;
+  siblingTargetGroupRegistrars?: Set<string>;
 } {
-  const { bucketNotificationManaged, siblingEipAssociations, ...rest } = o;
+  const {
+    bucketNotificationManaged,
+    siblingEipAssociations,
+    siblingTargetGroupRegistrars,
+    ...rest
+  } = o;
   return {
     ...rest,
     ...(bucketNotificationManaged
       ? { bucketNotificationManaged: new Set(bucketNotificationManaged) }
       : {}),
     ...(siblingEipAssociations ? { siblingEipAssociations: new Set(siblingEipAssociations) } : {}),
+    ...(siblingTargetGroupRegistrars
+      ? { siblingTargetGroupRegistrars: new Set(siblingTargetGroupRegistrars) }
+      : {}),
   };
 }
 
