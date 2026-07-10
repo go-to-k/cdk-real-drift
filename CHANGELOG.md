@@ -1,3 +1,12 @@
+## [0.4.21](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.20...v0.4.21) (2026-07-10)
+
+
+### Bug Fixes
+
+* **cli:** emit [] under --json on unknown-command exit path ([#1063](https://github.com/go-to-k/cdk-real-drift/issues/1063)) ([#1115](https://github.com/go-to-k/cdk-real-drift/issues/1115)) ([4ca58e8](https://github.com/go-to-k/cdk-real-drift/commit/4ca58e8e01350c1e94428dea3dc47fb6da88b221))
+* **normalize:** stringify numeric/boolean Fn::FindInMap key arguments so numeric-keyed maps resolve ([#1121](https://github.com/go-to-k/cdk-real-drift/issues/1121)) ([ba2437b](https://github.com/go-to-k/cdk-real-drift/commit/ba2437ba96171e4a852bd71a2edea24492127ea5))
+* **revert)+fix(noise:** ClientVpnEndpoint revert-op isolation (F2) + TagSpecifications readGap (F3) ([#1102](https://github.com/go-to-k/cdk-real-drift/issues/1102)) ([#1114](https://github.com/go-to-k/cdk-real-drift/issues/1114)) ([9119e49](https://github.com/go-to-k/cdk-real-drift/commit/9119e4990bf202c8c7f30b91661b9346c10c316a))
+
 ## [0.4.20](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.19...v0.4.20) (2026-07-10)
 
 
