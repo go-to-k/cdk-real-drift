@@ -3252,14 +3252,38 @@ export function resolveGeneratedDefault(
 // every CDK enforceSSL-style statement into a desired-vs-undefined false drift
 // (found by the first live policies integ run).
 export function stripAwsTagsDeep(v: unknown): unknown {
-  return stripTagsWalk(v, false);
+  return stripTagsWalk(v, false, undefined);
 }
 
-function stripTagsWalk(v: unknown, underTagsKey: boolean): unknown {
+// Tag-FILTER property names whose array elements share the `{Key,...}` tag-element
+// shape but are NOT tag LISTS — they are targeting FILTERS that legitimately select
+// resources BY an `aws:*` tag (a documented pattern). The `aws:*`-element strip below
+// must NOT apply to these: an element like `{Key:'aws:cloudformation:stack-name',...}`
+// is DECLARED intent (scope a CodeDeploy group / ResourceGroups query / DLM policy to a
+// stack's resources), and the service echoes it verbatim. Stripping it from the live
+// side leaves declared `[{Key:'aws:...'}]` vs live `[]` — a permanent declared-tier
+// false positive that survives record and churns on revert (#864). Covers:
+//   - CodeDeploy `Ec2TagFilters` (elements `{Key,Value,Type}`) and `Ec2TagSet`, whose
+//     filter elements live one level deeper under `Ec2TagSetList[].Ec2TagGroup` — so the
+//     array parent to exclude is `Ec2TagGroup` (the immediate holder of the elements)
+//   - ResourceGroups `Query.TagFilters` (elements `{Key,Values}`)
+//   - DLM policy `TargetTags`
+// (Backup selection `ListOfTags` is unaffected — its field is `ConditionKey`, not `Key`.)
+const AWS_TAG_FILTER_PROPS = new Set([
+  'TagFilters',
+  'Ec2TagFilters',
+  'Ec2TagSet',
+  'Ec2TagGroup',
+  'TargetTags',
+]);
+
+function stripTagsWalk(v: unknown, underTagsKey: boolean, parentKey: string | undefined): unknown {
   if (Array.isArray(v)) {
+    const underFilter = parentKey !== undefined && AWS_TAG_FILTER_PROPS.has(parentKey);
     return v
       .filter(
         (t) =>
+          underFilter ||
           !(
             t &&
             typeof t === 'object' &&
@@ -3267,13 +3291,13 @@ function stripTagsWalk(v: unknown, underTagsKey: boolean): unknown {
             (t as { Key: string }).Key.startsWith('aws:')
           )
       )
-      .map((t) => stripTagsWalk(t, false));
+      .map((t) => stripTagsWalk(t, false, undefined));
   }
   if (v && typeof v === 'object') {
     const out: Record<string, unknown> = {};
     for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
       if (underTagsKey && k.startsWith('aws:')) continue;
-      out[k] = stripTagsWalk(val, k === 'Tags');
+      out[k] = stripTagsWalk(val, k === 'Tags', k);
     }
     return out;
   }
