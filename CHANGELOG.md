@@ -1,3 +1,10 @@
+## [0.12.32](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.31...v0.12.32) (2026-07-10)
+
+
+### Bug Fixes
+
+* **read:** project CodeBuild Secondary*/Triggers/BuildBatchConfig + DocDB ServerlessV2/StorageType/NetworkType reader fields ([#1299](https://github.com/go-to-k/cdk-real-drift/issues/1299), [#1303](https://github.com/go-to-k/cdk-real-drift/issues/1303)) ([#1383](https://github.com/go-to-k/cdk-real-drift/issues/1383)) ([4938b1d](https://github.com/go-to-k/cdk-real-drift/commit/4938b1dae620e959650f3ee88d52910b4a908f59))
+
 ## [0.12.31](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.30...v0.12.31) (2026-07-10)
 
 
