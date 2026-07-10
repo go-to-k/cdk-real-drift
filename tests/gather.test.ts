@@ -1157,8 +1157,19 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
     expect(managed).toBe('notManaged');
   });
 
-  it('skips the API call for a pipe-composite CC identifier (within-stack sub-resource)', async () => {
+  // #800: a pipe-composite CC identifier is the join of a PARENT id + the child's own id, so
+  // the sibling check must NOT wholesale-skip it — it probes each segment against CFn. A genuine
+  // within-stack API Gateway sub-resource (whose child-id halves are not CFn physical ids that
+  // DescribeStackResources accepts on their own) still resolves to `notManaged`, just now via a
+  // real probe rather than a blind short-circuit.
+  it('#800: a within-stack composite sub-resource whose segments own no matching child is notManaged', async () => {
     const cfn = mockClient(CloudFormationClient);
+    // Every segment ValidationErrors (no stack owns an ApiGateway::Method by that bare id).
+    cfn.on(DescribeStackResourcesCommand).callsFake((input) => {
+      const notFound = new Error(`Stack for ${input.PhysicalResourceId} does not exist`);
+      notFound.name = 'ValidationError';
+      throw notFound;
+    });
     const managed = await isManagedBySiblingStack(
       cfn as unknown as CloudFormationClient,
       child('api123|res456|GET', 'AWS::ApiGateway::Method'),
@@ -1167,7 +1178,123 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
       LOCAL_REGION
     );
     expect(managed).toBe('notManaged');
-    expect(cfn.commandCalls(DescribeStackResourcesCommand)).toHaveLength(0);
+    // it probed the segments rather than blindly short-circuiting on the `|`
+    expect(cfn.commandCalls(DescribeStackResourcesCommand).length).toBeGreaterThan(0);
+  });
+
+  // #800: the core fix — a shared-parent split (cluster stack + per-service stacks, auth stack +
+  // app stacks, imported LogGroup + sibling filter) makes a composite-id child fully CFn-managed
+  // by a SIBLING stack, yet the old `physicalId.includes('|') → 'notManaged'` short-circuit
+  // false-flagged every one `added` with a destructive DeleteResource offer. The child's CFn
+  // physical id is the BARE half; probing the segments recognizes the sibling-managed child.
+  it('#800: folds an ECS Service on a shared cluster a SIBLING stack manages (ServiceArn|Cluster, physical id = ServiceArn FIRST half)', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    const serviceArn = 'arn:aws:ecs:us-east-1:111122223333:service/shared-cluster/websvc';
+    // The composite is `${ServiceArn}|${Cluster}`; the child's CFn physical id is the ServiceArn.
+    cfn.on(DescribeStackResourcesCommand).callsFake((input) => {
+      if (input.PhysicalResourceId === serviceArn) {
+        return {
+          StackResources: [
+            {
+              StackName: 'WebServiceStack',
+              LogicalResourceId: 'WebSvc',
+              PhysicalResourceId: serviceArn,
+              ResourceType: 'AWS::ECS::Service',
+              Timestamp: new Date(0),
+              ResourceStatus: 'CREATE_COMPLETE',
+            },
+          ],
+        };
+      }
+      // the Cluster segment is a different (declared parent) resource type — never matches
+      const notFound = new Error(`Stack for ${input.PhysicalResourceId} does not exist`);
+      notFound.name = 'ValidationError';
+      throw notFound;
+    });
+    const managed = await isManagedBySiblingStack(
+      cfn as unknown as CloudFormationClient,
+      child(`${serviceArn}|shared-cluster`, 'AWS::ECS::Service'),
+      new Map(),
+      LOCAL_ACCOUNT,
+      LOCAL_REGION
+    );
+    expect(managed).toBe('managed');
+  });
+
+  it('#800: folds a Cognito UserPoolClient on an imported pool a SIBLING stack manages (UserPoolId|ClientId, physical id = ClientId SECOND half)', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    const clientId = '1example23clientid45';
+    // The composite is `${UserPoolId}|${ClientId}`; the child's CFn physical id is the ClientId.
+    cfn.on(DescribeStackResourcesCommand).callsFake((input) => {
+      if (input.PhysicalResourceId === clientId) {
+        return {
+          StackResources: [
+            {
+              StackName: 'AppStack',
+              LogicalResourceId: 'AppClient',
+              PhysicalResourceId: clientId,
+              ResourceType: 'AWS::Cognito::UserPoolClient',
+              Timestamp: new Date(0),
+              ResourceStatus: 'CREATE_COMPLETE',
+            },
+          ],
+        };
+      }
+      const notFound = new Error(`Stack for ${input.PhysicalResourceId} does not exist`);
+      notFound.name = 'ValidationError';
+      throw notFound;
+    });
+    const managed = await isManagedBySiblingStack(
+      cfn as unknown as CloudFormationClient,
+      child(`us-east-1_ABC123|${clientId}`, 'AWS::Cognito::UserPoolClient'),
+      new Map(),
+      LOCAL_ACCOUNT,
+      LOCAL_REGION
+    );
+    expect(managed).toBe('managed');
+  });
+
+  it('#800: still reports a GENUINELY out-of-band composite child as added (no segment owns it)', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    // Both segments are same-account/region bare ids -> ValidationError is a DEFINITIVE
+    // not-managed, so the composite resolves to notManaged (a real out-of-band addition).
+    cfn.on(DescribeStackResourcesCommand).callsFake((input) => {
+      const notFound = new Error(`Stack for ${input.PhysicalResourceId} does not exist`);
+      notFound.name = 'ValidationError';
+      throw notFound;
+    });
+    const managed = await isManagedBySiblingStack(
+      cfn as unknown as CloudFormationClient,
+      child('shared-lg|rogue-metric-filter', 'AWS::Logs::MetricFilter'),
+      new Map(),
+      LOCAL_ACCOUNT,
+      LOCAL_REGION
+    );
+    expect(managed).toBe('notManaged');
+  });
+
+  it('#800/#754: an UNVERIFIABLE segment (throttle) makes the composite unverified, never a false added', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    cfn.on(DescribeStackResourcesCommand).callsFake((input) => {
+      // the first segment throttles (transient) -> the whole composite must be unverified,
+      // NOT reported as a destructive-delete `added`
+      if (input.PhysicalResourceId === 'shared-lg') {
+        const throttle = new Error('Rate exceeded');
+        throttle.name = 'Throttling';
+        throw throttle;
+      }
+      const notFound = new Error(`Stack for ${input.PhysicalResourceId} does not exist`);
+      notFound.name = 'ValidationError';
+      throw notFound;
+    });
+    const managed = await isManagedBySiblingStack(
+      cfn as unknown as CloudFormationClient,
+      child('shared-lg|some-filter', 'AWS::Logs::MetricFilter'),
+      new Map(),
+      LOCAL_ACCOUNT,
+      LOCAL_REGION
+    );
+    expect(managed).toBe('unverified');
   });
 
   // #895: AWS::Events::Rule's CC identifier is the rule Arn, but its CFn physical id for a

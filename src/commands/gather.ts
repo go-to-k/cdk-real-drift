@@ -206,32 +206,18 @@ export function isDefinitiveNotManaged(
   return true;
 }
 
-export async function isManagedBySiblingStack(
+// Probe ONE candidate CloudFormation physical id against the run's account+region: does a
+// stack own a resource of THIS child's type (`c.resourceType`) with this exact physical id?
+// Returns the tri-state and memoizes any DEFINITIVE answer per physical id (a transient
+// throttle / unverifiable foreign-scope id is left un-cached so a retry can resolve it).
+async function probeSiblingPhysicalId(
   cfn: CloudFormationClient,
   c: AddedChild,
+  physicalId: string,
   cache: Map<string, SiblingCheck>,
   accountId: string,
   region: string
 ): Promise<SiblingCheck> {
-  // The sibling-stack lookup uses the CloudFormation PHYSICAL-ID form, which for most child
-  // types IS the CC primaryIdentifier (`identifier`); it diverges only where CC's identifier
-  // is not the CFn physical id — e.g. AWS::Events::Rule, whose CC identifier is the rule Arn
-  // but whose CFn physical id is `<busName>|<ruleName>` for a custom-bus rule (#895). The
-  // enumerator carries that form on `siblingLookupId` (defaulting to `identifier`).
-  const physicalId = c.siblingLookupId ?? c.identifier;
-  // Pipe-composite CC identifiers (`RestApiId|…`, `UserPoolId|…`) are not CloudFormation
-  // physical resource ids — they belong to within-stack API Gateway / Cognito sub-resources
-  // outside this cross-stack class, so never spend a call on them. Bare ids that are ARNs
-  // (SNS Subscription, ELBv2 Listener/Rule, EventBus Rule, Lambda Alias/Version) contain
-  // `:` and ARE the class, so `:` is NOT a composite marker here; the lone `:`-joined
-  // composite (API Gateway GatewayResponse `RestApiId:ResponseType`) simply fails the
-  // DescribeStackResources lookup and falls through to "report as added" (fail open).
-  // NOTE: an Events::Rule custom-bus `siblingLookupId` (`<busName>|<ruleName>`) IS a valid
-  // CFn physical id despite the `|`; it is set explicitly so it is NOT a CC composite —
-  // hence the `|` guard would wrongly skip it. The guard therefore only applies to the CC
-  // `identifier` composites, which never set `siblingLookupId`, so it stays correct: a rule
-  // whose lookup id contains `|` still runs the DescribeStackResources check below.
-  if (c.siblingLookupId === undefined && physicalId.includes('|')) return 'notManaged';
   const cached = cache.get(physicalId);
   if (cached !== undefined) return cached;
   let managed = false;
@@ -297,6 +283,52 @@ export async function isManagedBySiblingStack(
   const result: SiblingCheck = managed ? 'managed' : 'notManaged';
   cache.set(physicalId, result);
   return result;
+}
+
+export async function isManagedBySiblingStack(
+  cfn: CloudFormationClient,
+  c: AddedChild,
+  cache: Map<string, SiblingCheck>,
+  accountId: string,
+  region: string
+): Promise<SiblingCheck> {
+  // The sibling-stack lookup uses the CloudFormation PHYSICAL-ID form, which for most child
+  // types IS the CC primaryIdentifier (`identifier`); it diverges only where CC's identifier
+  // is not the CFn physical id — e.g. AWS::Events::Rule, whose CC identifier is the rule Arn
+  // but whose CFn physical id is `<busName>|<ruleName>` for a custom-bus rule (#895). The
+  // enumerator carries that form on `siblingLookupId` (defaulting to `identifier`).
+  const physicalId = c.siblingLookupId ?? c.identifier;
+  // A `siblingLookupId` explicitly set by the enumerator (Events::Rule custom-bus
+  // `<busName>|<ruleName>`) IS a valid CFn physical id verbatim (even with a `|`), so probe it
+  // as-is. Only the CC `identifier` composites — which NEVER set `siblingLookupId` — need the
+  // per-segment fan-out below.
+  if (c.siblingLookupId !== undefined || !physicalId.includes('|')) {
+    return probeSiblingPhysicalId(cfn, c, physicalId, cache, accountId, region);
+  }
+  // A pipe-composite CC identifier (`ServiceArn|Cluster`, `UserPoolId|ClientId`,
+  // `LogGroupName|FilterName`, …) is the join of a PARENT id + the child's own id — and the
+  // child's CFn PHYSICAL id is the BARE half (ECS = ServiceArn, Cognito = ClientId, Logs =
+  // FilterName). A shared-parent split (a cluster stack + per-service stacks, an auth stack +
+  // app stacks) makes such a child fully CloudFormation-managed by a SIBLING stack, yet the
+  // old wholesale `physicalId.includes('|') → 'notManaged'` short-circuit false-flagged every
+  // one `added` with a destructive DeleteResource revert offer (#800). Which segment is the
+  // child's physical id varies per type (first, second, and the two Logs filter types even
+  // ORDER it oppositely), so probe EACH segment; the `owns` predicate already gates on
+  // `ResourceType === c.resourceType`, so a segment that is the (differently-typed) parent id
+  // — or a non-physical-id half of a genuine within-stack API Gateway / Cognito sub-resource —
+  // never false-matches, and those simply fall through to `notManaged`/`unverified` as before.
+  // Combine the segment results fail-SAFE: ANY segment proving sibling ownership wins
+  // ('managed'); otherwise if ANY segment was UNVERIFIABLE (throttle / foreign-scope) return
+  // 'unverified' (report as coverage-incomplete, never a destructive delete — #754); only when
+  // EVERY segment is a definitive not-managed is the composite a genuine out-of-band `added`.
+  let sawUnverified = false;
+  for (const segment of physicalId.split('|')) {
+    if (!segment) continue; // skip an empty segment (defensive: leading/trailing/double `|`)
+    const seg = await probeSiblingPhysicalId(cfn, c, segment, cache, accountId, region);
+    if (seg === 'managed') return 'managed';
+    if (seg === 'unverified') sawUnverified = true;
+  }
+  return sawUnverified ? 'unverified' : 'notManaged';
 }
 
 interface ClassifyOpts {
