@@ -636,7 +636,16 @@ If the whole invocation fails before any stack is reached (bad config, an
 un-synthesizable app, or a zero-stack app), stdout is still a valid empty array
 `[]` (exit code non-zero, the reason on stderr) — never empty bytes.
 
-Each stack element is `{ "stack": "<name> (<region>)", "drifted": <n>, "findings": [...] }`
+Every successfully-checked stack element carries a `"baseline": <bool>` flag —
+`true` when the stack has a committed `.cdkrd` baseline (its undeclared dimension is
+**watched**), `false` when it has never been recorded. Without a baseline the
+classification shifts: appeared-since-record out-of-band values read as `unrecorded`
+and are excluded from `drifted`, so a QUIET never-recorded stack emits the
+byte-identical `"drifted": 0` of a watched-clean one. A consumer summing `drifted`
+uses `baseline` to tell an UNWATCHED stack from a watched-clean one (#1095). It is
+omitted on the `error` / `stackDeleted` shapes (never reconciled against a baseline).
+
+Each stack element is `{ "stack": "<name> (<region>)", "drifted": <n>, "baseline": <bool>, "findings": [...] }`
 (`error` added only on a pre-check failure; `stackDeleted: true` only on a deleted
 stack). Each **finding** has a stable shape:
 
