@@ -1,3 +1,10 @@
+## [0.12.14](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.13...v0.12.14) (2026-07-10)
+
+
+### Bug Fixes
+
+* **noise:** subtract CFn stack-level tags propagated onto resources ([#683](https://github.com/go-to-k/cdk-real-drift/issues/683)) ([#1344](https://github.com/go-to-k/cdk-real-drift/issues/1344)) ([6fbf70c](https://github.com/go-to-k/cdk-real-drift/commit/6fbf70c36453d79c077b4a783c12f80432881972))
+
 ## [0.12.13](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.12...v0.12.13) (2026-07-10)
 
 
