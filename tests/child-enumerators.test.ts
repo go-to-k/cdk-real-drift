@@ -56,8 +56,10 @@ import {
   diffUserPoolResourceServers,
   diffVpcChildren,
   diffVpcEndpointChildren,
+  isBodyDefinedHttpApi,
   isBodyDefinedRestApi,
   isEnumerableRoute,
+  isQuickCreateHttpApi,
   routeDestination,
 } from '../src/read/child-enumerators.js';
 
@@ -508,6 +510,33 @@ describe('diffApiGatewayV2Children (HTTP / WebSocket API)', () => {
     });
     expect(added[0]!.label).toBe('rX');
   });
+
+  it('suppresses ALL Route/Integration additions for a spec-materialized (Body/quick-create) Api (#960)', () => {
+    // A Body-defined (OpenAPI) or quick-create (Target) HTTP API materializes its routes +
+    // integrations from the spec / target, with no sibling AWS::ApiGatewayV2::Route / Integration
+    // template resources — so declaredRouteIds / declaredIntegrationIds are empty. Without
+    // specMaterialized this flags every live route/integration as out-of-band `added` (the
+    // false positive); with it, none must surface.
+    const withoutFlag = diffApiGatewayV2Children({
+      apiId: APIV2,
+      declaredRouteIds: [],
+      declaredIntegrationIds: [],
+      liveRoutes: [{ id: 'rDefault', key: '$default' }],
+      liveIntegrations: [{ id: 'iProxy', label: 'AWS_PROXY arn:lambda' }],
+    });
+    // Sanity: without the fix the materialized $default route + integration ARE flagged.
+    expect(withoutFlag.map((a) => a.identifier)).toEqual([`${APIV2}|rDefault`, `${APIV2}|iProxy`]);
+
+    const withFlag = diffApiGatewayV2Children({
+      apiId: APIV2,
+      declaredRouteIds: [],
+      declaredIntegrationIds: [],
+      liveRoutes: [{ id: 'rDefault', key: '$default' }],
+      liveIntegrations: [{ id: 'iProxy', label: 'AWS_PROXY arn:lambda' }],
+      specMaterialized: true,
+    });
+    expect(withFlag).toEqual([]);
+  });
 });
 
 describe('diffApiGatewayV2Authorizers (HTTP / WebSocket API authorizers)', () => {
@@ -552,6 +581,27 @@ describe('diffApiGatewayV2Authorizers (HTTP / WebSocket API authorizers)', () =>
       liveAuthorizers: [{ id: 'authX', label: undefined }],
     });
     expect(added[0]!.label).toBe('authX');
+  });
+
+  it('suppresses Authorizer additions for a Body-defined (OpenAPI) Api (#960)', () => {
+    // A Body-defined HTTP API materializes its authorizers from the spec's
+    // x-amazon-apigateway-authorizer entries, with no sibling AWS::ApiGatewayV2::Authorizer
+    // template resource — so declaredAuthorizerIds is empty. Without bodyDefined this flags the
+    // spec authorizer as out-of-band `added`; with it, it must NOT surface.
+    const withoutFlag = diffApiGatewayV2Authorizers({
+      apiId: APIV2,
+      declaredAuthorizerIds: [],
+      liveAuthorizers: [{ id: 'authSpec', label: 'spec-jwt' }],
+    });
+    expect(withoutFlag.map((a) => a.identifier)).toEqual([`authSpec|${APIV2}`]);
+
+    const withFlag = diffApiGatewayV2Authorizers({
+      apiId: APIV2,
+      declaredAuthorizerIds: [],
+      liveAuthorizers: [{ id: 'authSpec', label: 'spec-jwt' }],
+      bodyDefined: true,
+    });
+    expect(withFlag).toEqual([]);
   });
 });
 
@@ -636,6 +686,73 @@ describe('diffApiGatewayV2Stages (HTTP / WebSocket API stages)', () => {
       liveStages: [{ name: 'stageX', label: undefined }],
     });
     expect(added[0]!.label).toBe('stageX');
+  });
+
+  it('suppresses ONLY the $default Stage for a quick-create Api, still flags a genuine OOB stage (#960)', () => {
+    // Quick create (Target) auto-creates a `$default` stage configured to auto-deploy, with no
+    // sibling AWS::ApiGatewayV2::Stage template resource. Without quickCreate this flags it as
+    // out-of-band `added` (destructive DeleteResource on the auto-deploy stage); with it, the
+    // `$default` stage is suppressed — but a genuinely out-of-band NON-$default stage still
+    // surfaces (the suppression is scoped to the quick-create-owned $default only).
+    const withoutFlag = diffApiGatewayV2Stages({
+      apiId: APIV2,
+      declaredStageNames: [],
+      liveStages: [
+        { name: '$default', label: '$default' },
+        { name: 'roguestage', label: 'console-stage' },
+      ],
+    });
+    expect(withoutFlag.map((a) => a.identifier)).toEqual([
+      `${APIV2}|$default`,
+      `${APIV2}|roguestage`,
+    ]);
+
+    const withFlag = diffApiGatewayV2Stages({
+      apiId: APIV2,
+      declaredStageNames: [],
+      liveStages: [
+        { name: '$default', label: '$default' },
+        { name: 'roguestage', label: 'console-stage' },
+      ],
+      quickCreate: true,
+    });
+    // $default is folded away; the genuinely out-of-band stage is still reported.
+    expect(withFlag).toEqual([
+      {
+        resourceType: 'AWS::ApiGatewayV2::Stage',
+        identifier: `${APIV2}|roguestage`,
+        label: 'console-stage',
+        live: { StageName: 'roguestage', ApiId: APIV2 },
+      },
+    ]);
+  });
+});
+
+describe('isBodyDefinedHttpApi / isQuickCreateHttpApi (#960)', () => {
+  it('detects a Body-defined (OpenAPI) HTTP API', () => {
+    expect(isBodyDefinedHttpApi({ Body: { openapi: '3.0.1', paths: {} } })).toBe(true);
+  });
+
+  it('detects a BodyS3Location-defined HTTP API', () => {
+    expect(isBodyDefinedHttpApi({ BodyS3Location: { Bucket: 'b', Key: 'spec.yaml' } })).toBe(true);
+  });
+
+  it('is false for a child-resource-defined HTTP API (ProtocolType only)', () => {
+    expect(isBodyDefinedHttpApi({ ProtocolType: 'HTTP', Name: 'my-api' })).toBe(false);
+  });
+
+  it('is false when Body is absent / null', () => {
+    expect(isBodyDefinedHttpApi({})).toBe(false);
+    expect(isBodyDefinedHttpApi({ Body: null, BodyS3Location: undefined })).toBe(false);
+  });
+
+  it('detects a quick-create (Target) HTTP API', () => {
+    expect(isQuickCreateHttpApi({ ProtocolType: 'HTTP', Target: 'arn:aws:lambda:...' })).toBe(true);
+  });
+
+  it('is false for a non-quick-create HTTP API (no Target)', () => {
+    expect(isQuickCreateHttpApi({ ProtocolType: 'HTTP', Name: 'my-api' })).toBe(false);
+    expect(isQuickCreateHttpApi({ Target: null })).toBe(false);
   });
 });
 

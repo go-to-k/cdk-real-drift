@@ -766,6 +766,26 @@ async function getAllGatewayResponses(
 // identifier (`ApiId|RouteId` / `ApiId|IntegrationId` / `AuthorizerId|ApiId` /
 // `ApiId|StageName`), so revert deletes generically.
 
+// An AWS::ApiGatewayV2::Api (HTTP API) has the same two template-inline definition modes
+// as a REST api (issue #714 / #960):
+//   1. Body-defined (OpenAPI import): a `Body` / `BodyS3Location` property — CloudFormation
+//      materializes every Route, Integration, and Authorizer (x-amazon-apigateway-authorizer)
+//      FROM the spec, with no sibling AWS::ApiGatewayV2::Route / Integration / Authorizer
+//      template resources to diff against. Stages are NOT spec-materialized in Body mode.
+//   2. Quick create: a `Target` (+ optional RouteKey / CredentialsArn) — the service produces
+//      an API with an integration, a default catch-all route, and a `$default` stage
+//      configured to auto-deploy, none of which is a separate template resource.
+// In either mode the spec-/quick-create-materialized children have no per-child template
+// declaration, so every live one would otherwise flag as an out-of-band `added` on a clean
+// deploy. Detect the mode from the declared Properties so child enumeration can be suppressed.
+export function isBodyDefinedHttpApi(declared: Record<string, unknown>): boolean {
+  return declared.Body != null || declared.BodyS3Location != null;
+}
+
+export function isQuickCreateHttpApi(declared: Record<string, unknown>): boolean {
+  return declared.Target != null;
+}
+
 // Pure diff: declared child id sets + live inventory -> the added children. Separated
 // from the SDK calls so the matching is unit-tested offline (mirrors REST).
 export interface ApiGatewayV2ChildInput {
@@ -774,10 +794,27 @@ export interface ApiGatewayV2ChildInput {
   declaredIntegrationIds: string[]; // physical ids of AWS::ApiGatewayV2::Integration
   liveRoutes: { id: string; key?: string | undefined }[];
   liveIntegrations: { id: string; label?: string | undefined }[];
+  // The Api is Body-defined (OpenAPI) OR quick-create (Target): its Routes / Integrations are
+  // materialized by the service FROM the declared spec / target, not from sibling template
+  // resources, so there is nothing to diff them against. When set, route/integration diffing is
+  // skipped entirely (returns []) — otherwise every materialized route/integration is a
+  // first-run false positive on a clean deploy (issue #960, the V2 twin of #714).
+  specMaterialized?: boolean | undefined;
 }
 
 export function diffApiGatewayV2Children(input: ApiGatewayV2ChildInput): AddedChild[] {
-  const { apiId, declaredRouteIds, declaredIntegrationIds, liveRoutes, liveIntegrations } = input;
+  const {
+    apiId,
+    declaredRouteIds,
+    declaredIntegrationIds,
+    liveRoutes,
+    liveIntegrations,
+    specMaterialized,
+  } = input;
+  // Body-defined (OpenAPI) / quick-create (Target) Api: routes/integrations come from the spec /
+  // target, not from sibling template resources, so there is nothing to diff them against.
+  // Suppress the `added` classification for every materialized route/integration (issue #960).
+  if (specMaterialized) return [];
   const declaredRoutes = new Set(declaredRouteIds);
   const declaredIntegrations = new Set(declaredIntegrationIds);
   const added: AddedChild[] = [];
@@ -843,8 +880,17 @@ export function diffApiGatewayV2Authorizers(input: {
   apiId: string;
   declaredAuthorizerIds: string[]; // physical ids (AuthorizerIds) of AWS::ApiGatewayV2::Authorizer
   liveAuthorizers: { id: string; label?: string | undefined }[];
+  // The Api is Body-defined (OpenAPI): CloudFormation materializes its authorizers from the
+  // spec's `x-amazon-apigateway-authorizer` entries, not from sibling
+  // AWS::ApiGatewayV2::Authorizer template resources. When set, authorizer diffing is skipped
+  // entirely (issue #960). Quick create (Target) never materializes an authorizer, so this
+  // covers the Body/BodyS3Location case only.
+  bodyDefined?: boolean | undefined;
 }): AddedChild[] {
-  const { apiId, declaredAuthorizerIds, liveAuthorizers } = input;
+  const { apiId, declaredAuthorizerIds, liveAuthorizers, bodyDefined } = input;
+  // Body-defined (OpenAPI) Api: authorizers come from the spec, not from sibling template
+  // resources, so there is nothing to diff them against (issue #960).
+  if (bodyDefined) return [];
   const declared = new Set(declaredAuthorizerIds);
   const added: AddedChild[] = [];
   for (const a of liveAuthorizers) {
@@ -882,12 +928,20 @@ export function diffApiGatewayV2Stages(input: {
   apiId: string;
   declaredStageNames: string[]; // physical ids (StageNames) of AWS::ApiGatewayV2::Stage
   liveStages: { name: string; label?: string | undefined }[];
+  // The Api is quick-create (Target): the service auto-creates a `$default` stage configured to
+  // auto-deploy, with no sibling AWS::ApiGatewayV2::Stage template resource. Suppress only that
+  // `$default` stage — a user can still declare EXTRA stages on a quick-create API, and those
+  // stay diffable (issue #960). Body-defined APIs do NOT materialize stages from the spec, so
+  // stage diffing stays fully on for them (this flag is set for quick create only).
+  quickCreate?: boolean | undefined;
 }): AddedChild[] {
-  const { apiId, declaredStageNames, liveStages } = input;
+  const { apiId, declaredStageNames, liveStages, quickCreate } = input;
   const declared = new Set(declaredStageNames);
   const added: AddedChild[] = [];
   for (const s of liveStages) {
     if (declared.has(s.name)) continue;
+    // Quick create owns the auto-deployed `$default` stage; it is not an out-of-band addition.
+    if (quickCreate && s.name === '$default') continue;
     added.push({
       resourceType: 'AWS::ApiGatewayV2::Stage',
       identifier: `${apiId}|${s.name}`, // CC composite ApiId|StageName
@@ -913,6 +967,18 @@ async function enumerateHttpApiChildren(ctx: EnumeratorContext): Promise<AddedCh
   const { parent, desired, region } = ctx;
   const apiId = parent.physicalId;
   if (!apiId) return [];
+
+  // Body-defined (OpenAPI) or quick-create (Target) HTTP API: CloudFormation / the service
+  // materializes its Routes / Integrations (both modes) and Authorizers (Body only) and the
+  // `$default` Stage (quick create only) FROM the declared spec / target, with no sibling
+  // AWS::ApiGatewayV2::Route / Integration / Authorizer / Stage template resources to diff
+  // against. Suppress enumerating those materialized children as `added` — otherwise every one
+  // is a first-run false positive on a clean deploy (issue #960, the V2 twin of #714).
+  // Explicitly declared EXTRA stages (Body mode) / non-`$default` stages (quick create) still
+  // enumerate below.
+  const bodyDefined = isBodyDefinedHttpApi(parent.declared);
+  const quickCreate = isQuickCreateHttpApi(parent.declared);
+  const specMaterialized = bodyDefined || quickCreate;
 
   // Declared children of THIS api (Ref/GetAtt ApiId already resolved to the physical id
   // by gather). Route/Integration physical ids ARE the RouteId/IntegrationId.
@@ -967,16 +1033,19 @@ async function enumerateHttpApiChildren(ctx: EnumeratorContext): Promise<AddedCh
     declaredIntegrationIds,
     liveRoutes,
     liveIntegrations,
+    specMaterialized,
   });
   const authorizerAdded = diffApiGatewayV2Authorizers({
     apiId,
     declaredAuthorizerIds,
     liveAuthorizers,
+    bodyDefined,
   });
   const stageAdded = diffApiGatewayV2Stages({
     apiId,
     declaredStageNames,
     liveStages,
+    quickCreate,
   });
   return added.concat(authorizerAdded, stageAdded);
 }
