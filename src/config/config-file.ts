@@ -45,8 +45,9 @@
 //       stack: Prod*
 //       region: ap-northeast-1
 
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
+import { pid } from 'node:process';
 import { type Document, isSeq, parseDocument, YAMLSeq } from 'yaml';
 import { matchesGlob, matchesPathGlob } from '../commands/glob-match.js';
 import { withinStackPath } from '../construct-path.js';
@@ -346,17 +347,50 @@ function appendRulesToYaml(existingRaw: string | undefined, added: IgnoreRuleObj
 }
 
 /**
+ * Atomically replace `dest` with `content` (same filesystem): write to a sibling temp file
+ * in the SAME directory, then `rename` it over `dest`. `rename` is atomic on one filesystem,
+ * so a concurrent reader (`loadConfig`) never observes a half-written file — it sees either
+ * the old bytes or the new bytes in full, never a TRUNCATED-but-still-valid YAML (issue
+ * #759): a crash/Ctrl-C mid-`writeFile` could otherwise leave e.g. a truncated bare-scalar
+ * glob `path: Api` that OVER-matches, which `loadConfig` would accept silently. The temp file
+ * MUST be a SIBLING (same dir) so the rename stays within one filesystem — a rename across
+ * filesystems is not atomic (it degrades to copy+unlink). The pid + a monotonic counter keep
+ * the temp name unique per concurrent writer so two racing processes don't clobber each
+ * other's temp file. On any failure the temp file is cleaned up so it can't accumulate.
+ */
+let tmpCounter = 0;
+async function atomicWrite(dest: string, content: string): Promise<void> {
+  const tmp = `${dest}.${pid}.${tmpCounter++}.tmp`;
+  try {
+    await writeFile(tmp, content);
+    await rename(tmp, dest);
+  } catch (e) {
+    // Best-effort cleanup of the orphaned temp file (rename may have already consumed it,
+    // in which case unlink ENOENTs — ignore that and any other cleanup error, and rethrow
+    // the ORIGINAL failure that matters).
+    await unlink(tmp).catch(() => {});
+    throw e;
+  }
+}
+
+/**
  * Append ignore rules to `.cdkrd/ignore.yaml` (cwd-relative), creating the file (and
  * the `.cdkrd/` dir) if absent. Idempotent: rules already present are reported, not
  * duplicated. Loads through `loadConfig` first so a malformed config fails fast rather
  * than being silently overwritten. Returns the path + what changed so the caller can
  * report it. The only mutating entry point for config (parallel to `writeBaseline`).
+ *
+ * The write is ATOMIC (tmp file + `rename`, see `atomicWrite`) so a crash mid-write can
+ * never leave a truncated-but-valid config (#759). To narrow the read-merge-write race with
+ * a concurrent `cdkrd` process, the on-disk config is RE-READ immediately before the write
+ * and the incoming rules merged against THAT fresh state — so a rule another process
+ * appended between our initial `loadConfig` and our write is preserved, not clobbered.
  */
 export async function addIgnoreRules(
   newRules: IgnoreRuleObject[]
 ): Promise<{ path: string; added: IgnoreRuleObject[]; alreadyPresent: IgnoreRuleObject[] }> {
   const config = await loadConfig(); // validates first — a malformed file throws, not overwritten
-  const { added, alreadyPresent } = mergeIgnoreRules(config.ignore, newRules);
+  const firstPass = mergeIgnoreRules(config.ignore, newRules);
   // Re-validate the rules we are ABOUT to write with the SAME guards `loadConfig` applies
   // on read (`validateIgnoreEntry`: empty-path + `isUniversalPath` + typed keys). This is
   // the write-side twin of the read-side fail-fast: without it, a rule whose `path` is
@@ -365,19 +399,34 @@ export async function addIgnoreRules(
   // permanently bricking the file, i.e. the user's own `ignore` silently disables the
   // tool (issue #991). Fail fast BEFORE writeFile so `ignore` can never write a poison
   // pill (also self-guards a hand-authored bad rule appended through the verb).
-  added.forEach((rule, i) => validateIgnoreEntry(rule, i));
+  firstPass.added.forEach((rule, i) => validateIgnoreEntry(rule, i));
   // Only touch disk when something actually changed — an all-already-present run leaves
   // the file (and its git status) untouched.
-  if (added.length > 0) {
-    let existingRaw: string | undefined;
-    try {
-      existingRaw = await readFile(CONFIG_PATH, 'utf8');
-    } catch (e) {
-      if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
-    }
-    await mkdir(dirname(CONFIG_PATH), { recursive: true });
-    await writeFile(CONFIG_PATH, appendRulesToYaml(existingRaw, added));
+  if (firstPass.added.length === 0) {
+    return { path: CONFIG_PATH, added: firstPass.added, alreadyPresent: firstPass.alreadyPresent };
   }
+  await mkdir(dirname(CONFIG_PATH), { recursive: true });
+  // Narrow the read-merge-write race (#759): RE-READ the file right before the write and
+  // merge the requested rules against THAT fresh on-disk state. If a concurrent process
+  // appended rules between our initial `loadConfig` and here, its rules are in `existingRaw`
+  // and are carried forward (we append to them) instead of being clobbered by a write built
+  // from the stale first read. Re-run the dedupe against the fresh existing rules so a rule
+  // the other process ALSO just added is not written twice.
+  let existingRaw: string | undefined;
+  try {
+    existingRaw = await readFile(CONFIG_PATH, 'utf8');
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
+  }
+  const existingRules =
+    existingRaw !== undefined && existingRaw.trim() !== '' ? (await loadConfig()).ignore : [];
+  const { added, alreadyPresent } = mergeIgnoreRules(existingRules, newRules);
+  if (added.length === 0) {
+    // A concurrent writer already added every rule we wanted between our two reads — report
+    // them as already-present and leave the file untouched.
+    return { path: CONFIG_PATH, added, alreadyPresent };
+  }
+  await atomicWrite(CONFIG_PATH, appendRulesToYaml(existingRaw, added));
   return { path: CONFIG_PATH, added, alreadyPresent };
 }
 
