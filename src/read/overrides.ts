@@ -29,6 +29,7 @@ import {
   DescribeDBClustersCommand,
   DescribeDBInstancesCommand,
   DocDBClient,
+  ListTagsForResourceCommand as DocDbListTagsForResourceCommand,
 } from '@aws-sdk/client-docdb';
 import {
   CloudWatchLogsClient,
@@ -110,6 +111,7 @@ import {
   DescribeReplicationInstancesCommand,
   DescribeReplicationSubnetGroupsCommand,
   DescribeReplicationTasksCommand,
+  ListTagsForResourceCommand as DmsListTagsForResourceCommand,
 } from '@aws-sdk/client-database-migration-service';
 import {
   DescribeResourceCommand,
@@ -157,6 +159,7 @@ import {
 import { DescribeParametersCommand, SSMClient } from '@aws-sdk/client-ssm';
 import {
   DescribeEndpointConfigCommand,
+  ListTagsCommand as SageMakerListTagsCommand,
   type ProductionVariant,
   SageMakerClient,
 } from '@aws-sdk/client-sagemaker';
@@ -168,6 +171,7 @@ import {
 import { GetTopicAttributesCommand, SNSClient } from '@aws-sdk/client-sns';
 import { GetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { ResourceGoneError } from '../aws-errors.js';
+import { partitionForRegion } from '../desired/template-adapter.js';
 import { READ_RETRY } from './client-config.js';
 import { isDefinitiveDenial } from './kms-aliases.js';
 import { hashCaBundle, sha256Hex } from './pem.js';
@@ -210,6 +214,35 @@ function safeDecode(s: string): string {
   } catch {
     return s;
   }
+}
+
+// A live tag list ([{Key?, Value?}, ...] as most SDKs return it) mapped to the CFn
+// `Tags` shape ([{Key, Value}, ...]), keyed off a present Key and defaulting a missing
+// Value to '' — the same normalization readAcmCertificate uses. Returns undefined when
+// there are no keyed tags so the caller can OMIT `Tags` (absent stays absent = FP-safe).
+function projectTagList(
+  tags: { Key?: string | undefined; Value?: string | undefined }[] | undefined
+): { Key: string; Value: string }[] | undefined {
+  const out = (tags ?? [])
+    .filter((t) => str(t.Key) !== undefined)
+    .map((t) => ({ Key: t.Key as string, Value: t.Value ?? '' }));
+  return out.length > 0 ? out : undefined;
+}
+
+// The declared `Tags` mirrored into the CFn shape ([{Key, Value}, ...]), for the
+// degrade path when a ListTags*/ListTagsForResource call FAILS. Silently omitting live
+// Tags after a tag-fetch failure would read back as Tags=undefined, which false-flags a
+// `declared`-tier drift against a declared non-empty Tags array (and revert would offer
+// a bogus re-write). Mirroring the declared Tags makes the compare equal (no FP); the
+// caller ALSO emits a one-line stderr warning so the omission is not silent. This is the
+// #1086 (readAcmCertificate) degrade shape. Returns undefined when nothing was declared.
+function mirrorDeclaredTags(declaredTags: unknown): { Key: string; Value: string }[] | undefined {
+  if (!Array.isArray(declaredTags)) return undefined;
+  const out = declaredTags
+    .filter((t): t is Record<string, unknown> => typeof t === 'object' && t !== null)
+    .filter((t) => str(t.Key) !== undefined)
+    .map((t) => ({ Key: t.Key as string, Value: str(t.Value) ?? '' }));
+  return out.length > 0 ? out : undefined;
 }
 
 const readS3BucketPolicy: OverrideReader = async ({ declared, region }) => {
@@ -723,7 +756,34 @@ const readDlmLifecyclePolicy: OverrideReader = async ({ physicalId, declared, re
 // the deliverable. Read-ONLY: a ModifyEndpoint writer is deferred to a follow-up (revert of
 // connection settings needs per-engine care). A deleted endpoint surfaces as
 // ResourceNotFoundFault → the router maps it to `deleted`.
-const readDmsEndpoint: OverrideReader = async ({ physicalId, region }) => {
+// Fetch a resource's live tags via DMS dms:ListTagsForResource (the ARN is the tag
+// address) and project them onto the model's `Tags`, degrading — mirror declared Tags +
+// warn — on failure so a tag-fetch permission gap / throttle does not false-flag a
+// `declared`-tier Tags drift (the readAcmCertificate / #1086 pattern; #1287). DMS
+// describes DO NOT carry Tags, so without this any DMS resource in a `Tags.of(app)`
+// app false-flagged `Tags desired=[…] actual=undefined` on every check.
+async function attachDmsTags(
+  c: DatabaseMigrationServiceClient,
+  arn: string,
+  declared: Record<string, unknown>,
+  model: Record<string, unknown>,
+  label: string
+): Promise<void> {
+  try {
+    const t = await c.send(new DmsListTagsForResourceCommand({ ResourceArn: arn }));
+    const tags = projectTagList(t.TagList);
+    if (tags) model.Tags = tags;
+  } catch (err) {
+    const mirrored = mirrorDeclaredTags(declared.Tags);
+    if (mirrored) model.Tags = mirrored;
+    const call = (err as Error)?.name || 'unknown error';
+    process.stderr.write(
+      `[cdkrd] warning: DMS ListTagsForResource for ${label} (${arn}) failed (${call}) — mirroring declared Tags to avoid a false drift; grant dms:ListTagsForResource to detect out-of-band tag changes\n`
+    );
+  }
+}
+
+const readDmsEndpoint: OverrideReader = async ({ physicalId, declared, region }) => {
   const id = str(physicalId);
   if (!id) return undefined;
   const c = new DatabaseMigrationServiceClient({ region, ...READ_RETRY });
@@ -747,6 +807,10 @@ const readDmsEndpoint: OverrideReader = async ({ physicalId, region }) => {
   if (str(e.KmsKeyId)) model.KmsKeyId = e.KmsKeyId;
   if (str(e.CertificateArn)) model.CertificateArn = e.CertificateArn;
   if (str(e.SslMode)) model.SslMode = e.SslMode;
+  // Tags — DescribeEndpoints does not carry them; the EndpointArn is the tag address
+  // (fall back to an arn-form physical id).
+  const tagArn = str(e.EndpointArn) ?? (id.startsWith('arn:') ? id : undefined);
+  if (tagArn) await attachDmsTags(c, tagArn, declared, model, 'Endpoint');
   return model;
 };
 
@@ -759,7 +823,12 @@ const readDmsEndpoint: OverrideReader = async ({ physicalId, region }) => {
 // order difference is not false drift; DMS does not preserve the declared order). Read-ONLY
 // (ModifyReplicationSubnetGroup deferred). AWS lowercases the identifier, and CFn's Ref
 // resolves to that lowercased form, so the identity round-trips.
-const readDmsReplicationSubnetGroup: OverrideReader = async ({ physicalId, region }) => {
+const readDmsReplicationSubnetGroup: OverrideReader = async ({
+  physicalId,
+  declared,
+  region,
+  accountId,
+}) => {
   const id = str(physicalId);
   if (!id) return undefined;
   const c = new DatabaseMigrationServiceClient({ region, ...READ_RETRY });
@@ -771,8 +840,8 @@ const readDmsReplicationSubnetGroup: OverrideReader = async ({ physicalId, regio
   const g = r.ReplicationSubnetGroups?.[0];
   if (!g) throw new ResourceGoneError(`DMS ReplicationSubnetGroup ${id} absent`);
   const model: Record<string, unknown> = {};
-  if (str(g.ReplicationSubnetGroupIdentifier))
-    model.ReplicationSubnetGroupIdentifier = g.ReplicationSubnetGroupIdentifier;
+  const identifier = str(g.ReplicationSubnetGroupIdentifier);
+  if (identifier) model.ReplicationSubnetGroupIdentifier = identifier;
   if (str(g.ReplicationSubnetGroupDescription))
     model.ReplicationSubnetGroupDescription = g.ReplicationSubnetGroupDescription;
   const subnetIds = (g.Subnets ?? [])
@@ -780,6 +849,14 @@ const readDmsReplicationSubnetGroup: OverrideReader = async ({ physicalId, regio
     .filter((v): v is string => v !== undefined)
     .sort();
   if (subnetIds.length > 0) model.SubnetIds = subnetIds;
+  // Tags — DescribeReplicationSubnetGroups carries no ARN, so synthesize the subnet-group
+  // ARN (`arn:<partition>:dms:<region>:<account>:subgrp:<identifier>`) for the tag address.
+  const subgrpId = identifier ?? id;
+  if (accountId && subgrpId) {
+    const { partition } = partitionForRegion(region);
+    const arn = `arn:${partition}:dms:${region}:${accountId}:subgrp:${subgrpId}`;
+    await attachDmsTags(c, arn, declared, model, 'ReplicationSubnetGroup');
+  }
   return model;
 };
 
@@ -798,7 +875,7 @@ const readDmsReplicationSubnetGroup: OverrideReader = async ({ physicalId, regio
 // difference is not false drift). Read-ONLY: a ModifyReplicationInstance writer is deferred to a
 // follow-up. A deleted instance surfaces as ResourceNotFoundFault → the router maps it to
 // `deleted`; an empty result → ResourceGoneError with the same effect.
-const readDmsReplicationInstance: OverrideReader = async ({ physicalId, region }) => {
+const readDmsReplicationInstance: OverrideReader = async ({ physicalId, declared, region }) => {
   const id = str(physicalId);
   if (!id) return undefined;
   const c = new DatabaseMigrationServiceClient({ region, ...READ_RETRY });
@@ -823,6 +900,14 @@ const readDmsReplicationInstance: OverrideReader = async ({ physicalId, region }
   if (str(i.PreferredMaintenanceWindow))
     model.PreferredMaintenanceWindow = i.PreferredMaintenanceWindow;
   if (str(i.KmsKeyId)) model.KmsKeyId = i.KmsKeyId;
+  // NetworkType (mutable, writable) + DnsNameServers (writable) are BOTH returned by
+  // DescribeReplicationInstances and modeled in the CFn schema, but were omitted — an
+  // out-of-band NetworkType flip (e.g. IPV4 -> DUAL) was invisible (a readGap FN).
+  // Project present-only. NOTE: the `NetworkType: "IPV4"` KNOWN_DEFAULTS fold (so an
+  // UNDECLARED IPV4 default folds atDefault on a first check) lives in noise.ts, which is
+  // off-limits here — that fold is a follow-up; this projection is the read-side fix.
+  if (str(i.NetworkType)) model.NetworkType = i.NetworkType;
+  if (str(i.DnsNameServers)) model.DnsNameServers = i.DnsNameServers;
   if (str(i.ReplicationSubnetGroup?.ReplicationSubnetGroupIdentifier))
     model.ReplicationSubnetGroupIdentifier =
       i.ReplicationSubnetGroup?.ReplicationSubnetGroupIdentifier;
@@ -831,6 +916,10 @@ const readDmsReplicationInstance: OverrideReader = async ({ physicalId, region }
     .filter((v): v is string => v !== undefined)
     .sort();
   if (sgIds.length > 0) model.VpcSecurityGroupIds = sgIds;
+  // Tags — DescribeReplicationInstances does not carry them; ReplicationInstanceArn is the
+  // tag address (fall back to an arn-form physical id).
+  const tagArn = str(i.ReplicationInstanceArn) ?? (id.startsWith('arn:') ? id : undefined);
+  if (tagArn) await attachDmsTags(c, tagArn, declared, model, 'ReplicationInstance');
   return model;
 };
 
@@ -847,7 +936,7 @@ const readDmsReplicationInstance: OverrideReader = async ({ physicalId, region }
 // and an unparseable blob falls back to the raw string. Read-ONLY (ModifyReplicationTask
 // deferred). A deleted task surfaces as ResourceNotFoundFault → `deleted`; an empty result →
 // ResourceGoneError.
-const readDmsReplicationTask: OverrideReader = async ({ physicalId, region }) => {
+const readDmsReplicationTask: OverrideReader = async ({ physicalId, declared, region }) => {
   const id = str(physicalId);
   if (!id) return undefined;
   const c = new DatabaseMigrationServiceClient({ region, ...READ_RETRY });
@@ -882,6 +971,10 @@ const readDmsReplicationTask: OverrideReader = async ({ physicalId, region }) =>
   if (str(t.CdcStartPosition)) model.CdcStartPosition = t.CdcStartPosition;
   if (str(t.CdcStopPosition)) model.CdcStopPosition = t.CdcStopPosition;
   if (str(t.TaskData)) model.TaskData = t.TaskData;
+  // Tags — DescribeReplicationTasks does not carry them; ReplicationTaskArn is the tag
+  // address (fall back to an arn-form physical id).
+  const tagArn = str(t.ReplicationTaskArn) ?? (id.startsWith('arn:') ? id : undefined);
+  if (tagArn) await attachDmsTags(c, tagArn, declared, model, 'ReplicationTask');
   return model;
 };
 
@@ -1747,9 +1840,12 @@ const readGlueSecurityConfiguration: OverrideReader = async ({ physicalId, decla
 // ManagedInstanceScaling / RoutingConfig / InstancePools / CapacityReservationConfig) match the
 // CFn definitions 1:1 and pass through verbatim when present.
 //
-// Tags are NOT projected: DescribeEndpointConfig does not return them (there is no `Tags` field
-// on the response — tags come from a separate ListTags call), so there is nothing to map; a
-// declared Tags stays a readGap rather than a false `desired=[…] actual=undefined` drift.
+// Tags: DescribeEndpointConfig does NOT return them (there is no `Tags` field on the response),
+// so they come from a separate SageMaker ListTags call keyed on the EndpointConfigArn (#1287).
+// Without this a declared non-empty Tags array read back as Tags=undefined -> a false
+// `declared`-tier `desired=[…] actual=undefined` drift on every tagged endpoint config (a
+// `Tags.of(app)` app tags them all). On a ListTags failure, MIRROR declared Tags + warn on
+// stderr (the readAcmCertificate / #1086 degrade shape) so a permission gap does not false-flag.
 // Read-ONLY: the endpoint config is immutable (every mutable property is createOnly in the
 // schema — you replace, not update — and there is no UpdateEndpointConfig API), so there is no
 // in-place revert to offer. A deleted config surfaces as ResourceNotFound / ValidationException
@@ -1783,7 +1879,12 @@ const projectSageMakerVariant = (v: ProductionVariant): Record<string, unknown> 
   // permanent undeclared false inventory.
   return out;
 };
-const readSageMakerEndpointConfig: OverrideReader = async ({ physicalId, declared, region }) => {
+const readSageMakerEndpointConfig: OverrideReader = async ({
+  physicalId,
+  declared,
+  region,
+  accountId,
+}) => {
   const name = str(physicalId) ?? str(declared.EndpointConfigName);
   if (!name) return undefined;
   const c = new SageMakerClient({ region, ...READ_RETRY });
@@ -1805,6 +1906,27 @@ const readSageMakerEndpointConfig: OverrideReader = async ({ physicalId, declare
     model.EnableNetworkIsolation = r.EnableNetworkIsolation;
   if (str(r.ExecutionRoleArn)) model.ExecutionRoleArn = r.ExecutionRoleArn;
   if (r.VpcConfig !== undefined) model.VpcConfig = r.VpcConfig;
+  // Tags — a separate SageMaker sagemaker:ListTags call keyed on the EndpointConfigArn (the
+  // response's ARN, else synthesize it). On failure, mirror declared Tags + warn (see note).
+  const tagArn =
+    str(r.EndpointConfigArn) ??
+    (accountId
+      ? `arn:${partitionForRegion(region).partition}:sagemaker:${region}:${accountId}:endpoint-config/${name}`
+      : undefined);
+  if (tagArn) {
+    try {
+      const t = await c.send(new SageMakerListTagsCommand({ ResourceArn: tagArn }));
+      const tags = projectTagList(t.Tags);
+      if (tags) model.Tags = tags;
+    } catch (err) {
+      const mirrored = mirrorDeclaredTags(declared.Tags);
+      if (mirrored) model.Tags = mirrored;
+      const call = (err as Error)?.name || 'unknown error';
+      process.stderr.write(
+        `[cdkrd] warning: SageMaker ListTags for EndpointConfig (${tagArn}) failed (${call}) — mirroring declared Tags to avoid a false drift; grant sagemaker:ListTags to detect out-of-band tag changes\n`
+      );
+    }
+  }
   // EndpointConfigArn / CreationTime are AWS-managed readOnly response fields NOT in the CFn
   // schema — dropped (projecting them would be a permanent undeclared false inventory).
   return model;
@@ -2189,7 +2311,33 @@ const readServiceDiscoveryService: OverrideReader = async ({ physicalId, region 
 // deliberately NOT projected — it is create-only and AWS may reorder it, an FP surface
 // with no detection benefit (same rule as Subnet AZ). An absent cluster returns
 // undefined (-> skipped; a genuinely deleted one throws DBClusterNotFoundFault -> deleted).
-const readDocDbCluster: OverrideReader = async ({ physicalId, declared, region }) => {
+// Fetch a DocDB resource's live tags via docdb:ListTagsForResource (the ARN is the
+// `ResourceName` tag address) onto `Tags`, degrading — mirror declared Tags + warn — on
+// failure (the readAcmCertificate / #1086 shape; #1287). DescribeDBClusters /
+// DescribeDBInstances do NOT carry Tags, so without this any DocDB resource in a
+// `Tags.of(app)` app false-flagged `Tags desired=[…] actual=undefined` on every check.
+async function attachDocDbTags(
+  c: DocDBClient,
+  arn: string,
+  declared: Record<string, unknown>,
+  model: Record<string, unknown>,
+  label: string
+): Promise<void> {
+  try {
+    const t = await c.send(new DocDbListTagsForResourceCommand({ ResourceName: arn }));
+    const tags = projectTagList(t.TagList);
+    if (tags) model.Tags = tags;
+  } catch (err) {
+    const mirrored = mirrorDeclaredTags(declared.Tags);
+    if (mirrored) model.Tags = mirrored;
+    const call = (err as Error)?.name || 'unknown error';
+    process.stderr.write(
+      `[cdkrd] warning: DocDB ListTagsForResource for ${label} (${arn}) failed (${call}) — mirroring declared Tags to avoid a false drift; grant rds:ListTagsForResource to detect out-of-band tag changes\n`
+    );
+  }
+}
+
+const readDocDbCluster: OverrideReader = async ({ physicalId, declared, region, accountId }) => {
   const id = str(physicalId) ?? str(declared.DBClusterIdentifier);
   if (!id) return undefined;
   const c = new DocDBClient({ region, ...READ_RETRY });
@@ -2218,6 +2366,14 @@ const readDocDbCluster: OverrideReader = async ({ physicalId, declared, region }
     .map((g) => g.VpcSecurityGroupId)
     .filter((s): s is string => s !== undefined);
   if (sgs.length > 0) model.VpcSecurityGroupIds = sgs;
+  // Tags — DescribeDBClusters does not carry them; DBClusterArn is the tag address (else
+  // synthesize the RDS-family cluster ARN).
+  const tagArn =
+    str(cl.DBClusterArn) ??
+    (accountId && id
+      ? `arn:${partitionForRegion(region).partition}:rds:${region}:${accountId}:cluster:${id}`
+      : undefined);
+  if (tagArn) await attachDocDbTags(c, tagArn, declared, model, 'DBCluster');
   return model;
 };
 
@@ -2225,7 +2381,7 @@ const readDocDbCluster: OverrideReader = async ({ physicalId, declared, region }
 // physical id IS the DBInstanceIdentifier. Project the CFn-modeled props, mapping
 // PerformanceInsightsEnabled -> EnablePerformanceInsights. AvailabilityZone is
 // create-only and not projected. Endpoint / Status / InstanceCreateTime are noise.
-const readDocDbInstance: OverrideReader = async ({ physicalId, declared, region }) => {
+const readDocDbInstance: OverrideReader = async ({ physicalId, declared, region, accountId }) => {
   const id = str(physicalId) ?? str(declared.DBInstanceIdentifier);
   if (!id) return undefined;
   const c = new DocDBClient({ region, ...READ_RETRY });
@@ -2245,6 +2401,14 @@ const readDocDbInstance: OverrideReader = async ({ physicalId, declared, region 
     model.CACertificateIdentifier = inst.CACertificateIdentifier;
   if (inst.PerformanceInsightsEnabled !== undefined)
     model.EnablePerformanceInsights = inst.PerformanceInsightsEnabled;
+  // Tags — DescribeDBInstances does not carry them; DBInstanceArn is the tag address (else
+  // synthesize the RDS-family instance ARN).
+  const tagArn =
+    str(inst.DBInstanceArn) ??
+    (accountId && id
+      ? `arn:${partitionForRegion(region).partition}:rds:${region}:${accountId}:db:${id}`
+      : undefined);
+  if (tagArn) await attachDocDbTags(c, tagArn, declared, model, 'DBInstance');
   return model;
 };
 

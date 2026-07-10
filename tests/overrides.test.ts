@@ -7,6 +7,7 @@ import {
   DescribeReplicationInstancesCommand,
   DescribeReplicationSubnetGroupsCommand,
   DescribeReplicationTasksCommand,
+  ListTagsForResourceCommand as DmsListTagsForResourceCommand,
 } from '@aws-sdk/client-database-migration-service';
 import {
   GetJobTemplateCommand,
@@ -58,6 +59,7 @@ import {
   DescribeDBClustersCommand,
   DescribeDBInstancesCommand,
   DocDBClient,
+  ListTagsForResourceCommand as DocDbListTagsForResourceCommand,
 } from '@aws-sdk/client-docdb';
 import {
   CloudWatchLogsClient,
@@ -105,7 +107,7 @@ import {
 import { GetTopicAttributesCommand, SNSClient } from '@aws-sdk/client-sns';
 import { GetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { mockClient } from 'aws-sdk-client-mock';
-import { beforeEach, describe, expect, it } from 'vite-plus/test';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { SDK_OVERRIDES, SDK_SUPPLEMENTS } from '../src/read/overrides.js';
 import { ResourceGoneError } from '../src/aws-errors.js';
 import { KNOWN_DEFAULTS } from '../src/normalize/noise.js';
@@ -176,6 +178,11 @@ beforeEach(() => {
     eb,
   ])
     m.reset();
+  // #1287 — the DMS/DocDB readers now fetch tags via ListTagsForResource. Default them to
+  // empty so unrelated cases exercise the (Tags-absent) success path, not the degrade warn.
+  // A case that wants to assert tag projection / degrade overrides this per-test.
+  dms.on(DmsListTagsForResourceCommand).resolves({ TagList: [] });
+  docdb.on(DocDbListTagsForResourceCommand).resolves({ TagList: [] });
 });
 
 describe('SDK overrides', () => {
@@ -1677,6 +1684,215 @@ describe('SDK overrides', () => {
       await expect(
         SDK_OVERRIDES['AWS::DMS::ReplicationTask'](ctx({}, 'my-task'))
       ).rejects.toBeInstanceOf(ResourceGoneError);
+    });
+  });
+
+  describe('DMS Tags via ListTagsForResource (#1287)', () => {
+    const ENDPOINT_ARN = 'arn:aws:dms:us-east-1:123456789012:endpoint:ABCDEF';
+
+    it('Endpoint: projects live Tags from ListTagsForResource (no false declared-Tags drift)', async () => {
+      dms.on(DescribeEndpointsCommand).resolves({
+        Endpoints: [{ EndpointArn: ENDPOINT_ARN, EndpointIdentifier: 'src', EngineName: 'mysql' }],
+      } as never);
+      dms.on(DmsListTagsForResourceCommand).resolves({
+        TagList: [
+          { Key: 'Env', Value: 'prod' },
+          { Key: 'Team', Value: 'data' },
+        ],
+      });
+      // The template DECLARES Tags. Without projecting the live tags the model would omit Tags
+      // (actual=undefined) → a false `declared`-tier drift on a tagged endpoint.
+      const out = (await SDK_OVERRIDES['AWS::DMS::Endpoint'](
+        ctx({ EngineName: 'mysql', Tags: [{ Key: 'Env', Value: 'prod' }] }, ENDPOINT_ARN)
+      )) as Record<string, unknown>;
+      expect(out.Tags).toEqual([
+        { Key: 'Env', Value: 'prod' },
+        { Key: 'Team', Value: 'data' },
+      ]);
+      // Tag call is addressed by the EndpointArn.
+      const tagCall = dms.commandCalls(DmsListTagsForResourceCommand)[0]!;
+      expect(tagCall.args[0].input).toEqual({ ResourceArn: ENDPOINT_ARN });
+    });
+
+    it('Endpoint: no live tags -> Tags omitted (absent stays absent, FP-safe)', async () => {
+      dms.on(DescribeEndpointsCommand).resolves({
+        Endpoints: [{ EndpointArn: ENDPOINT_ARN, EndpointIdentifier: 'src', EngineName: 'mysql' }],
+      } as never);
+      dms.on(DmsListTagsForResourceCommand).resolves({ TagList: [] });
+      const out = await SDK_OVERRIDES['AWS::DMS::Endpoint'](ctx({}, ENDPOINT_ARN));
+      expect(out).not.toHaveProperty('Tags');
+    });
+
+    it('Endpoint: ListTagsForResource fails -> mirrors declared Tags + warns (#1086 degrade shape)', async () => {
+      const warn = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
+      dms.on(DescribeEndpointsCommand).resolves({
+        Endpoints: [{ EndpointArn: ENDPOINT_ARN, EndpointIdentifier: 'src', EngineName: 'mysql' }],
+      } as never);
+      dms.on(DmsListTagsForResourceCommand).rejects(new Error('AccessDenied'));
+      const out = (await SDK_OVERRIDES['AWS::DMS::Endpoint'](
+        ctx(
+          {
+            EngineName: 'mysql',
+            Tags: [
+              { Key: 'Env', Value: 'prod' },
+              { Key: 'Team', Value: 'data' },
+            ],
+          },
+          ENDPOINT_ARN
+        )
+      )) as Record<string, unknown>;
+      // Degrade mirrors the DECLARED tags so the compare is equal (no false drift) …
+      expect(out.Tags).toEqual([
+        { Key: 'Env', Value: 'prod' },
+        { Key: 'Team', Value: 'data' },
+      ]);
+      // … and warns on stderr so the omission is not silent.
+      expect(warn.mock.calls[0]?.[0]).toContain('DMS ListTagsForResource');
+      warn.mockRestore();
+    });
+
+    it('ReplicationSubnetGroup: synthesizes the subgrp ARN for the tag address', async () => {
+      dms.on(DescribeReplicationSubnetGroupsCommand).resolves({
+        ReplicationSubnetGroups: [{ ReplicationSubnetGroupIdentifier: 'dms-subnet-grp' }],
+      } as never);
+      dms.on(DmsListTagsForResourceCommand).resolves({ TagList: [{ Key: 'K', Value: 'V' }] });
+      const out = (await SDK_OVERRIDES['AWS::DMS::ReplicationSubnetGroup'](
+        ctx({ Tags: [{ Key: 'K', Value: 'V' }] }, 'dms-subnet-grp')
+      )) as Record<string, unknown>;
+      expect(out.Tags).toEqual([{ Key: 'K', Value: 'V' }]);
+      const tagCall = dms.commandCalls(DmsListTagsForResourceCommand)[0]!;
+      expect(tagCall.args[0].input).toEqual({
+        ResourceArn: 'arn:aws:dms:us-east-1:123456789012:subgrp:dms-subnet-grp',
+      });
+    });
+
+    it('ReplicationInstance: projects live Tags + present-only NetworkType/DnsNameServers', async () => {
+      dms.on(DescribeReplicationInstancesCommand).resolves({
+        ReplicationInstances: [
+          {
+            ReplicationInstanceArn: 'arn:aws:dms:us-east-1:123456789012:rep:ABCDEF',
+            ReplicationInstanceIdentifier: 'my-repl',
+            NetworkType: 'DUAL',
+            DnsNameServers: '10.0.0.2,10.0.0.3',
+          },
+        ],
+      } as never);
+      dms.on(DmsListTagsForResourceCommand).resolves({ TagList: [{ Key: 'Env', Value: 'prod' }] });
+      const out = (await SDK_OVERRIDES['AWS::DMS::ReplicationInstance'](
+        ctx(
+          { Tags: [{ Key: 'Env', Value: 'prod' }] },
+          'arn:aws:dms:us-east-1:123456789012:rep:ABCDEF'
+        )
+      )) as Record<string, unknown>;
+      // NetworkType (mutable) + DnsNameServers now projected → an out-of-band flip is detectable.
+      expect(out.NetworkType).toBe('DUAL');
+      expect(out.DnsNameServers).toBe('10.0.0.2,10.0.0.3');
+      expect(out.Tags).toEqual([{ Key: 'Env', Value: 'prod' }]);
+    });
+
+    it('ReplicationInstance: NetworkType/DnsNameServers ABSENT from the response -> omitted (readGap, no fabrication)', async () => {
+      dms.on(DescribeReplicationInstancesCommand).resolves({
+        ReplicationInstances: [{ ReplicationInstanceIdentifier: 'my-repl' }],
+      } as never);
+      dms.on(DmsListTagsForResourceCommand).resolves({ TagList: [] });
+      const out = await SDK_OVERRIDES['AWS::DMS::ReplicationInstance'](ctx({}, 'my-repl'));
+      expect(out).not.toHaveProperty('NetworkType');
+      expect(out).not.toHaveProperty('DnsNameServers');
+    });
+
+    it('ReplicationTask: projects live Tags addressed by ReplicationTaskArn', async () => {
+      dms.on(DescribeReplicationTasksCommand).resolves({
+        ReplicationTasks: [
+          {
+            ReplicationTaskArn: 'arn:aws:dms:us-east-1:123456789012:task:ABCDEF',
+            ReplicationTaskIdentifier: 'my-task',
+          },
+        ],
+      } as never);
+      dms.on(DmsListTagsForResourceCommand).resolves({ TagList: [{ Key: 'K', Value: 'V' }] });
+      const out = (await SDK_OVERRIDES['AWS::DMS::ReplicationTask'](
+        ctx({ Tags: [{ Key: 'K', Value: 'V' }] }, 'arn:aws:dms:us-east-1:123456789012:task:ABCDEF')
+      )) as Record<string, unknown>;
+      expect(out.Tags).toEqual([{ Key: 'K', Value: 'V' }]);
+      const tagCall = dms.commandCalls(DmsListTagsForResourceCommand)[0]!;
+      expect(tagCall.args[0].input).toEqual({
+        ResourceArn: 'arn:aws:dms:us-east-1:123456789012:task:ABCDEF',
+      });
+    });
+  });
+
+  describe('DocDB Tags via ListTagsForResource (#1287)', () => {
+    it('DBCluster: projects live Tags addressed by DBClusterArn (no false declared-Tags drift)', async () => {
+      docdb.on(DescribeDBClustersCommand).resolves({
+        DBClusters: [
+          {
+            DBClusterIdentifier: 'my-cluster',
+            DBClusterArn: 'arn:aws:rds:us-east-1:123456789012:cluster:my-cluster',
+          },
+        ],
+      } as never);
+      docdb
+        .on(DocDbListTagsForResourceCommand)
+        .resolves({ TagList: [{ Key: 'Env', Value: 'prod' }] });
+      const out = (await SDK_OVERRIDES['AWS::DocDB::DBCluster'](
+        ctx({ Tags: [{ Key: 'Env', Value: 'prod' }] }, 'my-cluster')
+      )) as Record<string, unknown>;
+      expect(out.Tags).toEqual([{ Key: 'Env', Value: 'prod' }]);
+      const tagCall = docdb.commandCalls(DocDbListTagsForResourceCommand)[0]!;
+      expect(tagCall.args[0].input).toEqual({
+        ResourceName: 'arn:aws:rds:us-east-1:123456789012:cluster:my-cluster',
+      });
+    });
+
+    it('DBCluster: no DBClusterArn on the response -> synthesizes the cluster ARN', async () => {
+      docdb.on(DescribeDBClustersCommand).resolves({
+        DBClusters: [{ DBClusterIdentifier: 'my-cluster' }],
+      } as never);
+      docdb.on(DocDbListTagsForResourceCommand).resolves({ TagList: [] });
+      await SDK_OVERRIDES['AWS::DocDB::DBCluster'](ctx({}, 'my-cluster'));
+      const tagCall = docdb.commandCalls(DocDbListTagsForResourceCommand)[0]!;
+      expect(tagCall.args[0].input).toEqual({
+        ResourceName: 'arn:aws:rds:us-east-1:123456789012:cluster:my-cluster',
+      });
+    });
+
+    it('DBCluster: ListTagsForResource fails -> mirrors declared Tags + warns', async () => {
+      const warn = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
+      docdb.on(DescribeDBClustersCommand).resolves({
+        DBClusters: [
+          {
+            DBClusterIdentifier: 'my-cluster',
+            DBClusterArn: 'arn:aws:rds:us-east-1:123456789012:cluster:my-cluster',
+          },
+        ],
+      } as never);
+      docdb.on(DocDbListTagsForResourceCommand).rejects(new Error('AccessDenied'));
+      const out = (await SDK_OVERRIDES['AWS::DocDB::DBCluster'](
+        ctx({ Tags: [{ Key: 'Env', Value: 'prod' }] }, 'my-cluster')
+      )) as Record<string, unknown>;
+      expect(out.Tags).toEqual([{ Key: 'Env', Value: 'prod' }]);
+      expect(warn.mock.calls[0]?.[0]).toContain('DocDB ListTagsForResource');
+      warn.mockRestore();
+    });
+
+    it('DBInstance: projects live Tags addressed by DBInstanceArn', async () => {
+      docdb.on(DescribeDBInstancesCommand).resolves({
+        DBInstances: [
+          {
+            DBInstanceIdentifier: 'inst-1',
+            DBInstanceArn: 'arn:aws:rds:us-east-1:123456789012:db:inst-1',
+          },
+        ],
+      } as never);
+      docdb.on(DocDbListTagsForResourceCommand).resolves({ TagList: [{ Key: 'K', Value: 'V' }] });
+      const out = (await SDK_OVERRIDES['AWS::DocDB::DBInstance'](
+        ctx({ Tags: [{ Key: 'K', Value: 'V' }] }, 'inst-1')
+      )) as Record<string, unknown>;
+      expect(out.Tags).toEqual([{ Key: 'K', Value: 'V' }]);
+      const tagCall = docdb.commandCalls(DocDbListTagsForResourceCommand)[0]!;
+      expect(tagCall.args[0].input).toEqual({
+        ResourceName: 'arn:aws:rds:us-east-1:123456789012:db:inst-1',
+      });
     });
   });
 
