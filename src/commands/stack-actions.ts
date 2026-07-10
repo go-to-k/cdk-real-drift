@@ -1340,23 +1340,38 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   const okIds = new Set(applied.filter((a) => a.ok).map((a) => a.logicalId));
   const preActual = new Map<string, unknown>();
   for (const f of gathered.findings) preActual.set(`${f.logicalId}\0${f.path}`, f.actual);
-  const noOpRemovals: { displayId: string; path: string }[] = [];
+  // #763: an `add`-shaped set-default write (REVERT_SET_DEFAULT_PATHS / KNOWN_DEFAULT_PATHS
+  // — the very fix for the remove no-op) can ITSELF be silently ignored by an
+  // UpdateUserPool-style omit/ignore provider whose EXPLICIT write is also dropped. Its live
+  // value re-reads unchanged, and when the value is UNRECORDED undeclared that re-read is
+  // NON-drift (not `isDrift`) → it escapes `remaining`; the item applied ok → not in
+  // `failedUpdateIds`; the op is `add` → the remove loop above skipped it → falsely CLEAN.
+  // Flag such an add as a no-op when ALL hold: the item applied ok, the post finding at the
+  // path is non-drift, the live value did NOT change across the revert (deepEqual pre/post),
+  // AND the live value is NOT what the add tried to write (`!deepEqual(post, op.value)` — a
+  // successful write that HAPPENED to match op.value is correctly NOT flagged). The
+  // declared/recorded cases stay covered by `remaining` (they re-read as drift); this only
+  // closes the unrecorded corner.
+  const noOpRemovals: { displayId: string; path: string; kind: 'remove' | 'add' }[] = [];
   for (const item of plan.items) {
     if (item.kind === 'delete' || !okIds.has(item.logicalId)) continue;
     for (const op of item.ops) {
-      if (op.op !== 'remove') continue;
+      if (op.op !== 'remove' && op.op !== 'add') continue;
       const dotted = op.path.replace(/^\//, '').replace(/\//g, '.');
       const key = `${item.logicalId}\0${dotted}`;
       if (!preActual.has(key)) continue;
       const pre = preActual.get(key);
-      const persisted = post.some(
-        (f) =>
-          f.logicalId === item.logicalId &&
-          f.path === dotted &&
-          !isDrift(f) &&
-          deepEqual(f.actual, pre)
+      const post0 = post.find(
+        (f) => f.logicalId === item.logicalId && f.path === dotted && !isDrift(f)
       );
-      if (persisted) noOpRemovals.push({ displayId: item.displayId, path: dotted });
+      // Same non-drift persisted-value proof for both op kinds: the pre-revert value is
+      // still live after a SUCCESSFUL apply. For `add`, additionally require the live value
+      // to NOT equal what we tried to write — else a write that landed (post === op.value)
+      // would be mis-flagged.
+      const persisted = post0 !== undefined && deepEqual(post0.actual, pre);
+      const ignoredWrite =
+        op.op === 'remove' ? persisted : persisted && !deepEqual(post0.actual, op.value);
+      if (ignoredWrite) noOpRemovals.push({ displayId: item.displayId, path: dotted, kind: op.op });
     }
   }
   // A touched resource whose verification RE-READ failed (skipped tier — a throttle /
@@ -1374,7 +1389,10 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   for (const n of noOpRemovals)
     out(
       style.fail(
-        `  NOT reverted: ${n.displayId}.${n.path} — removal was a no-op (the provider ignored the omitted property; it needs an explicit default write — see #597 / REVERT_SET_DEFAULT_PATHS)`
+        n.kind === 'remove'
+          ? `  NOT reverted: ${n.displayId}.${n.path} — removal was a no-op (the provider ignored the omitted property; it needs an explicit default write — see #597 / REVERT_SET_DEFAULT_PATHS)`
+          : // #763: the explicit default write was itself ignored by an omit/ignore provider.
+            `  NOT reverted: ${n.displayId}.${n.path} — the default-value write was a no-op (the provider accepted but ignored it; the out-of-band value persists — see #763 / REVERT_SET_DEFAULT_PATHS)`
       )
     );
   const notConverged = unconfirmed + noOpRemovals.length;
