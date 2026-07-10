@@ -19,6 +19,7 @@ import {
   buildClusterEchoModels,
   buildSiblingEventBusPolicies,
   buildSiblingLifecycleHooks,
+  buildSiblingListenerPorts,
   buildSiblingManagedPolicyAttachments,
   buildSiblingSgRules,
   buildSiblingUserGroups,
@@ -1700,5 +1701,69 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
         isDefinitiveNotManaged('arn:aws:iam::111122223333:role/R', LOCAL_ACCOUNT, LOCAL_REGION)
       ).toBe(true);
     });
+  });
+});
+
+describe('buildSiblingListenerPorts (#975)', () => {
+  const desiredWith = (resources: DesiredResource[]): Desired =>
+    ({
+      stackName: 's',
+      region: 'r',
+      accountId: '111111111111',
+      resources,
+      rawTemplate: '',
+      ctx: {} as ResolverContext,
+    }) as Desired;
+
+  it('keys the first PortRanges FromPort by the listener physical id (== ARN)', () => {
+    const map = buildSiblingListenerPorts(
+      desiredWith([
+        {
+          logicalId: 'Listener',
+          resourceType: 'AWS::GlobalAccelerator::Listener',
+          physicalId: 'arn:...:listener/abc',
+          declared: {
+            PortRanges: [
+              { FromPort: 80, ToPort: 80 },
+              { FromPort: 443, ToPort: 443 },
+            ],
+          },
+        } as DesiredResource,
+      ])
+    );
+    expect(map['arn:...:listener/abc']).toBe(80);
+  });
+
+  it('skips a listener with no physical id or no numeric first port (fail-open)', () => {
+    const map = buildSiblingListenerPorts(
+      desiredWith([
+        {
+          logicalId: 'NoPhys',
+          resourceType: 'AWS::GlobalAccelerator::Listener',
+          declared: { PortRanges: [{ FromPort: 80 }] },
+        } as DesiredResource,
+        {
+          logicalId: 'NoPort',
+          resourceType: 'AWS::GlobalAccelerator::Listener',
+          physicalId: 'arn:...:listener/xyz',
+          declared: { PortRanges: [] },
+        } as DesiredResource,
+      ])
+    );
+    expect(map).toEqual({});
+  });
+
+  it('ignores non-listener resource types', () => {
+    const map = buildSiblingListenerPorts(
+      desiredWith([
+        {
+          logicalId: 'Group',
+          resourceType: 'AWS::GlobalAccelerator::EndpointGroup',
+          physicalId: 'arn:...:endpoint-group/g',
+          declared: { PortRanges: [{ FromPort: 80 }] },
+        } as DesiredResource,
+      ])
+    );
+    expect(map).toEqual({});
   });
 });

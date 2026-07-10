@@ -90,6 +90,10 @@ export interface CorpusCase {
     // on an AWS::RDS::OptionGroup case, so replay reproduces the default-fill fold. Optional for
     // back-compat (pre-#978 cases and non-OptionGroup cases lack it).
     rdsOptionSettingDefaults?: Record<string, Record<string, Record<string, string | null>>>;
+    // #975: the sibling listener's first port, keyed by its ARN — present only on an
+    // AWS::GlobalAccelerator::EndpointGroup case (carried by its declared ListenerArn), so replay
+    // reproduces the HealthCheckPort derive. Optional for back-compat (non-EndpointGroup cases lack it).
+    siblingListenerPorts?: Record<string, number>;
   };
   expected: Finding[]; // what classifyResource produced at record time (reviewed at commit)
 }
@@ -124,6 +128,7 @@ export function buildCorpusCase(
     bucketNotificationManaged?: Set<string>;
     clusterEchoModel?: Record<string, Record<string, unknown>>;
     rdsOptionSettingDefaults?: Record<string, Record<string, Record<string, string | null>>>;
+    siblingListenerPorts?: Record<string, number>;
   },
   findings: Finding[]
 ): CorpusCase {
@@ -147,6 +152,16 @@ export function buildCorpusCase(
   const rdsOptCatalog =
     resource.physicalId && opts.rdsOptionSettingDefaults?.[resource.physicalId]
       ? opts.rdsOptionSettingDefaults[resource.physicalId]
+      : undefined;
+  // #975: carry ONLY this EndpointGroup's listener-port entry (keyed by its declared ListenerArn),
+  // so replay reproduces the HealthCheckPort derive without bloating every case with the map.
+  const listenerArn =
+    resource.resourceType === 'AWS::GlobalAccelerator::EndpointGroup'
+      ? (resource.declared as Record<string, unknown>)?.ListenerArn
+      : undefined;
+  const gaListenerPort =
+    typeof listenerArn === 'string' && opts.siblingListenerPorts?.[listenerArn] !== undefined
+      ? { [listenerArn]: opts.siblingListenerPorts[listenerArn] }
       : undefined;
   const c: CorpusCase = {
     corpusVersion: 1,
@@ -189,6 +204,7 @@ export function buildCorpusCase(
       ...(rdsOptCatalog && resource.physicalId
         ? { rdsOptionSettingDefaults: { [resource.physicalId]: rdsOptCatalog } }
         : {}),
+      ...(gaListenerPort ? { siblingListenerPorts: gaListenerPort } : {}),
     },
     expected: findings,
   };

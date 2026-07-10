@@ -576,6 +576,28 @@ export function buildSiblingLifecycleHooks(desired: Desired): Record<string, str
   return map;
 }
 
+// #975: an AWS::GlobalAccelerator::EndpointGroup that omits HealthCheckPort reads back its
+// LISTENER's port (AWS resolves the schema's -1 sentinel default to the listener's first
+// PortRanges FromPort). Map each AWS::GlobalAccelerator::Listener's first port, keyed by the
+// listener's physical id (== its ARN, which the EndpointGroup references via the declared
+// ListenerArn), so classify derives + equality-gates the undeclared HealthCheckPort (see the
+// EndpointGroup block in classifyResource). Fail-open: a listener with no physical id / no numeric
+// first port is skipped (its EndpointGroup then keeps the value as a one-time visible FP, never a
+// hidden change).
+const GA_LISTENER_TYPE = 'AWS::GlobalAccelerator::Listener';
+export function buildSiblingListenerPorts(desired: Desired): Record<string, number> {
+  const map: Record<string, number> = {};
+  for (const r of desired.resources) {
+    if (r.resourceType !== GA_LISTENER_TYPE || !r.physicalId) continue;
+    const ranges = (r.declared as Record<string, unknown> | undefined)?.PortRanges;
+    const first = Array.isArray(ranges) ? ranges[0] : undefined;
+    const from =
+      first && typeof first === 'object' ? (first as Record<string, unknown>).FromPort : undefined;
+    if (typeof from === 'number') map[r.physicalId] = from;
+  }
+  return map;
+}
+
 // Resolve an IAM principal/group reference to the concrete identity the live read echoes: a plain
 // string is the resolved name (== physical id); a `{Ref: logicalId}` resolves via the logical-id ->
 // physical-id map. Any other shape (an unresolved intrinsic) yields undefined -> the caller skips
@@ -987,6 +1009,7 @@ export async function gatherFindings(
     siblingManagedPolicyAttachments: buildSiblingManagedPolicyAttachments(desired),
     siblingUserGroups: buildSiblingUserGroups(desired),
     siblingLifecycleHooks: buildSiblingLifecycleHooks(desired),
+    siblingListenerPorts: buildSiblingListenerPorts(desired),
     bucketNotificationManaged: buildBucketNotificationManaged(desired),
     clusterEchoModel: buildClusterEchoModels(desired),
     rdsOptionSettingDefaults: await buildRdsOptionSettingDefaults(desired, region),
@@ -1079,6 +1102,7 @@ export async function regatherTouched(
     siblingManagedPolicyAttachments: buildSiblingManagedPolicyAttachments(desired),
     siblingUserGroups: buildSiblingUserGroups(desired),
     siblingLifecycleHooks: buildSiblingLifecycleHooks(desired),
+    siblingListenerPorts: buildSiblingListenerPorts(desired),
     bucketNotificationManaged: buildBucketNotificationManaged(desired),
     clusterEchoModel: buildClusterEchoModels(desired),
     rdsOptionSettingDefaults: await buildRdsOptionSettingDefaults(desired, region),
