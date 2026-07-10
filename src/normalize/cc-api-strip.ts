@@ -48,6 +48,10 @@ export const FREE_FORM_MAP_PARENTS = new Set([
   'BackupPlanTags', // AWS::Backup::BackupPlan
   'BackupVaultTags', // AWS::Backup::BackupVault
   'RecoveryPointTags', // AWS::Backup::* recovery points
+  // #1300: additional MAP-shaped primary tag properties from the CFn registry's
+  // tagInformation.tagPropertyName metadata (keys are user strings, must not name-strip).
+  'TieringConfigurationTags', // AWS::Backup::TieringConfiguration
+  'TestAliasTags', // AWS::Bedrock::Agent / AWS::Bedrock::Flow
 ]);
 
 // Tag-property names that carry the same semantics as `Tags` but live under a
@@ -72,6 +76,18 @@ export const TAG_PROPERTY_NAMES: ReadonlySet<string> = new Set([
   'ResourceTags', // AWS::CE::AnomalySubscription (list)
   'FileSystemTags', // AWS::EFS::FileSystem (list)
   'HostedZoneTags', // AWS::Route53::HostedZone (list)
+  // #1300: additional primary/secondary tag property names sourced from the CFn
+  // registry's tagInformation.tagPropertyName metadata (misses caused #862 first-run
+  // map-key FPs and #952 revert drops of live aws:* managed tags).
+  'TieringConfigurationTags', // AWS::Backup::TieringConfiguration (map)
+  'FrameworkTags', // AWS::Backup::Framework (list)
+  'ReportPlanTags', // AWS::Backup::ReportPlan (list)
+  'PipelineTags', // AWS::DataPipeline::Pipeline (list)
+  'AccessPointTags', // AWS::EFS::AccessPoint (list)
+  'BotAliasTags', // AWS::Lex::BotAlias (list)
+  'HealthCheckTags', // AWS::Route53::HealthCheck (list)
+  'TestBotAliasTags', // AWS::Lex::Bot secondary (list)
+  'TestAliasTags', // AWS::Bedrock::Agent / AWS::Bedrock::Flow secondary (map)
 ]);
 
 export function stripCcApiAwsManagedFields(
