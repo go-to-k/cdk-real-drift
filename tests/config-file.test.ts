@@ -341,6 +341,40 @@ describe('applyIgnores', () => {
     expect(ign([added('CDN', 'example.com')], 'S', cfg([cdnRule]))[0]?.tier).toBe('added');
   });
 
+  it('an `added` rule for a `/`-bearing CC identifier never swallows a `/`-extended sibling (#1061)', () => {
+    // #990 residue: the identifier itself can contain `/` (a Cognito ResourceServer URI
+    // identifier `https://api.example.com` vs `https://api.example.com/v2`), and the old
+    // wholeResource walk trimmed at EVERY `/` — so a rule for one added resource silently
+    // over-suppressed a DIFFERENT sibling whose id is the first extended by `/…`.
+    const added = (parent: string, id: string): Finding => ({
+      tier: 'added',
+      logicalId: `${parent}/${id}`,
+      constructPath: `MyStack/${parent} ▸ ${id}`,
+      resourceType: 'AWS::Cognito::UserPoolResourceServer',
+      path: '',
+    });
+    const a = added('Pool', 'us-east-1_ABC|https://api.example.com');
+    const b = added('Pool', 'us-east-1_ABC|https://api.example.com/v2');
+    // rule written by the verb for `a` is the full literal identifier (no glob metachars)
+    const rule = ignoreRuleFor(a, 'MyStack');
+    expect(rule.path).toBe('Pool/us-east-1_ABC|https://api.example.com');
+    // applying it over BOTH siblings ignores exactly `a`, leaving the extended sibling `b`
+    const out = ign([a, b], 'MyStack', cfg([rule]));
+    expect(out[0]?.tier).toBe('ignored');
+    expect(out[1]?.tier).toBe('added'); // BUG on main: wrongly 'ignored'
+    // symmetric: a rule for the LONGER `b` must not swallow the shorter `a` either (already
+    // correct, but the full-target-only match must stay exact)
+    const ruleB = ignoreRuleFor(b, 'MyStack');
+    const out2 = ign([a, b], 'MyStack', cfg([ruleB]));
+    expect(out2[0]?.tier).toBe('added');
+    expect(out2[1]?.tier).toBe('ignored');
+    // #903 preserved: the bare PARENT rule `Pool` still covers a child whose id has `/`
+    expect(ign([b], 'MyStack', cfg([p('Pool')]))[0]?.tier).toBe('ignored');
+    // #990 preserved: a `.`-extended sibling of `a`'s identifier is still not swallowed
+    const dotSibling = added('Pool', 'us-east-1_ABC|https://api.example.com.bak');
+    expect(ign([dotSibling], 'MyStack', cfg([rule]))[0]?.tier).toBe('added');
+  });
+
   it('a bare PARENT-resource rule still covers its added children across `/` (#903 not regressed)', () => {
     // The `/`-boundary walk (parent-RESOURCE coverage) survives the #990 fix — only the
     // `.`/`[` within-identifier trim is dropped. A rule on the parent `MyLb` still ignores an

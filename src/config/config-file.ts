@@ -420,17 +420,32 @@ export function parseIgnoreRule(entry: IgnoreRuleObject): IgnoreRule {
  *
  * `wholeResource` marks an atomic, whole-resource target (an `added` finding — empty property
  * path, so the target is just `<parentLogicalId>/<CC-identifier>`). Such a target has NO
- * property subtree: the `.` / `[` inside it are DATA within the CC identifier
- * (`example.com`, an ARN, `a[0]`), never property separators. Trimming there would walk into
- * a DIFFERENT sibling resource whose identifier is this one extended by `.` / `[`
- * (`MyApi/a` wrongly swallowing `MyApi/a.b`, `MyApi/a[0]`) — a silent over-suppression of the
- * `added` out-of-band feature (issue #990). So in this mode the ancestor walk trims ONLY at
- * `/` boundaries, which alone mark a resource boundary: a bare PARENT-resource rule (`MyLb`)
- * still covers its added children across `/` (e.g. a listener child whose id is an ARN full
- * of `/`, issue #903), while a rule for one whole resource can no longer reach a sibling.
+ * property subtree: everything after the FIRST `/` is the OPAQUE CC identifier — and it may
+ * itself contain `.`, `[`, `|`, OR `/` (a Cognito ResourceServer URI identifier
+ * `https://api.example.com/v2`, an ARN, a log-group name). None of those are property or
+ * resource separators; they are DATA inside one atomic id, so the segment-bounded ancestor
+ * walk below MUST NOT run — an intermediate `.` / `[` / `/`-prefix is a truncation of the
+ * identifier that reaches a DIFFERENT sibling (`MyApi/a` swallowing `MyApi/a.b` or
+ * `MyApi/a[0]` — #990; a LITERAL rule `.../api.example.com` swallowing the extended sibling
+ * `.../api.example.com/v2` — #1061). Instead we test exactly two things, both with the
+ * identifier treated ATOMICALLY (the UNBOUNDED `matchesGlob`, whose `*` / `?` span `/`, since
+ * a `/` inside the identifier is data, not a boundary):
+ *   1. the FULL target — a LITERAL rule (what `ignoreRuleFor` writes, metachars escaped) then
+ *      matches ONLY its own exact id, never a `/`-extended sibling; a user-authored parent
+ *      glob (`MyLb/*`) still spans the whole atomic identifier of a child; and
+ *   2. the BARE PARENT logical id — the single segment BEFORE the first `/` — so a bare
+ *      parent-RESOURCE rule (`MyLb`, issue #903) still covers a child whose id is an ARN full
+ *      of `/`.
  */
 function pathMatches(pattern: string, target: string, wholeResource = false): boolean {
   if (matchesPathGlob(pattern, target)) return true;
+  if (wholeResource) {
+    // Identifier is atomic — test the full target and the bare-parent prefix with the
+    // unbounded glob (no walk into the identifier). See the doc comment (#903 / #990 / #1061).
+    if (matchesGlob(pattern, target)) return true;
+    const firstSlash = target.indexOf('/');
+    return firstSlash > 0 && matchesGlob(pattern, target.slice(0, firstSlash));
+  }
   // A rule on a PARENT property ignores its whole subtree — including array / identity-
   // keyed children whose path glues the index to its key inside ONE dot-segment
   // (`Policies[MyPol].PolicyName`, `Statement[0].Condition`, `Tags[env]`) AND deeper
@@ -439,13 +454,10 @@ function pathMatches(pattern: string, target: string, wholeResource = false): bo
   // each `.`, `[`, OR `/` boundary, so a rule `X.Policies` covers `X.Policies[MyPol].Name`,
   // `X.Statement` covers `X.Statement[0].Condition`, and `MyApi/Res` covers its `/`-subtree
   // — symmetric with the `.` case (the dot/bracket-only split silently failed across `/`).
-  // For a whole-resource (`added`) target the identifier is atomic, so trim ONLY at `/`
-  // (parent-RESOURCE coverage) — never at `.` / `[`, which would reach a sibling (#990).
+  // (A whole-resource `added` target returns above; this walk is property-subtree only.)
   let t = target;
   while (true) {
-    const cut = wholeResource
-      ? t.lastIndexOf('/')
-      : Math.max(t.lastIndexOf('.'), t.lastIndexOf('['), t.lastIndexOf('/'));
+    const cut = Math.max(t.lastIndexOf('.'), t.lastIndexOf('['), t.lastIndexOf('/'));
     if (cut <= 0) break;
     t = t.slice(0, cut);
     if (matchesPathGlob(pattern, t)) return true;
