@@ -1,3 +1,10 @@
+## [0.7.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.7.2...v0.7.3) (2026-07-10)
+
+
+### Bug Fixes
+
+* **revert:** --wait delete-batch deadline computed once per run, not re-armed per pass ([#969](https://github.com/go-to-k/cdk-real-drift/issues/969)) ([#1191](https://github.com/go-to-k/cdk-real-drift/issues/1191)) ([14a59ac](https://github.com/go-to-k/cdk-real-drift/commit/14a59aca9f3c0414ca97407c8e20ae7090a0e71e))
+
 ## [0.7.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.7.1...v0.7.2) (2026-07-10)
 
 
