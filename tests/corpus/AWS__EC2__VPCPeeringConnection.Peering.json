@@ -73,7 +73,7 @@
       "constructPath": "CdkRealDriftIntegVpcPeering/Peering"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Peering",
       "resourceType": "AWS::EC2::VPCPeeringConnection",
       "path": "PeerOwnerId",

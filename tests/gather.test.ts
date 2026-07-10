@@ -16,6 +16,7 @@ import { mockClient } from 'aws-sdk-client-mock';
 import { describe, expect, it } from 'vite-plus/test';
 import {
   buildBucketNotificationManaged,
+  buildClusterEchoModels,
   buildSiblingSgRules,
   type GatherResult,
   gatherFindings,
@@ -739,6 +740,86 @@ describe('buildBucketNotificationManaged', () => {
       ])
     );
     expect(managed.size).toBe(0);
+  });
+});
+
+describe('buildClusterEchoModels (#980 — sources parent/child types from CLUSTER_ECHO_CHILD)', () => {
+  const desiredWith = (
+    resources: DesiredResource[],
+    liveAttrs: Record<string, Record<string, unknown>>
+  ): Desired =>
+    ({
+      stackName: 's',
+      region: 'r',
+      accountId: '111122223333',
+      resources,
+      rawTemplate: '',
+      ctx: { liveAttrs } as unknown as ResolverContext,
+    }) as Desired;
+
+  it('maps a Neptune DBInstance to its Neptune DBCluster live model (the live path #980 item 3 needs)', () => {
+    const map = buildClusterEchoModels(
+      desiredWith(
+        [
+          {
+            logicalId: 'NeptuneCluster',
+            resourceType: 'AWS::Neptune::DBCluster',
+            physicalId: 'neptune-cluster-1',
+            declared: { DBSubnetGroupName: 'neptunedbsubnetgroup-w5v1jnrqmuw8' },
+          },
+          {
+            logicalId: 'NeptuneInstance',
+            resourceType: 'AWS::Neptune::DBInstance',
+            physicalId: 'neptune-inst-1',
+            declared: { DBClusterIdentifier: 'neptune-cluster-1', DBInstanceClass: 'db.r5.large' },
+          },
+        ],
+        { NeptuneCluster: { DBSubnetGroupName: 'neptunedbsubnetgroup-w5v1jnrqmuw8' } }
+      )
+    );
+    expect(map['neptune-inst-1']).toEqual({
+      DBSubnetGroupName: 'neptunedbsubnetgroup-w5v1jnrqmuw8',
+    });
+  });
+
+  it('still maps an RDS DBInstance to its RDS DBCluster live model (no regression)', () => {
+    const map = buildClusterEchoModels(
+      desiredWith(
+        [
+          {
+            logicalId: 'AuroraCluster',
+            resourceType: 'AWS::RDS::DBCluster',
+            physicalId: 'aurora-cluster-1',
+            declared: {},
+          },
+          {
+            logicalId: 'AuroraInstance',
+            resourceType: 'AWS::RDS::DBInstance',
+            physicalId: 'aurora-inst-1',
+            declared: { DBClusterIdentifier: 'aurora-cluster-1' },
+          },
+        ],
+        { AuroraCluster: { VpcSecurityGroupIds: ['sg-1'] } }
+      )
+    );
+    expect(map['aurora-inst-1']).toEqual({ VpcSecurityGroupIds: ['sg-1'] });
+  });
+
+  it('fail-open: an instance whose DBClusterIdentifier does not resolve to a harvested cluster is absent', () => {
+    const map = buildClusterEchoModels(
+      desiredWith(
+        [
+          {
+            logicalId: 'NeptuneInstance',
+            resourceType: 'AWS::Neptune::DBInstance',
+            physicalId: 'neptune-inst-1',
+            declared: { DBClusterIdentifier: 'some-other-cluster' },
+          },
+        ],
+        {}
+      )
+    );
+    expect(map['neptune-inst-1']).toBeUndefined();
   });
 });
 
