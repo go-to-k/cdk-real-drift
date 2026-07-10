@@ -396,6 +396,11 @@ export async function runCheck(args: string[]): Promise<number> {
       if (synthTemplates && !synthTemplates.has(sKey)) {
         console.error(`note: ${stackName}: not in the synth output — skipped (--pre-deploy)`);
         jsonError(stackName, region, 'not in the synth output — skipped (--pre-deploy)');
+        // #948: dropping a user-named stack from the run is the MAXIMAL coverage gap —
+        // nothing in it was checked — so under --strict it must fail (mirroring the
+        // deleted-stack fold below and one skipped RESOURCE already failing --strict).
+        // Without --strict, preserve the exit-0 skip.
+        worst = Math.max(worst, a.strict ? 1 : 0);
         continue;
       }
       // The stack's synth template (always carried by resolveStacks) is the non-ASCII
@@ -669,6 +674,11 @@ export async function runCheck(args: string[]): Promise<number> {
       if (e instanceof StackNotCheckableError) {
         console.error(`note: ${stackName}: ${e.message} — skipped`);
         jsonError(stackName, region, `${e.message} — skipped`);
+        // #948: skipping a whole stack (REVIEW_IN_PROGRESS / DELETE_IN_PROGRESS /
+        // ROLLBACK_COMPLETE) leaves it entirely unchecked — the maximal coverage gap —
+        // so under --strict it must fail (mirroring the deleted-stack fold above and a
+        // single skipped RESOURCE already failing --strict). Non-strict stays exit-0.
+        worst = Math.max(worst, a.strict ? 1 : 0);
         continue;
       }
       console.error(`error: ${stackName}: ${(e as Error).message}`);
