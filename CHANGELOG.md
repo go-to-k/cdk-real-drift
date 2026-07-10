@@ -1,3 +1,10 @@
+## [0.10.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.10.1...v0.10.2) (2026-07-10)
+
+
+### Bug Fixes
+
+* **diff:** gate GuardDuty Detector Features per-name Status instead of value-independent ([#1092](https://github.com/go-to-k/cdk-real-drift/issues/1092)) ([#1235](https://github.com/go-to-k/cdk-real-drift/issues/1235)) ([2428c2c](https://github.com/go-to-k/cdk-real-drift/commit/2428c2ccc475ba16427c722de64f5a605d90103b))
+
 ## [0.10.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.10.0...v0.10.1) (2026-07-10)
 
 
