@@ -64,24 +64,42 @@ export function shouldPrioritizeEnv(): boolean {
   return !!id && !!key;
 }
 
+// The single #1066 requestHandler config, shared by BOTH the wired service clients (via
+// CLIENT_TIMEOUTS below) AND the inner STS / SSO / SSO-OIDC clients the credential provider
+// chain spawns (via CLIENT_CREDENTIALS' clientConfig). Declared BEFORE CLIENT_CREDENTIALS so
+// that provider can reference it — one source of truth for the connection + request timeouts.
+export const CLIENT_REQUEST_HANDLER = {
+  connectionTimeout: 6_000, // 6s to establish the TCP connection (aborts the connect attempt)
+  requestTimeout: 60_000, // 60s for a single request attempt (retries add their own budget)
+  // REQUIRED to make requestTimeout actually ABORT a connected-but-silent server:
+  // @smithy/node-http-handler's requestTimeout otherwise only logs a warning and keeps
+  // waiting (backward-compat default), so the hang would persist. With this it rejects.
+  throwOnRequestTimeout: true,
+};
+
 // The shared credential provider spread into EVERY raw SDK client (via CLIENT_TIMEOUTS /
 // READ_RETRY). A single function reference is reused across all clients; it decides env-vs-
 // profile precedence lazily on each resolution (see shouldPrioritizeEnv).
+//
+// #1319: pass CLIENT_REQUEST_HANDLER through `clientConfig` to fromNodeProviderChain. Without
+// it the inner STS / SSO / SSO-OIDC clients the provider chain spawns (standard role-assuming
+// / SSO org setups) would use SDK DEFAULTS — no request timeout — bypassing the #1066
+// contract. A stalled STS endpoint would then hang check/record/revert FOREVER, BEFORE any
+// wired client's own timeout could even start (credential resolution runs first). The
+// clientConfig propagates the same requestHandler to those inner clients, so they abort too.
 export const CLIENT_CREDENTIALS = (awsIdentityProperties?: Record<string, unknown>) =>
   (shouldPrioritizeEnv()
-    ? createCredentialChain(fromEnv(), fromNodeProviderChain())
-    : fromNodeProviderChain())(awsIdentityProperties);
+    ? createCredentialChain(
+        fromEnv(),
+        fromNodeProviderChain({ clientConfig: { requestHandler: CLIENT_REQUEST_HANDLER } })
+      )
+    : fromNodeProviderChain({ clientConfig: { requestHandler: CLIENT_REQUEST_HANDLER } }))(
+    awsIdentityProperties
+  );
 
 export const CLIENT_TIMEOUTS = {
   credentials: CLIENT_CREDENTIALS,
-  requestHandler: {
-    connectionTimeout: 6_000, // 6s to establish the TCP connection (aborts the connect attempt)
-    requestTimeout: 60_000, // 60s for a single request attempt (retries add their own budget)
-    // REQUIRED to make requestTimeout actually ABORT a connected-but-silent server:
-    // @smithy/node-http-handler's requestTimeout otherwise only logs a warning and keeps
-    // waiting (backward-compat default), so the hang would persist. With this it rejects.
-    throwOnRequestTimeout: true,
-  },
+  requestHandler: CLIENT_REQUEST_HANDLER,
 };
 
 export const READ_RETRY = {
