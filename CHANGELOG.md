@@ -1,3 +1,10 @@
+## [0.12.34](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.33...v0.12.34) (2026-07-10)
+
+
+### Bug Fixes
+
+* **baseline:** baselineValueMatches preserves free-form-map ancestry so managed-named USER keys aren't stripped ([#1267](https://github.com/go-to-k/cdk-real-drift/issues/1267)) ([#1385](https://github.com/go-to-k/cdk-real-drift/issues/1385)) ([c73968c](https://github.com/go-to-k/cdk-real-drift/commit/c73968cae1136dc1859a0763f439d6310476eec3))
+
 ## [0.12.33](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.32...v0.12.33) (2026-07-10)
 
 
