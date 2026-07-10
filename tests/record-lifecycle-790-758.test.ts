@@ -164,20 +164,22 @@ describe('recordedValueForChanged (#758 — old recorded value for a changed row
 
 describe('record labels (#758 / #790)', () => {
   it('previewValue truncates a long value to one line', () => {
-    expect(previewValue('short')).toBe('short');
-    expect(previewValue('x'.repeat(60), 10)).toBe(`${'x'.repeat(9)}…`);
-    expect(previewValue({ a: 1 })).toBe('{"a":1}');
+    // #1302: previewValue now takes (resourceType, path, value, max) — a non-secret path
+    // renders unchanged (redactValue is a no-op off the curated table).
+    expect(previewValue('AWS::S3::Bucket', 'P', 'short')).toBe('short');
+    expect(previewValue('AWS::S3::Bucket', 'P', 'x'.repeat(60), 10)).toBe(`${'x'.repeat(9)}…`);
+    expect(previewValue('AWS::S3::Bucket', 'P', { a: 1 })).toBe('{"a":1}');
   });
   it('changedRecordLabel shows recorded → live for a CHANGED entry', () => {
     const label = changedRecordLabel(
-      { logicalId: 'A', path: 'P', value: 'NEW' },
+      { logicalId: 'A', path: 'P', value: 'NEW', resourceType: 'AWS::S3::Bucket' },
       { hasRecorded: true, recordedValue: 'OLD' }
     );
     expect(label).toBe('A.P (changed since record: OLD → NEW)');
   });
   it('changedRecordLabel is a plain row for a NEW path (no recorded value)', () => {
     const label = changedRecordLabel(
-      { logicalId: 'A', path: 'P', value: 'NEW' },
+      { logicalId: 'A', path: 'P', value: 'NEW', resourceType: 'AWS::S3::Bucket' },
       { hasRecorded: false, recordedValue: undefined }
     );
     expect(label).toBe('A.P');
