@@ -102,7 +102,9 @@ import { DLMClient, GetLifecyclePolicyCommand } from '@aws-sdk/client-dlm';
 import {
   DatabaseMigrationServiceClient,
   DescribeEndpointsCommand,
+  DescribeReplicationInstancesCommand,
   DescribeReplicationSubnetGroupsCommand,
+  DescribeReplicationTasksCommand,
 } from '@aws-sdk/client-database-migration-service';
 import {
   GetJobTemplateCommand,
@@ -768,6 +770,108 @@ const readDmsReplicationSubnetGroup: OverrideReader = async ({ physicalId, regio
     .filter((v): v is string => v !== undefined)
     .sort();
   if (subnetIds.length > 0) model.SubnetIds = subnetIds;
+  return model;
+};
+
+// AWS::DMS::ReplicationInstance — NON_PROVISIONABLE in the registry (describe-type returns
+// `handlers: []`; issue #856, completing #497 alongside the Endpoint / ReplicationSubnetGroup
+// readers above). Without a Cloud Control read handler every migration/CDC pipeline's core
+// compute box was a silent `skipped` read-gap, so console-toggled props people tweak
+// (AllocatedStorage, MultiAZ, PubliclyAccessible, EngineVersion, the maintenance window) were
+// invisible. The CFn physical id (Ref → `Id`) IS the replication-instance ARN, which DMS
+// DescribeReplicationInstances filters on via `replication-instance-arn`; a bare identifier
+// (older stacks / imports) filters on `replication-instance-id`. The API models the instance in
+// the SAME PascalCase shape the CFn registry uses, so the CFn-declarable scalars project 1:1.
+// ReplicationSubnetGroupIdentifier is nested under `ReplicationSubnetGroup` in the API but flat
+// in CFn; VpcSecurityGroups come back as `{VpcSecurityGroupId}` objects while CFn declares a flat
+// `VpcSecurityGroupIds` string list (project the ids, SORTED, so a live-vs-declared order
+// difference is not false drift). Read-ONLY: a ModifyReplicationInstance writer is deferred to a
+// follow-up. A deleted instance surfaces as ResourceNotFoundFault → the router maps it to
+// `deleted`; an empty result → ResourceGoneError with the same effect.
+const readDmsReplicationInstance: OverrideReader = async ({ physicalId, region }) => {
+  const id = str(physicalId);
+  if (!id) return undefined;
+  const c = new DatabaseMigrationServiceClient({ region, ...READ_RETRY });
+  const filterName = id.startsWith('arn:') ? 'replication-instance-arn' : 'replication-instance-id';
+  // ResourceNotFoundFault propagates so a deleted instance maps to `deleted`.
+  const r = await c.send(
+    new DescribeReplicationInstancesCommand({ Filters: [{ Name: filterName, Values: [id] }] })
+  );
+  const i = r.ReplicationInstances?.[0];
+  if (!i) throw new ResourceGoneError(`DMS ReplicationInstance ${id} absent`);
+  const model: Record<string, unknown> = {};
+  if (str(i.ReplicationInstanceIdentifier))
+    model.ReplicationInstanceIdentifier = i.ReplicationInstanceIdentifier;
+  if (str(i.ReplicationInstanceClass)) model.ReplicationInstanceClass = i.ReplicationInstanceClass;
+  if (typeof i.AllocatedStorage === 'number') model.AllocatedStorage = i.AllocatedStorage;
+  if (typeof i.MultiAZ === 'boolean') model.MultiAZ = i.MultiAZ;
+  if (str(i.EngineVersion)) model.EngineVersion = i.EngineVersion;
+  if (typeof i.AutoMinorVersionUpgrade === 'boolean')
+    model.AutoMinorVersionUpgrade = i.AutoMinorVersionUpgrade;
+  if (typeof i.PubliclyAccessible === 'boolean') model.PubliclyAccessible = i.PubliclyAccessible;
+  if (str(i.AvailabilityZone)) model.AvailabilityZone = i.AvailabilityZone;
+  if (str(i.PreferredMaintenanceWindow))
+    model.PreferredMaintenanceWindow = i.PreferredMaintenanceWindow;
+  if (str(i.KmsKeyId)) model.KmsKeyId = i.KmsKeyId;
+  if (str(i.ReplicationSubnetGroup?.ReplicationSubnetGroupIdentifier))
+    model.ReplicationSubnetGroupIdentifier =
+      i.ReplicationSubnetGroup?.ReplicationSubnetGroupIdentifier;
+  const sgIds = (i.VpcSecurityGroups ?? [])
+    .map((g) => str(g.VpcSecurityGroupId))
+    .filter((v): v is string => v !== undefined)
+    .sort();
+  if (sgIds.length > 0) model.VpcSecurityGroupIds = sgIds;
+  return model;
+};
+
+// AWS::DMS::ReplicationTask — NON_PROVISIONABLE (describe-type → `handlers: []`; issue #856),
+// the actual migration/CDC job that every DMS stack declares next to its instance and endpoints.
+// Without a read handler it was a silent `skipped`, so out-of-band edits to the task's table
+// mappings or tuning settings were invisible. The CFn physical id (Ref → `Id`) IS the
+// replication-task ARN, which DMS DescribeReplicationTasks filters on via `replication-task-arn`;
+// a bare identifier filters on `replication-task-id`. The API returns TableMappings and
+// ReplicationTaskSettings as JSON STRINGS, while CFn declares them as strings too but CDK / raw
+// templates commonly author them as OBJECTS — parse the API's JSON strings into objects here so
+// the compare is structural (key-order-insensitive) regardless of the declared form; the
+// downstream `isJsonStringStructEqual` fold covers the string-declared vs object-live direction,
+// and an unparseable blob falls back to the raw string. Read-ONLY (ModifyReplicationTask
+// deferred). A deleted task surfaces as ResourceNotFoundFault → `deleted`; an empty result →
+// ResourceGoneError.
+const readDmsReplicationTask: OverrideReader = async ({ physicalId, region }) => {
+  const id = str(physicalId);
+  if (!id) return undefined;
+  const c = new DatabaseMigrationServiceClient({ region, ...READ_RETRY });
+  const filterName = id.startsWith('arn:') ? 'replication-task-arn' : 'replication-task-id';
+  const r = await c.send(
+    new DescribeReplicationTasksCommand({ Filters: [{ Name: filterName, Values: [id] }] })
+  );
+  const t = r.ReplicationTasks?.[0];
+  if (!t) throw new ResourceGoneError(`DMS ReplicationTask ${id} absent`);
+  // TableMappings / ReplicationTaskSettings come back as JSON STRINGS; parse them to objects so
+  // an object-declared side compares structurally. An unparseable value keeps the raw string.
+  const parseJsonMaybe = (s: unknown): unknown => {
+    const v = str(s);
+    if (v === undefined) return undefined;
+    try {
+      return JSON.parse(v);
+    } catch {
+      return v;
+    }
+  };
+  const model: Record<string, unknown> = {};
+  if (str(t.ReplicationTaskIdentifier))
+    model.ReplicationTaskIdentifier = t.ReplicationTaskIdentifier;
+  if (str(t.SourceEndpointArn)) model.SourceEndpointArn = t.SourceEndpointArn;
+  if (str(t.TargetEndpointArn)) model.TargetEndpointArn = t.TargetEndpointArn;
+  if (str(t.ReplicationInstanceArn)) model.ReplicationInstanceArn = t.ReplicationInstanceArn;
+  if (str(t.MigrationType)) model.MigrationType = t.MigrationType;
+  const tableMappings = parseJsonMaybe(t.TableMappings);
+  if (tableMappings !== undefined) model.TableMappings = tableMappings;
+  const taskSettings = parseJsonMaybe(t.ReplicationTaskSettings);
+  if (taskSettings !== undefined) model.ReplicationTaskSettings = taskSettings;
+  if (str(t.CdcStartPosition)) model.CdcStartPosition = t.CdcStartPosition;
+  if (str(t.CdcStopPosition)) model.CdcStopPosition = t.CdcStopPosition;
+  if (str(t.TaskData)) model.TaskData = t.TaskData;
   return model;
 };
 
@@ -2449,6 +2553,8 @@ export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::DLM::LifecyclePolicy': readDlmLifecyclePolicy,
   'AWS::DMS::Endpoint': readDmsEndpoint,
   'AWS::DMS::ReplicationSubnetGroup': readDmsReplicationSubnetGroup,
+  'AWS::DMS::ReplicationInstance': readDmsReplicationInstance,
+  'AWS::DMS::ReplicationTask': readDmsReplicationTask,
   'AWS::MediaConvert::Queue': readMediaConvertQueue,
   'AWS::MediaConvert::JobTemplate': readMediaConvertJobTemplate,
   'AWS::Route53::RecordSet': readRoute53RecordSet,

@@ -4,7 +4,9 @@ import { DLMClient, GetLifecyclePolicyCommand } from '@aws-sdk/client-dlm';
 import {
   DatabaseMigrationServiceClient,
   DescribeEndpointsCommand,
+  DescribeReplicationInstancesCommand,
   DescribeReplicationSubnetGroupsCommand,
+  DescribeReplicationTasksCommand,
 } from '@aws-sdk/client-database-migration-service';
 import {
   GetJobTemplateCommand,
@@ -1446,6 +1448,176 @@ describe('SDK overrides', () => {
         .resolves({ ReplicationSubnetGroups: [] } as never);
       await expect(
         SDK_OVERRIDES['AWS::DMS::ReplicationSubnetGroup'](ctx({}, 'dms-subnet-grp'))
+      ).rejects.toBeInstanceOf(ResourceGoneError);
+    });
+  });
+
+  describe('DMS ReplicationInstance (NON_PROVISIONABLE, issue #856)', () => {
+    it('reads DescribeReplicationInstances by ARN and projects the CFn-declarable scalars', async () => {
+      dms.on(DescribeReplicationInstancesCommand).resolves({
+        ReplicationInstances: [
+          {
+            ReplicationInstanceArn: 'arn:aws:dms:us-east-1:123456789012:rep:ABCDEF',
+            ReplicationInstanceIdentifier: 'my-repl',
+            ReplicationInstanceClass: 'dms.t3.medium',
+            AllocatedStorage: 50,
+            MultiAZ: true,
+            EngineVersion: '3.5.2',
+            AutoMinorVersionUpgrade: true,
+            PubliclyAccessible: false,
+            AvailabilityZone: 'us-east-1a',
+            PreferredMaintenanceWindow: 'sun:03:00-sun:03:30',
+            KmsKeyId: 'arn:aws:kms:us-east-1:123456789012:key/abc',
+            ReplicationSubnetGroup: {
+              ReplicationSubnetGroupIdentifier: 'dms-subnet-grp',
+              VpcId: 'vpc-123',
+            },
+            VpcSecurityGroups: [
+              { VpcSecurityGroupId: 'sg-bbb', Status: 'active' },
+              { VpcSecurityGroupId: 'sg-aaa', Status: 'active' },
+            ],
+            // computed/managed fields the projection must drop
+            ReplicationInstanceStatus: 'available',
+            ReplicationInstancePrivateIpAddresses: ['10.0.0.5'],
+            InstanceCreateTime: new Date(),
+          },
+        ],
+      } as never);
+      const out = await SDK_OVERRIDES['AWS::DMS::ReplicationInstance'](
+        ctx({}, 'arn:aws:dms:us-east-1:123456789012:rep:ABCDEF')
+      );
+      expect(out).toEqual({
+        ReplicationInstanceIdentifier: 'my-repl',
+        ReplicationInstanceClass: 'dms.t3.medium',
+        AllocatedStorage: 50,
+        MultiAZ: true,
+        EngineVersion: '3.5.2',
+        AutoMinorVersionUpgrade: true,
+        PubliclyAccessible: false,
+        AvailabilityZone: 'us-east-1a',
+        PreferredMaintenanceWindow: 'sun:03:00-sun:03:30',
+        KmsKeyId: 'arn:aws:kms:us-east-1:123456789012:key/abc',
+        ReplicationSubnetGroupIdentifier: 'dms-subnet-grp',
+        // Subnet-group id flattened out of the nested API object; SGs sorted
+        VpcSecurityGroupIds: ['sg-aaa', 'sg-bbb'],
+      });
+      const call = dms.commandCalls(DescribeReplicationInstancesCommand)[0]!;
+      expect(call.args[0].input).toEqual({
+        Filters: [
+          {
+            Name: 'replication-instance-arn',
+            Values: ['arn:aws:dms:us-east-1:123456789012:rep:ABCDEF'],
+          },
+        ],
+      });
+    });
+
+    it('a bare (non-ARN) physical id filters on replication-instance-id', async () => {
+      dms.on(DescribeReplicationInstancesCommand).resolves({
+        ReplicationInstances: [{ ReplicationInstanceIdentifier: 'my-repl' }],
+      } as never);
+      await SDK_OVERRIDES['AWS::DMS::ReplicationInstance'](ctx({}, 'my-repl'));
+      const call = dms.commandCalls(DescribeReplicationInstancesCommand)[0]!;
+      expect(call.args[0].input).toEqual({
+        Filters: [{ Name: 'replication-instance-id', Values: ['my-repl'] }],
+      });
+    });
+
+    it('no physical id -> undefined (skipped, never a false read)', async () => {
+      expect(await SDK_OVERRIDES['AWS::DMS::ReplicationInstance'](ctx({}, ''))).toBeUndefined();
+    });
+
+    it('the instance is absent -> ResourceGoneError (deleted out of band)', async () => {
+      dms.on(DescribeReplicationInstancesCommand).resolves({ ReplicationInstances: [] } as never);
+      await expect(
+        SDK_OVERRIDES['AWS::DMS::ReplicationInstance'](ctx({}, 'my-repl'))
+      ).rejects.toBeInstanceOf(ResourceGoneError);
+    });
+  });
+
+  describe('DMS ReplicationTask (NON_PROVISIONABLE, issue #856)', () => {
+    it('reads DescribeReplicationTasks by ARN and parses JSON-string TableMappings/ReplicationTaskSettings', async () => {
+      dms.on(DescribeReplicationTasksCommand).resolves({
+        ReplicationTasks: [
+          {
+            ReplicationTaskArn: 'arn:aws:dms:us-east-1:123456789012:task:ABCDEF',
+            ReplicationTaskIdentifier: 'my-task',
+            SourceEndpointArn: 'arn:aws:dms:us-east-1:123456789012:endpoint:SRC',
+            TargetEndpointArn: 'arn:aws:dms:us-east-1:123456789012:endpoint:TGT',
+            ReplicationInstanceArn: 'arn:aws:dms:us-east-1:123456789012:rep:ABCDEF',
+            MigrationType: 'full-load',
+            // the API returns these as JSON STRINGS
+            TableMappings: '{"rules":[{"rule-type":"selection","rule-id":"1"}]}',
+            ReplicationTaskSettings: '{"TargetMetadata":{"SupportLobs":true}}',
+            CdcStartPosition: 'checkpoint:v1',
+            TaskData: 'extra',
+            // computed/managed fields the projection must drop
+            Status: 'ready',
+            LastFailureMessage: '',
+          },
+        ],
+      } as never);
+      const out = await SDK_OVERRIDES['AWS::DMS::ReplicationTask'](
+        ctx({}, 'arn:aws:dms:us-east-1:123456789012:task:ABCDEF')
+      );
+      expect(out).toEqual({
+        ReplicationTaskIdentifier: 'my-task',
+        SourceEndpointArn: 'arn:aws:dms:us-east-1:123456789012:endpoint:SRC',
+        TargetEndpointArn: 'arn:aws:dms:us-east-1:123456789012:endpoint:TGT',
+        ReplicationInstanceArn: 'arn:aws:dms:us-east-1:123456789012:rep:ABCDEF',
+        MigrationType: 'full-load',
+        // JSON strings normalized to objects so an object-declared side compares structurally
+        TableMappings: { rules: [{ 'rule-type': 'selection', 'rule-id': '1' }] },
+        ReplicationTaskSettings: { TargetMetadata: { SupportLobs: true } },
+        CdcStartPosition: 'checkpoint:v1',
+        TaskData: 'extra',
+      });
+      const call = dms.commandCalls(DescribeReplicationTasksCommand)[0]!;
+      expect(call.args[0].input).toEqual({
+        Filters: [
+          {
+            Name: 'replication-task-arn',
+            Values: ['arn:aws:dms:us-east-1:123456789012:task:ABCDEF'],
+          },
+        ],
+      });
+    });
+
+    it('a bare (non-ARN) physical id filters on replication-task-id', async () => {
+      dms.on(DescribeReplicationTasksCommand).resolves({
+        ReplicationTasks: [{ ReplicationTaskIdentifier: 'my-task' }],
+      } as never);
+      await SDK_OVERRIDES['AWS::DMS::ReplicationTask'](ctx({}, 'my-task'));
+      const call = dms.commandCalls(DescribeReplicationTasksCommand)[0]!;
+      expect(call.args[0].input).toEqual({
+        Filters: [{ Name: 'replication-task-id', Values: ['my-task'] }],
+      });
+    });
+
+    it('an unparseable JSON-string blob falls back to the raw string', async () => {
+      dms.on(DescribeReplicationTasksCommand).resolves({
+        ReplicationTasks: [
+          {
+            ReplicationTaskIdentifier: 'my-task',
+            TableMappings: 'not-json{',
+          },
+        ],
+      } as never);
+      const out = await SDK_OVERRIDES['AWS::DMS::ReplicationTask'](ctx({}, 'my-task'));
+      expect(out).toEqual({
+        ReplicationTaskIdentifier: 'my-task',
+        TableMappings: 'not-json{',
+      });
+    });
+
+    it('no physical id -> undefined (skipped, never a false read)', async () => {
+      expect(await SDK_OVERRIDES['AWS::DMS::ReplicationTask'](ctx({}, ''))).toBeUndefined();
+    });
+
+    it('the task is absent -> ResourceGoneError (deleted out of band)', async () => {
+      dms.on(DescribeReplicationTasksCommand).resolves({ ReplicationTasks: [] } as never);
+      await expect(
+        SDK_OVERRIDES['AWS::DMS::ReplicationTask'](ctx({}, 'my-task'))
       ).rejects.toBeInstanceOf(ResourceGoneError);
     });
   });
