@@ -1,3 +1,12 @@
+## [0.7.5](https://github.com/go-to-k/cdk-real-drift/compare/v0.7.4...v0.7.5) (2026-07-10)
+
+
+### Bug Fixes
+
+* **diff:** subtract sibling EventBusPolicy statements from a bus's reflected Policy ([#699](https://github.com/go-to-k/cdk-real-drift/issues/699)) ([#1196](https://github.com/go-to-k/cdk-real-drift/issues/1196)) ([b6adb06](https://github.com/go-to-k/cdk-real-drift/commit/b6adb062d8f5bbc812774ac66de93f8b21aac01f))
+* **revert:** coerce a string-typed declared scalar to the live value's type on the revert patch ([#725](https://github.com/go-to-k/cdk-real-drift/issues/725)) ([#1197](https://github.com/go-to-k/cdk-real-drift/issues/1197)) ([f5865e9](https://github.com/go-to-k/cdk-real-drift/commit/f5865e9b12eb136f9af3ecb28b4f866ca0792839))
+* **synth:** carry env.account through discovery so multi-account stacks are not silently skipped or wrong-account compared ([#740](https://github.com/go-to-k/cdk-real-drift/issues/740)) ([#1195](https://github.com/go-to-k/cdk-real-drift/issues/1195)) ([75e538c](https://github.com/go-to-k/cdk-real-drift/commit/75e538c2a658edf5f7a9bc6ff81b9e5dd6d8f227))
+
 ## [0.7.4](https://github.com/go-to-k/cdk-real-drift/compare/v0.7.3...v0.7.4) (2026-07-10)
 
 
