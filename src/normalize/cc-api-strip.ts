@@ -41,7 +41,37 @@ export const FREE_FORM_MAP_PARENTS = new Set([
   'DefaultArguments', // AWS::Glue::Job
   'DockerLabels', // AWS::ECS::TaskDefinition container definitions
   'Labels', // generic label maps
-  'Tags', // map-shaped Tags (a user tag keyed like a managed field)
+  // Map-shaped tag properties (a user tag keyed like a managed field must not be
+  // name-stripped) — `Tags` plus the service-specific map-shaped tag names (#862).
+  'Tags',
+  'UserPoolTags', // AWS::Cognito::UserPool
+  'BackupPlanTags', // AWS::Backup::BackupPlan
+  'BackupVaultTags', // AWS::Backup::BackupVault
+  'RecoveryPointTags', // AWS::Backup::* recovery points
+]);
+
+// Tag-property names that carry the same semantics as `Tags` but live under a
+// SERVICE-SPECIFIC name (#862) — both MAP-shaped ({k:v}: UserPoolTags, Backup*Tags) and
+// LIST-shaped ({Key,Value}[]: IdentityPoolTags, BotTags, ...). AWS augments every one of
+// them with managed `aws:*` tags, so the three sites that special-case `Tags` must treat
+// them identically: the live `aws:*` strip (noise.stripAwsTagsDeep, so a first `check` of
+// a tagged resource is clean), the free-form-map name-strip exemption above, and the
+// revert managed-tag preservation (revert/plan.tagPreservingOps, so a tag revert never
+// tries to untag `aws:cloudformation:*` and get rejected). Over-inclusion is SAFE at every
+// site: each only acts on `aws:*`-prefixed data (never user intent) or a value AWS
+// actually echoes as managed, so a non-tag property that happens to share one of these
+// names is untouched.
+export const TAG_PROPERTY_NAMES: ReadonlySet<string> = new Set([
+  'Tags',
+  'UserPoolTags', // AWS::Cognito::UserPool (map)
+  'BackupPlanTags', // AWS::Backup::BackupPlan (map)
+  'BackupVaultTags', // AWS::Backup::BackupVault (map)
+  'RecoveryPointTags', // AWS::Backup::* (map)
+  'IdentityPoolTags', // AWS::Cognito::IdentityPool (list)
+  'BotTags', // AWS::Lex::Bot (list)
+  'ResourceTags', // AWS::CE::AnomalySubscription (list)
+  'FileSystemTags', // AWS::EFS::FileSystem (list)
+  'HostedZoneTags', // AWS::Route53::HostedZone (list)
 ]);
 
 export function stripCcApiAwsManagedFields(

@@ -6,6 +6,7 @@
 // genuine YAML string alike (SSM Document.Content declared `DocumentFormat: YAML`
 // reads back as canonical JSON — #713).
 import { parse as parseYaml } from 'yaml';
+import { TAG_PROPERTY_NAMES } from './cc-api-strip.js';
 
 // A4: defaults AWS applies that are NOT in the CFn schema's `default` field.
 // Every entry is equality-gated: it only suppresses a live value EQUAL to the
@@ -3412,7 +3413,10 @@ function stripTagsWalk(v: unknown, underTagsKey: boolean, parentKey: string | un
     const out: Record<string, unknown> = {};
     for (const [k, val] of Object.entries(v as Record<string, unknown>)) {
       if (underTagsKey && k.startsWith('aws:')) continue;
-      out[k] = stripTagsWalk(val, k === 'Tags', k);
+      // #862: arm the map-key `aws:*` strip under ANY tag-property name (UserPoolTags,
+      // BackupPlanTags, …), not just the literal `Tags` — a map-shaped tag prop otherwise
+      // surfaces `<Prop>.aws:cloudformation:stack-name` etc. as first-run undeclared FPs.
+      out[k] = stripTagsWalk(val, TAG_PROPERTY_NAMES.has(k), k);
     }
     return out;
   }

@@ -996,6 +996,42 @@ describe('noise suppressors', () => {
     });
   });
 
+  it('#862: stripAwsTagsDeep strips aws:* map keys under a SERVICE-SPECIFIC tag name too', () => {
+    // Map-shaped tag props under non-`Tags` names (UserPoolTags, Backup*Tags) must have
+    // their aws:cloudformation:* keys stripped, exactly like `Tags` — otherwise a tagged
+    // resource surfaces `<Prop>.aws:cloudformation:stack-name` as first-run undeclared FPs.
+    expect(
+      stripAwsTagsDeep({
+        UserPoolTags: { 'aws:cloudformation:stack-name': 'S', env: 'prod' },
+      })
+    ).toEqual({ UserPoolTags: { env: 'prod' } });
+    expect(
+      stripAwsTagsDeep({ BackupPlanTags: { 'aws:cloudformation:logical-id': 'P', team: 'x' } })
+    ).toEqual({ BackupPlanTags: { team: 'x' } });
+    // A list-shaped service-specific tag name (IdentityPoolTags) already stripped by shape;
+    // confirm it still does.
+    expect(
+      stripAwsTagsDeep({
+        IdentityPoolTags: [
+          { Key: 'aws:cloudformation:stack-id', Value: 'x' },
+          { Key: 'env', Value: 'prod' },
+        ],
+      })
+    ).toEqual({ IdentityPoolTags: [{ Key: 'env', Value: 'prod' }] });
+    // A non-tag map that merely SHARES a listed name but carries no aws:* keys is untouched.
+    expect(stripAwsTagsDeep({ ResourceTags: { region: 'us-east-1' } })).toEqual({
+      ResourceTags: { region: 'us-east-1' },
+    });
+  });
+
+  it('#862: stripCcApiAwsManagedFields never name-strips a user key inside a map-shaped tag prop', () => {
+    // A user tag keyed like an ALWAYS_STRIPPED field (`CreatedBy`) under UserPoolTags must
+    // survive — otherwise it reads live-absent and becomes a permanent declared FP.
+    expect(
+      stripCcApiAwsManagedFields({ UserPoolTags: { CreatedBy: 'team-x', env: 'prod' } })
+    ).toEqual({ UserPoolTags: { CreatedBy: 'team-x', env: 'prod' } });
+  });
+
   it('isPemEqual: trailing-newline / CRLF differences on a PEM block are not drift (R125)', () => {
     const key = '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqAQAB\n-----END PUBLIC KEY-----';
     // CloudFront PublicKey EncodedKey: AWS appends a trailing newline on read

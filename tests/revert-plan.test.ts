@@ -2533,6 +2533,38 @@ describe('tagPreservingOps (revert must not strip aws:* managed tags — the SNS
     expect(out[1]).toBe(other); // the non-Tags op is returned by reference, unchanged
   });
 
+  describe('#862: service-specific tag property names (not literal /Tags)', () => {
+    it('a `remove /UserPoolTags` (MAP-shaped) keeps the live aws:* map keys', () => {
+      const [out] = tagPreservingOps([op({ op: 'remove', path: '/UserPoolTags' })], {
+        UserPoolTags: { 'aws:cloudformation:stack-name': 'S', env: 'prod' },
+      });
+      expect(out).toMatchObject({
+        op: 'add',
+        path: '/UserPoolTags',
+        value: { 'aws:cloudformation:stack-name': 'S' },
+      });
+      expect(out!.value).not.toHaveProperty('env'); // user key dropped by the remove
+    });
+
+    it('a `remove /IdentityPoolTags` (LIST-shaped) re-attaches the live aws:* elements', () => {
+      const [out] = tagPreservingOps([op({ op: 'remove', path: '/IdentityPoolTags' })], {
+        IdentityPoolTags: [
+          { Key: 'aws:cloudformation:logical-id', Value: 'Pool' },
+          { Key: 'team', Value: 'x' },
+        ],
+      });
+      expect(out).toMatchObject({ op: 'add', path: '/IdentityPoolTags' });
+      expect(out!.value).toEqual([{ Key: 'aws:cloudformation:logical-id', Value: 'Pool' }]);
+    });
+
+    it('a NESTED single-key op (/UserPoolTags/<key>) passes through unchanged', () => {
+      const ops = [op({ op: 'remove', path: '/UserPoolTags/env' })];
+      expect(
+        tagPreservingOps(ops, { UserPoolTags: { 'aws:cloudformation:stack-name': 'S' } })
+      ).toBe(ops);
+    });
+  });
+
   describe('MAP-shaped Tags (AWS::SSM::Parameter — key->value, WAVE24)', () => {
     // CC returns SSM Parameter Tags as a map; the managed tags are aws:* KEYS
     const liveMapManaged = {
