@@ -1,3 +1,11 @@
+## [0.4.20](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.19...v0.4.20) (2026-07-10)
+
+
+### Bug Fixes
+
+* **noise:** fold ClientVpnEndpoint SessionTimeoutHours=24 + TransportProtocol=udp first-run defaults ([#1102](https://github.com/go-to-k/cdk-real-drift/issues/1102)) ([#1113](https://github.com/go-to-k/cdk-real-drift/issues/1113)) ([616cdf0](https://github.com/go-to-k/cdk-real-drift/commit/616cdf0e78de79b9b362b68402ad408a106240f9))
+* **tooling:** sweep-orphans skips already-deleted tagged resources (RGT index lag) ([#1112](https://github.com/go-to-k/cdk-real-drift/issues/1112)) ([21e9793](https://github.com/go-to-k/cdk-real-drift/commit/21e979336ba1e309d416497a726a8476f85c6281))
+
 ## [0.4.19](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.18...v0.4.19) (2026-07-10)
 
 
