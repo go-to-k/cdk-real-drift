@@ -453,9 +453,15 @@ async function classifyRead(
       ];
     }
     schemas.set(r.resourceType, res.info);
-    return classifyResource(r, read.live, res.info, classifyOpts);
+    return classifyResource(r, read.live, res.info, {
+      ...classifyOpts,
+      supplementReadGapPaths: read.readGapPaths,
+    });
   }
-  return classifyResource(r, read.live, cachedSchema, classifyOpts);
+  return classifyResource(r, read.live, cachedSchema, {
+    ...classifyOpts,
+    supplementReadGapPaths: read.readGapPaths,
+  });
 }
 
 export async function gatherFindings(
