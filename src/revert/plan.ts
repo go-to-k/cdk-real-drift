@@ -82,7 +82,10 @@ const CC_REVERTABLE_DESPITE_READ_OVERRIDE = new Set<string>([
 //     the existing value), so a bare `remove` is a silent no-op — Cloud Control reports
 //     SUCCESS yet the live description persists. Writing the empty-string default (an
 //     `add /Description ""`) clears it. Both behaviours proven live.
-const REVERT_SET_DEFAULT_PATHS = new Set<string>([
+// Exported so a guard test can assert every KNOWN_DEFAULTS UserPool fold has a matching
+// entry here (#702): UpdateUserPool ignores an omitted property, so a fold WITHOUT an RSDP
+// entry silently reverts as a no-op `remove`. Keyed `${resourceType}\0${path}`.
+export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   'AWS::IAM::Role\0MaxSessionDuration',
   // IAM UpdateRole ignores an omitted Description the same way it ignores an omitted
   // MaxSessionDuration (both are UpdateRole params) — a `remove` revert of an out-of-band
@@ -162,10 +165,25 @@ const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // KNOWN_DEFAULTS default (min length 8, all four char classes, 7-day temp lifetime, PASSWORD
   // first factor) is written back explicitly so revert converges.
   // BLAST RADIUS: UpdateUserPool ignores EVERY omitted field, so ANY future UserPool
-  // KNOWN_DEFAULTS addition needs a matching entry here. VerificationMessageTemplate /
-  // AccountRecoverySetting are the next two (their folds land with #701 — add them once the
-  // KNOWN_DEFAULTS defaults exist so the set-default write resolves a value).
+  // KNOWN_DEFAULTS addition needs a matching entry here (a guard test asserts this pairing so
+  // a future fold cannot silently regress to a `remove` no-op — see revert-cognito-rsdp-702).
   'AWS::Cognito::UserPool\0Policies',
+  // The remaining six UserPool KNOWN_DEFAULTS folds (#702, addendum 2026-07-10): each has a
+  // fold but was still planning a bare `remove` that UpdateUserPool ignores. Two are
+  // security-relevant out of band — EmailConfiguration switched to a DEVELOPER SES identity
+  // (mail interception) and AccountRecoverySetting weakened (account-takeover surface) would
+  // be detected yet never revertable without an explicit set-default write. The set-default
+  // value for each resolves from KNOWN_DEFAULTS (VerificationMessageTemplate
+  // {DefaultEmailOption:'CONFIRM_WITH_CODE'} / AccountRecoverySetting {RecoveryMechanisms:[...]}
+  // / EmailConfiguration {EmailSendingAccount:'COGNITO_DEFAULT'} / KeyConfiguration
+  // {KeyType:'AWS_OWNED_KEY'} / IssuerConfiguration {Type:'ORIGINAL'} /
+  // WebAuthnFactorConfiguration 'SINGLE_FACTOR').
+  'AWS::Cognito::UserPool\0VerificationMessageTemplate',
+  'AWS::Cognito::UserPool\0AccountRecoverySetting',
+  'AWS::Cognito::UserPool\0EmailConfiguration',
+  'AWS::Cognito::UserPool\0KeyConfiguration',
+  'AWS::Cognito::UserPool\0IssuerConfiguration',
+  'AWS::Cognito::UserPool\0WebAuthnFactorConfiguration',
   // SNS SetSubscriptionAttributes HARD-FAILS a `remove` of FilterPolicyScope (#630,
   // live-proven: setting it to MessageBody out of band, then reverting via `remove` fails with
   // InvalidRequest "FilterPolicyScope: Invalid value [null]. Please use either MessageBody or
