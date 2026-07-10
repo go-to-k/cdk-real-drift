@@ -144,7 +144,7 @@ describe('GetTemplate non-ASCII mask inside a DefinitionString — readGap, not 
   // drift whose desired shows `????…` (observed live: two Japanese Cause runs of 13 and
   // 24 chars masked 1:1 while CloudFormation's own drift detection reported IN_SYNC).
   const LIVE_JP =
-    '{"StartAt":"Check","States":{"Check":{"Type":"Choice","Choices":[{"Condition":"{% $ok %}","Next":"Done"}],"Default":"Bad"},"Bad":{"Type":"Fail","Cause":"復元先インスタンスクラスが db.<family>.<size> 形式ではない","Error":"InvalidInstanceClass"},"Done":{"Type":"Pass","End":true}}}';
+    '{"StartAt":"Check","States":{"Check":{"Type":"Choice","Choices":[{"Condition":"{% $ok %}","Next":"Done"}],"Default":"Bad"},"Bad":{"Type":"Fail","Cause":"入力された値 item.<type>.<size> の形式が正しくありません","Error":"InvalidFormat"},"Done":{"Type":"Pass","End":true}}}';
   const mask = (s: string): string => s.replace(/[^\x00-\x7f]/gu, '?');
 
   it('demotes to readGap when the declared definition differs from live ONLY at masked non-ASCII leaves', () => {
@@ -163,8 +163,8 @@ describe('GetTemplate non-ASCII mask inside a DefinitionString — readGap, not 
     // Byte-alignment breaks (Cause/Error/Type reordered), so the raw-string mask check
     // cannot fire — only the structural mask-tolerant compare can.
     const liveReordered = LIVE_JP.replace(
-      '"Type":"Fail","Cause":"復元先インスタンスクラスが db.<family>.<size> 形式ではない","Error":"InvalidInstanceClass"',
-      '"Cause":"復元先インスタンスクラスが db.<family>.<size> 形式ではない","Error":"InvalidInstanceClass","Type":"Fail"'
+      '"Type":"Fail","Cause":"入力された値 item.<type>.<size> の形式が正しくありません","Error":"InvalidFormat"',
+      '"Cause":"入力された値 item.<type>.<size> の形式が正しくありません","Error":"InvalidFormat","Type":"Fail"'
     );
     const res = mk({
       DefinitionString: mask(LIVE_JP),
@@ -179,7 +179,7 @@ describe('GetTemplate non-ASCII mask inside a DefinitionString — readGap, not 
   it('still reports declared drift when a genuine ASCII edit exists alongside the masks (fail-toward-reporting)', () => {
     // An out-of-band edit changed an ASCII leaf (Error code) — masks alone no longer
     // explain the difference, so the finding must surface as declared drift.
-    const liveEdited = LIVE_JP.replace('"Error":"InvalidInstanceClass"', '"Error":"SomethingElse"');
+    const liveEdited = LIVE_JP.replace('"Error":"InvalidFormat"', '"Error":"SomethingElse"');
     const res = mk({
       DefinitionString: mask(LIVE_JP),
       RoleArn: 'arn:aws:iam::111111111111:role/r',
@@ -195,10 +195,10 @@ describe('GetTemplate non-ASCII mask inside a DefinitionString — readGap, not 
     // isCfnTemplateNonAsciiMask requires the live side to carry non-ASCII at the masked
     // positions, so an ASCII-vs-ASCII difference always surfaces.
     const declared =
-      '{"StartAt":"P","States":{"P":{"Type":"Fail","Cause":"expected db.<family>.<size>?","Error":"E"}}}';
+      '{"StartAt":"P","States":{"P":{"Type":"Fail","Cause":"expected item.<type>.<size>?","Error":"E"}}}';
     const live = {
       DefinitionString:
-        '{"StartAt":"P","States":{"P":{"Type":"Fail","Cause":"expected db.<family>.<size>!","Error":"E"}}}',
+        '{"StartAt":"P","States":{"P":{"Type":"Fail","Cause":"expected item.<type>.<size>!","Error":"E"}}}',
       RoleArn: 'arn:aws:iam::111111111111:role/r',
     };
     const res = mk({ DefinitionString: declared, RoleArn: 'arn:aws:iam::111111111111:role/r' });

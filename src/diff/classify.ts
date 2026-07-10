@@ -2743,6 +2743,23 @@ export function classifyResource(
       const dv = parseJson(v);
       const lv = parseJson(live[k]);
       if (!deepEqual(dv, lv) && !isStringlyEqualDeep(dv, lv)) {
+        // Same GetTemplate `?`-mask bypass as the SFN DefinitionString branch above
+        // (#1247): the declared side arrives with every non-ASCII character in a string
+        // literal masked to `?` while the live read is intact, and pushing here would
+        // skip the general mask→readGap demotion the plain string-diff path applies.
+        // When the parsed documents differ ONLY at masked string leaves, the declared
+        // value is unknowable from GetTemplate — a readGap, not drift; a genuine edit
+        // still fails the mask-tolerant compare and is reported.
+        if (deepEqualModuloNonAsciiMask(dv, lv)) {
+          findings.push({
+            tier: 'readGap',
+            logicalId,
+            resourceType,
+            path: k,
+            note: 'declared value unverifiable — CloudFormation GetTemplate masks non-ASCII characters as "?"',
+          });
+          continue;
+        }
         findings.push({
           tier: 'declared',
           logicalId,
