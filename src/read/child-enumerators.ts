@@ -2692,6 +2692,16 @@ export function diffRdsClusterChildren(input: RdsClusterChildInput): AddedChild[
   return added;
 }
 
+// Reader instances created by Aurora read-replica Application Auto Scaling
+// (`rds:cluster:ReadReplicaCount`) are named with the documented, reserved
+// `application-autoscaling-` DBInstanceIdentifier prefix (case-sensitive per AWS's naming).
+// Match the identifier by prefix — not a substring elsewhere — so an unrelated instance that
+// merely contains the string is not folded.
+const AAS_MANAGED_READER_PREFIX = 'application-autoscaling-';
+function isAasManagedReader(dbInstanceIdentifier: string): boolean {
+  return dbInstanceIdentifier.startsWith(AAS_MANAGED_READER_PREFIX);
+}
+
 async function pageDbInstances(client: RDSClient, clusterId: string): Promise<RdsDBInstance[]> {
   const out: RdsDBInstance[] = [];
   let marker: string | undefined;
@@ -2745,7 +2755,14 @@ export async function enumerateRdsClusterChildren(ctx: EnumeratorContext): Promi
   const liveInstances = instances
     .filter(
       (i): i is RdsDBInstance & { DBInstanceIdentifier: string } =>
-        typeof i.DBInstanceIdentifier === 'string'
+        typeof i.DBInstanceIdentifier === 'string' &&
+        // Skip reader instances created by Aurora read-replica Application Auto Scaling
+        // (`rds:cluster:ReadReplicaCount`). AWS names them `application-autoscaling-<uuid>`;
+        // they are owned by the autoscaler (like an EventBridge `ManagedBy` rule), not an
+        // out-of-band human change, and are not user-revertable — a scale-in/out churns the
+        // identifiers, so they would otherwise be a permanent first-run false `[Added]` that
+        // `record` can never stabilize and `revert` would offer to DeleteResource (#801).
+        !isAasManagedReader(i.DBInstanceIdentifier)
     )
     .map((i) => ({ id: i.DBInstanceIdentifier, label: i.DBInstanceIdentifier }));
 

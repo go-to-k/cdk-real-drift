@@ -1439,6 +1439,78 @@ describe('enumerateRdsClusterChildren (DBClusterMembers fold, #896)', () => {
     expect(added.map((a) => a.identifier)).toEqual(['rogue-oob']);
     rds.restore();
   });
+
+  // #801: Aurora read-replica Application Auto Scaling (`rds:cluster:ReadReplicaCount`)
+  // creates reader instances named `application-autoscaling-<uuid>`. They are owned by the
+  // autoscaler, not an out-of-band human change, so they must NOT surface as `added` (a
+  // permanent first-run false positive; revert would offer to delete an autoscaler reader).
+  it('excludes Application Auto Scaling readers (application-autoscaling-*) while keeping normal instances', async () => {
+    const rds = mockClient(RDSClient);
+    rds
+      .on(DescribeDBInstancesCommand)
+      .resolves({
+        DBInstances: [
+          { DBInstanceIdentifier: 'cluster-writer' },
+          { DBInstanceIdentifier: 'cluster-reader' },
+          { DBInstanceIdentifier: 'application-autoscaling-4d1e2f3a-0b5c-6789-abcd-ef0123456789' },
+        ],
+      })
+      .on(DescribeDBClustersCommand)
+      .resolves({
+        DBClusters: [
+          {
+            DBClusterMembers: [
+              { DBInstanceIdentifier: 'cluster-writer' },
+              { DBInstanceIdentifier: 'cluster-reader' },
+            ],
+          },
+        ],
+      });
+    const ctx = {
+      parent: { physicalId: 'c1' },
+      // Both normal instances are declared in the template.
+      desired: {
+        resources: [
+          {
+            resourceType: 'AWS::RDS::DBInstance',
+            declared: { DBClusterIdentifier: 'c1' },
+            physicalId: 'cluster-writer',
+          },
+          {
+            resourceType: 'AWS::RDS::DBInstance',
+            declared: { DBClusterIdentifier: 'c1' },
+            physicalId: 'cluster-reader',
+          },
+        ],
+      },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    const added = await enumerateRdsClusterChildren(ctx);
+    // The AAS-managed reader is excluded from the enumeration entirely, so nothing is `added`.
+    expect(added).toEqual([]);
+    rds.restore();
+  });
+
+  // The prefix match is precise: an instance that merely CONTAINS the string elsewhere (not a
+  // prefix) is still flagged if out of band.
+  it('does not fold an instance whose identifier only contains application-autoscaling- as a substring', async () => {
+    const rds = mockClient(RDSClient);
+    rds
+      .on(DescribeDBInstancesCommand)
+      .resolves({
+        DBInstances: [{ DBInstanceIdentifier: 'my-application-autoscaling-reader' }],
+      })
+      .on(DescribeDBClustersCommand)
+      .resolves({ DBClusters: [{ DBClusterMembers: [] }] });
+    const ctx = {
+      parent: { physicalId: 'c1' },
+      desired: { resources: [] },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    const added = await enumerateRdsClusterChildren(ctx);
+    expect(added.map((a) => a.identifier)).toEqual(['my-application-autoscaling-reader']);
+    rds.restore();
+  });
 });
 
 describe('diffRouteTableChildren (EC2 routes)', () => {
