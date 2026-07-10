@@ -920,6 +920,8 @@ describe('diffEventBusChildren (EventBridge rules)', () => {
 
   it('flags an out-of-band rule (not in the template)', () => {
     const added = diffEventBusChildren({
+      busName: 'MyBus',
+      isDefaultBus: false,
       declaredRuleNames: ['declared'],
       liveRules: [
         { name: 'declared', arn: R('declared') },
@@ -932,21 +934,50 @@ describe('diffEventBusChildren (EventBridge rules)', () => {
         identifier: R('console'),
         label: 'console',
         live: { Name: 'console', Arn: R('console') },
+        // #895: the CFn physical id for the sibling-stack lookup — `<busName>|<ruleName>` for a custom bus
+        siblingLookupId: 'MyBus|console',
       },
     ]);
   });
 
   it('identifier is the bare rule Arn (CC primaryIdentifier)', () => {
     const added = diffEventBusChildren({
+      busName: 'MyBus',
+      isDefaultBus: false,
       declaredRuleNames: [],
       liveRules: [{ name: 'x', arn: R('x') }],
     });
     expect(added[0]!.identifier).toBe(R('x'));
   });
 
+  it('#895: siblingLookupId is the `<busName>|<ruleName>` CFn physical id for a custom bus', () => {
+    const added = diffEventBusChildren({
+      busName: 'MyBus',
+      isDefaultBus: false,
+      declaredRuleNames: [],
+      liveRules: [{ name: 'oob', arn: R('oob') }],
+    });
+    expect(added[0]!.siblingLookupId).toBe('MyBus|oob');
+    // the CC identifier stays the Arn (GetResource / DeleteResource path unchanged)
+    expect(added[0]!.identifier).toBe(R('oob'));
+  });
+
+  it('#895: siblingLookupId is the bare rule name for the AWS-default bus', () => {
+    const added = diffEventBusChildren({
+      busName: 'default',
+      isDefaultBus: true,
+      declaredRuleNames: [],
+      liveRules: [{ name: 'oob', arn: R('oob') }],
+    });
+    expect(added[0]!.siblingLookupId).toBe('oob');
+    expect(added[0]!.identifier).toBe(R('oob'));
+  });
+
   it('no drift when every live rule is declared', () => {
     expect(
       diffEventBusChildren({
+        busName: 'MyBus',
+        isDefaultBus: false,
         declaredRuleNames: ['a', 'b'],
         liveRules: [
           { name: 'a', arn: R('a') },
