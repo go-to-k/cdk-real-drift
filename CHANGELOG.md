@@ -1,3 +1,10 @@
+## [0.12.17](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.16...v0.12.17) (2026-07-10)
+
+
+### Bug Fixes
+
+* **read:** project MetricFilter FieldSelectionCriteria + EmitSystemFieldDimensions ([#1332](https://github.com/go-to-k/cdk-real-drift/issues/1332)) ([#1347](https://github.com/go-to-k/cdk-real-drift/issues/1347)) ([65de3a7](https://github.com/go-to-k/cdk-real-drift/commit/65de3a7434dc61b180bc24bf6c9aaf143c03caa9))
+
 ## [0.12.16](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.15...v0.12.16) (2026-07-10)
 
 
