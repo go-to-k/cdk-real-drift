@@ -1387,8 +1387,8 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
     ]);
   });
 
-  it('LineLink first-run folds: GlobalTable WarmThroughput / ESM Enabled / Authorizer AuthType', () => {
-    // Three undeclared values a fresh dev LineLink stack reported with NO out-of-band
+  it('real-app first-run folds: GlobalTable WarmThroughput / ESM Enabled / Authorizer AuthType', () => {
+    // Three undeclared values a fresh real-app dev stack reported with NO out-of-band
     // edit — first-run noise that must fold to atDefault, while a meaningful change to
     // each still surfaces (equality-gated).
     const t = (rt: string, live: Record<string, unknown>) =>
@@ -1407,7 +1407,7 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
     ).toEqual(['WarmThroughput']);
 
     // The classic AWS::DynamoDB::Table (L1) reads back the SAME baseline warm throughput
-    // when on-demand — observed live on a dev reco-MailQueues stack — so it folds too;
+    // when on-demand — observed live on another real app's dev stack — so it folds too;
     // a warmed-up table still surfaces (equality-gated).
     expect(
       t('AWS::DynamoDB::Table', {
@@ -1432,7 +1432,7 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
 
     // AuthType is a derived, non-declarable read-back of the declared Type, so BOTH the
     // Cognito ("cognito_user_pools") and TOKEN/REQUEST ("custom", observed live on a
-    // my-app AimAssociation TOKEN authorizer) forms fold value-independently.
+    // a real app's TOKEN authorizer) forms fold value-independently.
     expect(t('AWS::ApiGateway::Authorizer', { AuthType: 'cognito_user_pools' }).atDefault).toEqual([
       'AuthType',
     ]);
@@ -11837,6 +11837,122 @@ describe('#747 dotted map keys -> whole map at parent path (declared compare own
     };
     const findings = classifyResource(resource, live, bareSchema);
     expect(findings.map((f) => `${f.tier}:${f.path}`)).toEqual(['declared:TableInput.Parameters']);
+  });
+});
+
+// #747 follow-up regression net: the SAME path-unsafe-key guard fires on dotted-key maps
+// reached through a NESTED_ARRAY_IDENTITY keyed-array descent (ApiGateway Method
+// Integration.IntegrationResponses[<sc>].ResponseParameters / MethodResponses[<sc>].
+// ResponseParameters — `method.response.header.*`) and on a map nested in a declared object
+// (Integration.RequestParameters — `integration.request.header.*`). The #747 fix's own tests
+// cover only the Glue object shape, so a regression scoped to the keyed-array recursion
+// (as #828 was, FP'ing every CDK defaultCorsPreflightOptions method) would stay green there —
+// pin the CORS method shape explicitly. Asserted on the FULL tier:path list so a wrong-tier
+// or double-report can't hide behind a filtered subset.
+describe('#828 regression: CORS method dotted-key maps in StatusCode-keyed arrays', () => {
+  const corsSchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  // The standard CDK `defaultCorsPreflightOptions` OPTIONS mock method.
+  const corsDeclared = {
+    AuthorizationType: 'NONE',
+    HttpMethod: 'OPTIONS',
+    Integration: {
+      IntegrationResponses: [
+        {
+          ResponseParameters: {
+            'method.response.header.Access-Control-Allow-Headers': "'Content-Type,Authorization'",
+            'method.response.header.Access-Control-Allow-Methods': "'OPTIONS,POST'",
+            'method.response.header.Access-Control-Allow-Origin': "'*'",
+          },
+          StatusCode: '200',
+        },
+      ],
+      RequestTemplates: { 'application/json': '{"statusCode": 200}' },
+      Type: 'MOCK',
+    },
+    MethodResponses: [
+      {
+        ResponseParameters: {
+          'method.response.header.Access-Control-Allow-Headers': true,
+          'method.response.header.Access-Control-Allow-Methods': true,
+          'method.response.header.Access-Control-Allow-Origin': true,
+        },
+        StatusCode: '200',
+      },
+    ],
+    ResourceId: 'r1',
+    RestApiId: 'a1',
+  };
+  const mk = (declared: Record<string, unknown>): DesiredResource => ({
+    logicalId: 'CorsOPTIONS',
+    resourceType: 'AWS::ApiGateway::Method',
+    physicalId: 'a1|r1|OPTIONS',
+    declared,
+  });
+
+  it('a clean live echo of the CORS method is ZERO findings (the #828 FP shape)', () => {
+    const findings = classifyResource(
+      mk(structuredClone(corsDeclared)),
+      structuredClone(corsDeclared),
+      corsSchema
+    );
+    expect(findings.map((f) => `${f.tier}:${f.path}`)).toEqual([]);
+  });
+
+  it('a declared Integration.RequestParameters (integration.request.*) echo is ZERO findings', () => {
+    const declared = {
+      HttpMethod: 'POST',
+      Integration: {
+        IntegrationHttpMethod: 'POST',
+        RequestParameters: {
+          'integration.request.header.Content-Type': "'application/x-www-form-urlencoded'",
+        },
+        Type: 'AWS',
+      },
+      ResourceId: 'r1',
+      RestApiId: 'a1',
+    };
+    const findings = classifyResource(
+      mk(structuredClone(declared)),
+      structuredClone(declared),
+      corsSchema
+    );
+    expect(findings.map((f) => `${f.tier}:${f.path}`)).toEqual([]);
+  });
+
+  // Detection must survive the fold: the guard suppresses only the DECLARED-echo FP, the
+  // declared whole-map compare still owns any real out-of-band change to the map.
+  it('an out-of-band header ADDED to a declared ResponseParameters surfaces as declared drift', () => {
+    const live = structuredClone(corsDeclared) as {
+      Integration: { IntegrationResponses: { ResponseParameters: Record<string, unknown> }[] };
+    };
+    live.Integration.IntegrationResponses[0].ResponseParameters['method.response.header.X-Rogue'] =
+      "'v'";
+    const findings = classifyResource(mk(structuredClone(corsDeclared)), live, corsSchema);
+    expect(findings.map((f) => `${f.tier}:${f.path}`)).toEqual([
+      'declared:Integration.IntegrationResponses.0.ResponseParameters',
+    ]);
+  });
+
+  it('an out-of-band VALUE change inside a declared ResponseParameters surfaces as declared drift', () => {
+    const live = structuredClone(corsDeclared) as {
+      MethodResponses: { ResponseParameters: Record<string, unknown> }[];
+    };
+    live.MethodResponses[0].ResponseParameters[
+      'method.response.header.Access-Control-Allow-Origin'
+    ] = false;
+    const findings = classifyResource(mk(structuredClone(corsDeclared)), live, corsSchema);
+    expect(findings.map((f) => `${f.tier}:${f.path}`)).toEqual([
+      'declared:MethodResponses.0.ResponseParameters',
+    ]);
   });
 });
 
