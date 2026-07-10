@@ -898,6 +898,9 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     const opCount = plan.items.reduce((n, i) => n + i.ops.length, 0);
     const ok = await confirm({
       message: revertConfirmMessage(stackName, region, opCount, plan.notRevertable.length),
+      // A destructive AWS write must NOT default to Yes — Enter/default is No (#1055),
+      // matching record's empty-baseline confirm (initialValue: false above).
+      initialValue: false,
     });
     if (isCancel(ok) || !ok) {
       out(style.note('aborted.'));
