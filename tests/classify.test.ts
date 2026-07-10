@@ -4557,6 +4557,107 @@ describe('unordered-array declared false positives (R88, found by the wave-2 int
     });
   });
 
+  // #700: an ASG's live LifecycleHookSpecificationList merges inline-declared hooks with the hooks
+  // applied by SIBLING standalone AWS::AutoScaling::LifecycleHook resources (origin-
+  // indistinguishable). classify subtracts sibling hooks BY NAME (opts.siblingLifecycleHooks) so a
+  // mixed inline+standalone stack is not a declared FP and a standalone-only ASG is not an
+  // undeclared FP; an out-of-band hook (matching no sibling) still surfaces.
+  describe('#700 ASG sibling LifecycleHook subtraction', () => {
+    const bare: SchemaInfo = {
+      readOnly: new Set(),
+      writeOnly: new Set(),
+      createOnly: new Set(),
+      readOnlyPaths: [],
+      writeOnlyPaths: [],
+      createOnlyPaths: [],
+      defaults: {},
+      defaultPaths: {},
+    };
+    const hook = (name: string, transition = 'autoscaling:EC2_INSTANCE_LAUNCHING') => ({
+      LifecycleHookName: name,
+      LifecycleTransition: transition,
+      DefaultResult: 'CONTINUE',
+    });
+    const asg = (declared: Record<string, unknown>): DesiredResource => ({
+      logicalId: 'Asg',
+      resourceType: 'AWS::AutoScaling::AutoScalingGroup',
+      physicalId: 'asg-phys',
+      declared,
+    });
+
+    it('inline + standalone mix: no declared FP (standalone subtracted by name)', () => {
+      const declared = { LifecycleHookSpecificationList: [hook('inline-launch')] };
+      const live = {
+        LifecycleHookSpecificationList: [
+          hook('inline-launch'),
+          hook('standalone-terminate', 'autoscaling:EC2_INSTANCE_TERMINATING'),
+        ],
+      };
+      const t = tiers(
+        classifyResource(asg(declared), live, bare, {
+          siblingLifecycleHooks: { 'asg-phys': ['standalone-terminate'] },
+        })
+      );
+      expect(t.declared).toEqual([]);
+      expect(t.undeclared).toEqual([]);
+    });
+
+    it('standalone-only ASG: no undeclared FP (whole list subtracts to empty → dropped)', () => {
+      const live = {
+        LifecycleHookSpecificationList: [
+          hook('standalone-terminate', 'autoscaling:EC2_INSTANCE_TERMINATING'),
+        ],
+      };
+      const t = tiers(
+        classifyResource(asg({}), live, bare, {
+          siblingLifecycleHooks: { 'asg-phys': ['standalone-terminate'] },
+        })
+      );
+      expect(t.undeclared).toEqual([]);
+      expect(t.declared).toEqual([]);
+    });
+
+    it('out-of-band hook (matching no sibling) still surfaces as undeclared', () => {
+      const live = { LifecycleHookSpecificationList: [hook('rogue-oob')] };
+      const t = tiers(classifyResource(asg({}), live, bare, { siblingLifecycleHooks: {} }));
+      expect(t.undeclared).toContain('LifecycleHookSpecificationList');
+    });
+
+    it('out-of-band hook alongside a sibling hook is NOT hidden (declared list still differs)', () => {
+      const declared = { LifecycleHookSpecificationList: [hook('inline-launch')] };
+      const live = {
+        LifecycleHookSpecificationList: [
+          hook('inline-launch'),
+          hook('standalone-terminate', 'autoscaling:EC2_INSTANCE_TERMINATING'),
+          hook('rogue-oob', 'autoscaling:EC2_INSTANCE_TERMINATING'),
+        ],
+      };
+      const t = tiers(
+        classifyResource(asg(declared), live, bare, {
+          siblingLifecycleHooks: { 'asg-phys': ['standalone-terminate'] },
+        })
+      );
+      // standalone subtracted, but the rogue hook remains → declared inline list no longer matches.
+      expect(t.declared.some((p) => p.startsWith('LifecycleHookSpecificationList'))).toBe(true);
+    });
+
+    it('a changed inline hook still surfaces even with a sibling present (no over-fold)', () => {
+      const declared = { LifecycleHookSpecificationList: [hook('inline-launch')] };
+      const live = {
+        LifecycleHookSpecificationList: [
+          { ...hook('inline-launch'), DefaultResult: 'ABANDON' }, // CONTINUE -> ABANDON, out of band
+          hook('standalone-terminate', 'autoscaling:EC2_INSTANCE_TERMINATING'),
+        ],
+      };
+      const t = tiers(
+        classifyResource(asg(declared), live, bare, {
+          siblingLifecycleHooks: { 'asg-phys': ['standalone-terminate'] },
+        })
+      );
+      expect(t.declared.some((p) => p.startsWith('LifecycleHookSpecificationList'))).toBe(true);
+    });
+  });
+
   describe('SecretsManager Secret ReplicaRegions reordered (object set keyed by Region ∉ IDENTITY_FIELDS, found by secret-replica-regions)', () => {
     const T = 'AWS::SecretsManager::Secret';
     const declared = {
