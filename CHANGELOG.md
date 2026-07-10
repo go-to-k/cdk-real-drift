@@ -1,3 +1,12 @@
+## [0.9.4](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.3...v0.9.4) (2026-07-10)
+
+
+### Bug Fixes
+
+* **check:** do not offer the inline Record/Revert menu under --declared-only / --undeclared-only ([#779](https://github.com/go-to-k/cdk-real-drift/issues/779)) ([#1208](https://github.com/go-to-k/cdk-real-drift/issues/1208)) ([589ecd7](https://github.com/go-to-k/cdk-real-drift/commit/589ecd7d8ce32a388160240712c3ac0df12e6032))
+* **noise:** fold AWS-assigned identifiers / generated names surfacing as first-run undeclared FPs ([#844](https://github.com/go-to-k/cdk-real-drift/issues/844)) ([#1206](https://github.com/go-to-k/cdk-real-drift/issues/1206)) ([49f36f4](https://github.com/go-to-k/cdk-real-drift/commit/49f36f4754a7d5c28fdd77aa5a11c95e0964d65c))
+* **revert:** make [#641](https://github.com/go-to-k/cdk-real-drift/issues/641) null-husk strip ops non-selectable coupled plumbing ([#967](https://github.com/go-to-k/cdk-real-drift/issues/967)) ([#1207](https://github.com/go-to-k/cdk-real-drift/issues/1207)) ([1c63bea](https://github.com/go-to-k/cdk-real-drift/commit/1c63bea23ef8ebb3570b73c55301fdc3011c253a))
+
 ## [0.9.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.2...v0.9.3) (2026-07-10)
 
 
