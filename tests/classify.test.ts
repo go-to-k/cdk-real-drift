@@ -1112,6 +1112,48 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
     expect(t({ Scope: 'arn:aws:iam::111111111111:root' }).undeclared).toEqual(['Scope']);
   });
 
+  it('#1071: Chatbot GuardrailPolicies undeclared default folds per-partition via the ARRAY context-ARN default', () => {
+    const t = (live: Record<string, unknown>, opts?: Parameters<typeof classifyResource>[3]) =>
+      tiers(
+        classifyResource(bare('AWS::Chatbot::SlackChannelConfiguration'), live, emptySchema, opts)
+      );
+    const opts = { accountId: '111111111111', region: 'us-east-1' };
+    // commercial partition: the AWS-managed AdministratorAccess guardrail folds atDefault
+    expect(
+      t({ GuardrailPolicies: ['arn:aws:iam::aws:policy/AdministratorAccess'] }, opts).atDefault
+    ).toEqual(['GuardrailPolicies']);
+    // GovCloud (aws-us-gov): the partition-scoped ARN read-back FAILS with a hardcoded
+    // commercial `arn:aws:` literal — the #1071 first-run FP — and now folds via {partition}
+    expect(
+      t(
+        { GuardrailPolicies: ['arn:aws-us-gov:iam::aws:policy/AdministratorAccess'] },
+        {
+          ...opts,
+          region: 'us-gov-west-1',
+        }
+      ).atDefault
+    ).toEqual(['GuardrailPolicies']);
+    // China (aws-cn) folds too
+    expect(
+      t(
+        { GuardrailPolicies: ['arn:aws-cn:iam::aws:policy/AdministratorAccess'] },
+        {
+          ...opts,
+          region: 'cn-north-1',
+        }
+      ).atDefault
+    ).toEqual(['GuardrailPolicies']);
+    // a NARROWER / custom guardrail (ReadOnlyAccess) is NOT the default and still surfaces
+    // (the array is equality-gated element-for-element)
+    expect(
+      t({ GuardrailPolicies: ['arn:aws:iam::aws:policy/ReadOnlyAccess'] }, opts).undeclared
+    ).toEqual(['GuardrailPolicies']);
+    // with no resolved account/region the substitution is skipped → stays undeclared, recordable
+    expect(
+      t({ GuardrailPolicies: ['arn:aws:iam::aws:policy/AdministratorAccess'] }).undeclared
+    ).toEqual(['GuardrailPolicies']);
+  });
+
   it('#676: RestApi resource-policy execute-api:/* shorthand folds against the echoed full ARN', () => {
     const apiId = 'wmvd2s08ng';
     const opts = { accountId: '111111111111', region: 'us-east-1' };
