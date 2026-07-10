@@ -182,7 +182,7 @@ import { GetTopicAttributesCommand, SNSClient } from '@aws-sdk/client-sns';
 import { GetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { ResourceGoneError } from '../aws-errors.js';
 import { partitionForRegion } from '../desired/template-adapter.js';
-import { READ_RETRY } from './client-config.js';
+import { CLIENT_REQUEST_HANDLER, READ_RETRY } from './client-config.js';
 import { isDefinitiveDenial } from './kms-aliases.js';
 import { hashCaBundle, sha256Hex } from './pem.js';
 
@@ -3467,10 +3467,26 @@ const supplementTrustStore: SupplementReader = async ({ physicalId, region }) =>
   const r = await c.send(new GetTrustStoreCaCertificatesBundleCommand({ TrustStoreArn: arn }));
   const url = str(r.Location);
   if (!url) return undefined;
-  const resp = await fetch(url);
-  if (!resp.ok) return undefined;
-  const hash = hashCaBundle(await resp.text());
-  return hash !== undefined ? { CaCertificatesBundleSha256: hash } : undefined;
+  try {
+    // The ONLY non-SDK HTTP call on the read path — the global undici `fetch`, which
+    // predates #1066 and so bypassed its timeout contract: undici bounds headers only
+    // at 300s, so a trickling / never-completing body hung `check` FOREVER (#1321).
+    // Bound it with the SAME #1066 requestTimeout the wired SDK clients use
+    // (CLIENT_REQUEST_HANDLER.requestTimeout) via AbortSignal.timeout — the one signal
+    // aborts BOTH the fetch and the subsequent `resp.text()` body read. On timeout the
+    // AbortError falls into this catch and DEGRADES to the documented best-effort skip
+    // (keep the CC model), never a fatal hang or a false-flag.
+    const resp = await fetch(url, {
+      signal: AbortSignal.timeout(CLIENT_REQUEST_HANDLER.requestTimeout),
+    });
+    if (!resp.ok) return undefined;
+    const hash = hashCaBundle(await resp.text());
+    return hash !== undefined ? { CaCertificatesBundleSha256: hash } : undefined;
+  } catch {
+    // Fetch/read failed (timeout/abort, network error, non-PEM body): the CA-bundle
+    // digest is a best-effort integrity signal — skip the field rather than propagate.
+    return undefined;
+  }
 };
 
 // AWS::Lambda::Function — the function `Code` is writeOnly (Cloud Control returns a
