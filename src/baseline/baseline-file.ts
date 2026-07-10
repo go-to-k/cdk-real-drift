@@ -27,6 +27,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { deepEqual } from '../diff/drift-calculator.js';
+import { FREE_FORM_MAP_PARENTS, stripCcApiAwsManagedFields } from '../normalize/cc-api-strip.js';
 import { canonicalizeBaselineForCompare, canonicalizeForCompare } from '../normalize/pipeline.js';
 import {
   isRedactedHashSentinel,
@@ -952,6 +953,9 @@ export function recordedValueForChanged(
  *    itself is gone (#675), a different story than a value reverting;
  *  - path since PROMOTED into the template (declared) → the "clean up your baseline" nudge
  *    (#749/#1079), not an accepted drift;
+ *  - path now NAME-STRIPPED by cc-api-strip (an #915/#1251 managed-timestamp variant the user
+ *    recorded before an upgrade added the strip) → a stale-baseline artifact (#1274), not a
+ *    reverted value;
  *  - the entry is an `added`-resource snapshot (empty path) → reconciled resource-wise, not a
  *    property revert.
  * The remaining entries are true "recorded value reverted-to-default / removed since record".
@@ -987,6 +991,7 @@ export function baselineOnlyEntries(
     if (deletedLogical.has(e.logicalId)) return false; // resource deleted -> #675 story
     if (currentLogicalIds !== undefined && !currentLogicalIds.has(e.logicalId)) return false; // #675
     if (declaredPathIsPromoted(opts.declaredByLogical?.get(e.logicalId), e.path)) return false; // promoted
+    if (recordedPathIsNameStripped(e.path)) return false; // #1274: name-stripped -> stale, not gone
     return true;
   });
 }
@@ -1043,6 +1048,41 @@ function pathSegments(path: string): string[] {
     .replace(/\[([^\]]*)\]/g, '.$1')
     .split('.')
     .filter((s) => s.length > 0);
+}
+
+// #1274: the SECOND upgrade-asymmetry mechanism of #766 (PR #1205 fixed only the first,
+// value-level one). A managed-timestamp NAME VARIANT (`CreateTime`, `UpdateTime`,
+// `ModifiedAt`, an #915/#1251 variant) once surfaced as a first-run undeclared FP, so the
+// user `record`ed it into the git baseline. A later cdkrd now name-strips that key from the
+// live model BEFORE classify (cc-api-strip's `ALWAYS_STRIPPED` / `isManagedTimestampName`),
+// so there is NO finding at that path this run — and the removed-since-record loop would
+// SYNTHESIZE a false "baseline value removed since record" drift (CI --fail red on a pure
+// upgrade, and a `revert` offering to write the STALE timestamp back to AWS). Detect the
+// class by REUSING the exact strip walk — build a one-key fragment `{ leaf: value }` and run
+// `stripCcApiAwsManagedFields`; if the leaf disappears, today's name-strip deletes it, so the
+// recorded path is a stale-baseline artifact, not a real removal. Fold it into the
+// "re-run `cdkrd record`" nudge (never a synthetic drift + revert op). This closes the class
+// for EVERY future name-strip addition, not just the current variant set.
+//
+// FREE_FORM_MAP_PARENTS ancestry is respected exactly as canonicalizeBaselineForCompare
+// does (#1267/#807): a USER key literally named `CreateTime` INSIDE a free-form map
+// (`Environment.Variables.CreateTime`, `UserPoolTags.OwnerId`, …) is real user data whose
+// removal IS a real change — so when ANY ancestor segment is a free-form-map parent we seed
+// the walk `freeForm=true`, which preserves the leaf (never folds), keeping detection.
+function recordedPathIsNameStripped(path: string): boolean {
+  const segs = pathSegments(path);
+  if (segs.length === 0) return false;
+  const leaf = segs[segs.length - 1]!;
+  // Numeric array-index leaves are never name-stripped (the strip acts on KEYS, not indices).
+  if (/^\d+$/.test(leaf)) return false;
+  // Seed from ANCESTOR segments only (a leaf literally named `Variables` is not itself
+  // inside a free-form map) — mirrors seedFreeFormFromPath's ancestry test using the same
+  // exported FREE_FORM_MAP_PARENTS set.
+  const underFreeFormMap = segs.slice(0, -1).some((s) => FREE_FORM_MAP_PARENTS.has(s));
+  if (underFreeFormMap) return false; // user data under a free-form map -> real removal
+  // A stable, non-null sentinel so the leaf survives the walk UNLESS it is name-stripped.
+  const stripped = stripCcApiAwsManagedFields({ [leaf]: '__cdkrd_probe__' });
+  return !(leaf in stripped);
 }
 
 // #791: the PARENT logicalId of an out-of-band `added` child entry. gather.ts synthesizes
@@ -1399,6 +1439,7 @@ export function applyBaseline(
   const replacedStale: string[] = []; // #674
   const typeMismatchStale: string[] = []; // #793
   const adoptedStale: string[] = []; // #1279
+  const nameStrippedStale: string[] = []; // #1274
   for (const a of recorded) {
     // #791: an `added`-resource entry has an empty path (the WHOLE resource is the value)
     // and is reconciled in the loop above when its live child is still enumerated. When it
@@ -1487,6 +1528,17 @@ export function applyBaseline(
       promotedStale.push(`${a.logicalId}.${a.path}`);
       continue;
     }
+    // #1274: the recorded path's own segment is name-stripped by TODAY's cc-api-strip
+    // (a managed-timestamp variant / ALWAYS_STRIPPED field that used to leak as an #915
+    // first-run FP the user recorded). It yields no live finding not because it was REMOVED
+    // out of band, but because a cdkrd upgrade now strips it before classify. Fold into the
+    // stale-baseline nudge instead of a synthetic drift + a revert op writing the stale value
+    // back. Free-form-map ancestry is honored inside the helper (a user key IN a free-form map
+    // is NOT folded — its removal is a real change).
+    if (recordedPathIsNameStripped(a.path)) {
+      nameStrippedStale.push(`${a.logicalId}.${a.path}`);
+      continue;
+    }
     kept.push({
       tier: 'undeclared',
       logicalId: a.logicalId,
@@ -1516,6 +1568,7 @@ export function applyBaseline(
   if (replacedStale.length > 0) opts.warn?.(formatReplacedStaleNote(replacedStale));
   if (typeMismatchStale.length > 0) opts.warn?.(formatTypeMismatchStaleNote(typeMismatchStale));
   if (adoptedStale.length > 0) opts.warn?.(formatAdoptedStaleNote(adoptedStale));
+  if (nameStrippedStale.length > 0) opts.warn?.(formatNameStrippedStaleNote(nameStrippedStale));
   return kept;
 }
 
@@ -1579,6 +1632,20 @@ export function formatAdoptedStaleNote(logicalIds: string[]): string {
       ? `recorded added resource (${logicalIds[0]}) was`
       : `${n} recorded added resources were`;
   return `note: ${subject} adopted into the template (now IaC-managed) — re-run \`cdkrd record\` to clean up the baseline.`;
+}
+
+/**
+ * #1274: the folded one-line note for baseline entries whose recorded path is now name-stripped
+ * by cc-api-strip (a managed-timestamp variant / ALWAYS_STRIPPED field an OLD cdkrd surfaced as
+ * an #915 first-run FP the user recorded). A cdkrd upgrade strips the key before classify, so it
+ * yields no live finding — a stale baseline artifact, NOT an out-of-band removal. Folded here so
+ * it never becomes a synthetic "removed since record" drift (+ a stale-value revert offer) on a
+ * pure upgrade. Mirror of formatReplacedStaleNote. Pure + exported for unit tests.
+ */
+export function formatNameStrippedStaleNote(paths: string[]): string {
+  const n = paths.length;
+  const subject = n === 1 ? `baseline entry (${paths[0]}) is` : `${n} baseline entries are`;
+  return `note: ${subject} an AWS-managed field cdkrd now strips (recorded by an older version) — re-run \`cdkrd record\` to clean it up.`;
 }
 
 /**
