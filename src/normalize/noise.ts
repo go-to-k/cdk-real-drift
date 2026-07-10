@@ -2491,6 +2491,15 @@ export const GENERATED_TOPLEVEL_PATHS: Record<string, ReadonlySet<string>> = {
   // recorded baseline, not a constant. Not revertable (SYNTHETIC_READ_SIGNAL_PATHS): the
   // old bytes are gone.
   'AWS::Lambda::Function': new Set(['CodeSha256']),
+  // AWS::Glue::Job.ScriptSha256 — a SYNTHETIC SHA-256 of the job's ETL script fetched from
+  // Command.ScriptLocation (S3), supplemented in overrides.ts (#1346). The script content is
+  // writeOnly (GetJob returns only the S3 path), so a same-key swap was a TOTAL false
+  // negative; the digest re-surfaces it. Like the Lambda::Function CodeSha256 sibling above:
+  // folded `generated` first-run (zero first-run noise), RECORDABLE (baseline-file) because
+  // the script IS mutable, and not-revertable (SYNTHETIC_READ_SIGNAL_PATHS — no write target).
+  // Value-independent here is safe only because the value is UNDECLARED and RECORDED — the
+  // equality is against the recorded baseline, not a constant.
+  'AWS::Glue::Job': new Set(['ScriptSha256']),
   // An EFS AccessPoint's ClientToken is the idempotency token CloudFormation mints at
   // create time as `<logicalId>-<random>` (e.g. "AccessPointE936DE82-b6xKi37R0Uio"). It
   // is createOnly (immutable) and the CDK L2 never declares it, so it floods the first

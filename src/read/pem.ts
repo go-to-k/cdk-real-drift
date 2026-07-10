@@ -20,3 +20,14 @@ export function hashCaBundle(pem: unknown): string | undefined {
   bodies.sort();
   return createHash('sha256').update(bodies.join('\n')).digest('hex');
 }
+
+// A plain SHA-256 (hex) of raw bytes — the integrity signal cdkrd records for OPAQUE
+// content whose bytes AWS returns verbatim (unlike a PEM set, there is no ordering to
+// canonicalize). Used for a Glue job's ETL SCRIPT fetched from S3 (#1346): the object at
+// Command.ScriptLocation is compared byte-for-byte, so any change to the script — even at
+// the same S3 key — changes the hash. Returns undefined for empty input so a bogus hash is
+// never recorded.
+export function sha256Hex(bytes: Uint8Array | undefined): string | undefined {
+  if (bytes === undefined || bytes.length === 0) return undefined;
+  return createHash('sha256').update(bytes).digest('hex');
+}

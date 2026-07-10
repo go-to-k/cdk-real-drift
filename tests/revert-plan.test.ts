@@ -1233,6 +1233,23 @@ describe('buildRevertPlan', () => {
     expect(plan.notRevertable[0]!.reason).toContain('integrity signal');
   });
 
+  it('Glue::Job ScriptSha256 (ETL-script-swap integrity signal) is notRevertable (#1346)', () => {
+    // A fetch-and-hash of the writeOnly ETL script at S3 Command.ScriptLocation: it re-surfaces
+    // a same-key script swap, but the digest has no write target — detect/record-only.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::Glue::Job',
+      path: 'ScriptSha256',
+      physicalId: 'my-job',
+      actual: 'e'.repeat(64),
+      desired: 'f'.repeat(64),
+    });
+    const plan = buildRevertPlan([f], undefined);
+    expect(plan.items).toHaveLength(0);
+    expect(plan.notRevertable).toHaveLength(1);
+    expect(plan.notRevertable[0]!.reason).toContain('integrity signal');
+  });
+
   it('--remove-unrecorded re-enables the remove op for unrecorded values', () => {
     const f = F({
       tier: 'undeclared',

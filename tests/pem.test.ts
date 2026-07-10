@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { hashCaBundle } from '../src/read/pem.js';
+import { hashCaBundle, sha256Hex } from '../src/read/pem.js';
 
 const cert = (body: string): string =>
   `-----BEGIN CERTIFICATE-----\n${body}\n-----END CERTIFICATE-----\n`;
@@ -39,5 +39,31 @@ describe('hashCaBundle (#505 TrustStore CA bundle integrity signal)', () => {
   it('returns undefined for a non-string', () => {
     expect(hashCaBundle(undefined)).toBeUndefined();
     expect(hashCaBundle(42)).toBeUndefined();
+  });
+});
+
+describe('sha256Hex (#1346 Glue job ETL script integrity signal)', () => {
+  const bytes = (s: string): Uint8Array => new TextEncoder().encode(s);
+
+  it('is a deterministic 64-hex digest of the exact bytes', () => {
+    const b = bytes("print('etl')\n");
+    expect(sha256Hex(b)).toBe(sha256Hex(b));
+    expect(sha256Hex(b)).toMatch(/^[0-9a-f]{64}$/);
+  });
+
+  it('matches the canonical SHA-256 (known-answer for the empty-ish "abc")', () => {
+    // sha256("abc") — the well-known test vector
+    expect(sha256Hex(bytes('abc'))).toBe(
+      'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad'
+    );
+  });
+
+  it('any byte change (a script swap) changes the hash', () => {
+    expect(sha256Hex(bytes("print('v1')"))).not.toBe(sha256Hex(bytes("print('v2')")));
+  });
+
+  it('returns undefined for empty / undefined input (never a bogus hash)', () => {
+    expect(sha256Hex(new Uint8Array(0))).toBeUndefined();
+    expect(sha256Hex(undefined)).toBeUndefined();
   });
 });
