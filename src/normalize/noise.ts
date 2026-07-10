@@ -1584,6 +1584,23 @@ export const KNOWN_DEFAULT_ONE_OF_PATHS: Record<string, Record<string, readonly 
   'AWS::EKS::Cluster': {
     'KubernetesNetworkConfig.ServiceIpv4Cidr': ['10.100.0.0/16', '172.20.0.0/16'],
   },
+  // A bucket that declares LifecycleConfiguration.Rules but no
+  // TransitionDefaultMinimumObjectSize reads back the AWS-assigned default — which is ONE
+  // OF TWO documented constants depending on WHEN the lifecycle configuration was created:
+  // 'all_storage_classes_128K' for configurations created after S3's late-2024 default
+  // change, 'varies_by_storage_class' (the legacy behavior) for configurations created
+  // before it. Both are AWS-assigned, not user intent, and the enum has exactly these two
+  // values, so folding the set keeps every clean bucket at zero first-run drift; the
+  // equality gate still surfaces a future value outside the set. Observed live: two
+  // same-template buckets in one account read back one value each (pre/post-change
+  // lifecycle configs) — the single-constant KNOWN_DEFAULT_PATHS pin false-flagged the
+  // legacy one as first-run [Potential Drift].
+  'AWS::S3::Bucket': {
+    'LifecycleConfiguration.TransitionDefaultMinimumObjectSize': [
+      'all_storage_classes_128K',
+      'varies_by_storage_class',
+    ],
+  },
 };
 
 // R108: nested service defaults — the NESTED-path twin of KNOWN_DEFAULTS. The
@@ -1890,9 +1907,8 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     // bias stays CLEAN, while a real out-of-band bias change still surfaces.
     'GeoProximityLocation.Bias': 0,
   },
-  'AWS::S3::Bucket': {
-    'LifecycleConfiguration.TransitionDefaultMinimumObjectSize': 'all_storage_classes_128K',
-  },
+  // (AWS::S3::Bucket LifecycleConfiguration.TransitionDefaultMinimumObjectSize moved to
+  // KNOWN_DEFAULT_ONE_OF_PATHS: the AWS-assigned default is one of TWO constants — see there.)
   'AWS::Scheduler::Schedule': {
     'Target.RetryPolicy': { MaximumEventAgeInSeconds: 86400, MaximumRetryAttempts: 185 },
   },

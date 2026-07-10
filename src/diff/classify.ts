@@ -1334,9 +1334,15 @@ function collectNestedUndeclared(
   // rule. Mirror the declared-side guard (drift-calculator `hasPathUnsafeKey`): when any
   // key would corrupt the path, don't descend — emit the whole map at the current (safe)
   // path so the revert rewrites the map as a unit and the finding path carries no
-  // ambiguous segment.
+  // ambiguous segment. But emit ONLY when the map is genuinely LIVE-ONLY (the declared
+  // twin is empty): a DECLARED unsafe-key map (a Glue Table's `TableInput.Parameters`
+  // with its `projection.*` keys, a SerdeInfo `field.delim`) is owned by the DECLARED
+  // whole-map compare — drift-calculator's `hasPathUnsafeKey` guard emits it as ONE
+  // declared drift when it differs (an out-of-band added/changed/removed key), and the
+  // stringly-equal fold collapses the CDK typed-JSON vs AWS string coercion. Emitting it
+  // here too false-flagged every declared dot-key map as first-run undeclared drift.
   if (Object.keys(liveVal).some((k) => PATH_UNSAFE_KEY.test(k))) {
-    emit(path, liveVal);
+    if (Object.keys(declaredVal).length === 0) emit(path, liveVal);
     return;
   }
   for (const [k, val] of Object.entries(liveVal)) {

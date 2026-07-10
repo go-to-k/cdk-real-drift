@@ -11139,6 +11139,53 @@ describe('#555: descend a fully-undeclared object (DESCEND_UNDECLARED_OBJECT_PAT
     expect(t[0]!.tier).toBe('undeclared');
     expect(t[0]!.actual).toEqual({ ControlPlaneInstanceType: 'm5.large' });
   });
+
+  // S3 TransitionDefaultMinimumObjectSize: the AWS-assigned default is one of TWO constants
+  // depending on when the lifecycle configuration was created ('all_storage_classes_128K'
+  // post-2024, 'varies_by_storage_class' legacy). The single-constant pin false-flagged the
+  // legacy value as first-run [Potential Drift] on older buckets (user-reported).
+  it('S3 lifecycle TransitionDefaultMinimumObjectSize: BOTH AWS-assigned defaults fold', () => {
+    const res: DesiredResource = {
+      logicalId: 'Bkt',
+      resourceType: 'AWS::S3::Bucket',
+      physicalId: 'my-bucket',
+      declared: {
+        LifecycleConfiguration: { Rules: [{ ExpirationInDays: 730, Status: 'Enabled' }] },
+      },
+    };
+    for (const def of ['all_storage_classes_128K', 'varies_by_storage_class']) {
+      const t = tiers(
+        classifyResource(
+          res,
+          {
+            LifecycleConfiguration: {
+              Rules: [{ ExpirationInDays: 730, Status: 'Enabled' }],
+              TransitionDefaultMinimumObjectSize: def,
+            },
+          },
+          emptySchema
+        )
+      );
+      expect(t.undeclared).toEqual([]);
+      expect(t.atDefault).toEqual(['LifecycleConfiguration.TransitionDefaultMinimumObjectSize']);
+    }
+    // Equality-gated: a value outside the two-constant set still surfaces.
+    const drifted = tiers(
+      classifyResource(
+        res,
+        {
+          LifecycleConfiguration: {
+            Rules: [{ ExpirationInDays: 730, Status: 'Enabled' }],
+            TransitionDefaultMinimumObjectSize: 'something_else',
+          },
+        },
+        emptySchema
+      )
+    );
+    expect(drifted.undeclared).toEqual([
+      'LifecycleConfiguration.TransitionDefaultMinimumObjectSize',
+    ]);
+  });
 });
 
 // #632: an undeclared boolean/empty value that DIVERGES from its KNOWN_DEFAULTS pin must
@@ -11454,11 +11501,12 @@ describe('#929 declared boolean false vs truthy KNOWN_DEFAULTS pin is not masked
 // #747: a live-only (out-of-band-added) map key containing a `.` / `[` / `]` must NOT be
 // appended verbatim as a `${path}.${key}` nested finding path — `toPointer` (and the
 // baseline `topSegment` / ignore-rule glob) re-split on `.`/`[`, corrupting the location
-// so a revert patches the WRONG place. The declared side already emits the whole map at
-// the parent path (drift-calculator `hasPathUnsafeKey`); the UNDECLARED side must mirror
-// it. Assert the finding path is the PARENT (`Parameters`), value = the whole live map,
-// NOT a split `Parameters.projection.enabled`.
-describe('#747 dotted live-only map key -> whole map at parent path (undeclared)', () => {
+// so a revert patches the WRONG place. Whole-map-at-parent-path semantics: for a DECLARED
+// map the declared whole-map compare (drift-calculator `hasPathUnsafeKey`) owns the
+// finding — ONE `declared` drift at the parent, no undeclared duplicate (a first-run FP
+// on every declared dot-key map, and a double report on a real out-of-band key add,
+// until fixed); a map that is genuinely LIVE-ONLY still emits whole as `undeclared`.
+describe('#747 dotted map keys -> whole map at parent path (declared compare owns a declared map)', () => {
   const bareSchema: SchemaInfo = {
     readOnly: new Set(),
     writeOnly: new Set(),
@@ -11470,7 +11518,7 @@ describe('#747 dotted live-only map key -> whole map at parent path (undeclared)
     defaultPaths: {},
   };
 
-  it('Glue Table Parameters with Athena projection.enabled emits parent path only', () => {
+  it('out-of-band key added to a DECLARED map -> ONE declared finding at the parent path', () => {
     const resource: DesiredResource = {
       logicalId: 'Tbl',
       resourceType: 'AWS::Glue::Table',
@@ -11483,18 +11531,18 @@ describe('#747 dotted live-only map key -> whole map at parent path (undeclared)
       Parameters: { classification: 'csv', 'projection.enabled': 'true' },
     };
     const findings = classifyResource(resource, live, bareSchema);
-    const undeclared = findings.filter((f) => f.tier === 'undeclared');
-    // Exactly one undeclared finding, at the PARENT path — no split segments.
-    expect(undeclared).toHaveLength(1);
-    expect(undeclared[0].path).toBe('Parameters');
+    // The declared whole-map compare owns it: exactly ONE finding, `declared`, at the
+    // PARENT path — no undeclared duplicate, no split segments.
+    expect(findings.map((f) => `${f.tier}:${f.path}`)).toEqual(['declared:Parameters']);
     // NEVER the corrupt per-key path.
     expect(findings.map((f) => f.path)).not.toContain('Parameters.projection.enabled');
     expect(findings.map((f) => f.path)).not.toContain('Parameters.projection');
     // The whole live map is carried so revert rewrites it as a unit.
-    expect(undeclared[0].actual).toEqual({
+    expect(findings[0].actual).toEqual({
       classification: 'csv',
       'projection.enabled': 'true',
     });
+    expect(findings[0].desired).toEqual({ classification: 'csv' });
   });
 
   it('safe live-only keys still descend per-key (guard is scoped to path-unsafe keys)', () => {
@@ -11524,11 +11572,88 @@ describe('#747 dotted live-only map key -> whole map at parent path (undeclared)
     const live: Record<string, unknown> = {
       Parameters: { a: '1', 'weird[0]': 'x' },
     };
-    const undeclared = classifyResource(resource, live, bareSchema).filter(
-      (f) => f.tier === 'undeclared'
-    );
+    const findings = classifyResource(resource, live, bareSchema);
+    expect(findings.map((f) => `${f.tier}:${f.path}`)).toEqual(['declared:Parameters']);
+  });
+
+  it('a genuinely LIVE-ONLY dotted-key map still emits whole as undeclared at the parent path', () => {
+    const resource: DesiredResource = {
+      logicalId: 'Tbl',
+      resourceType: 'AWS::Glue::Table',
+      physicalId: 'my-table',
+      // TableInput is declared (so the nested descent runs) but Parameters is NOT.
+      declared: { TableInput: { Name: 'logs' } },
+    };
+    const live: Record<string, unknown> = {
+      TableInput: { Name: 'logs', Parameters: { 'projection.enabled': 'true' } },
+    };
+    const findings = classifyResource(resource, live, bareSchema);
+    const undeclared = findings.filter((f) => f.tier === 'undeclared');
     expect(undeclared).toHaveLength(1);
-    expect(undeclared[0].path).toBe('Parameters');
+    expect(undeclared[0].path).toBe('TableInput.Parameters');
+    expect(undeclared[0].actual).toEqual({ 'projection.enabled': 'true' });
+  });
+
+  // The user-reported FP (Athena partition-projection tables from CloudFront/WAF access-log
+  // configs): the template DECLARES TableInput.Parameters / SerdeInfo.Parameters with dotted
+  // keys; the live read echoes the same maps (values stringified by AWS). The declared
+  // compare folds the coercion — but the nested-undeclared descent ALSO emitted the whole
+  // map as first-run `[Potential Drift]` on every clean deploy. Must be ZERO findings.
+  it('a DECLARED dotted-key map echoed by the live read (stringly-equal) is ZERO findings', () => {
+    const resource: DesiredResource = {
+      logicalId: 'LogsTable',
+      resourceType: 'AWS::Glue::Table',
+      physicalId: 'db|logs',
+      declared: {
+        TableInput: {
+          Parameters: {
+            'skip.header.line.count': 2, // CDK emits typed number
+            'projection.enabled': true, // CDK emits typed boolean
+            'projection.date.format': 'yyyy/MM/dd/HH',
+          },
+          StorageDescriptor: {
+            SerdeInfo: {
+              Parameters: { 'field.delim': '\t', 'serialization.format': '\t' },
+            },
+          },
+        },
+      },
+    };
+    const live: Record<string, unknown> = {
+      TableInput: {
+        Parameters: {
+          'projection.enabled': 'true',
+          'projection.date.format': 'yyyy/MM/dd/HH',
+          'skip.header.line.count': '2',
+        },
+        StorageDescriptor: {
+          SerdeInfo: {
+            Parameters: { 'serialization.format': '\t', 'field.delim': '\t' },
+          },
+        },
+      },
+    };
+    expect(classifyResource(resource, live, bareSchema)).toEqual([]);
+  });
+
+  // Equality still gates: a REAL out-of-band value change inside the declared map is ONE
+  // declared finding at the parent (whole map), never silently folded.
+  it('a real value change inside a DECLARED dotted-key map surfaces as declared drift', () => {
+    const resource: DesiredResource = {
+      logicalId: 'LogsTable',
+      resourceType: 'AWS::Glue::Table',
+      physicalId: 'db|logs',
+      declared: {
+        TableInput: { Parameters: { 'projection.enabled': true, 'skip.header.line.count': 2 } },
+      },
+    };
+    const live: Record<string, unknown> = {
+      TableInput: {
+        Parameters: { 'projection.enabled': 'false', 'skip.header.line.count': '2' },
+      },
+    };
+    const findings = classifyResource(resource, live, bareSchema);
+    expect(findings.map((f) => `${f.tier}:${f.path}`)).toEqual(['declared:TableInput.Parameters']);
   });
 });
 
