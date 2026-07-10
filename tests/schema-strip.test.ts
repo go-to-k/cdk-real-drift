@@ -96,3 +96,59 @@ describe('getSchemaInfo DescribeType failure handling (#751)', () => {
     expect(msg).toContain('cloudformation:DescribeType');
   });
 });
+
+// #1311: `AWS::SimSpaceWeaver::Simulation` ships a `propertyTransform` whose KEY has NO
+// leading slash — `"properties/MaximumDuration": "$uppercase(MaximumDuration)"`. The
+// pointerToDotted helper only stripped a LEADING `/properties/`, so the transform landed
+// under the dead dotted key `properties.MaximumDuration` and was never consulted; a
+// template declaring `MaximumDuration: 5d` (service echoes `5D`) was a permanent declared
+// false positive. The fix tolerates the optional leading slash — exercised here through
+// the public getSchemaInfo, which keys propertyTransforms via pointerToDotted, plus the
+// readOnly/writeOnly/createOnly strip that shares the same helper.
+describe('pointerToDotted tolerates a no-leading-slash properties/ pointer (#1311)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('keys a no-leading-slash propertyTransform under the real model path, not `properties.*`', async () => {
+    const resourceType = 'AWS::SimSpaceWeaver::Simulation1311';
+    const region = 'us-east-1';
+    const schema = {
+      properties: { MaximumDuration: { type: 'string' } },
+      // The typo'd registry key: `properties/MaximumDuration` with NO leading slash.
+      propertyTransform: { 'properties/MaximumDuration': '$uppercase(MaximumDuration)' },
+    };
+    const send = vi.fn().mockResolvedValue({ Schema: JSON.stringify(schema) });
+    const client = fakeClient(region, send as unknown as () => Promise<unknown>);
+
+    const info = await getSchemaInfo(client, resourceType);
+
+    // The transform is now reachable under the real dotted key...
+    expect(info.propertyTransforms?.['MaximumDuration']).toBe('$uppercase(MaximumDuration)');
+    // ...and NOT stranded under the dead `properties.MaximumDuration` key (the pre-fix bug).
+    expect(info.propertyTransforms?.['properties.MaximumDuration']).toBeUndefined();
+  });
+
+  it('still strips a normal leading-slash `/properties/Foo` readOnly/writeOnly pointer', async () => {
+    const resourceType = 'AWS::Foo::Slash1311';
+    const region = 'eu-west-1';
+    const schema = {
+      properties: { Id: { type: 'string' }, Secret: { type: 'string' } },
+      readOnlyProperties: ['/properties/Id'],
+      writeOnlyProperties: ['/properties/Secret'],
+      // A no-leading-slash variant also folds correctly via the shared helper.
+      createOnlyProperties: ['properties/Id'],
+    };
+    const send = vi.fn().mockResolvedValue({ Schema: JSON.stringify(schema) });
+    const client = fakeClient(region, send as unknown as () => Promise<unknown>);
+
+    const info = await getSchemaInfo(client, resourceType);
+
+    // Leading-slash pointers keep working (no regression).
+    expect(info.readOnly.has('Id')).toBe(true);
+    expect(info.writeOnly.has('Secret')).toBe(true);
+    // The no-leading-slash createOnly pointer also lands on the real key, not `properties`.
+    expect(info.createOnly.has('Id')).toBe(true);
+    expect(info.createOnly.has('properties')).toBe(false);
+  });
+});
