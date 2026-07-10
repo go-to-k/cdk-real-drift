@@ -13,6 +13,7 @@
 import { stripCcApiAwsManagedFields } from './cc-api-strip.js';
 import {
   canonicalizeIdArraysDeep,
+  canonicalizeIpv6CidrsDeep,
   canonicalizeTagListsDeep,
   normalizeWafByteMatchDeep,
   ORDER_SIGNIFICANT_ARRAY_KEYS,
@@ -29,8 +30,8 @@ import { normalizePoliciesDeep } from './policy-canonical.js';
 // on undeclared snapshot values, which never carry an order-significant declared array.
 export function canonicalizeForCompare(v: unknown, resourceType?: string): unknown {
   const orderSig = resourceType ? ORDER_SIGNIFICANT_ARRAY_KEYS[resourceType] : undefined;
-  const base = canonicalizeIdArraysDeep(
-    canonicalizeTagListsDeep(normalizePoliciesDeep(v), orderSig)
+  const base = canonicalizeIpv6CidrsDeep(
+    canonicalizeIdArraysDeep(canonicalizeTagListsDeep(normalizePoliciesDeep(v), orderSig))
   );
   // A WAFv2 WebACL's ByteMatchStatement search patterns read back base64-encoded; fold both
   // sides to the plain SearchString the template declares so a clean rule is not false drift.
