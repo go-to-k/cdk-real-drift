@@ -966,6 +966,77 @@ export function includeUnrecordedRemovals(
   return removeUnrecorded || (interactive && !yes);
 }
 
+// #760: the ops a cc-kind item ACTUALLY sends to Cloud Control are not `item.ops` as
+// built — three augmentations rewrite/extend them so the read-modify-write UpdateResource
+// converges (and does not clobber managed tags / write-only credentials):
+//   - tagPreservingOps       — re-attach live aws:* managed tags onto any /Tags op
+//   - writeOnlyReincludeOps   — re-send declared write-only values (secrets/passwords) CC drops
+//   - rejectedEmptyStripOps   — drop service-echoed empty arrays the provider rejects on update
+// These MUST be computed BEFORE the plan is printed / the op count is confirmed / the
+// --dry-run count is taken, so the preview is exactly the patch that will be sent (the
+// user must see a write-only-reinclude before consenting to the AWS write). This helper is
+// the SINGLE place the augmentation happens: the preview and the apply consume the same
+// augmented ops, so they can never drift. sdk / delete items pass through unchanged.
+export function augmentCcItemOps(
+  item: RevertItem,
+  schemas: Map<string, SchemaInfo>,
+  liveByLogical: Map<string, Record<string, unknown>>,
+  declaredByLogical: (logicalId: string) => Record<string, unknown> | undefined
+): RevertItem {
+  if (item.kind !== 'cc') return item;
+  const liveRaw = liveByLogical.get(item.logicalId);
+  // Re-attach the live aws:* managed tags onto any /Tags op, so the Cloud Control
+  // read-modify-write does not tell the provider to UNtag them.
+  const tagged = tagPreservingOps(item.ops, liveRaw);
+  // Re-include write-only props the Cloud Control read-modify-write would drop
+  // (cdkd #812 — e.g. ECS Service VolumeConfigurations, IAM User LoginProfile.Password).
+  const extra = writeOnlyReincludeOps(
+    declaredByLogical(item.logicalId),
+    schemas.get(item.resourceType),
+    tagged
+  );
+  // Drop service-echoed empty arrays the service itself rejects on update
+  // (#481 — VpcLattice Rule HeaderMatches []). Live-gated + ancestor-aware.
+  const strip = rejectedEmptyStripOps(item.resourceType, [...tagged, ...extra], liveRaw);
+  const combined = [...tagged, ...extra, ...strip];
+  // Preserve the historical shape: only replace the ops when an augmentation actually
+  // added a row (combined.length > tagged.length). tagPreservingOps rewrites in place
+  // (never changes the count), so a pure tag rewrite still flows through `tagged`.
+  const ops = combined.length > tagged.length ? combined : tagged;
+  return { ...item, ops };
+}
+
+// #760: a batch UpdateResource / SDK-writer failure carries only the provider's message,
+// which rarely names WHICH op in the patch failed. Prefix the error with the item's op
+// path(s) so the FAILED line attributes the failure to the property revert(s) it carried —
+// `[/Foo, /Bar]: <error>`. A `delete`-kind item has a single pseudo-op with no meaningful
+// property path (it deletes the whole resource), so leave its error unchanged. When the
+// error already leads with the same attribution (idempotent), it is not doubled. Pure.
+export function attributeOpFailure(item: RevertItem, error: string): string {
+  if (item.kind === 'delete') return error;
+  const paths = [...new Set(item.ops.map((o) => o.path).filter((p) => p.length > 0))];
+  if (paths.length === 0) return error;
+  const prefix = `[${paths.join(', ')}]`;
+  return error.startsWith(prefix) ? error : `${prefix}: ${error}`;
+}
+
+// Apply augmentCcItemOps to every cc-kind item so the returned plan's ops ARE the ops that
+// will be sent to AWS — feeding one augmented plan to BOTH the preview (printPlan / dry-run
+// count / confirm) and the apply loop (#760).
+export function augmentRevertPlan(
+  plan: RevertPlan,
+  schemas: Map<string, SchemaInfo>,
+  liveByLogical: Map<string, Record<string, unknown>>,
+  declaredByLogical: (logicalId: string) => Record<string, unknown> | undefined
+): RevertPlan {
+  return {
+    ...plan,
+    items: plan.items.map((item) =>
+      augmentCcItemOps(item, schemas, liveByLogical, declaredByLogical)
+    ),
+  };
+}
+
 export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> {
   const {
     stackName,
@@ -1018,6 +1089,23 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     { stackName, accountId: gathered.desired.accountId, region },
     config
   );
+  // Resolve the declared model per logical id — needed both by writeOnlyReincludeOps (to
+  // re-include declared write-only values) and by the apply loop (writer `declared` arg).
+  const resByLogical = new Map(gathered.desired.resources.map((res) => [res.logicalId, res]));
+  const declaredForLogical = (logicalId: string): Record<string, unknown> | undefined =>
+    resByLogical.get(logicalId)?.declared;
+  // #760: the cc-kind ops actually sent to Cloud Control are augmented (tag-preserve /
+  // write-only-reinclude / empty-strip). Bind the augmentation once so the SAME transform
+  // feeds the preview (printPlan / --dry-run count / confirm count) and the apply loop.
+  // Before this, augmentation ran ONLY at apply time — the confirmed op count and printed
+  // plan omitted ops that were then sent to AWS (notably write-only re-includes, a real
+  // extra write of secrets/passwords the user never saw). The augmentation is a pure
+  // function of an item's real ops, so it is applied to the FILTERED plan after the
+  // per-op multiselect (the multiselect selects only real ops; re-augmenting the survivors
+  // keeps the sent patch valid) — leaving the printed/confirmed count exactly the patch
+  // that will be sent.
+  const augment = (pl: RevertPlan): RevertPlan =>
+    augmentRevertPlan(pl, gathered.schemas, gathered.liveByLogical, declaredForLogical);
   let plan = buildRevertPlan(drifted, baseline, {
     removeUnrecorded: includeRemovals,
     schemas: gathered.schemas,
@@ -1032,8 +1120,10 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     out(style.clean(`${stackName} (${region}): no drift to revert.`));
     return { exit: 0, aborted: false };
   }
+  // #760: print the AUGMENTED plan so the preview shows the tag-preserve / write-only-reinclude
+  // / empty-strip ops that will actually be sent — the user must see them before consenting.
   if (!p.json)
-    printPlan(stackName, region, plan, {
+    printPlan(stackName, region, augment(plan), {
       verbose,
       // Only when the unrecorded guard actually fires: with removals included the plan
       // REMOVES those values, so a "no revert target — record first" note would
@@ -1057,13 +1147,22 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   }
 
   if (dryRun) {
-    const opCount = plan.items.reduce((n, i) => n + i.ops.length, 0);
+    // #760: count the AUGMENTED ops — a --dry-run preview must report the op count that a
+    // real revert would SEND, including the tag-preserve / write-only-reinclude / empty-strip
+    // ops the apply loop adds. Resource count is unaffected (augmentation never adds items).
+    const augmented = augment(plan);
+    const opCount = augmented.items.reduce((n, i) => n + i.ops.length, 0);
     out(
-      `\n(dry-run) would apply ${opCount} op(s) to ${plan.items.length} resource(s). No changes made.`
+      `\n(dry-run) would apply ${opCount} op(s) to ${augmented.items.length} resource(s). No changes made.`
     );
     // #1096: the human line above is silenced under --json — carry the same counts so the
     // JSON element is not mistaken for a clean no-op.
-    return { exit: 0, aborted: false, plannedOps: opCount, plannedResources: plan.items.length };
+    return {
+      exit: 0,
+      aborted: false,
+      plannedOps: opCount,
+      plannedResources: augmented.items.length,
+    };
   }
   if (!yes) {
     if (!interactive) {
@@ -1092,8 +1191,14 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
         return { exit: 0, aborted: true };
       }
     }
-    const opCount = plan.items.reduce((n, i) => n + i.ops.length, 0);
-    const deleteCount = plan.items.filter((i) => i.kind === 'delete').length;
+    // #760: count the AUGMENTED (now possibly filtered) plan so the confirmed op count is
+    // exactly the patch that will be sent. The multiselect selected only REAL ops; augment
+    // re-derives the coupled tag-preserve / write-only-reinclude / empty-strip ops for the
+    // survivors. The canonical `plan = augment(plan)` runs once just below (before apply),
+    // so both this confirm count and the apply loop see the same augmented ops.
+    const confirmPlan = augment(plan);
+    const opCount = confirmPlan.items.reduce((n, i) => n + i.ops.length, 0);
+    const deleteCount = confirmPlan.items.filter((i) => i.kind === 'delete').length;
     const ok = await confirm({
       message: revertConfirmMessage(
         stackName,
@@ -1112,6 +1217,13 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     }
   }
 
+  // #760: from here `plan` carries the AUGMENTED cc ops (tag-preserve / write-only-reinclude
+  // / empty-strip) — exactly what was previewed / dry-run-counted / confirmed above. The apply
+  // loop sends these ops verbatim (no per-item re-augmentation), so the sent patch cannot drift
+  // from the preview. Augmented ONCE here for BOTH the --yes/non-interactive path (which skipped
+  // the block above) and the interactive path (whose confirmPlan mirrored this).
+  plan = augment(plan);
+
   // TOCTOU gate (#786): the stack was stable at gather time, but it may have entered a
   // `cdk deploy` while the confirm prompt sat open. Re-read StackStatus RIGHT before the
   // write and REFUSE when it is mid-operation — a revert now would fight the in-flight
@@ -1124,7 +1236,6 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   }
 
   const cc = new CloudControlClient({ region, ...CLIENT_TIMEOUTS });
-  const byLogical = new Map(gathered.desired.resources.map((res) => [res.logicalId, res]));
   // `added` delete items have a SYNTHESIZED logicalId (not a template resource), so the
   // scoped convergence re-read below cannot regenerate them — a SUCCESSFUL delete then
   // correctly vanishes from `post`, but a FAILED one would vanish too (reading as CLEAN).
@@ -1170,7 +1281,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     if (item.kind === 'delete') continue;
     let r: { ok: boolean; error?: string; hint?: string };
     if (item.kind === 'sdk') {
-      const res = byLogical.get(item.logicalId);
+      const res = resByLogical.get(item.logicalId);
       // Same transient-retry wrapper as the Cloud Control path (issue #467): an SDK
       // writer can also throw a "resource is currently updating" error that settles on
       // a retry, and exhausted retries carry the targeted hint.
@@ -1206,7 +1317,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
         }
       }, buildRetryOpts(item.displayId));
     } else {
-      const res = byLogical.get(item.logicalId);
+      const res = resByLogical.get(item.logicalId);
       const identifier =
         CC_IDENTIFIER_ADAPTERS[item.resourceType]?.(
           item.physicalId,
@@ -1214,34 +1325,21 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
           region,
           gathered.desired.accountId
         ) ?? item.physicalId;
-      // Re-attach the live aws:* managed tags onto any /Tags op, so the Cloud Control
-      // read-modify-write does not tell the provider to UNtag them (AWS rejects an
-      // external write that drops an aws:-prefixed key). Uses the UN-stripped live model
-      // kept on the gather (the compare side strips aws:* tags; the write side must not).
-      const tagged = tagPreservingOps(item.ops, gathered.liveByLogical.get(item.logicalId));
-      // Re-include write-only props the Cloud Control read-modify-write would drop
-      // (cdkd #812 — e.g. ECS Service VolumeConfigurations). cc-kind items only.
-      const extra = writeOnlyReincludeOps(
-        res?.declared,
-        gathered.schemas.get(item.resourceType),
-        tagged
-      );
-      // Drop service-echoed empty arrays the service itself rejects on update
-      // (#481 — VpcLattice Rule HeaderMatches []). Live-gated + ancestor-aware.
-      const strip = rejectedEmptyStripOps(
-        item.resourceType,
-        [...tagged, ...extra],
-        gathered.liveByLogical.get(item.logicalId)
-      );
-      const combined = [...tagged, ...extra, ...strip];
-      const ccItem = { ...item, ops: combined.length > tagged.length ? combined : tagged };
-      r = await applyRevertItem(cc, ccItem, identifier, buildRetryOpts(item.displayId));
+      // #760: item.ops are ALREADY augmented (tag-preserve / write-only-reinclude /
+      // empty-strip) — the whole plan was run through `augment` before the confirm, so what
+      // is sent here is exactly what was previewed / confirmed. No per-item re-augmentation.
+      r = await applyRevertItem(cc, item, identifier, buildRetryOpts(item.displayId));
     }
     applied.push({
       logicalId: item.logicalId,
       displayId: item.displayId,
       ok: r.ok,
-      ...(r.error !== undefined && { error: r.error }),
+      // #760: a whole-patch UpdateResource / SDK-writer failure names only the resource; the
+      // provider error rarely says WHICH op failed. Attribute the failing batch by naming the
+      // op path(s) it carried, so a multi-op revert's FAILED line points at the culprit
+      // property (`[path]: error`). Cloud Control applies the patch atomically, so any op in
+      // the batch could be the cause — naming them all is the honest attribution.
+      ...(r.error !== undefined && { error: attributeOpFailure(item, r.error) }),
       ...(r.hint !== undefined && { hint: r.hint }),
     });
     if (!r.ok) worst = Math.max(worst, 2);
