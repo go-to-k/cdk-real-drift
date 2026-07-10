@@ -1,3 +1,10 @@
+## [0.7.4](https://github.com/go-to-k/cdk-real-drift/compare/v0.7.3...v0.7.4) (2026-07-10)
+
+
+### Bug Fixes
+
+* **desired:** under --pre-deploy, local param Default wins over the deployed value so a changed Default is not masked ([#728](https://github.com/go-to-k/cdk-real-drift/issues/728)) ([#1194](https://github.com/go-to-k/cdk-real-drift/issues/1194)) ([1e43017](https://github.com/go-to-k/cdk-real-drift/commit/1e430177d53284820c6bf43316f5e6ce4510ae57))
+
 ## [0.7.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.7.2...v0.7.3) (2026-07-10)
 
 
