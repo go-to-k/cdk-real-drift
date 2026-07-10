@@ -1,3 +1,11 @@
+## [0.9.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.2...v0.9.3) (2026-07-10)
+
+
+### Bug Fixes
+
+* **baseline:** re-apply the full live-value strip pipeline to the stored baseline value at compare time ([#766](https://github.com/go-to-k/cdk-real-drift/issues/766)) ([#1205](https://github.com/go-to-k/cdk-real-drift/issues/1205)) ([43d4d6f](https://github.com/go-to-k/cdk-real-drift/commit/43d4d6f89523ef5acea96f94e8b84f8f106a737c))
+* **revert:** show tag-preserve / write-only-reinclude / empty-strip ops in the plan before confirm ([#760](https://github.com/go-to-k/cdk-real-drift/issues/760)) ([#1204](https://github.com/go-to-k/cdk-real-drift/issues/1204)) ([d7b1790](https://github.com/go-to-k/cdk-real-drift/commit/d7b1790a9a5ad12892a847c233073fd2d0f5dfc6))
+
 ## [0.9.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.1...v0.9.2) (2026-07-10)
 
 
