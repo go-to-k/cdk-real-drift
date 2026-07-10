@@ -17,6 +17,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
   buildBucketNotificationManaged,
   buildClusterEchoModels,
+  buildSiblingEventBusPolicies,
   buildSiblingSgRules,
   type GatherResult,
   gatherFindings,
@@ -688,6 +689,111 @@ describe('buildSiblingSgRules', () => {
       ])
     );
     expect(Object.keys(map)).toHaveLength(0);
+  });
+});
+
+describe('buildSiblingEventBusPolicies', () => {
+  const desiredWith = (resources: DesiredResource[]): Desired =>
+    ({
+      stackName: 's',
+      region: 'r',
+      accountId: '111122223333',
+      resources,
+      rawTemplate: '',
+      ctx: {} as ResolverContext,
+    }) as Desired;
+
+  const stmt = {
+    Effect: 'Allow',
+    Principal: { AWS: '111111111111' },
+    Action: 'events:PutEvents',
+    Resource: 'arn:aws:events:us-east-1:111111111111:event-bus/CustomBus',
+  };
+
+  it('keys a policy by its resolved EventBusName and stamps StatementId as the Sid', () => {
+    const map = buildSiblingEventBusPolicies(
+      desiredWith([
+        {
+          logicalId: 'Pol',
+          resourceType: 'AWS::Events::EventBusPolicy',
+          physicalId: 'CustomBus|Allow',
+          declared: {
+            EventBusName: 'CustomBus',
+            StatementId: 'Allow',
+            Statement: stmt,
+          },
+        },
+      ])
+    );
+    expect(map.CustomBus).toEqual([{ ...stmt, Sid: 'Allow' }]);
+  });
+
+  it('does NOT overwrite a Sid the statement already declares', () => {
+    const withSid = { ...stmt, Sid: 'InlineSid' };
+    const map = buildSiblingEventBusPolicies(
+      desiredWith([
+        {
+          logicalId: 'Pol',
+          resourceType: 'AWS::Events::EventBusPolicy',
+          physicalId: 'CustomBus|Allow',
+          declared: { EventBusName: 'CustomBus', StatementId: 'Allow', Statement: withSid },
+        },
+      ])
+    );
+    expect(map.CustomBus![0]).toMatchObject({ Sid: 'InlineSid' });
+  });
+
+  it('keys an absent EventBusName under the default bus', () => {
+    const map = buildSiblingEventBusPolicies(
+      desiredWith([
+        {
+          logicalId: 'Pol',
+          resourceType: 'AWS::Events::EventBusPolicy',
+          physicalId: 'p',
+          declared: { StatementId: 'Allow', Statement: stmt },
+        },
+      ])
+    );
+    expect(map.default).toEqual([{ ...stmt, Sid: 'Allow' }]);
+  });
+
+  it('skips a policy whose EventBusName is an unresolved intrinsic', () => {
+    const map = buildSiblingEventBusPolicies(
+      desiredWith([
+        {
+          logicalId: 'Pol',
+          resourceType: 'AWS::Events::EventBusPolicy',
+          physicalId: 'p',
+          declared: {
+            EventBusName: { Ref: 'Bus' },
+            StatementId: 'Allow',
+            Statement: stmt,
+          },
+        },
+      ])
+    );
+    expect(Object.keys(map)).toHaveLength(0);
+  });
+
+  it('aggregates multiple policies targeting the same bus', () => {
+    const map = buildSiblingEventBusPolicies(
+      desiredWith([
+        {
+          logicalId: 'P1',
+          resourceType: 'AWS::Events::EventBusPolicy',
+          physicalId: 'CustomBus|A',
+          declared: { EventBusName: 'CustomBus', StatementId: 'A', Statement: stmt },
+        },
+        {
+          logicalId: 'P2',
+          resourceType: 'AWS::Events::EventBusPolicy',
+          physicalId: 'CustomBus|B',
+          declared: { EventBusName: 'CustomBus', StatementId: 'B', Statement: stmt },
+        },
+      ])
+    );
+    expect(map.CustomBus).toHaveLength(2);
+    expect(map.CustomBus!.map((s) => (s as { Sid: string }).Sid)).toEqual(['A', 'B']);
   });
 });
 

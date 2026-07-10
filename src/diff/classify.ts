@@ -372,6 +372,62 @@ const REFLECTED_CHILD_PROPS: Record<string, string> = {
   'AWS::SNS::Topic': 'Subscription',
 };
 
+// AWS::Events::EventBus reflects its RESOURCE POLICY — set by the declared sibling
+// AWS::Events::EventBusPolicy resources that target it — as an undeclared `Policy`
+// property (an IAM policy document `{Version, Statement:[...]}`) on the bus's live
+// model. Each sibling EventBusPolicy's `StatementId` becomes a statement `Sid`. The
+// sibling policies are tracked + compared as their OWN resources (they read fine via
+// Cloud Control), so leaving the aggregated policy on the bus double-reports every
+// statement AND surfaces a first-run [Potential Drift] on every custom bus that carries
+// a policy — the standard cross-account eventing setup (#699).
+//
+// The fix is STATEMENT-LEVEL subtraction (mirroring subtractSiblingSgRules): subtract
+// from the bus's live `Policy.Statement[]` the statements owned by a declared sibling
+// EventBusPolicy (match by `Sid` == `StatementId`, or by resolved content), leaving any
+// out-of-band statement (matching NO sibling) to still surface — so a directly-injected
+// bus statement is NOT blinded (the whole-prop drop would have silenced it). The sibling
+// statements are resolved from the full desired set in gather.ts (buildSiblingEventBusPolicies)
+// and threaded through opts.siblingEventBusPolicies, keyed by the bus's identifier. Fail-open:
+// an inline-declared `Policy` (a raw bus that pins the whole policy inline — not the standard
+// CDK shape) is compared normally (the subtraction is skipped when Policy is declared).
+const EVENT_BUS_TYPE = 'AWS::Events::EventBus';
+const EVENT_BUS_POLICY_PROP = 'Policy';
+
+// Remove from a bus's live `Policy.Statement[]` each statement owned by a declared sibling
+// EventBusPolicy. A sibling matches a live statement when their `Sid`s are equal (the
+// StatementId AWS reflects as the Sid) OR, when neither has a resolvable Sid, when the live
+// statement is a SUPERSET of the sibling's resolved fields (AWS canonicalizes/injects extras
+// the sibling never declared, so an exact equality compare would miss). One removal per sibling
+// preserves a legitimately duplicated statement. If `Statement` empties, the whole `Policy`
+// prop is dropped (empty == absent — don't introduce a []-vs-absent FP); a remaining
+// out-of-band statement stays and surfaces.
+function subtractSiblingEventBusStatements(
+  live: Record<string, unknown>,
+  siblingStatements: unknown[]
+): void {
+  const policy = live[EVENT_BUS_POLICY_PROP];
+  if (!policy || typeof policy !== 'object') return;
+  const p = policy as Record<string, unknown>;
+  const arr = p.Statement;
+  if (!Array.isArray(arr) || siblingStatements.length === 0) return;
+  for (const sib of siblingStatements) {
+    if (!sib || typeof sib !== 'object') continue;
+    const sub = sib as Record<string, unknown>;
+    const sibSid = sub.Sid;
+    const i = arr.findIndex((el) => {
+      if (el === null || typeof el !== 'object') return false;
+      const e = el as Record<string, unknown>;
+      // Prefer a Sid match (the StatementId AWS stamps onto the reflected statement).
+      if (typeof sibSid === 'string' && sibSid) return e.Sid === sibSid;
+      // No usable Sid: match when the live element is a SUPERSET of the sibling's fields
+      // (skipping any UNRESOLVED sibling field, which cannot block the match).
+      return Object.entries(sub).every(([k, v]) => v === UNRESOLVED || deepEqual(e[k], v));
+    });
+    if (i >= 0) arr.splice(i, 1);
+  }
+  if (arr.length === 0) delete live[EVENT_BUS_POLICY_PROP]; // empty == absent; no []-vs-absent FP
+}
+
 // IAM principal types whose inline live `Policies` can be sibling-managed by a separate
 // AWS::IAM::Policy resource (the CDK `<Principal>DefaultPolicy` pattern). Used for the
 // revert-hazard guard when the sibling PolicyName was UNRESOLVED (see below).
@@ -1374,6 +1430,11 @@ export function classifyResource(
     // resources, keyed by the target SG's resolved GroupId (== the SG's physical id). Subtracted
     // from an AWS::EC2::SecurityGroup's reflected live rule arrays so they are not double-counted.
     siblingSgRules?: Record<string, { ingress: unknown[]; egress: unknown[] }>;
+    // Statements declared by SIBLING AWS::Events::EventBusPolicy resources, keyed by the target
+    // bus identifier (== the bus's physical id / Name; "default" for the default bus). Subtracted
+    // from an AWS::Events::EventBus's reflected `Policy.Statement[]` so sibling-owned statements
+    // are not double-counted; any out-of-band statement (matching no sibling) still surfaces.
+    siblingEventBusPolicies?: Record<string, unknown[]>;
     // Bucket physical ids whose S3 notifications are managed by a Custom::S3BucketNotifications
     // custom resource (see buildBucketNotificationManaged): the live bucket reflects the
     // CR-applied NotificationConfiguration the bucket resource never declares, so it is dropped
@@ -1426,6 +1487,19 @@ export function classifyResource(
   // (see REFLECTED_CHILD_PROPS). Fail-open: a declared inline value is still compared.
   const reflected = REFLECTED_CHILD_PROPS[resourceType];
   if (reflected && !(reflected in declared)) delete live[reflected];
+  // Subtract from an event bus's reflected resource-policy the statements owned by its
+  // sibling AWS::Events::EventBusPolicy resources (keyed by the bus identifier in
+  // opts.siblingEventBusPolicies) UNLESS the template pins `Policy` inline — the siblings
+  // are tracked + compared as their own resources, so leaving their statements on the bus
+  // double-reports them + surfaces a first-run FP (#699). This is STATEMENT-LEVEL, so a
+  // purely out-of-band statement (matching no sibling) is left to surface. Fail-open: an
+  // inline-declared `Policy` is compared normally.
+  if (resourceType === EVENT_BUS_TYPE && !(EVENT_BUS_POLICY_PROP in declared)) {
+    const busKey = physicalId ?? resource.declared.Name;
+    const sibStatements =
+      typeof busKey === 'string' ? opts.siblingEventBusPolicies?.[busKey] : undefined;
+    if (sibStatements) subtractSiblingEventBusStatements(live, sibStatements);
+  }
   // An ECS Cluster reflects the CapacityProviders / DefaultCapacityProviderStrategy declared by
   // its sibling AWS::ECS::ClusterCapacityProviderAssociations resource — the only CFn way to set
   // them (the Cluster's own schema carries neither). The association is tracked + compared as its
