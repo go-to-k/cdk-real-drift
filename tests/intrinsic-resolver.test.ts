@@ -326,6 +326,29 @@ describe('intrinsic resolver', () => {
     ).toBe(UNRESOLVED);
   });
 
+  it('Fn::FindInMap stringifies a numeric-/boolean-literal key argument (#1075)', () => {
+    // YAML 1.1 turns `!FindInMap [AcctMap, 123456789012, Bucket]` into a JS number.
+    // Mappings keys are always strings, so the numeric key must stringify and look up
+    // the value rather than fail the string-type check (which left it UNRESOLVED).
+    const c = ctx({
+      mappings: {
+        AcctMap: { '123456789012': { Bucket: 'my-bucket' } },
+        FlagMap: { true: { Port: '443' } },
+        RegionMap: { 'us-east-1': { '80': 'http' } },
+      },
+    });
+    // numeric TopLevelKey
+    expect(resolve({ 'Fn::FindInMap': ['AcctMap', 123456789012, 'Bucket'] }, c)).toBe('my-bucket');
+    // boolean TopLevelKey (YAML 1.1 `yes`/`no`/`on`/`off`)
+    expect(resolve({ 'Fn::FindInMap': ['FlagMap', true, 'Port'] }, c)).toBe('443');
+    // numeric SecondLevelKey
+    expect(resolve({ 'Fn::FindInMap': ['RegionMap', 'us-east-1', 80] }, c)).toBe('http');
+    // a genuinely-unresolved key argument still fails closed (not stringified)
+    expect(resolve({ 'Fn::FindInMap': ['AcctMap', { Ref: 'Ghost' }, 'Bucket'] }, c)).toBe(
+      UNRESOLVED
+    );
+  });
+
   it('Fn::Split splits a resolved string, propagates UNRESOLVED', () => {
     expect(resolve({ 'Fn::Split': [',', 'a,b,c'] }, ctx())).toEqual(['a', 'b', 'c']);
     expect(resolve({ 'Fn::Split': [',', { Ref: 'Env' }] }, ctx())).toEqual(['prod']);
