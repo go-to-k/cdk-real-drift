@@ -1,3 +1,18 @@
+# [0.11.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.10.3...v0.11.0) (2026-07-10)
+
+
+### Bug Fixes
+
+* **desired:** resolve crossRegionReferences reader GetAtt via SSM /cdk/exports prefetch ([#741](https://github.com/go-to-k/cdk-real-drift/issues/741)) ([#1236](https://github.com/go-to-k/cdk-real-drift/issues/1236)) ([e7f8a7a](https://github.com/go-to-k/cdk-real-drift/commit/e7f8a7a6a32b014c7d8d8926fac7b5fc7bf3dea3))
+* **diff:** subtract sibling standalone LifecycleHooks from an ASG's live list ([#700](https://github.com/go-to-k/cdk-real-drift/issues/700)) ([#1228](https://github.com/go-to-k/cdk-real-drift/issues/1228)) ([2f0e23b](https://github.com/go-to-k/cdk-real-drift/commit/2f0e23b7a5df35c2e46aee3a6b066c7297707fa0))
+* **noise:** fold nested-stack AWS::CloudFormation::Stack undeclared props ([#723](https://github.com/go-to-k/cdk-real-drift/issues/723)) ([#1237](https://github.com/go-to-k/cdk-real-drift/issues/1237)) ([a506f8d](https://github.com/go-to-k/cdk-real-drift/commit/a506f8ddfc2c37e738ec4ec64fb541f0b0ff19e3))
+* **read:** enumerate Cognito UserPool IdPs + skip auto-created federated groups ([#1043](https://github.com/go-to-k/cdk-real-drift/issues/1043), [#961](https://github.com/go-to-k/cdk-real-drift/issues/961)) ([#1232](https://github.com/go-to-k/cdk-real-drift/issues/1232)) ([47d4452](https://github.com/go-to-k/cdk-real-drift/commit/47d4452820ddc4070c51a82680b360ca68d82915))
+
+
+### Features
+
+* **read:** add SDK_OVERRIDES readers for DMS ReplicationInstance + ReplicationTask ([#856](https://github.com/go-to-k/cdk-real-drift/issues/856)) ([#1230](https://github.com/go-to-k/cdk-real-drift/issues/1230)) ([a191e8d](https://github.com/go-to-k/cdk-real-drift/commit/a191e8d0a27cdc8c394da3190846a65d9fb45b38))
+
 ## [0.10.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.10.2...v0.10.3) (2026-07-10)
 
 
