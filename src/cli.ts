@@ -54,28 +54,34 @@ OPTIONS
                               resource skipped (unread) or a nested stack not
                               recursed into. A loud coverage warning always prints;
                               --strict makes it CI-failing. Orthogonal to --fail
-  --show-all                  inventory mode: show ALL current undeclared state
-                              (not just changes since record)
+  --show-all                  (check) inventory mode: show ALL current undeclared
+                              state (not just changes since record)
   --verbose                   (check) expand informational tiers / (revert) the
-                              NOT-revertable summary to full per-finding lists
+                              NOT-revertable summary to full per-finding lists /
+                              (record) itemize nested sub-keys in the multiselect
   --pre-deploy                (check) compare live state vs the LOCAL synth template
                               — the declared drift your next deploy would overwrite
   --undeclared-only           (check) undeclared drift only — pair cdkrd with
                               \`cdk drift\` / CFn drift detection for the declared side
   --declared-only             (check) declared drift vs the DEPLOYED template only
                               (undeclared tier skipped; baseline untouched)
+                              (--pre-deploy / --undeclared-only / --declared-only are
+                              MUTUALLY EXCLUSIVE — passing two is an exit-2 error)
   --dry-run                   (revert) print the plan; make no changes
   --wait[=DURATION]           (revert) on a transient "resource is mid-update" error
                               (e.g. RSLVR-00705) keep retrying until it settles, up to
-                              DURATION (default 10m; e.g. --wait=5m, --wait=90s)
-  --remove-unrecorded         (revert) REMOVE unrecorded values + DELETE unrecorded
-                              added resources (never recorded; default: refuse —
-                              record the ones that are right)
+                              DURATION (default 10m; e.g. --wait=5m, --wait=90s). The
+                              DURATION is INLINE-only (--wait=5m); a separate --wait 5m
+                              is NOT read (5m would be taken as a stack name)
+  --remove-unrecorded         (revert, and check for its inline revert) REMOVE unrecorded
+                              values + DELETE unrecorded added resources (never recorded;
+                              default: refuse — record the ones that are right)
   --yes, -y                   skip the write confirm AND the op multiselect — apply the
                               FULL plan (revert) / skip the selection multiselect +
                               overwrite notice, record ALL (record) / ignore ALL shown
                               drift without the multiselect (ignore)
-  --help, -h    --version, -v
+  --help, -h    --version, -v   (bare \`cdkrd -v\` prints the version; inside a verb,
+                              \`-v\` is the short alias for --verbose, e.g. check -v)
 
   Automation: check --fail / record --yes / ignore --yes / revert --yes (or
   --dry-run); non-TTY runs never prompt.
