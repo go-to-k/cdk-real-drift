@@ -1,3 +1,12 @@
+## [0.12.30](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.29...v0.12.30) (2026-07-10)
+
+
+### Bug Fixes
+
+* **desired:** --pre-deploy unpreviewable-param warning also scans Conditions ([#1296](https://github.com/go-to-k/cdk-real-drift/issues/1296)) ([#1376](https://github.com/go-to-k/cdk-real-drift/issues/1376)) ([7bd9552](https://github.com/go-to-k/cdk-real-drift/commit/7bd9552fce8369c90fab378766a24b271a14e7bb))
+* **read:** project Tags in DLM/ServiceDiscovery/ElastiCache-PG/DAX/Glue-Workflow/MediaConvert readers ([#1362](https://github.com/go-to-k/cdk-real-drift/issues/1362)) ([#1378](https://github.com/go-to-k/cdk-real-drift/issues/1378)) ([600c94b](https://github.com/go-to-k/cdk-real-drift/commit/600c94b3db5c3c485f89ae886b229fd2c80db706))
+* **synth:** fail loudly when an --app command exits 0 without writing a fresh cloud assembly ([#1323](https://github.com/go-to-k/cdk-real-drift/issues/1323)) ([#1377](https://github.com/go-to-k/cdk-real-drift/issues/1377)) ([883476e](https://github.com/go-to-k/cdk-real-drift/commit/883476e01de2083e754fe417385b24251ebf9a3c))
+
 ## [0.12.29](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.28...v0.12.29) (2026-07-10)
 
 
