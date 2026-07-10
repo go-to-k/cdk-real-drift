@@ -2102,6 +2102,122 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
       ).toEqual(['HealthCheckConfig.Regions']);
     });
 
+    // #880: schemas that LIE about insertionOrder:false — the array's order is
+    // semantically significant, so a real out-of-band REORDER must SURFACE (not fold).
+    // These are the ORDER_SIGNIFICANT_ARRAY_KEYS / ORDER_SIGNIFICANT_PATHS pins.
+    it('ORDER_SIGNIFICANT_ARRAY_KEYS: SSMContacts::Plan Stages reorder IS drift, non-reorder is CLEAN (#880)', () => {
+      // The schema marks Stages insertionOrder:false (a lie); escalation stages engage in
+      // array order (stage 1 pages first), so a swap changes who is paged first.
+      const schema: SchemaInfo = {
+        ...emptySchema,
+        unorderedObjectArrayPaths: ['Stages'],
+      };
+      const stages = [
+        { DurationInMinutes: 5, Targets: [{ ChannelTargetInfo: { ContactChannelId: 'chan-a' } }] },
+        { DurationInMinutes: 10, Targets: [{ ChannelTargetInfo: { ContactChannelId: 'chan-b' } }] },
+      ];
+      const plan = (declared: Record<string, unknown>): DesiredResource => ({
+        logicalId: 'Plan',
+        resourceType: 'AWS::SSMContacts::Plan',
+        physicalId: 'plan-1',
+        declared,
+      });
+      // clean deploy (same order) -> no drift
+      expect(classifyResource(plan({ Stages: stages }), { Stages: stages }, schema)).toEqual([]);
+      // an out-of-band reorder swaps who is paged first -> MUST surface
+      expect(
+        tiers(
+          classifyResource(plan({ Stages: stages }), { Stages: [stages[1], stages[0]] }, schema)
+        ).declared.length
+      ).toBeGreaterThan(0);
+      // WITHOUT the pin the schema flag would fold the reorder — proving the pin drives
+      // the surface. (A hypothetical un-pinned type folds the same reorder.)
+      const unpinned = (declared: Record<string, unknown>): DesiredResource => ({
+        logicalId: 'Plan',
+        resourceType: 'AWS::Fake::UnpinnedPlan',
+        physicalId: 'plan-1',
+        declared,
+      });
+      expect(
+        classifyResource(unpinned({ Stages: stages }), { Stages: [stages[1], stages[0]] }, schema)
+      ).toEqual([]);
+    });
+
+    it('ORDER_SIGNIFICANT_PATHS: Scheduler::Schedule Target.EcsParameters.PlacementStrategy reorder IS drift, non-reorder is CLEAN (#880)', () => {
+      // The schema marks the nested PlacementStrategy object array insertionOrder:false (a
+      // lie); ECS evaluates strategies in order (spread-then-binpack != binpack-then-spread).
+      const schema: SchemaInfo = {
+        ...emptySchema,
+        unorderedObjectArrayPaths: ['Target.EcsParameters.PlacementStrategy'],
+      };
+      const strat = [
+        { Type: 'spread', Field: 'attribute:ecs.availability-zone' },
+        { Type: 'binpack', Field: 'memory' },
+      ];
+      const model = (s: unknown[]): Record<string, unknown> => ({
+        Target: { EcsParameters: { PlacementStrategy: s } },
+      });
+      const sched = (declared: Record<string, unknown>): DesiredResource => ({
+        logicalId: 'Sched',
+        resourceType: 'AWS::Scheduler::Schedule',
+        physicalId: 'sched-1',
+        declared,
+      });
+      // clean deploy (same order) -> no drift
+      expect(classifyResource(sched(model(strat)), model(strat), schema)).toEqual([]);
+      // an out-of-band reorder flips the placement priority -> MUST surface
+      expect(
+        tiers(classifyResource(sched(model(strat)), model([strat[1], strat[0]]), schema)).declared
+          .length
+      ).toBeGreaterThan(0);
+      // WITHOUT the pin the schema flag folds the same nested reorder — proving the pin.
+      const unpinned = (declared: Record<string, unknown>): DesiredResource => ({
+        logicalId: 'Sched',
+        resourceType: 'AWS::Fake::UnpinnedSched',
+        physicalId: 'sched-1',
+        declared,
+      });
+      expect(classifyResource(unpinned(model(strat)), model([strat[1], strat[0]]), schema)).toEqual(
+        []
+      );
+    });
+
+    it('ORDER_SIGNIFICANT_PATHS: AppSync::Resolver PipelineConfig.Functions (scalar) reorder IS drift, non-reorder is CLEAN (#880)', () => {
+      // The schema marks the nested SCALAR Functions list insertionOrder:false (a lie);
+      // pipeline functions EXECUTE in array order, so a reorder changes the execution order.
+      const schema: SchemaInfo = {
+        ...emptySchema,
+        unorderedScalarPaths: ['PipelineConfig.Functions'],
+      };
+      const fns = ['fn-authz', 'fn-fetch', 'fn-transform'];
+      const model = (f: unknown[]): Record<string, unknown> => ({
+        PipelineConfig: { Functions: f },
+      });
+      const resolver = (declared: Record<string, unknown>): DesiredResource => ({
+        logicalId: 'Resolver',
+        resourceType: 'AWS::AppSync::Resolver',
+        physicalId: 'resolver-1',
+        declared,
+      });
+      // clean deploy (same order) -> no drift
+      expect(classifyResource(resolver(model(fns)), model(fns), schema)).toEqual([]);
+      // an out-of-band reorder changes the execution order -> MUST surface the nested path
+      expect(
+        tiers(classifyResource(resolver(model(fns)), model([fns[2], fns[0], fns[1]]), schema))
+          .declared
+      ).toEqual(['PipelineConfig.Functions']);
+      // WITHOUT the pin the schema flag folds the same scalar reorder — proving the pin.
+      const unpinned = (declared: Record<string, unknown>): DesiredResource => ({
+        logicalId: 'Resolver',
+        resourceType: 'AWS::Fake::UnpinnedResolver',
+        physicalId: 'resolver-1',
+        declared,
+      });
+      expect(
+        classifyResource(unpinned(model(fns)), model([fns[2], fns[0], fns[1]]), schema)
+      ).toEqual([]);
+    });
+
     // Live-observed FP (rds-logexports-reorder fixture): RDS echoes a DB instance's
     // EnableCloudwatchLogsExports log-type set SORTED alphabetically (declared
     // [slowquery, general, error] read back [error, general, slowquery]). The same
