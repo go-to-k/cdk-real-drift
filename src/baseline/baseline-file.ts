@@ -402,11 +402,27 @@ export async function writeBaselineFile(b: BaselineFile): Promise<string> {
  * be read this run (#795), so undeclared values hidden behind that gap were NOT
  * captured — the resource must not claim completeness, else a later cdkrd that
  * closes the read gap would surface those newly-visible values as false "appeared
- * since record" drift. Ignored-tier values do not block completeness: they were
- * visible and deliberately ruled out.
+ * since record" drift.
+ *
+ * #1078: an `ignored`-tier value whose path is ABSENT from `recorded` also blocks
+ * completeness (and — unlike the other blocks — DEMOTES a previously-complete
+ * resource, overriding monotonicity). An ignore rule re-tags an undeclared finding
+ * `ignored`, so `buildRecorded` drops it and this value never enters the snapshot;
+ * marking the resource complete anyway would treat that value as "known-absent". But
+ * an ignore rule can be DELETED (the documented un-ignore) — and when it dies the
+ * value (unchanged all along) would then read as false CONFIRMED "appeared since
+ * record" drift against a complete resource, instead of returning to `unrecorded`
+ * `[Potential Drift]`. So an ignored-and-unrecorded path keeps its resource
+ * INCOMPLETE, so un-ignoring lands the untouched value back at `unrecorded`. This
+ * pairs with `carryForwardIgnored` (WRITE side): a value with a PRIOR recorded entry
+ * IS carried into `recorded`, so its path IS present, so it does NOT block here — a
+ * previously-endorsed value survives an ignore-era record and stays complete. Only a
+ * NEVER-recorded ignored path (no entry to carry) demotes completeness.
  * Monotonic via `previousComplete`: once complete, a resource stays complete
  * (declining to record an appeared-since-record value keeps it drift, instead of
- * demoting it back to unrecorded) — pruned to ids still in the template.
+ * demoting it back to unrecorded) — pruned to ids still in the template. The #1078
+ * ignored-and-unrecorded demotion is the one deliberate exception (the un-ignore
+ * lifecycle must round-trip).
  */
 export function computeCompleteResources(
   allLogicalIds: string[],
@@ -416,14 +432,22 @@ export function computeCompleteResources(
 ): string[] {
   const recordedKeys = new Set(recorded.map(recordedKey));
   const blocked = new Set<string>();
+  // #1078: ids blocked because an ignored value is not in the snapshot — these DEMOTE a
+  // previously-complete resource too (they win over `previousComplete` monotonicity), so
+  // deleting the ignore rule returns the value to `unrecorded`, never false "appeared".
+  const blockedByIgnore = new Set<string>();
   for (const f of findings) {
     if (f.tier === 'skipped' || f.tier === 'deleted' || f.tier === 'readGap')
       blocked.add(f.logicalId);
     if (f.tier === 'undeclared' && !recordedKeys.has(recordedKey(f))) blocked.add(f.logicalId);
+    if (f.tier === 'ignored' && !recordedKeys.has(recordedKey(f))) blockedByIgnore.add(f.logicalId);
   }
   const all = new Set(allLogicalIds);
-  const complete = new Set(previousComplete.filter((id) => all.has(id)));
-  for (const id of allLogicalIds) if (!blocked.has(id)) complete.add(id);
+  const complete = new Set(
+    previousComplete.filter((id) => all.has(id) && !blockedByIgnore.has(id))
+  );
+  for (const id of allLogicalIds)
+    if (!blocked.has(id) && !blockedByIgnore.has(id)) complete.add(id);
   return [...complete].sort();
 }
 
@@ -616,6 +640,46 @@ export function carryForwardUnreadable(
     return parent !== undefined && unreadable.has(parent);
   };
   const preserved = prior.filter((e) => isUnread(e) && !present.has(recordedKey(e)));
+  return preserved.length === 0 ? recorded : [...recorded, ...preserved];
+}
+
+/**
+ * #1078: carry forward a previously-recorded entry for a path that is CURRENTLY
+ * suppressed by an ignore rule (tier `ignored` this run), so an ignore-era `record`
+ * does not silently PRUNE a value the user already endorsed.
+ *
+ * The `findings` reaching `record` are `applyIgnores`'d first (record.ts /
+ * interactive-resolve.ts), so a value with a live ignore rule arrives tier `ignored`
+ * — and `buildRecorded` keeps only `undeclared`/`added`, so it produces NO entry.
+ * Because `writeBaseline` full-replaces `recorded`, the endorsed entry for that path
+ * would vanish from the git-committed baseline (an unexplained deletion to the PR
+ * reviewer). Then, when the user later DELETES the rule (the documented un-ignore),
+ * the value — unchanged all along — would false-surface as confirmed drift.
+ *
+ * So for every ignored finding whose path already has an entry in the EXISTING
+ * baseline, carry that entry forward. While the rule lives the entry is inert
+ * (`applyIgnores` runs AFTER `applyBaseline` everywhere, so ignore keeps winning — the
+ * value is never reported); when the rule dies, watching resumes against the real,
+ * preserved snapshot (a later genuine change still correctly reports "changed since
+ * record"). Only carries an EXISTING entry — a never-recorded ignored path has none to
+ * carry, and its completeness demotion (see `computeCompleteResources`) makes the
+ * un-ignore land at `unrecorded`, not false "appeared since record".
+ */
+export function carryForwardIgnored(
+  recorded: RecordedEntry[],
+  existing: BaselineFile | undefined,
+  findings: Finding[]
+): RecordedEntry[] {
+  const prior = existing?.recorded;
+  if (!prior || prior.length === 0) return recorded;
+  const ignoredKeys = new Set(
+    findings.filter((f) => f.tier === 'ignored').map((f) => recordedKey(f))
+  );
+  if (ignoredKeys.size === 0) return recorded;
+  const present = new Set(recorded.map(recordedKey));
+  const preserved = prior.filter(
+    (e) => ignoredKeys.has(recordedKey(e)) && !present.has(recordedKey(e))
+  );
   return preserved.length === 0 ? recorded : [...recorded, ...preserved];
 }
 

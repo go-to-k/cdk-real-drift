@@ -11,6 +11,7 @@ import {
   type BaselineFile,
   baselineOnlyEntries,
   buildRecorded,
+  carryForwardIgnored,
   carryForwardUnreadable,
   checkBaselineAccount,
   constructPathsByLogical,
@@ -467,7 +468,19 @@ export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
   // Seed with this run's observed entries, then carry forward any prior baseline
   // entries for resources this run could NOT read (skipped / model-read-failed) so a
   // re-record never silently shrinks the committed baseline (writeBaseline full-replaces).
-  let recorded = carryForwardUnreadable(buildRecorded(findings), existing, findings);
+  // #1078: also carry forward any prior entry for a path CURRENTLY suppressed by an
+  // ignore rule (tier `ignored` this run — the findings are `applyIgnores`'d before
+  // reaching record). buildRecorded drops ignored findings, so without this the endorsed
+  // entry would be full-replaced away, and deleting the rule later would false-surface the
+  // untouched value as confirmed "appeared since record" drift. The carried entry is inert
+  // while the rule lives (ignore wins in applyBaseline); it lets watching resume against a
+  // real snapshot once the rule is deleted. Pairs with computeCompleteResources's #1078
+  // demotion for the never-recorded variant (no prior entry to carry).
+  let recorded = carryForwardIgnored(
+    carryForwardUnreadable(buildRecorded(findings), existing, findings),
+    existing,
+    findings
+  );
   // #790: baseline entries with NO current undeclared finding for a resource read cleanly —
   // a recorded value reverted to its AWS default (folded away) or removed out of band. A naive
   // full-replace re-record would silently DROP these (accepting drift `check` force-surfaces).
