@@ -1157,6 +1157,76 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
     expect(cfn.commandCalls(DescribeStackResourcesCommand)).toHaveLength(0);
   });
 
+  // #895: AWS::Events::Rule's CC identifier is the rule Arn, but its CFn physical id for a
+  // rule on a CUSTOM bus is `<busName>|<ruleName>`. The enumerator carries that CFn form on
+  // `siblingLookupId`, so the sibling-stack check must look up THAT (not the Arn), or a
+  // sibling-managed rule is false-flagged `added` with a destructive DeleteResource offer.
+  const ruleArn = 'arn:aws:events:us-east-1:111122223333:rule/MyBus/MyRule';
+  const rulePhysicalId = 'MyBus|MyRule'; // CFn physical id for a custom-bus rule
+
+  it('#895: folds a custom-bus Events::Rule a SIBLING stack manages (looks up busName|ruleName, not the Arn)', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    // CFn only knows the rule by its `<busName>|<ruleName>` physical id — an Arn lookup would miss.
+    cfn.on(DescribeStackResourcesCommand).callsFake((input) => {
+      if (input.PhysicalResourceId === rulePhysicalId) {
+        return {
+          StackResources: [
+            {
+              StackName: 'SiblingStack',
+              LogicalResourceId: 'MyRule',
+              PhysicalResourceId: rulePhysicalId,
+              ResourceType: 'AWS::Events::Rule',
+              Timestamp: new Date(0),
+              ResourceStatus: 'CREATE_COMPLETE',
+            },
+          ],
+        };
+      }
+      const notFound = new Error(`Stack for ${input.PhysicalResourceId} does not exist`);
+      notFound.name = 'ValidationError';
+      throw notFound;
+    });
+    const rule: AddedChild = {
+      resourceType: 'AWS::Events::Rule',
+      identifier: ruleArn,
+      label: 'MyRule',
+      live: {},
+      siblingLookupId: rulePhysicalId,
+    };
+    const managed = await isManagedBySiblingStack(
+      cfn as unknown as CloudFormationClient,
+      rule,
+      new Map()
+    );
+    expect(managed).toBe('managed');
+    // it looked up the CFn physical-id form, NOT the CC Arn
+    expect(cfn.commandCalls(DescribeStackResourcesCommand)[0]!.args[0].input).toMatchObject({
+      PhysicalResourceId: rulePhysicalId,
+    });
+  });
+
+  it('#895: still reports a genuinely out-of-band custom-bus Events::Rule as added (no owning stack)', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    const notFound = new Error(`Stack for ${rulePhysicalId} does not exist`);
+    notFound.name = 'ValidationError';
+    cfn.on(DescribeStackResourcesCommand).rejects(notFound);
+    const rule: AddedChild = {
+      resourceType: 'AWS::Events::Rule',
+      identifier: ruleArn,
+      label: 'MyRule',
+      live: {},
+      siblingLookupId: rulePhysicalId,
+    };
+    const managed = await isManagedBySiblingStack(
+      cfn as unknown as CloudFormationClient,
+      rule,
+      new Map()
+    );
+    expect(managed).toBe('notManaged');
+    // the composite-looking `|` lookup id was NOT short-circuited by the pipe guard: it queried CFn
+    expect(cfn.commandCalls(DescribeStackResourcesCommand)).toHaveLength(1);
+  });
+
   it('memoizes the resolution per physical id (one API call for a repeated child)', async () => {
     const cfn = mockClient(CloudFormationClient);
     cfn.on(DescribeStackResourcesCommand).resolves({

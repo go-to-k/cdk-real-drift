@@ -156,6 +156,15 @@ export interface AddedChild {
   identifier: string; // CC primaryIdentifier — feeds GetResource / DeleteResource (revert)
   label: string; // human display (e.g. 'ANY /', '/widgets')
   live: Record<string, unknown>; // live model snippet, for the report `actual`
+  // The CloudFormation PHYSICAL-ID form used ONLY by the sibling-stack membership check
+  // (DescribeStackResources). It usually EQUALS `identifier` (the CC primaryIdentifier IS
+  // the CFn physical id for the cross-stack class), so it is optional and defaults to
+  // `identifier`. It diverges when CC's identifier is NOT the CFn physical id — e.g.
+  // AWS::Events::Rule: CC uses the bare rule Arn, but CFn stores `<busName>|<ruleName>`
+  // for a custom-bus rule (bare `<ruleName>` on the default bus), so the ARN lookup always
+  // misses and a sibling-managed rule is falsely reported `added` (#895). Only the sibling
+  // lookup id changes; the CC read / DeleteResource path still uses `identifier`.
+  siblingLookupId?: string | undefined;
 }
 
 export interface EnumeratorContext {
@@ -1365,6 +1374,8 @@ export async function enumerateLambdaFunctionChildren(
 
 // Pure diff: declared rule names + live inventory -> the added rules.
 export interface EventBusChildInput {
+  busName: string; // the live bus name (a custom-bus rule's CFn physical id is `<busName>|<ruleName>`)
+  isDefaultBus: boolean; // the AWS-default bus stores the bare `<ruleName>` (no bus prefix)
   declaredRuleNames: string[]; // bare Names of AWS::Events::Rule declared on this bus
   liveRules: { name: string; arn: string; label?: string | undefined }[];
 }
@@ -1374,11 +1385,16 @@ export function diffEventBusChildren(input: EventBusChildInput): AddedChild[] {
   const added: AddedChild[] = [];
   for (const r of input.liveRules) {
     if (declared.has(r.name)) continue;
+    // The CFn physical id for the sibling-stack lookup (#895): the bare rule name on the
+    // AWS-default bus, the `<busName>|<ruleName>` composite on a custom bus. The CC
+    // `identifier` stays the Arn (that is what GetResource / DeleteResource consume).
+    const siblingLookupId = input.isDefaultBus ? r.name : `${input.busName}|${r.name}`;
     added.push({
       resourceType: 'AWS::Events::Rule',
       identifier: r.arn, // the rule Arn IS the CC primaryIdentifier
       label: r.label ?? r.name,
       live: { Name: r.name, Arn: r.arn },
+      siblingLookupId,
     });
   }
   return added;
@@ -1426,7 +1442,13 @@ async function enumerateEventBusChildren(ctx: EnumeratorContext): Promise<AddedC
     )
     .map((r) => ({ name: r.Name, arn: r.Arn, label: r.Name }));
 
-  return diffEventBusChildren({ declaredRuleNames, liveRules });
+  // CFn stores a rule's physical id as `<busName>|<ruleName>` on a custom bus, but the bare
+  // `<ruleName>` on the AWS-default bus (whose name is the literal `default`). Only declared
+  // custom buses are scanned here, so `busName` is virtually never `default`; handle both so
+  // the sibling-stack lookup id matches CFn's physical id regardless (#895).
+  const isDefaultBus = busName === 'default';
+
+  return diffEventBusChildren({ busName, isDefaultBus, declaredRuleNames, liveRules });
 }
 
 // ── Cognito ──────────────────────────────────────────────────────────────────

@@ -179,7 +179,12 @@ export async function isManagedBySiblingStack(
   c: AddedChild,
   cache: Map<string, SiblingCheck>
 ): Promise<SiblingCheck> {
-  const physicalId = c.identifier;
+  // The sibling-stack lookup uses the CloudFormation PHYSICAL-ID form, which for most child
+  // types IS the CC primaryIdentifier (`identifier`); it diverges only where CC's identifier
+  // is not the CFn physical id — e.g. AWS::Events::Rule, whose CC identifier is the rule Arn
+  // but whose CFn physical id is `<busName>|<ruleName>` for a custom-bus rule (#895). The
+  // enumerator carries that form on `siblingLookupId` (defaulting to `identifier`).
+  const physicalId = c.siblingLookupId ?? c.identifier;
   // Pipe-composite CC identifiers (`RestApiId|…`, `UserPoolId|…`) are not CloudFormation
   // physical resource ids — they belong to within-stack API Gateway / Cognito sub-resources
   // outside this cross-stack class, so never spend a call on them. Bare ids that are ARNs
@@ -187,7 +192,12 @@ export async function isManagedBySiblingStack(
   // `:` and ARE the class, so `:` is NOT a composite marker here; the lone `:`-joined
   // composite (API Gateway GatewayResponse `RestApiId:ResponseType`) simply fails the
   // DescribeStackResources lookup and falls through to "report as added" (fail open).
-  if (physicalId.includes('|')) return 'notManaged';
+  // NOTE: an Events::Rule custom-bus `siblingLookupId` (`<busName>|<ruleName>`) IS a valid
+  // CFn physical id despite the `|`; it is set explicitly so it is NOT a CC composite —
+  // hence the `|` guard would wrongly skip it. The guard therefore only applies to the CC
+  // `identifier` composites, which never set `siblingLookupId`, so it stays correct: a rule
+  // whose lookup id contains `|` still runs the DescribeStackResources check below.
+  if (c.siblingLookupId === undefined && physicalId.includes('|')) return 'notManaged';
   const cached = cache.get(physicalId);
   if (cached !== undefined) return cached;
   let managed = false;
