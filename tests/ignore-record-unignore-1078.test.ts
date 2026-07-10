@@ -42,6 +42,9 @@ const ignoredFinding = (actual: unknown): Finding => ({
   ...RES,
   actual,
   note: 'ignored by config rule "Res.OwnershipControls"',
+  // applyIgnores stamps the origin tier (#1277); this path is an ignored UNDECLARED value,
+  // so the #1078 completeness demotion applies to it (a declared origin would NOT demote).
+  ignoredFrom: 'undeclared',
 });
 
 // -------------------------------------------------------------------------------------------

@@ -90,6 +90,16 @@ export interface Finding {
   // whole-array `add /<path>` replacement (converges deterministically regardless of live
   // order). The per-element REPORT is unaffected — this is revert-only metadata.
   wholeArrayRevert?: { path: string; value: unknown } | undefined;
+  // ignored tier only (#1277): the ORIGINAL tier this finding carried BEFORE applyIgnores
+  // re-tagged it to `ignored`. The `ignored` tier discards the source tier, but the #1078
+  // completeness demotion in computeCompleteResources must ONLY fire for an ignored value
+  // that originated as `undeclared` (record snapshots undeclared/added only, so a
+  // never-recorded undeclared value legitimately keeps its resource incomplete). An ignored
+  // DECLARED (or `added`) path is NEVER in `recorded`, so demoting on it would fire
+  // UNCONDITIONALLY and silently mark the resource not-snapshot-complete — a later
+  // out-of-band appearance would then read `unrecorded` instead of confirmed "appeared since
+  // record" drift (an FN downgrade). The provenance gates the demotion to the undeclared case.
+  ignoredFrom?: Tier | undefined;
 }
 
 // Element-level delta of a recorded-but-changed undeclared identity-keyed object

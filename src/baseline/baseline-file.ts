@@ -446,7 +446,16 @@ export function computeCompleteResources(
     if (f.tier === 'skipped' || f.tier === 'deleted' || f.tier === 'readGap')
       blocked.add(f.logicalId);
     if (f.tier === 'undeclared' && !recordedKeys.has(recordedKey(f))) blocked.add(f.logicalId);
-    if (f.tier === 'ignored' && !recordedKeys.has(recordedKey(f))) blockedByIgnore.add(f.logicalId);
+    // #1277: only DEMOTE for an ignored value that originated `undeclared`. `record`
+    // snapshots undeclared/added values only, so a never-recorded UNDECLARED value
+    // legitimately keeps its resource incomplete (the #1078 round-trip). A DECLARED (or
+    // `added`) path is NEVER in `recorded`, so without this gate the guard would fire
+    // UNCONDITIONALLY on every ignored declared drift — silently marking the resource
+    // not-snapshot-complete and downgrading a later out-of-band appearance from confirmed
+    // "appeared since record" drift to `unrecorded` (an FN). `applyIgnores` stamps the
+    // provenance on `ignoredFrom`.
+    if (f.tier === 'ignored' && f.ignoredFrom === 'undeclared' && !recordedKeys.has(recordedKey(f)))
+      blockedByIgnore.add(f.logicalId);
   }
   const all = new Set(allLogicalIds);
   const complete = new Set(

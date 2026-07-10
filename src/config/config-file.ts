@@ -671,6 +671,15 @@ export function applyIgnores(
     // watching). The exit code was always safe (ignored is not a drift tier); this fixes
     // the spurious reporting that defeated the purpose of `ignore`.
     const { unrecorded: _unrecorded, ...rest } = f;
-    return { ...rest, tier: 'ignored', note: `ignored by config rule "${hit.raw}"` };
+    // Stamp the ORIGINAL tier (#1277): the `ignored` tier discards where the finding came
+    // from, but computeCompleteResources' #1078 demotion must only fire on an ignored value
+    // that originated `undeclared` (see Finding.ignoredFrom). Record it before we overwrite
+    // `tier`. `f.tier` is always defined here, so this never assigns undefined.
+    return {
+      ...rest,
+      tier: 'ignored',
+      note: `ignored by config rule "${hit.raw}"`,
+      ...(f.tier ? { ignoredFrom: f.tier } : {}),
+    };
   });
 }
