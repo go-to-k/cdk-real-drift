@@ -42,6 +42,27 @@ describe('#829 report control-char sanitization', () => {
     expect(sanitizeForTerminal('日本語/héllo-世界')).toBe('日本語/héllo-世界'); // non-ASCII untouched
   });
 
+  // #1058: bidi/zero-width Unicode controls reorder/hide text on a bidi-aware terminal
+  // without any C0 byte — sanitize must escape them too, to a visible \u{XXXX} form.
+  it('sanitizeForTerminal escapes Unicode bidi/zero-width controls (#1058)', () => {
+    // RIGHT-TO-LEFT OVERRIDE (U+202E) between "name" and "evil", ZERO-WIDTH SPACE (U+200B) before "x".
+    const hostile = 'name‮evil​x';
+    const out = sanitizeForTerminal(hostile);
+    expect(out).not.toContain('‮'); // no raw RLO
+    expect(out).not.toContain('​'); // no raw ZWSP
+    expect(out).toBe('name\\u{202E}evil\\u{200B}x'); // visible escapes, text preserved
+  });
+
+  it('sanitizeForTerminal covers the full bidi/zero-width range and BOM (#1058)', () => {
+    // one char from each escaped class: bidi override, bidi isolate, LRM, BOM.
+    expect(sanitizeForTerminal('‪⁦‎﻿')).toBe('\\u{202A}\\u{2066}\\u{200E}\\u{FEFF}');
+  });
+
+  it('sanitizeForTerminal leaves ordinary non-ASCII (CJK, emoji) untouched (#1058)', () => {
+    // adjacent codepoints just outside the escaped ranges + CJK + an emoji must survive verbatim.
+    expect(sanitizeForTerminal('日本 \u{1F600}   ⁥⁪')).toBe('日本 \u{1F600}   ⁥⁪');
+  });
+
   it('map-delta key (added key) cannot inject a verdict line', () => {
     // declared tier + both sides records → formatMapDelta; the payload is a live map KEY.
     const f = base({ tier: 'declared', desired: {}, actual: { [PAYLOAD]: 'v' } });
