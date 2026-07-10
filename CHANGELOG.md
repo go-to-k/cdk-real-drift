@@ -1,3 +1,12 @@
+## [0.9.6](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.5...v0.9.6) (2026-07-10)
+
+
+### Bug Fixes
+
+* **noise:** tolerate AWS::Cognito::UserPool.EnabledMfas reorder ([#1093](https://github.com/go-to-k/cdk-real-drift/issues/1093)) ([#1212](https://github.com/go-to-k/cdk-real-drift/issues/1212)) ([65a86ec](https://github.com/go-to-k/cdk-real-drift/commit/65a86ecaca719c538b4296a44e11f673839ce004))
+* **read:** use the CFn physical-id form for the Events::Rule sibling-stack check ([#895](https://github.com/go-to-k/cdk-real-drift/issues/895)) ([#1213](https://github.com/go-to-k/cdk-real-drift/issues/1213)) ([7361a12](https://github.com/go-to-k/cdk-real-drift/commit/7361a123e7ad82e8f0b854c4706e8ce647776234))
+* **revert:** per-finding revert of a subset must not write unselected/skipped findings back to AWS ([#756](https://github.com/go-to-k/cdk-real-drift/issues/756)) ([#1214](https://github.com/go-to-k/cdk-real-drift/issues/1214)) ([4233d19](https://github.com/go-to-k/cdk-real-drift/commit/4233d198f4416e9134c88f5bc8c5ef9fcc2a2211))
+
 ## [0.9.5](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.4...v0.9.5) (2026-07-10)
 
 
