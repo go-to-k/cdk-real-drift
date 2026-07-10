@@ -96,6 +96,16 @@ MEMBER_IDS="$(
 # is_member <name> — the resource IS a member of a protected stack (exact physical-id match).
 is_member() { [ -n "$MEMBER_IDS" ] && printf '%s\n' "$MEMBER_IDS" | grep -qFx "$1"; }
 
+# stack_is_active <stack-name> — the name matches an active (any region) or sentinel-tracked
+# stack, case-insensitively (whole line). Used by the generic tag net to honor a resource's own
+# `aws:cloudformation:stack-name` tag: a resource CloudFormation still manages is never an orphan,
+# even when the id-vs-ARN mismatch defeats is_member and name mangling defeats _name_backed_by.
+stack_is_active() {
+  [ -n "$1" ] || return 1
+  printf '%s\n%s\n' "$ACTIVE_STACKS_GLOBAL" "$PROTECTED_STACKS" | grep -viE '^[[:space:]]*$' \
+    | grep -qiFx "$1"
+}
+
 # A cdkrd-token resource is an orphan unless its name embeds an active stack name.
 # `stacks` selects the guard set: the region-local set for regional resources, the
 # all-regions set for global (IAM) ones. Match is CASE-INSENSITIVE: AWS lowercases
@@ -319,10 +329,19 @@ done < <(aws iam list-instance-profiles --query 'InstanceProfiles[].[InstancePro
 # (RGT API is regional and does not cover IAM — handled above — but does cover most
 # taggable service resources.)
 note "--- Tagged ephemeral resources (generic, any type) ---"
-for arn in $(aws resourcegroupstaggingapi get-resources --region "$REGION" \
-  --tag-filters Key=cdkrd:ephemeral,Values=1 \
-  --query 'ResourceTagMappingList[].ResourceARN' --output text 2>/dev/null | tr '\t' '\n'); do
+# Pull each resource's own `aws:cloudformation:stack-name` tag alongside its ARN. That tag is the
+# AUTHORITATIVE membership signal for the generic net: is_member matches the CFn PhysicalResourceId
+# (a bare id/name like `vpc-0abc…`) but RGT hands us the full ARN (`arn:…:vpc/vpc-0abc…`), so the
+# id-vs-ARN mismatch made a tagged member (a peer's live VPC/NACL/… whose id does not embed the
+# stack name either) false-flag as an orphan — risking a `--delete` of a peer's active resource.
+while IFS=$'\t' read -r arn cfn_stack; do
   [ -n "$arn" ] || continue
+  # A resource CloudFormation still manages (its stack-name tag names an active/sentinel stack) is
+  # never an orphan — honor that before the id/name heuristics below.
+  if [ "$cfn_stack" != "None" ] && stack_is_active "$cfn_stack"; then
+    note "  SKIP (active-stack member via aws:cloudformation:stack-name=$cfn_stack): $arn"
+    continue
+  fi
   # ARN already deleted by a per-type sweep above may still be listed briefly; the
   # active-stack guard + a existence-agnostic report is fine (verify re-runs later).
   if is_backed "$arn" || is_backed_global "$arn"; then
@@ -336,7 +355,10 @@ for arn in $(aws resourcegroupstaggingapi get-resources --region "$REGION" \
   hit
   failed=$((failed + 1)) # unresolved by this script → keep verify RED until handled
   note "  ORPHAN (needs manual delete — delstack/console): $arn"
-done
+done < <(aws resourcegroupstaggingapi get-resources --region "$REGION" \
+  --tag-filters Key=cdkrd:ephemeral,Values=1 \
+  --query 'ResourceTagMappingList[].[ResourceARN, Tags[?Key==`aws:cloudformation:stack-name`].Value | [0]]' \
+  --output text 2>/dev/null)
 
 note "=== summary: $found orphan(s) found, $failed delete failure(s) ==="
 if [ "$found" -eq 0 ]; then
