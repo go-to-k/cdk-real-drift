@@ -21,11 +21,6 @@ export interface Desired {
   region: string;
   accountId: string;
   resources: DesiredResource[];
-  // CloudFormation STACK-level tags (`cdk deploy --tags`, `create-stack --tags`, StackSets,
-  // Service Catalog) as key->value — from DescribeStacks. CFN propagates these onto every
-  // taggable resource without them appearing in the template, so classify subtracts them from
-  // each resource's live `Tags` to avoid a first-run / declared-tier tag FP (#683).
-  stackTags: Record<string, string>;
   rawTemplate: string; // verbatim deployed template body (for baseline templateHash)
   ctx: ResolverContext; // exposed so gather can re-resolve GetAtt once live attrs are read
   // set when the stack's StackStatus is mid-operation / failed (a comparison still runs
@@ -513,13 +508,6 @@ export async function loadDesired(
   const stackId = stack?.StackId ?? '';
   const accountId = stackId.split(':')[4] ?? '';
 
-  // #683 — the stack's own tags (from `cdk deploy --tags` etc.). CFN propagates these onto
-  // every taggable resource without them appearing in the template; classify subtracts them.
-  const stackTags: Record<string, string> = {};
-  for (const t of stack?.Tags ?? []) {
-    if (typeof t.Key === 'string' && typeof t.Value === 'string') stackTags[t.Key] = t.Value;
-  }
-
   const stackParams: Record<string, string> = {};
   for (const p of stack?.Parameters ?? []) {
     if (!p.ParameterKey) continue;
@@ -713,21 +701,7 @@ export async function loadDesired(
           : undefined,
     });
   }
-  // NOTE: build the result as an explicitly-typed `Desired` rather than returning an inline
-  // shorthand literal — a large shorthand return literal here degraded tsgolint's type-aware
-  // analysis (types dropped to `error`/`any`, cascading false lint errors across UNRELATED
-  // files); the annotation resolves the object type deterministically. tsgo accepts either. (#683)
-  const desired: Desired = {
-    stackName,
-    region,
-    accountId,
-    resources,
-    stackTags,
-    rawTemplate,
-    ctx,
-    stackStatusWarning,
-  };
-  return desired;
+  return { stackName, region, accountId, resources, rawTemplate, ctx, stackStatusWarning };
 }
 
 // The IAM principal types an AWS::IAM::Policy can attach an inline policy to, via its

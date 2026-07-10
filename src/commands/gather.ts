@@ -382,7 +382,6 @@ interface ClassifyOpts {
   accountId: string;
   region: string;
   kmsAliasTargets: Record<string, string>;
-  stackTags: Record<string, string>; // CFn stack-level tags (cdk deploy --tags), subtracted from live Tags (#683)
   oaiCanonicalIds: Record<string, string>;
   siblingSgRules: Record<string, { ingress: unknown[]; egress: unknown[] }>;
   siblingEventBusPolicies: Record<string, unknown[]>;
@@ -1207,7 +1206,6 @@ export async function gatherFindings(
     region,
     kmsAliasTargets,
     defaultSgIds,
-    stackTags: desired.stackTags,
     oaiCanonicalIds,
     siblingSgRules: buildSiblingSgRules(desired),
     siblingEventBusPolicies: buildSiblingEventBusPolicies(desired),
@@ -1311,7 +1309,6 @@ export async function regatherTouched(
     region,
     kmsAliasTargets,
     defaultSgIds,
-    stackTags: desired.stackTags,
     oaiCanonicalIds,
     siblingSgRules: buildSiblingSgRules(desired),
     siblingEventBusPolicies: buildSiblingEventBusPolicies(desired),
