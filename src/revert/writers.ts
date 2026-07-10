@@ -46,6 +46,8 @@ import {
 import {
   CloudControlClient,
   GetResourceCommand,
+  GetResourceRequestStatusCommand,
+  type ProgressEvent,
   UpdateResourceCommand,
 } from '@aws-sdk/client-cloudcontrol';
 import {
@@ -214,6 +216,7 @@ import {
 } from '../read/overrides.js';
 import { applyOps } from './apply-ops.js';
 import type { PatchOp } from './plan.js';
+import { classifyTransient, errorText } from './transient.js';
 
 export type SdkWriter = (ctx: OverrideCtx, ops: PatchOp[]) => Promise<void>;
 
@@ -2709,6 +2712,83 @@ function reindexNestedPointer(
   return `/${out.join('/')}`;
 }
 
+// Poll a Cloud Control UpdateResource ProgressEvent to a terminal state. Cloud Control
+// ACCEPTS the request synchronously and runs the resource-handler asynchronously — the
+// initial ProgressEvent is IN_PROGRESS, so returning here would print a false `reverted:`
+// while the operation may still FAIL (async validation / downstream throttle / handler
+// AccessDenied). The FAILED event's StatusMessage is the ONLY place the reason exists
+// (#1065). Mirror the generic CC path's pollToCompletion (src/revert/apply.ts): poll via
+// GetResourceRequestStatus on the RequestToken until SUCCESS / FAILED / CANCEL_COMPLETE,
+// throwing on FAILED with the StatusMessage so the stack-actions.ts writer wrapper
+// classifies/retries it exactly like every other writer failure. That private helper lives
+// in apply.ts (not importable without touching a peer-owned file), so the poll is inlined
+// here reusing the shared transient classifier (classifyTransient) to avoid re-sending the
+// mutation on a transient POLL-read failure (#1064).
+const NESTED_POLL_INTERVAL_MS = 2000;
+// Generous ceiling — a Secrets Manager replica change takes tens of seconds, a Backup plan
+// version a few. pollToCompletion returns as soon as the op is terminal, so a high ceiling
+// never slows the common case; it only bounds a never-terminating op.
+const NESTED_POLL_TIMEOUT_MS = 15 * 60 * 1000;
+// Bound consecutive TRANSIENT poll-read failures so a persistent poll outage still
+// terminates. Each throw here follows the SDK's own internal retries.
+const NESTED_MAX_POLL_READ_FAILURES = 10;
+
+const nestedSleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
+
+// Injectable clock/sleep so tests exercise the poll loop without real 2s waits.
+export interface NestedPollOptions {
+  sleep?: (ms: number) => Promise<void>;
+  now?: () => number;
+}
+
+// Poll to a terminal ProgressEvent; throw on FAILED / CANCEL_COMPLETE / timeout carrying the
+// StatusMessage (or the reason). Resolves on SUCCESS. Exported for unit tests.
+export async function pollNestedToCompletion(
+  cc: CloudControlClient,
+  first: ProgressEvent | undefined,
+  poll: NestedPollOptions = {}
+): Promise<void> {
+  const doSleep = poll.sleep ?? nestedSleep;
+  const clock = poll.now ?? Date.now;
+  let event = first;
+  const token = event?.RequestToken;
+  if (!token) throw new Error('Cloud Control UpdateResource returned no request token');
+  const deadline = clock() + NESTED_POLL_TIMEOUT_MS;
+  let pollFailures = 0;
+  while (clock() < deadline) {
+    const status = event?.OperationStatus;
+    if (status === 'SUCCESS') return;
+    if (status === 'FAILED' || status === 'CANCEL_COMPLETE') {
+      // StatusMessage carries the service code (e.g. RSLVR-00705); ErrorCode is a coarser
+      // CC enum, appended when present. This is the ONLY place the async-failure reason lives.
+      const msg = event?.StatusMessage ?? status;
+      const code = event?.ErrorCode;
+      throw new Error(code && !msg.includes(code) ? `${code}: ${msg}` : msg);
+    }
+    await doSleep(NESTED_POLL_INTERVAL_MS);
+    try {
+      const polled = await cc.send(new GetResourceRequestStatusCommand({ RequestToken: token }));
+      event = polled.ProgressEvent;
+      pollFailures = 0;
+    } catch (e) {
+      // A poll-READ error, NOT an operation failure — the mutation is still in flight. A
+      // terminal poll error (e.g. an invalid/expired RequestToken) cannot be resolved by
+      // re-reading, so surface it. Keep polling the SAME token only for transient poll errors.
+      const text = errorText(e);
+      if (!classifyTransient(text).transient) throw new Error(text);
+      if (++pollFailures >= NESTED_MAX_POLL_READ_FAILURES) {
+        // Persistent poll outage: do NOT let this bubble as a mutation failure that would be
+        // re-sent — report a terminal failure whose wording omits the transient keyword.
+        throw new Error(
+          `unable to confirm Cloud Control request status after ${NESTED_MAX_POLL_READ_FAILURES} poll attempts`
+        );
+      }
+      // else: re-poll the same request token (event unchanged → still non-terminal).
+    }
+  }
+  throw new Error('timed out waiting for Cloud Control request');
+}
+
 // Revert an array-element nested value (e.g. Backup BackupPlanRule[<RuleName>].window,
 // Route53Resolver FirewallRules[<Priority>].setting) via Cloud Control: GetResource for the
 // live model, re-point each op's identity-bracket to the live-array index (reindexNestedPointer),
@@ -2728,13 +2808,17 @@ const writeCloudControlIndexNested: SdkWriter = async (ctx, ops) => {
     const path = reindexNestedPointer(op.path, live, type);
     return op.op === 'remove' ? { op: op.op, path } : { op: op.op, path, value: op.value };
   });
-  await cc.send(
+  const res = await cc.send(
     new UpdateResourceCommand({
       TypeName: type,
       Identifier: identifier,
       PatchDocument: JSON.stringify(patch),
     })
   );
+  // Cloud Control ACCEPTED the request but the handler runs ASYNCHRONOUSLY — poll the
+  // ProgressEvent to a terminal state before returning, so a later async FAILURE surfaces
+  // as a genuine writer error (carrying the StatusMessage) instead of a false `reverted:`.
+  await pollNestedToCompletion(cc, res.ProgressEvent);
 };
 
 // SDK writers for NESTED finding paths (a sub-key inside a declared object — dotted or
