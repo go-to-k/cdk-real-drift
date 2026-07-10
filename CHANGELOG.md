@@ -1,3 +1,10 @@
+## [0.4.35](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.34...v0.4.35) (2026-07-10)
+
+
+### Bug Fixes
+
+* **noise:** fold 3 clean-deploy first-run FPs — Athena Status, VPCPeering PeerOwnerId, Neptune subnet-group echo ([#980](https://github.com/go-to-k/cdk-real-drift/issues/980)) ([#1154](https://github.com/go-to-k/cdk-real-drift/issues/1154)) ([921b188](https://github.com/go-to-k/cdk-real-drift/commit/921b1884d9d7c1394028c2bb76205fb07fa7e693))
+
 ## [0.4.34](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.33...v0.4.34) (2026-07-10)
 
 
