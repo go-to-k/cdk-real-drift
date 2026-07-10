@@ -95,6 +95,7 @@ import {
   VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS,
   VERSION_PREFIX_PATHS,
 } from '../normalize/noise.js';
+import { MANAGED_KEY_ALIAS_PATHS, shouldFoldManagedServiceKey } from '../read/kms-aliases.js';
 import { deepStripPaths } from '../normalize/path-strip.js';
 import { canonicalizeForCompare } from '../normalize/pipeline.js';
 import { canonicalizePolicy, rewriteOaiPrincipalsDeep } from '../normalize/policy-canonical.js';
@@ -1919,7 +1920,15 @@ export function classifyResource(
           // LoggingConfig.LogGroup, derived above): the gate already folded the AWS-default
           // value via `atDefault`, so a value reaching here is a real custom one that must
           // surface, not be value-independent-folded.
-          (generatedNestedPaths?.has(schemaPath) && !(schemaPath in knownDefPaths))
+          // #704: a managed-service-KEY nested path (DynamoDB SSESpecification.KMSMasterKeyId,
+          // OpenSearch EncryptionAtRestOptions.KmsKeyId) is value-independent ONLY for the
+          // account/region AWS-managed key (`alias/aws/<service>`); a CMK swapped in out of
+          // band (a MUTABLE, security-relevant change) must surface. Gate the fold against the
+          // resolved managed key — fail OPEN (keep folding) when the alias can't be resolved.
+          (generatedNestedPaths?.has(schemaPath) &&
+            !(schemaPath in knownDefPaths) &&
+            (!(schemaPath in (MANAGED_KEY_ALIAS_PATHS[resourceType] ?? {})) ||
+              shouldFoldManagedServiceKey(resourceType, schemaPath, value, opts.kmsAliasTargets)))
         ? 'generated'
         : 'undeclared';
     // A free-form map key surfaces (not folded), but only when it is a real undeclared
