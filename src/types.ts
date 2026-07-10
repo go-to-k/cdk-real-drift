@@ -154,6 +154,16 @@ export interface SchemaInfo {
   // failure returning EMPTY): revert must NOT bar on unknown, to avoid regressing on
   // schema-unavailable degradation (#858 handles that separately). Optional like the above.
   updatable?: boolean | undefined;
+  // True when the CFn resource schema carries a `handlers` block AT ALL (regardless of which
+  // handlers it declares); false when the schema is present but has NO `handlers` block — a
+  // CFn-legacy type (e.g. AWS::CertificateManager::Certificate) whose auto-generated registry
+  // schema predates the handler model, so Cloud Control UpdateResource always fails at apply
+  // with a raw UnsupportedActionException. UNDEFINED when the schema itself is unavailable
+  // (DescribeType failure → EMPTY): unlike `hasHandlers === false`, that degradation must NOT
+  // bar a revert (#858). Lets the #908/#1091 revert bar tell "handlers legitimately absent"
+  // apart from "schema unavailable" instead of overloading `updatable === undefined` for both.
+  // Optional like the above (set by parseSchema; test/corpus fixtures may omit it). (#1091)
+  hasHandlers?: boolean | undefined;
 }
 
 export interface ResolverContext {

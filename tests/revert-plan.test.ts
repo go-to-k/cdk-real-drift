@@ -1818,6 +1818,93 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  // #1091 — a CFn-legacy type read via SDK_OVERRIDES whose registry schema has NO `handlers`
+  // block AT ALL (ACM Certificate's shape). Cloud Control UpdateResource always fails at apply
+  // with a raw UnsupportedActionException, so buildRevertPlan must never emit a cc-kind item for
+  // it. `updatable` is `undefined` (no handlers block), which the #908 guard deliberately does
+  // NOT bar (that undefined can also mean "schema unavailable" — #858). The new discriminator is
+  // `hasHandlers === false` (schema present, no handlers block) gated on the type being
+  // SDK_OVERRIDES-read; a schema-unavailable degradation leaves `hasHandlers` undefined and stays
+  // revertable. NOTE: for ACM the doomed patch is ALSO (and first) prevented by the broader
+  // SDK_OVERRIDES-not-in-CC_REVERTABLE bar earlier in buildRevertPlan; this new guard is the
+  // narrower safety net for a type that IS on the CC_REVERTABLE_DESPITE_READ_OVERRIDE allowlist
+  // (falls through that broader bar) yet turns out handler-less — exercised below with
+  // AWS::Scheduler::Schedule (SDK_OVERRIDES + allowlisted, no SDK writer).
+  describe('CFn-legacy no-handlers-block guard (SDK_OVERRIDES-read, #1091)', () => {
+    const ACM = 'AWS::CertificateManager::Certificate';
+    // AWS::Scheduler::Schedule is SDK_OVERRIDES-read AND on CC_REVERTABLE_DESPITE_READ_OVERRIDE
+    // (so it falls through the broader SDK_OVERRIDES bar and reaches the cc-kind path) with no
+    // SDK writer — the one existing type shape that actually exercises the new guard.
+    const SCHED = 'AWS::Scheduler::Schedule';
+    // A registry schema with real props but NO `handlers` block — ACM's / a CFn-legacy shape.
+    const noHandlersSchema = (type: string): Map<string, SchemaInfo> =>
+      new Map([
+        [
+          type,
+          parseSchema(
+            JSON.stringify({
+              properties: { Options: { type: 'object' }, Tags: { type: 'array' } },
+              readOnlyProperties: ['/properties/Id'],
+            })
+          ),
+        ],
+      ]);
+    // A DECLARED drift (desired/actual) isolates the handler bar from the undeclared/
+    // unrecorded path.
+    const drift = (type: string, path: string): Finding =>
+      F({ tier: 'declared', resourceType: type, path, desired: 'a', actual: 'b', physicalId: 'p' });
+
+    it('parseSchema.hasHandlers: false when the schema has no handlers block, true when present', () => {
+      expect(parseSchema(JSON.stringify({ properties: { Foo: {} } })).hasHandlers).toBe(false);
+      expect(parseSchema(JSON.stringify({ handlers: { read: {} } })).hasHandlers).toBe(true);
+      // updatable stays undefined for a handler-less schema (unchanged) — the two flags differ.
+      expect(parseSchema(JSON.stringify({ properties: { Foo: {} } })).updatable).toBeUndefined();
+    });
+
+    it('an ACM cc revert is NOT offered — no doomed CC UpdateResource patch reaches apply (#1091 symptom)', () => {
+      // The user-visible guarantee: whatever the reason, revert is barred and no cc item is
+      // built. (For ACM this is enforced by the broader SDK_OVERRIDES-not-in-CC_REVERTABLE bar.)
+      const plan = buildRevertPlan(
+        [drift(ACM, 'Options.CertificateTransparencyLoggingPreference')],
+        undefined,
+        { schemas: noHandlersSchema(ACM) }
+      );
+      expect(plan.items).toHaveLength(0);
+      expect(plan.notRevertable).toHaveLength(1);
+    });
+
+    it('BARS a cc revert on a CC_REVERTABLE-allowlisted SDK_OVERRIDES type that is handler-less, with the CFn-legacy reason (the new #1091 guard)', () => {
+      const plan = buildRevertPlan([drift(SCHED, 'ScheduleExpression')], undefined, {
+        schemas: noHandlersSchema(SCHED),
+      });
+      expect(plan.items).toHaveLength(0);
+      expect(plan.notRevertable).toHaveLength(1);
+      expect(plan.notRevertable[0]!.reason).toContain('CFn-legacy');
+      expect(plan.notRevertable[0]!.reason).toContain('no update handler block');
+    });
+
+    it('the SAME allowlisted type WITH a handlers block still produces the cc item (no regression)', () => {
+      const schemas = new Map([
+        [SCHED, parseSchema(JSON.stringify({ handlers: { create: {}, update: {}, read: {} } }))],
+      ]);
+      const plan = buildRevertPlan([drift(SCHED, 'ScheduleExpression')], undefined, { schemas });
+      expect(plan.notRevertable).toHaveLength(0);
+      expect(plan.items[0]!.kind).toBe('cc');
+    });
+
+    it('a NON-SDK_OVERRIDES type with no handlers block is NOT barred — schema-unavailable degradation stays revertable (#858 preserved)', () => {
+      // Same handler-less schema shape, but a type that is NOT SDK_OVERRIDES-read: the #1091
+      // guard must not fire (updatable === undefined alone, which #908 deliberately skips).
+      const type = 'AWS::Some::CcReadType';
+      const schemas = new Map([
+        [type, parseSchema(JSON.stringify({ properties: { Foo: { type: 'string' } } }))],
+      ]);
+      const plan = buildRevertPlan([drift(type, 'Foo')], undefined, { schemas });
+      expect(plan.notRevertable).toHaveLength(0);
+      expect(plan.items[0]!.kind).toBe('cc');
+    });
+  });
+
   it('a NESTED create-only path (parent mutable) is notRevertable, not a doomed in-place patch', () => {
     // ECR EncryptionConfiguration is mutable but EncryptionConfiguration.KmsKey is
     // create-only; the top-level-only check missed it and built a patch AWS rejects at

@@ -807,17 +807,29 @@ export function buildRevertPlan(
       });
       continue;
     }
-    // A resource type whose CFn schema declares a `handlers` block but NO `update` handler
-    // (create/read/delete only — e.g. AWS::CloudFront::MonitoringSubscription) can never be
-    // patched via Cloud Control UpdateResource: the apply fails with a raw
-    // UnsupportedActionException (#908). Bar the doomed cc-kind revert here with a clear
-    // reason instead of emitting a patch that always fails. EXEMPT: a type with a
-    // type-specific SDK writer (SDK_WRITERS / prop- / nested-scoped) reverts via its own API,
-    // and a `delete`-kind out-of-band-added item already `continue`d far above. `updatable`
-    // is `false` ONLY when handlers ARE present and `update` is absent — an `undefined`
-    // (schema unavailable / no handlers block) is NOT barred (that degradation is #858).
+    // A resource type that can never be patched via Cloud Control UpdateResource — the apply
+    // fails with a raw UnsupportedActionException — must bar the doomed cc-kind revert here
+    // with a clear reason instead of emitting a patch that always fails. Two cases:
+    //   (a) #908: the schema declares a `handlers` block but NO `update` handler (create/read/
+    //       delete only — e.g. AWS::CloudFront::MonitoringSubscription) → `updatable === false`.
+    //   (b) #1091: a CFn-legacy type read via SDK_OVERRIDES whose registry schema has NO
+    //       `handlers` block AT ALL (ACM Certificate's shape) → `hasHandlers === false`. Here
+    //       `updatable` is `undefined`, but that undefined means "handlers legitimately absent",
+    //       NOT "schema unavailable" — so the #858 undefined-degrade skip (which leaves a
+    //       genuinely schema-unavailable type UNBARRED, `hasHandlers` undefined) must not swallow
+    //       it. The SDK_OVERRIDES guard confines this to types we KNOW are read via an SDK
+    //       override (a pure CC-read type has a handlers block by construction). NOTE: most such
+    //       types (ACM included) are ALSO caught by the broader SDK_OVERRIDES-not-in-
+    //       CC_REVERTABLE_DESPITE_READ_OVERRIDE bar earlier in this loop; this is the narrower
+    //       safety net for a handler-less type that IS on that allowlist (so it falls through the
+    //       broader bar) yet can never take a CC UpdateResource.
+    // EXEMPT (both cases): a type with a type-specific SDK writer (SDK_WRITERS / prop- / nested-
+    // scoped) reverts via its own API, and a `delete`-kind out-of-band-added item already
+    // `continue`d far above.
+    const noUpdateHandler = schema?.updatable === false;
+    const legacyNoHandlers = schema?.hasHandlers === false && !!SDK_OVERRIDES[f.resourceType];
     if (
-      schema?.updatable === false &&
+      (noUpdateHandler || legacyNoHandlers) &&
       !SDK_WRITERS[f.resourceType] &&
       !propScoped &&
       !nestedScoped
@@ -826,7 +838,9 @@ export function buildRevertPlan(
         displayId,
         resourceType: f.resourceType,
         path: f.path,
-        reason: 'type has no update handler — detect/record only',
+        reason: legacyNoHandlers
+          ? 'CFn-legacy type has no update handler block — detect/record only'
+          : 'type has no update handler — detect/record only',
       });
       continue;
     }

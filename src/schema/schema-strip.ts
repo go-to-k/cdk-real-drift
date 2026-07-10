@@ -546,6 +546,11 @@ export function parseSchema(schemaJson: string): SchemaInfo {
   // (leave `updatable` undefined), so revert never bars on a schema-unavailable degradation.
   const updatable =
     schema.handlers === undefined ? undefined : Object.hasOwn(schema.handlers, 'update');
+  // Whether a `handlers` block exists AT ALL. `false` here (schema present, no handlers)
+  // is a CFn-legacy type (ACM Certificate et al.) that can never be CC-UpdateResource'd —
+  // distinct from a schema-unavailable degradation (EMPTY leaves this undefined). The
+  // #908/#1091 revert bar uses this to tell the two apart. (#1091)
+  const hasHandlers = schema.handlers !== undefined;
   // `propertyTransform` maps a JSON-pointer property path to a JSONata expression describing how
   // the SERVICE transforms a declared value before storing it (so the live read differs from the
   // template value without any real drift). Key it by the same dotted path convention as the other
@@ -570,5 +575,6 @@ export function parseSchema(schemaJson: string): SchemaInfo {
     freeFormMapPaths,
     ...(Object.keys(propertyTransforms).length > 0 && { propertyTransforms }),
     updatable,
+    hasHandlers,
   };
 }
