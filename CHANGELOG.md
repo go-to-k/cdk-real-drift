@@ -1,3 +1,10 @@
+## [0.4.41](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.40...v0.4.41) (2026-07-10)
+
+
+### Bug Fixes
+
+* **gather:** degrade schema-unavailable resources to skipped, not an unstripped diff ([#858](https://github.com/go-to-k/cdk-real-drift/issues/858)) ([#1171](https://github.com/go-to-k/cdk-real-drift/issues/1171)) ([aa970bd](https://github.com/go-to-k/cdk-real-drift/commit/aa970bdaa003aecbab7b094a567f83acd4fbb684))
+
 ## [0.4.40](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.39...v0.4.40) (2026-07-10)
 
 
