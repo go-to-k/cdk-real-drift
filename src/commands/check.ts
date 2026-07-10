@@ -336,6 +336,39 @@ export async function resolveCallerAccount(region: string): Promise<string | und
   }
 }
 
+/**
+ * #740: decide whether a stack must be SKIPPED because it is pinned (via `env.account`) to a
+ * different AWS account than the active credentials are for.
+ *
+ * A CDK app with dev+prod stacks in DIFFERENT accounts (the CDK Pipelines / multi-env staple)
+ * is checked one account at a time — the caller runs `check --all` per account with that
+ * account's credentials. A stack whose `env.account` names an OTHER account cannot be read
+ * with the current creds: `DescribeStacks` throws "does not exist" (the stack IS deployed, just
+ * in its own account), which `isStackNotDeployed` mistakes for "never deployed yet — skipped"
+ * — a misleading green pass that hides an UNCHECKED stack. Worse, if a SAME-NAMED stack happens
+ * to exist in the reachable account, cdkrd would silently compare intent against the WRONG
+ * account's live resources. Detecting the mismatch UP FRONT lets check skip accurately without
+ * reading the wrong account.
+ *
+ * Rule: skip ONLY when BOTH accounts are known (concrete) AND they differ — a proven mismatch.
+ * When either is undefined (an env-agnostic stack with no account pin, or STS could not resolve
+ * the caller) we CANNOT prove a mismatch, so we do NOT skip — behavior is identical to today
+ * (the stack is read; a real "not deployed" still surfaces as before). Pure (no AWS) + exported
+ * for unit tests.
+ */
+export function classifyAccountMismatch(
+  declaredAccount: string | undefined,
+  callerAccount: string | undefined
+): { skip: boolean; message: string } {
+  if (declaredAccount && callerAccount && declaredAccount !== callerAccount) {
+    return {
+      skip: true,
+      message: `stack is pinned to account ${declaredAccount} but the active credentials are for account ${callerAccount} — skipped (run with account-${declaredAccount} credentials to check it)`,
+    };
+  }
+  return { skip: false, message: '' };
+}
+
 // #1060 — the top-level `--json` emit runs AFTER the per-stack loop, OUTSIDE any
 // try/catch, so a non-serializable finding value (a BigInt, a circular reference)
 // that survived the per-stack try detonates `JSON.stringify` and crashes the whole
@@ -498,7 +531,17 @@ export async function runCheck(args: string[]): Promise<number> {
   // `undefined` `callerAccount` afterwards means STS could not answer → wildcard fallback.
   let callerAccount: string | undefined;
   let callerAccountResolved = false;
-  for (const [idx, { stackName, region, template }] of stacks.entries()) {
+  // #740: resolve the caller account AT MOST ONCE (region-free `sts:GetCallerIdentity` — the
+  // account is the same across regions) and cache it, so both the pre-read account-mismatch
+  // gate below AND the not-deployed catch reuse the same one-shot resolution.
+  const ensureCallerAccount = async (region: string): Promise<string | undefined> => {
+    if (!callerAccountResolved) {
+      callerAccount = await resolveCallerAccount(region);
+      callerAccountResolved = true;
+    }
+    return callerAccount;
+  };
+  for (const [idx, { stackName, region, account, template }] of stacks.entries()) {
     if (!region) {
       const msg =
         'no region — set env on the stack, pass --region, or set a region for the AWS profile';
@@ -513,6 +556,25 @@ export async function runCheck(args: string[]): Promise<number> {
     // not only on the scrolled-away spinner line.
     const posPrefix = a.json ? '' : positionPrefix(idx, stacks.length);
     try {
+      // #740: if this stack is pinned (via env.account) to an account the active credentials
+      // are NOT for, SKIP it accurately here — BEFORE any live read — instead of reading the
+      // wrong account. A multi-account CDK app (dev+prod in different accounts, the Pipelines
+      // staple) is checked one account at a time; the other account's stack is unreadable with
+      // these creds. Without this the DescribeStacks "does not exist" it would throw looks like
+      // "never deployed yet — skipped" (a misleading green pass over an UNCHECKED stack), or, if
+      // a same-named stack exists in the reachable account, we would silently compare against the
+      // WRONG account. Only skips on a PROVEN mismatch (both accounts concrete + differing); an
+      // env-agnostic stack or an unresolved caller account is NOT skipped (see classifyAccountMismatch).
+      const mismatch = classifyAccountMismatch(account, await ensureCallerAccount(region));
+      if (mismatch.skip) {
+        console.error(`note: ${stackName}: ${mismatch.message}`);
+        jsonError(stackName, region, mismatch.message);
+        // #948: a skipped whole stack is the maximal coverage gap, so under --strict it fails
+        // (mirroring the other whole-stack skips). A plain (non-strict) run stays exit 0 — a
+        // multi-account CI checks per account, so a cross-account skip must NOT fail --fail.
+        worst = Math.max(worst, a.strict ? 1 : 0);
+        continue;
+      }
       const sKey = synthKey(stackName, region);
       if (synthTemplates && !synthTemplates.has(sKey)) {
         console.error(`note: ${stackName}: not in the synth output — skipped (--pre-deploy)`);
@@ -534,6 +596,22 @@ export async function runCheck(args: string[]): Promise<number> {
       );
       const { desired, schemas, liveByLogical } = gathered;
       let findings = gathered.findings;
+
+      // #740 (belt-and-suspenders for case 2): the pre-read gate above skips a proven
+      // cross-account mismatch, but if the caller account could not be resolved (STS blocked)
+      // it lets the read proceed — and a SAME-NAMED stack in the reachable account would then
+      // be compared against the WRONG account, potentially writing a wrong-account baseline.
+      // After the read we KNOW the deployed stack's account (desired.accountId); if this stack
+      // is pinned to a concrete account that differs, the live state we just read is the wrong
+      // account's — skip rather than trust it. Defense-in-depth; the pre-read gate covers the
+      // common case where the caller account IS known.
+      if (account && desired.accountId !== account) {
+        const msg = `compared against account ${desired.accountId} but the stack is pinned to ${account} — skipped (run with account-${account} credentials to check it)`;
+        console.error(`note: ${stackName}: ${msg}`);
+        jsonError(stackName, region, msg);
+        worst = Math.max(worst, a.strict ? 1 : 0);
+        continue;
+      }
 
       // Loudly flag incomplete coverage — a CLEAN verdict must never silently hide an
       // unchecked nested stack or an unread (skipped) resource. To stderr so it survives
@@ -769,10 +847,7 @@ export async function runCheck(args: string[]): Promise<number> {
         // #1046: resolve the current account (once per run, cached) and pin the baseline's
         // account segment — else another account's committed baseline false-flags a stack
         // never deployed in THIS account as "deleted out of band" (multi-account CI red).
-        if (!callerAccountResolved) {
-          callerAccount = await resolveCallerAccount(region);
-          callerAccountResolved = true;
-        }
+        await ensureCallerAccount(region);
         if (hasBaselineForStack(stackName, region, callerAccount)) {
           const msg = 'deployed baseline exists but the stack is gone — deleted out of band';
           const label = `${stackName} (${region})`;

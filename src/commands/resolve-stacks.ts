@@ -121,6 +121,10 @@ export async function resolveProfileRegion(
 export interface ResolvedStack {
   stackName: string;
   region: string | undefined; // region to query this stack in (may be undefined → caller errors)
+  // #740: the stack's own env.account (concrete 12-digit id, else undefined). Carried from
+  // discovery so check can skip a stack pinned to an account the active creds are NOT for
+  // (rather than misreporting it "not deployed yet") and never wrong-account compare it.
+  account: string | undefined;
   // the synthesized template for this stack — used by check to recover GetTemplate's
   // `?`-masked non-ASCII literals. Carried from the same synth that discovered the stack.
   template: Record<string, unknown>;
@@ -178,6 +182,7 @@ export async function resolveStacks(a: CommonArgs): Promise<ResolvedStack[]> {
     return discovered.map((s) => ({
       stackName: s.stackName,
       region: s.region ?? fallbackRegion,
+      account: s.account, // #740: carry env.account through so check can gate on it
       template: s.template,
     }));
   }
@@ -188,12 +193,13 @@ export async function resolveStacks(a: CommonArgs): Promise<ResolvedStack[]> {
   const add = (
     stackName: string,
     region: string | undefined,
+    account: string | undefined, // #740: the stack's own env.account (concrete, else undefined)
     template: Record<string, unknown>
   ): void => {
     const key = `${stackName}\0${region ?? ''}`;
     if (seen.has(key)) return;
     seen.add(key);
-    out.push({ stackName, region, template });
+    out.push({ stackName, region, account, template });
   };
   const known = (): string => discovered.map((s) => s.stackName).join(', ') || 'none';
   for (const name of a.stackNames) {
@@ -208,7 +214,7 @@ export async function resolveStacks(a: CommonArgs): Promise<ResolvedStack[]> {
       for (const s of discovered) {
         if (matchesGlob(name, s.stackName)) {
           matched++;
-          add(s.stackName, s.region ?? fallbackRegion, s.template);
+          add(s.stackName, s.region ?? fallbackRegion, s.account, s.template);
         }
       }
       if (matched === 0)
@@ -225,7 +231,8 @@ export async function resolveStacks(a: CommonArgs): Promise<ResolvedStack[]> {
       const hits = discovered.filter((s) => s.stackName === name);
       if (hits.length === 0)
         throw new Error(`stack "${name}" is not defined by the CDK app (found: ${known()})`);
-      for (const hit of hits) add(hit.stackName, hit.region ?? fallbackRegion, hit.template);
+      for (const hit of hits)
+        add(hit.stackName, hit.region ?? fallbackRegion, hit.account, hit.template);
     }
   }
   if (out.length === 0) {
