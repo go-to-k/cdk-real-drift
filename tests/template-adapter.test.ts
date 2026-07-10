@@ -83,7 +83,7 @@ describe('collectPrincipalsWithSiblingPolicies', () => {
     ]);
   });
 
-  it('also maps Users and Groups a sibling policy attaches to (db2bq IAM User pattern)', () => {
+  it('also maps Users and Groups a sibling policy attaches to (real-app IAM User pattern)', () => {
     const resources = {
       MyUser: { Type: 'AWS::IAM::User' },
       MyGroup: { Type: 'AWS::IAM::Group' },

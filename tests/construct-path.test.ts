@@ -7,7 +7,7 @@ describe('withinStackPath (strip the stack/Stage prefix off a construct path)', 
   });
 
   it('a stack id composed with the stage (e.g. `${stage}-Name`) strips as ONE segment', () => {
-    // the common manual pattern: `new Stack(app, `${stage}-AuroraDB`)` — the whole first
+    // the common manual pattern: `new Stack(app, `${stage}-MyDb`)` — the whole first
     // segment IS the stack name, so it strips even though it contains a hyphen.
     expect(withinStackPath('my-app-Rds/Database/ParameterGroup', 'my-app-Rds')).toBe(
       'Database/ParameterGroup'
@@ -31,9 +31,9 @@ describe('withinStackPath (strip the stack/Stage prefix off a construct path)', 
   });
 
   it('overridden stackName that no longer mirrors the construct ids: returns UNCHANGED (safe)', () => {
-    // `new Stack(app, 'AuroraDB', { stackName: 'prod-db' })` — construct path leads with the
-    // construct id `AuroraDB`, not `prod-db`, so nothing strips rather than stripping wrongly.
-    expect(withinStackPath('AuroraDB/Database/PG', 'prod-db')).toBe('AuroraDB/Database/PG');
+    // `new Stack(app, 'MyDb', { stackName: 'prod-db' })` — construct path leads with the
+    // construct id `MyDb`, not `prod-db`, so nothing strips rather than stripping wrongly.
+    expect(withinStackPath('MyDb/Database/PG', 'prod-db')).toBe('MyDb/Database/PG');
   });
 
   it('empty stackName (direct/unit call): returns UNCHANGED (no strip)', () => {
