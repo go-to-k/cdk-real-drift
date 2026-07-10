@@ -584,6 +584,9 @@ export function checkBaselineAccount(
 // version's hash can never change out of band, nothing to watch.)
 const RECORDABLE_GENERATED_PATHS: Record<string, ReadonlySet<string>> = {
   'AWS::Lambda::Function': new Set(['CodeSha256']),
+  // #1346: a Glue job's ETL script digest (fetched + hashed from S3 Command.ScriptLocation).
+  // Mutable out of band (same-key swap), so watched exactly like the Lambda code hash.
+  'AWS::Glue::Job': new Set(['ScriptSha256']),
 };
 function isRecordableGenerated(f: Finding): boolean {
   return (

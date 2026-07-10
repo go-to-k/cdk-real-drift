@@ -203,6 +203,22 @@ describe('baseline', () => {
       expect(buildRecorded([generated('CodeSha256', SHA_A)])).toEqual([entry(SHA_A)]);
     });
 
+    it('buildRecorded also snapshots the Glue::Job ScriptSha256 sibling (#1346)', () => {
+      expect(
+        buildRecorded([
+          {
+            tier: 'generated',
+            logicalId: 'Job',
+            resourceType: 'AWS::Glue::Job',
+            path: 'ScriptSha256',
+            actual: SHA_A,
+          },
+        ])
+      ).toEqual([
+        { logicalId: 'Job', resourceType: 'AWS::Glue::Job', path: 'ScriptSha256', value: SHA_A },
+      ]);
+    });
+
     it('a generated value OUTSIDE the curated allowlist is still NOT snapshot (narrow exception)', () => {
       // a different path on the same type, and the IMMUTABLE Lambda::Version CodeSha256 sibling
       expect(buildRecorded([generated('SomeGeneratedName', 'x')])).toEqual([]);

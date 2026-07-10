@@ -38,15 +38,17 @@ const WRITEONLY_NESTED_NO_CC_REVERT: Record<string, readonly string[]> = {};
 // Per type, SYNTHETIC top-level fields an SDK_SUPPLEMENTS reader COMPUTES (not real AWS
 // properties) as an integrity signal for a value that is otherwise unreadable —
 // AWS::ElasticLoadBalancingV2::TrustStore `CaCertificatesBundleSha256` (a digest of the
-// live CA bundle content, #505) and AWS::Lambda::Function `CodeSha256` (the writeOnly
-// function code's digest from lambda:GetFunction, #646). They surface as undeclared drift
-// that `record` snapshots (so a later content/code swap re-surfaces), but they have no
-// write target, so a revert on one is reported not-revertable rather than emitting a
-// `remove` that always fails. For CodeSha256 specifically the original bytes are gone, so
-// the only remedy is to redeploy with a forced code update.
+// live CA bundle content, #505), AWS::Lambda::Function `CodeSha256` (the writeOnly function
+// code's digest from lambda:GetFunction, #646), and AWS::Glue::Job `ScriptSha256` (a
+// fetch-and-hash of the ETL script at S3 Command.ScriptLocation, #1346). They surface as
+// undeclared drift that `record` snapshots (so a later content/code/script swap re-surfaces),
+// but they have no write target, so a revert on one is reported not-revertable rather than
+// emitting a `remove` that always fails. For CodeSha256 / ScriptSha256 the original bytes are
+// gone, so the only remedy is to redeploy / re-upload the intended code.
 const SYNTHETIC_READ_SIGNAL_PATHS: Record<string, readonly string[]> = {
   'AWS::ElasticLoadBalancingV2::TrustStore': ['CaCertificatesBundleSha256'],
   'AWS::Lambda::Function': ['CodeSha256'],
+  'AWS::Glue::Job': ['ScriptSha256'],
 };
 
 // SDK-override types that are nonetheless Cloud Control FULLY_MUTABLE — their override

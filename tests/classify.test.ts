@@ -10852,6 +10852,41 @@ describe('Lambda::Function CodeSha256 out-of-band code-swap detection (#646)', (
   });
 });
 
+describe('Glue::Job ScriptSha256 out-of-band ETL-script-swap detection (#1346)', () => {
+  const schema: SchemaInfo = {
+    readOnly: new Set(['Id']),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: ['Id'],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const res: DesiredResource = {
+    logicalId: 'Job',
+    resourceType: 'AWS::Glue::Job',
+    physicalId: 'my-job',
+    declared: {
+      Name: 'my-job',
+      Role: 'arn:aws:iam::111111111111:role/r',
+      Command: { Name: 'glueetl', ScriptLocation: 's3://bkt/etl.py' },
+    },
+  };
+  const live = {
+    Name: 'my-job',
+    Role: 'arn:aws:iam::111111111111:role/r',
+    Command: { Name: 'glueetl', ScriptLocation: 's3://bkt/etl.py' },
+    ScriptSha256: 'e'.repeat(64), // supplemented digest of the fetched S3 script
+  };
+
+  it('folds the supplemented ScriptSha256 as generated first-run (ZERO first-run drift)', () => {
+    const findings = classifyResource(res, live, schema);
+    expect(findings.find((f) => f.path === 'ScriptSha256')?.tier).toBe('generated');
+    expect(findings.some((f) => f.tier === 'undeclared' && f.path === 'ScriptSha256')).toBe(false);
+  });
+});
+
 describe('MSK Configuration ServerProperties properties-file compare (#508)', () => {
   const emptySchema: SchemaInfo = {
     readOnly: new Set(),

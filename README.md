@@ -886,6 +886,15 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   "changed since record". The old code bytes are gone, so it is detect-only (not
   revertable — redeploy with a forced code update). Without the permission the
   signal is skipped, never false-flagged.
+- Optional: `glue:GetJob` + `s3:GetObject` (on the script bucket) record a content
+  hash of an `AWS::Glue::Job`'s ETL script (`ScriptSha256`, fetched from
+  `Command.ScriptLocation`) so an out-of-band script swap at the **same S3 key**
+  (`aws s3 cp new.py s3://bucket/key`) re-surfaces as drift — otherwise invisible
+  (`GetJob` returns only the S3 path, never the bytes, and a later `cdk deploy` does
+  not heal it). Same behavior as the Lambda code digest: folds silently on a clean
+  deploy, `record` snapshots it, a swap re-surfaces as "changed since record",
+  detect-only (re-upload the intended script). Without the permission (or on any S3
+  read failure / a non-`s3://` location) the signal is skipped, never false-flagged.
 - Optional: `kms:ListAliases` enables strict verification that a declared
   `alias/aws/*` key was not swapped for a customer-managed key. Without it that case
   is conservatively suppressed AND cdkrd prints a one-line warning per region (the

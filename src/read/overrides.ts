@@ -55,6 +55,7 @@ import {
 import {
   GetClassifierCommand,
   GetConnectionCommand,
+  GetJobCommand,
   GetSecurityConfigurationCommand,
   GetTableCommand,
   GetWorkflowCommand,
@@ -82,7 +83,7 @@ import {
   GetPolicyCommand as LambdaGetPolicyCommand,
   GetFunctionCommand,
 } from '@aws-sdk/client-lambda';
-import { GetBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetBucketPolicyCommand, GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import {
   DescribeCacheClustersCommand,
   DescribeCacheParameterGroupsCommand,
@@ -169,7 +170,7 @@ import { GetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { ResourceGoneError } from '../aws-errors.js';
 import { READ_RETRY } from './client-config.js';
 import { isDefinitiveDenial } from './kms-aliases.js';
-import { hashCaBundle } from './pem.js';
+import { hashCaBundle, sha256Hex } from './pem.js';
 
 export interface OverrideCtx {
   physicalId: string;
@@ -3014,6 +3015,45 @@ const supplementLambdaFunction: SupplementReader = async ({ physicalId, region }
   return sha !== undefined ? { CodeSha256: sha } : undefined;
 };
 
+// AWS::Glue::Job — `Command.ScriptLocation` is an S3 pointer (`s3://bucket/key`) to the
+// job's ETL SCRIPT. `glue:GetJob` returns the PATH, never the script CONTENT, so cdkrd
+// compares the path (a path change IS declared drift) but is blind to the bytes: overwrite
+// the object at the SAME key (`aws s3 cp new.py s3://bucket/key`) and the job runs different
+// code while `check` reports CLEAN before and after record, always — a #505-class writeOnly
+// content false negative (#1346), the sibling of the TrustStore CA bundle above (also a
+// fetch-and-hash signal, since AWS returns no digest — UNLIKE Lambda's ready CodeSha256).
+// The reader resolves the LIVE ScriptLocation via GetJob (so it hashes what the job points
+// at NOW, not a stale declared path), fetches the object via s3:GetObject, and projects a
+// synthetic top-level `ScriptSha256`. It folds `generated` first-run (GENERATED_TOPLEVEL_PATHS
+// — zero first-run noise), `record` snapshots it (RECORDABLE_GENERATED_PATHS), and an
+// out-of-band swap re-surfaces as "changed since record" undeclared drift. Not revertable
+// (SYNTHETIC_READ_SIGNAL_PATHS): a digest has no write target (redeploy / re-upload the
+// intended script). NON-FATAL and FP-safe: a job with no/non-`s3://` ScriptLocation, or any
+// S3 read failure (a missing s3:GetObject grant, a cross-region redirect, a deleted object),
+// SKIPS the signal (returns without it) rather than false-flagging — the script hash is a
+// best-effort bonus, not a declared-prop backfill. A genuine glue:GetJob failure PROPAGATES
+// to the router's non-fatal supplement degrade (keep the CC model + warn).
+const supplementGlueJob: SupplementReader = async ({ physicalId, region }) => {
+  const name = str(physicalId);
+  if (!name) return undefined;
+  const glue = new GlueClient({ region, ...READ_RETRY });
+  const loc = str(
+    (await glue.send(new GetJobCommand({ JobName: name }))).Job?.Command?.ScriptLocation
+  );
+  const m = loc !== undefined ? /^s3:\/\/([^/]+)\/(.+)$/.exec(loc) : null;
+  if (m === null) return undefined; // no script, or a non-s3:// location — nothing to hash
+  try {
+    const s3 = new S3Client({ region, ...READ_RETRY });
+    const obj = await s3.send(new GetObjectCommand({ Bucket: m[1], Key: m[2] }));
+    const hash = sha256Hex(await obj.Body?.transformToByteArray());
+    return hash !== undefined ? { ScriptSha256: hash } : undefined;
+  } catch {
+    // S3 read failed (no s3:GetObject grant, cross-region redirect, deleted object): the
+    // content is a best-effort bonus — skip the signal rather than propagate a hard read-gap.
+    return undefined;
+  }
+};
+
 // AWS::Lex::Bot — `BotLocales` (the ENTIRE conversational model: every locale, its
 // intents, sample utterances, slots, slot types, and prompts) is writeOnly in the
 // registry schema, so Cloud Control echoes only the bot's top-level props (Name /
@@ -3313,6 +3353,7 @@ export const SDK_SUPPLEMENTS: Record<string, SupplementReader> = {
   'AWS::MSK::Configuration': supplementMskConfiguration,
   'AWS::ElasticLoadBalancingV2::TrustStore': supplementTrustStore,
   'AWS::Lambda::Function': supplementLambdaFunction,
+  'AWS::Glue::Job': supplementGlueJob,
   'AWS::SSM::Parameter': supplementSsmParameter,
   'AWS::ElastiCache::ReplicationGroup': supplementElastiCacheReplicationGroup,
   'AWS::ECS::Service': supplementEcsService,

@@ -1,5 +1,6 @@
 import { CloudControlClient, GetResourceCommand } from '@aws-sdk/client-cloudcontrol';
-import { GetBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetBucketPolicyCommand, GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetJobCommand, GlueClient } from '@aws-sdk/client-glue';
 import { DescribeParametersCommand, SSMClient } from '@aws-sdk/client-ssm';
 import {
   DescribeCacheClustersCommand,
@@ -38,6 +39,7 @@ const redshiftServerless = mockClient(RedshiftServerlessClient);
 const kafka = mockClient(KafkaClient);
 const elbv2 = mockClient(ElasticLoadBalancingV2Client);
 const lambda = mockClient(LambdaClient);
+const glue = mockClient(GlueClient);
 
 const named = (name: string): Error => Object.assign(new Error(name), { name });
 
@@ -60,6 +62,7 @@ beforeEach(() => {
   kafka.reset();
   elbv2.reset();
   lambda.reset();
+  glue.reset();
 });
 
 describe('readLive (CC API path)', () => {
@@ -1856,5 +1859,61 @@ describe('readLive (SDK supplement path — Lambda::Function code hash, #646)', 
     lambda.on(GetFunctionCommand).rejects(named('AccessDeniedException'));
     const r = await readLive(cc as unknown as CloudControlClient, fn(), 'us-east-1', '1');
     expect(r.live).toEqual({ FunctionName: 'my-fn', Runtime: 'nodejs20.x' });
+  });
+});
+
+describe('readLive (SDK supplement path — Glue::Job ETL script hash, #1346)', () => {
+  const job = (): DesiredResource =>
+    res({
+      resourceType: 'AWS::Glue::Job',
+      physicalId: 'my-job',
+      declared: { Name: 'my-job' },
+    });
+  const ccModel =
+    '{"Name":"my-job","Role":"r","Command":{"ScriptLocation":"s3://bkt/scripts/etl.py"}}';
+  const scriptBytes = new TextEncoder().encode("print('hello etl')\n");
+  const body = { transformToByteArray: () => Promise.resolve(scriptBytes) };
+
+  it('supplements ScriptSha256 by fetching + hashing the S3 script at the LIVE ScriptLocation', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: ccModel } });
+    glue
+      .on(GetJobCommand)
+      .resolves({ Job: { Command: { ScriptLocation: 's3://bkt/scripts/etl.py' } } });
+    s3.on(GetObjectCommand).resolves({ Body: body } as never);
+    const r = await readLive(cc as unknown as CloudControlClient, job(), 'us-east-1', '1');
+    expect(r.live?.ScriptSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(glue.commandCalls(GetJobCommand)[0]?.args[0].input).toEqual({ JobName: 'my-job' });
+    // the s3:// URL is parsed into Bucket + Key
+    expect(s3.commandCalls(GetObjectCommand)[0]?.args[0].input).toEqual({
+      Bucket: 'bkt',
+      Key: 'scripts/etl.py',
+    });
+  });
+
+  it('a non-s3:// ScriptLocation skips the signal (nothing to hash, no false drift)', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: ccModel } });
+    glue.on(GetJobCommand).resolves({ Job: { Command: { ScriptLocation: '/local/path/etl.py' } } });
+    const r = await readLive(cc as unknown as CloudControlClient, job(), 'us-east-1', '1');
+    expect(r.live?.ScriptSha256).toBeUndefined();
+    expect(s3.commandCalls(GetObjectCommand)).toHaveLength(0);
+  });
+
+  it('an S3 read failure (denied / cross-region / gone) skips the signal, keeps the CC model', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: ccModel } });
+    glue
+      .on(GetJobCommand)
+      .resolves({ Job: { Command: { ScriptLocation: 's3://bkt/scripts/etl.py' } } });
+    s3.on(GetObjectCommand).rejects(named('AccessDenied'));
+    const r = await readLive(cc as unknown as CloudControlClient, job(), 'us-east-1', '1');
+    expect(r.live?.ScriptSha256).toBeUndefined();
+    expect(r.live?.Command).toEqual({ ScriptLocation: 's3://bkt/scripts/etl.py' });
+  });
+
+  it('a glue:GetJob failure degrades non-fatally (keeps the CC model)', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: ccModel } });
+    glue.on(GetJobCommand).rejects(named('AccessDeniedException'));
+    const r = await readLive(cc as unknown as CloudControlClient, job(), 'us-east-1', '1');
+    expect(r.live?.Name).toBe('my-job');
+    expect(r.live?.ScriptSha256).toBeUndefined();
   });
 });
