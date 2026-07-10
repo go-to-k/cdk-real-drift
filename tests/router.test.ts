@@ -1493,12 +1493,12 @@ describe('readLive (supplement failure re-folds exempted props to a readGap, #75
   // against an absent live value — it must degrade to a readGap plus a LOUD stderr warning
   // naming the failed call.
   //
-  // #849 refines HOW the readGap is restored, by the declared value shape:
-  //   - a SCALAR is left ABSENT from live so classify emits a genuine, COUNTED `readGap`
-  //     finding (surfaced in the report's read-gap footer; blocks #795 completeness).
-  //   - a NON-EMPTY COLLECTION is still MIRRORED (declared==live folds to no drift), because
-  //     classify would otherwise treat an absent declared collection as a `declared`-tier
-  //     removal — the #752 false positive.
+  // #849 (full): the read-gap is now surfaced UNIFORMLY via ReadResult.readGapPaths →
+  // classifyResource, which emits ONE counted `readGap` per path regardless of value shape or
+  // declared-ness. No prop is mirrored: every exempted prop absent from live is left absent and
+  // listed in readGapPaths, so classify (not the router) decides the tier — a declared collection
+  // becomes a readGap (not the #752 false `declared` removal) and an undeclared exempted prop
+  // becomes a readGap too (gap #2).
   let warnings: string[] = [];
   beforeEach(() => {
     warnings = [];
@@ -1538,16 +1538,18 @@ describe('readLive (supplement failure re-folds exempted props to a readGap, #75
       'us-east-1',
       '1'
     );
-    // The scalar is NOT mirrored — it stays absent so classify surfaces the readGap.
+    // The scalar is NOT mirrored — it stays absent and is reported via readGapPaths so classify
+    // surfaces the counted readGap.
     expect('AccessString' in (r.live ?? {})).toBe(false);
+    expect(r.readGapPaths).toContain('AccessString');
     expect(r.skippedReason).toBeUndefined();
   });
 
-  it('still MIRRORS a DECLARED NON-EMPTY COLLECTION exempted prop (no false declared removal, #752)', async () => {
+  it('reports a DECLARED NON-EMPTY COLLECTION exempted prop as a readGapPath, NOT mirrored (#849, #752 preserved)', async () => {
     // ServiceConnectConfiguration is a writeOnly OBJECT the supplement reconstructs. When the
-    // supplement (ecs:DescribeServices) fails, an absent declared collection would false-flag
-    // as a `declared`-tier removal in classify (#752), so it is mirrored declared->live to
-    // fold to no drift — a readGap outcome preserved for the collection shape.
+    // supplement (ecs:DescribeServices) fails, the collection is left ABSENT and listed in
+    // readGapPaths — classify then emits a counted readGap for it (no #752 false `declared`
+    // removal, and no mirror hiding the coverage hole).
     cc.on(GetResourceCommand).resolves({
       ResourceDescription: { Properties: '{"ServiceName":"svc","Cluster":"c"}' },
     });
@@ -1559,17 +1561,17 @@ describe('readLive (supplement failure re-folds exempted props to a readGap, #75
       'us-east-1',
       '1'
     );
-    // The non-empty collection IS mirrored so declared == live -> no false declared removal.
-    expect(r.live?.ServiceConnectConfiguration).toEqual(config);
+    // The collection is NOT mirrored — absent from live, present in readGapPaths.
+    expect('ServiceConnectConfiguration' in (r.live ?? {})).toBe(false);
+    expect(r.readGapPaths).toContain('ServiceConnectConfiguration');
     expect(r.skippedReason).toBeUndefined();
     // Confirm the supplement-FAILURE path was actually taken (loud warning names the prop).
     expect(warnings.join('')).toContain('ServiceConnectConfiguration');
   });
 
-  it('leaves an EMPTY-collection declared exempted prop ABSENT (declared {}/[] vs absent is not drift, #849)', async () => {
-    // An empty declared collection is not a real removal (classify exempts it), and it is
-    // never real drift — so it is left absent (classify then treats it as a readGap), not
-    // mirrored. Mirroring an empty collection would add a meaningless live={} entry.
+  it('reports an EMPTY-collection declared exempted prop as a readGapPath (absent, not mirrored, #849)', async () => {
+    // An empty declared collection is not a real removal; it is left absent and listed in
+    // readGapPaths so classify surfaces the coverage hole rather than a meaningless live={} entry.
     cc.on(GetResourceCommand).resolves({
       ResourceDescription: { Properties: '{"ServiceName":"svc","Cluster":"c"}' },
     });
@@ -1581,6 +1583,7 @@ describe('readLive (supplement failure re-folds exempted props to a readGap, #75
       '1'
     );
     expect('ServiceConnectConfiguration' in (r.live ?? {})).toBe(false);
+    expect(r.readGapPaths).toContain('ServiceConnectConfiguration');
     expect(r.skippedReason).toBeUndefined();
     // Confirm the supplement-FAILURE path was actually taken.
     expect(warnings.join('')).toContain('ServiceConnectConfiguration');
@@ -1603,7 +1606,7 @@ describe('readLive (supplement failure re-folds exempted props to a readGap, #75
     expect(joined).toContain('AccessString');
   });
 
-  it('does NOT mirror an UNDECLARED exempted prop (nothing to compare -> stays absent)', async () => {
+  it('reports an UNDECLARED exempted prop as a readGapPath too (gap #2 — unread, not silent)', async () => {
     cc.on(GetResourceCommand).resolves({
       ResourceDescription: { Properties: '{"UserId":"reader","Status":"active"}' },
     });
@@ -1614,8 +1617,10 @@ describe('readLive (supplement failure re-folds exempted props to a readGap, #75
       'us-east-1',
       '1'
     );
+    // Stays absent from live (never mirrored), but now surfaces as a readGap: an out-of-band
+    // value on an undeclared exempted prop the supplement could not read is reported as unread.
     expect('AccessString' in (r.live ?? {})).toBe(false);
-    // still warns (loud), but reports no restored read-gap prop
+    expect(r.readGapPaths).toContain('AccessString');
     expect(warnings.join('')).toContain('AWS::ElastiCache::User');
   });
 });

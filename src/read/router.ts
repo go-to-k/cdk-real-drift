@@ -12,6 +12,11 @@ export interface ReadResult {
   live?: Record<string, unknown>; // un-stripped property model
   skippedReason?: string;
   deleted?: boolean; // the resource was deleted out of band (read returned not-found)
+  // Top-level exempted props (OVERRIDE_READABLE_WRITEONLY) that an SDK_SUPPLEMENTS read was
+  // meant to provide but FAILED to (#849). They are absent from `live`; classify surfaces each
+  // as a genuine `readGap`-tier finding (footer count + #795 completeness) instead of a false
+  // declared drift (#752) or a silent hole — for declared collections AND undeclared props alike.
+  readGapPaths?: string[];
 }
 
 // Cloud Control identifier adapters (R74): for most types the CFn physical id IS
@@ -459,58 +464,41 @@ function compositeWith(
 }
 
 // A supplement read failed, so its props (exempted from the writeOnly/readGap strip by
-// OVERRIDE_READABLE_WRITEONLY on the assumption the supplement provides the live value)
-// would false-flag as declared drift against an absent live value (#752). Restore the
-// readGap for the props the user DECLARED, and warn on stderr naming the failed supplement
-// call, so a permission gap degrades LOUDLY to coverage-incomplete instead of silently to
-// false declared drift.
+// OVERRIDE_READABLE_WRITEONLY on the assumption the supplement provides the live value) are
+// absent from the live model. Left untreated, a DECLARED value compares against nothing and
+// false-flags as declared-tier drift (#752). Degrade LOUDLY to coverage-incomplete: report the
+// exempted paths as a supplement read-gap and warn on stderr naming the failed call.
 //
-// HOW the readGap is restored depends on the DECLARED value shape (#849), because classify's
-// "declared key absent from live" branch (diff/classify.ts) treats the two shapes oppositely:
-//   - a SCALAR (or an empty collection) absent from live → classify emits a genuine
-//     `readGap`-tier finding on its own. So we LEAVE the scalar ABSENT: the readGap now
-//     surfaces in the report's `info:` read-gap count (footer) AND blocks snapshot-
-//     completeness (#795) for the failed-supplement resource — closing the gap between the
-//     stderr-only warning and the reported coverage. Since the value is absent, there is no
-//     declared==live compare, so no false declared drift either.
-//   - a NON-EMPTY COLLECTION absent from live → classify treats it as a real removal and
-//     emits a `declared`-tier finding (the #752 false positive). classify's collection
-//     read-gap denylist (READGAP_COLLECTION_PATHS) is not aware of the supplement-failure
-//     context, so leaving a collection absent would REGRESS #752. For collections we keep the
-//     original declared→live MIRROR (declared == live → folds to no drift). Surfacing a
-//     counted readGap for the collection-shaped exempted props too would require plumbing a
-//     supplement-failure signal into classify.ts — deferred (out of this router-only scope).
-// Only exempted TOP-LEVEL props that are (a) declared and (b) NOT already present in the live
-// model are handled (an undeclared prop has nothing to compare/surface; a prop the CC read
-// already echoed is genuinely readable).
-function restoreSupplementReadGaps(
+// The read-gap is surfaced by classify (via ReadResult.readGapPaths → classifyResource, #849),
+// which emits ONE genuine `readGap`-tier finding per path — so the props show in the report's
+// `info:` read-gap count (footer) AND block snapshot-completeness (#795), and NO false declared
+// drift resurfaces. This is uniform across value shapes and declared-ness, replacing the old
+// router-only split (leave scalars absent, mirror declared collections) that could not surface a
+// counted readGap for collection-shaped or undeclared exempted props:
+//   - a DECLARED prop (scalar OR collection) absent from live → readGap, not a false `declared`
+//     removal (#752 preserved) and not a silent mirror (the collection now COUNTS, closing the
+//     gap between the stderr warning and the reported coverage).
+//   - an UNDECLARED exempted prop → readGap too, so an out-of-band-set value on a prop the
+//     supplement could not read is reported as unread rather than silently invisible.
+// A prop the CC read already echoed (present in `live`) is genuinely readable — skip it.
+function collectSupplementReadGaps(
   resourceType: string,
-  declared: Record<string, unknown>,
   live: Record<string, unknown>,
   error: unknown
-): void {
+): string[] {
   const exempt = OVERRIDE_READABLE_WRITEONLY[resourceType];
-  const restored: string[] = [];
+  const gaps: string[] = [];
   for (const path of exempt ?? []) {
-    if (path in declared && !(path in live)) {
-      const value = declared[path];
-      // A NON-EMPTY collection would false-flag as a `declared`-tier removal in classify
-      // (#752) — mirror it so declared == live folds to no drift. A SCALAR / empty
-      // collection is left ABSENT so classify emits a genuine, COUNTED readGap for it (#849).
-      const isNonEmptyCollection =
-        (Array.isArray(value) && value.length > 0) ||
-        (value !== null && typeof value === 'object' && Object.keys(value as object).length > 0);
-      if (isNonEmptyCollection) live[path] = value;
-      restored.push(path);
-    }
+    if (!(path in live)) gaps.push(path);
   }
   const call = (error as Error)?.name || 'unknown error';
-  const gap = restored.length
-    ? ` — treating ${restored.join(', ')} as an unverifiable read-gap (grant the missing read permission to detect out-of-band drift on it)`
+  const gap = gaps.length
+    ? ` — treating ${gaps.join(', ')} as an unverifiable read-gap (grant the missing read permission to detect out-of-band drift on it)`
     : '';
   process.stderr.write(
     `[cdkrd] warning: supplement read for ${resourceType} failed (${call})${gap}\n`
   );
+  return gaps;
 }
 
 export async function readLive(
@@ -566,11 +554,10 @@ export async function readLive(
         // the writeOnly/readGap strip by OVERRIDE_READABLE_WRITEONLY on the ASSUMPTION the
         // supplement WILL provide the live value — so leaving them absent makes a DECLARED
         // value compare against nothing and FALSE-flag as declared-tier drift (#752). Degrade
-        // LOUDLY to coverage-incomplete instead: re-fold each exempted prop the user DECLARED
-        // back to a readGap by mirroring the declared value into the live model (declared ==
-        // live -> no drift surfaced, exactly the readGap semantic), and warn on stderr naming
-        // the failed call so the permission gap is visible rather than silent false drift.
-        restoreSupplementReadGaps(resourceType, declared, live, e);
+        // LOUDLY to coverage-incomplete instead: report the exempted paths as a supplement
+        // read-gap (classify emits a counted `readGap` per path, #849) and warn on stderr.
+        const readGapPaths = collectSupplementReadGaps(resourceType, live, e);
+        return { live, readGapPaths };
       }
     }
     return { live };

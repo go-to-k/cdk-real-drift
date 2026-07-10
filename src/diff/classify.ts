@@ -1343,6 +1343,11 @@ export function classifyResource(
     // Per child physical id, the parent cluster's live model — for the CLUSTER_ECHO_CHILD
     // strip (an Aurora DBInstance echoing its DBCluster's cluster-level config).
     clusterEchoModel?: Record<string, Record<string, unknown>>;
+    // Top-level exempted props whose SDK_SUPPLEMENTS read FAILED (#849, from router.ts): they
+    // are absent from the live model NOT because the resource lacks them, but because the read
+    // could not verify them. Each is surfaced as a `readGap` (not a false declared removal, not
+    // a silent hole) regardless of declared-ness or value shape.
+    supplementReadGapPaths?: string[] | undefined;
   } = {}
 ): Finding[] {
   const { logicalId, resourceType, physicalId, declared: declaredIn } = resource;
@@ -1953,6 +1958,26 @@ export function classifyResource(
   };
   // ----------------------------------------------------------------------------------------
 
+  // #849: top-level exempted props whose SDK_SUPPLEMENTS read failed (router.ts). They are
+  // absent from `live` because the read could not verify them, not because the resource lacks
+  // them — so a DECLARED one must surface as a `readGap` (never a false declared removal, #752)
+  // and an UNDECLARED one as a `readGap` too (an out-of-band value on it is unread, not clean).
+  const supplementReadGap = new Set(opts.supplementReadGapPaths ?? []);
+  // Gap #2: an UNDECLARED exempted prop whose supplement read failed has no declared value to
+  // drive the loop below, so surface its unread-ness here. (A declared one is handled inside the
+  // loop's `!(k in live)` branch; a prop the CC read genuinely echoed is present in live — skip.)
+  for (const p of supplementReadGap) {
+    if (!(p in declared) && !(p in live)) {
+      findings.push({
+        tier: 'readGap',
+        logicalId,
+        resourceType,
+        path: p,
+        note: 'supplement read failed — property unverifiable (grant the missing read permission)',
+      });
+    }
+  }
+
   for (const [k, v] of Object.entries(declared)) {
     if (v === UNRESOLVED || hasUnresolved(v)) {
       findings.push({ tier: 'unresolved', logicalId, resourceType, path: k });
@@ -1963,6 +1988,19 @@ export function classifyResource(
       // The compare below skips any per-leaf record whose declared side is unresolved.
       if (v === UNRESOLVED || !(k in live)) continue;
     } else if (!(k in live)) {
+      // #849: a declared exempted prop whose supplement read FAILED — absent from live because
+      // it could not be verified, NOT because it was removed. Surface it as a counted readGap
+      // (never a false `declared` removal, whatever its shape) and skip the shape heuristics.
+      if (supplementReadGap.has(k)) {
+        findings.push({
+          tier: 'readGap',
+          logicalId,
+          resourceType,
+          path: k,
+          note: 'supplement read failed — property unverifiable (grant the missing read permission)',
+        });
+        continue;
+      }
       // A declared key absent from the live read. A declared NON-EMPTY COLLECTION
       // (object/array) absent from live means the whole config was emptied/removed out
       // of band — many services OMIT a sub-config entirely when empty but RETURN it
