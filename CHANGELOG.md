@@ -1,3 +1,11 @@
+## [0.12.21](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.20...v0.12.21) (2026-07-10)
+
+
+### Bug Fixes
+
+* **baseline:** fold an adopted out-of-band added resource instead of phantom-deleting it ([#1365](https://github.com/go-to-k/cdk-real-drift/issues/1365)) ([87ab27d](https://github.com/go-to-k/cdk-real-drift/commit/87ab27da94d03e662a0432447033c7a39d068f6f))
+* **report:** prefix-aware redaction masks secret VALUES in container-level findings ([#1297](https://github.com/go-to-k/cdk-real-drift/issues/1297)) ([#1369](https://github.com/go-to-k/cdk-real-drift/issues/1369)) ([8977778](https://github.com/go-to-k/cdk-real-drift/commit/8977778ed4a394e2730e48d15576fa955cc76596))
+
 ## [0.12.20](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.19...v0.12.20) (2026-07-10)
 
 
