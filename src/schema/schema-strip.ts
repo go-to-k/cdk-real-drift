@@ -270,9 +270,14 @@ function pointerToDotted(p: string): string {
 // path — array `items` contribute a `*` segment, matching the readOnlyPaths
 // convention and the `[id]`->`*`-normalized live finding paths. The per-branch
 // `seen` ref-set breaks recursive definitions (a $ref cannot expand inside its
-// own descent). Best-effort: only `properties` + `items` are descended (not
-// oneOf/anyOf/allOf), so a missed default just stays `undeclared` — never a false
-// positive.
+// own descent). `properties` + `items` are descended, PLUS the `oneOf`/`anyOf`/
+// `allOf` combinator branches (#1069): each branch is an alternative schema node
+// at the SAME path (a combinator adds no path segment), so we recurse into every
+// branch and union what each finds — otherwise a `default` (or an
+// `insertionOrder:false` array, or a free-form map) that lives only inside a
+// variant is lost across ~30 registry types (Bedrock Flow LoopController, CFn
+// Hooks, VerifiedPermissions, DataBrew Recipe, SES MailManager). Still
+// best-effort: a missed fact just stays `undeclared` — never a false positive.
 type SchemaNode = {
   $ref?: string;
   default?: unknown;
@@ -283,7 +288,18 @@ type SchemaNode = {
   items?: SchemaNode;
   patternProperties?: Record<string, SchemaNode>;
   additionalProperties?: boolean | SchemaNode;
+  oneOf?: SchemaNode[];
+  anyOf?: SchemaNode[];
+  allOf?: SchemaNode[];
 };
+
+// The `oneOf`/`anyOf`/`allOf` branches of a node, flattened into a single list.
+// Each element is an alternative schema at the CURRENT path (a combinator does not
+// add a path segment), so a collector recurses into each branch at the SAME path
+// and merges (unions) what each finds. Shared by all three collectors (#1069).
+function combinatorBranches(node: SchemaNode): SchemaNode[] {
+  return [...(node.oneOf ?? []), ...(node.anyOf ?? []), ...(node.allOf ?? [])];
+}
 function collectDefaultPaths(
   definitions: Record<string, SchemaNode>,
   properties: Record<string, SchemaNode>
@@ -302,6 +318,9 @@ function collectDefaultPaths(
       for (const [k, child] of Object.entries(node.properties))
         walk(child, path ? `${path}.${k}` : k, seen);
     if (node.items) walk(node.items, path ? `${path}.*` : '*', seen);
+    // A `default` may live inside a oneOf/anyOf/allOf variant — recurse each
+    // branch at the SAME path (a combinator adds no path segment). #1069.
+    for (const branch of combinatorBranches(node)) walk(branch, path, seen);
   };
   for (const [k, child] of Object.entries(properties)) walk(child, k, new Set());
   return out;
@@ -375,6 +394,9 @@ function collectUnorderedArrayPaths(
     if (n.properties)
       for (const [k, child] of Object.entries(n.properties))
         walk(child, path ? `${path}.${k}` : k, nextSeen);
+    // An `insertionOrder:false` array may sit inside a oneOf/anyOf/allOf variant —
+    // recurse each branch at the SAME path (a combinator adds no path segment). #1069.
+    for (const branch of combinatorBranches(n)) walk(branch, path, nextSeen);
   };
   for (const [k, child] of Object.entries(properties)) walk(child, k, new Set());
   return { scalar: [...new Set(scalar)].sort(), object: [...new Set(object)].sort() };
@@ -432,6 +454,9 @@ function collectFreeFormMapPaths(
       for (const [k, child] of Object.entries(node.properties))
         walk(child, path ? `${path}.${k}` : k, seen);
     if (node.items) walk(node.items, path ? `${path}.*` : '*', seen);
+    // A free-form map may live inside a oneOf/anyOf/allOf variant — recurse each
+    // branch at the SAME path (a combinator adds no path segment). #1069.
+    for (const branch of combinatorBranches(node)) walk(branch, path, seen);
   };
   for (const [k, child] of Object.entries(properties)) walk(child, k, new Set());
   return [...new Set(out)].sort();
@@ -464,19 +489,34 @@ export function parseSchema(schemaJson: string): SchemaInfo {
   // rejects it cleanly (it never silently replaces) — an honest failure beats a silent
   // bar. (Live-confirmed on AWS::RDS::DBInstance BackupRetentionPeriod.)
   const createOnlyPaths = dotted(schema.createOnlyProperties);
+  const definitions = schema.definitions ?? {};
+  // Follow a chain of local `#/definitions/...` refs to the concrete node, guarding
+  // against a recursive definition. A top-level property written as
+  // `{ "$ref": "#/definitions/X" }` carries its `default` inside definition X, so
+  // resolve it before reading `default` — else the top-level fold (classify's
+  // `k in schema.defaults`) misses it and a freshly deployed value that IS the
+  // schema default surfaces as first-run [Potential Drift] (#1068). Reuses the same
+  // ref-resolution shape as collectUnorderedArrayPaths.
+  const resolveRef = (node: SchemaNode | undefined): SchemaNode | undefined => {
+    let n = node;
+    const seen = new Set<string>();
+    while (n?.$ref) {
+      const name = n.$ref.replace('#/definitions/', '');
+      if (seen.has(name)) return undefined; // recursive — stop
+      seen.add(name);
+      n = definitions[name];
+    }
+    return n;
+  };
   const defaults: Record<string, unknown> = {};
   for (const [k, def] of Object.entries(schema.properties ?? {})) {
-    if (def && typeof def === 'object' && 'default' in def) defaults[k] = def.default;
+    const resolved = resolveRef(def);
+    if (resolved && typeof resolved === 'object' && 'default' in resolved)
+      defaults[k] = resolved.default;
   }
-  const defaultPaths = collectDefaultPaths(schema.definitions ?? {}, schema.properties ?? {});
-  const unorderedArrayPaths = collectUnorderedArrayPaths(
-    schema.definitions ?? {},
-    schema.properties ?? {}
-  );
-  const freeFormMapPaths = collectFreeFormMapPaths(
-    schema.definitions ?? {},
-    schema.properties ?? {}
-  );
+  const defaultPaths = collectDefaultPaths(definitions, schema.properties ?? {});
+  const unorderedArrayPaths = collectUnorderedArrayPaths(definitions, schema.properties ?? {});
+  const freeFormMapPaths = collectFreeFormMapPaths(definitions, schema.properties ?? {});
   // A type is `updatable` when its schema's `handlers` block declares an `update` handler.
   // ONLY decide when handlers are PRESENT: an absent handlers block is unknown updatability
   // (leave `updatable` undefined), so revert never bars on a schema-unavailable degradation.
