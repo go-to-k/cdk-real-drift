@@ -4,7 +4,7 @@ import {
   ListTagsForCertificateCommand,
 } from '@aws-sdk/client-acm';
 import { mockClient } from 'aws-sdk-client-mock';
-import { beforeEach, describe, expect, it } from 'vite-plus/test';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { SDK_OVERRIDES } from '../src/read/overrides.js';
 
 const acm = mockClient(ACMClient);
@@ -101,7 +101,7 @@ describe('AWS::CertificateManager::Certificate SDK override', () => {
     await expect(read(ctx(ARN))).rejects.toThrow('cert gone');
   });
 
-  it('keeps the certificate model when ListTagsForCertificate fails (no whole-read drop)', async () => {
+  it('keeps the certificate model (no whole-read drop) and omits Tags when none were declared and ListTagsForCertificate fails', async () => {
     acm.on(DescribeCertificateCommand).resolves({
       Certificate: { CertificateArn: ARN, DomainName: 'example.com', KeyAlgorithm: 'RSA_2048' },
     });
@@ -109,6 +109,39 @@ describe('AWS::CertificateManager::Certificate SDK override', () => {
 
     const out = await read(ctx(ARN, { DomainName: 'example.com' }));
     expect(out).toEqual({ DomainName: 'example.com', KeyAlgorithm: 'RSA_2048' });
+  });
+
+  it('#1086: mirrors declared Tags when ListTagsForCertificate fails (no false declared-Tags drift)', async () => {
+    const warn = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
+    acm.on(DescribeCertificateCommand).resolves({
+      Certificate: { CertificateArn: ARN, DomainName: 'example.com', KeyAlgorithm: 'RSA_2048' },
+    });
+    const denied = Object.assign(new Error('not authorized'), { name: 'AccessDeniedException' });
+    acm.on(ListTagsForCertificateCommand).rejects(denied);
+
+    // Template DECLARES a non-empty Tags list. Without the fix the live model omits Tags
+    // (Tags=undefined) → a false `declared` drift. The degrade mirrors declared Tags so the
+    // compare is equal, and warns on stderr so the omission is not silent.
+    const out = await read(
+      ctx(ARN, {
+        DomainName: 'example.com',
+        Tags: [
+          { Key: 'team', Value: 'ci' },
+          { Key: 'env', Value: 'prod' },
+        ],
+      })
+    );
+    expect(out).toEqual({
+      DomainName: 'example.com',
+      KeyAlgorithm: 'RSA_2048',
+      Tags: [
+        { Key: 'team', Value: 'ci' },
+        { Key: 'env', Value: 'prod' },
+      ],
+    });
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0]?.[0]).toContain('ACM ListTagsForCertificate');
+    warn.mockRestore();
   });
 
   it('returns undefined when the physical id is not an ARN (target not resolvable)', async () => {

@@ -1631,14 +1631,20 @@ const readSchedulerSchedule: OverrideReader = async ({ physicalId, declared, reg
 // Maps the camelCase SDK Project back to the CFn PascalCase shape, projecting
 // ONLY CFn-modeled props (Arn / Created / LastModified / Badge URL are
 // AWS-managed noise). The declared compare is subset-based, so nested fields the
-// template never set are ignored; an absent project returns undefined (-> skip).
+// template never set are ignored. BatchGetProjects NEVER throws for a missing
+// project — it returns success with the name in `projectsNotFound` and an empty
+// `projects`. Since the CFn physical id IS the exact project name (an authoritative
+// exact-key lookup), an empty `projects` is a DEFINITIVE out-of-band deletion, so
+// throw ResourceGoneError (in NOT_FOUND_ERROR_NAMES → router maps `deleted`) rather
+// than returning undefined (which would hide the deletion as `skipped`). Mirrors the
+// sibling readCodeBuildReportGroup (#1083).
 const readCodeBuildProject: OverrideReader = async ({ physicalId, declared, region }) => {
   const name = str(physicalId) ?? str(declared.Name);
   if (!name) return undefined;
   const c = new CodeBuildClient({ region, ...READ_RETRY });
   const r = await c.send(new BatchGetProjectsCommand({ names: [name] }));
   const p = r.projects?.[0];
-  if (!p) return undefined;
+  if (!p) throw new ResourceGoneError(`CodeBuild Project ${name} absent`);
   const model: Record<string, unknown> = { Name: p.name };
   if (p.serviceRole !== undefined) model.ServiceRole = p.serviceRole;
   if (p.description !== undefined) model.Description = p.description;
@@ -2195,10 +2201,28 @@ const readAcmCertificate: OverrideReader = async ({ physicalId, declared, region
       .filter((tag) => str(tag.Key) !== undefined)
       .map((tag) => ({ Key: tag.Key as string, Value: tag.Value ?? '' }));
     if (tags.length > 0) model.Tags = tags;
-  } catch {
+  } catch (err) {
     // A ListTagsForCertificate failure (a narrow acm:ListTagsForCertificate permission gap
     // or a transient throttle) must not drop the whole cert read to skipped — keep the
-    // certificate model without Tags rather than losing the DomainName/Options coverage.
+    // DomainName/Options coverage. But silently OMITTING Tags would then read-back as
+    // Tags=undefined, which false-flags a `declared`-tier drift against any declared
+    // non-empty Tags (and revert would offer to re-write them). #964-compliant degrade:
+    // MIRROR the declared Tags into the live model so the compare is equal (no FP), and
+    // emit a one-line stderr warning so the omission is not silent (matching the router's
+    // supplement-read warn style). Only mirror a declared non-empty Tags array, shaped like
+    // the success path ([{Key, Value}, ...]).
+    const declaredTags = Array.isArray(declared.Tags)
+      ? declared.Tags.filter(
+          (t): t is Record<string, unknown> => typeof t === 'object' && t !== null
+        )
+          .filter((t) => str(t.Key) !== undefined)
+          .map((t) => ({ Key: t.Key as string, Value: str(t.Value) ?? '' }))
+      : [];
+    if (declaredTags.length > 0) model.Tags = declaredTags;
+    const call = (err as Error)?.name || 'unknown error';
+    process.stderr.write(
+      `[cdkrd] warning: ACM ListTagsForCertificate for ${arn} failed (${call}) — mirroring declared Tags to avoid a false drift; grant acm:ListTagsForCertificate to detect out-of-band tag changes\n`
+    );
   }
   return model;
 };
