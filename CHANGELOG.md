@@ -1,3 +1,12 @@
+## [0.7.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.7.1...v0.7.2) (2026-07-10)
+
+
+### Bug Fixes
+
+* **normalize:** stop stripAwsTagsDeep from stripping declared aws:* tag-FILTER elements ([#864](https://github.com/go-to-k/cdk-real-drift/issues/864)) ([#1188](https://github.com/go-to-k/cdk-real-drift/issues/1188)) ([f042a7d](https://github.com/go-to-k/cdk-real-drift/commit/f042a7d8177e0ae2abdeb65ce244ae02d46f4bda))
+* **revert:** converge the six remaining Cognito UserPool folded defaults via REVERT_SET_DEFAULT_PATHS ([#702](https://github.com/go-to-k/cdk-real-drift/issues/702)) ([#1187](https://github.com/go-to-k/cdk-real-drift/issues/1187)) ([49d6ffd](https://github.com/go-to-k/cdk-real-drift/commit/49d6ffdba5553910a5b87189bcf8ecd525378bdc))
+* **revert:** whole-type SDK writers report unconsumed ops as not-reverted instead of a silent false success ([#804](https://github.com/go-to-k/cdk-real-drift/issues/804)) ([#1189](https://github.com/go-to-k/cdk-real-drift/issues/1189)) ([786d0fb](https://github.com/go-to-k/cdk-real-drift/commit/786d0fb7404a4cdcba183985bf8f5dac60e20b23))
+
 ## [0.7.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.7.0...v0.7.1) (2026-07-10)
 
 
