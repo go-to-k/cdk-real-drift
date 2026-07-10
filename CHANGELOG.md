@@ -1,3 +1,10 @@
+## [0.5.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.5.0...v0.5.1) (2026-07-10)
+
+
+### Bug Fixes
+
+* **report:** defend --json output against a nested UNRESOLVED symbol ([#1059](https://github.com/go-to-k/cdk-real-drift/issues/1059) --json residue) ([#1141](https://github.com/go-to-k/cdk-real-drift/issues/1141)) ([7eb8f41](https://github.com/go-to-k/cdk-real-drift/commit/7eb8f4105bb51eca68faaf41a590fc6f529dc452))
+
 # [0.5.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.44...v0.5.0) (2026-07-10)
 
 
