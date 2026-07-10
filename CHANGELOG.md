@@ -1,3 +1,10 @@
+## [0.4.25](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.24...v0.4.25) (2026-07-10)
+
+
+### Bug Fixes
+
+* **desired:** parse a duplicate-map-key YAML template last-wins instead of throwing ([#1074](https://github.com/go-to-k/cdk-real-drift/issues/1074)) ([#1133](https://github.com/go-to-k/cdk-real-drift/issues/1133)) ([1c95041](https://github.com/go-to-k/cdk-real-drift/commit/1c95041a6f3f2e51371ccb3274f05bee1d1d59ba))
+
 ## [0.4.24](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.23...v0.4.24) (2026-07-10)
 
 
