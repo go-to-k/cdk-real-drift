@@ -133,10 +133,20 @@ export async function resolveStacks(a: CommonArgs): Promise<ResolvedStack[]> {
       'cdkrd needs a CDK app: run in a directory with cdk.json, pass --app "<cmd>" or --app <cdk.out> (a pre-synthesized assembly), or set $CDKRD_APP'
     );
   }
+  // #905: scope synth's metadata validation to the TARGET stacks. When the user named
+  // specific stacks (exact and/or glob) and did NOT pass --all, forward those patterns so a
+  // failing context lookup in an UNRELATED sibling stack does not abort the whole command —
+  // the standard multi-account CI shape (creds for account A only; app defines A+B with
+  // lookups in B). For --all or no-args discovery the user asked for EVERYTHING, so we pass
+  // no scope (undefined) and toolkit-lib validates every stack, exactly as before. Discovery
+  // still returns every stack the app defines regardless — this only narrows VALIDATION — so
+  // the exact-name-typo / no-match-glob errors below still see the full known-stack list.
+  const scopePatterns = !a.all && a.stackNames.length > 0 ? a.stackNames : undefined;
   const discovered = await discoverStacks(app, {
     region: a.region,
     profile: a.profile,
     context: a.context,
+    stackPatterns: scopePatterns,
   });
 
   // Region fallback chain for an env-agnostic stack (no `env` on the stack): an

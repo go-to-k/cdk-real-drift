@@ -4,7 +4,13 @@
 // does not need this — it is used for stack auto-discovery (and later clobber).
 import { existsSync, readFileSync, rmSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { BaseCredentials, CdkAppMultiContext, Toolkit } from '@aws-cdk/toolkit-lib';
+import type { StackSelector } from '@aws-cdk/toolkit-lib';
+import {
+  BaseCredentials,
+  CdkAppMultiContext,
+  StackSelectionStrategy,
+  Toolkit,
+} from '@aws-cdk/toolkit-lib';
 import { QuietIoHost } from './io-host.js';
 import {
   collectMissingRecursively,
@@ -21,6 +27,37 @@ export interface SynthOptions {
   // `vpc-12345` placeholders). Escalate the missing-context surface from a warning to a
   // hard refusal (throw) in that mode (#907). Discovery (default) only warns.
   preDeploy?: boolean;
+  // The requested stack name(s)/glob(s) to SCOPE synthesis validation to (#905). When the
+  // caller targets specific stacks (an exact name or a glob positional), only THOSE stacks
+  // should be metadata-validated by toolkit-lib — a failing context lookup (missing
+  // cross-account creds, a VPC-not-found, ...) in an UNRELATED sibling stack must NOT abort
+  // the whole command. `undefined`/empty means "no scope" → validate every stack (the
+  // no-args discovery / `--all` case, where the user asked for everything). See
+  // buildStackSelector for the exact StackSelector this maps to.
+  stackPatterns?: string[] | undefined;
+}
+
+/**
+ * Map the requested stack name(s)/glob(s) to the toolkit-lib `StackSelector` that scopes
+ * `toolkit.synth`'s metadata validation (#905).
+ *
+ * - No patterns (`undefined` / empty) → `undefined`: the caller wants EVERY stack (no-args
+ *   discovery or `--all`), so we pass no selector and toolkit-lib defaults to `ALL_STACKS` —
+ *   the pre-#905 behavior, unchanged. Everything is validated because the user asked for it.
+ * - One or more patterns → a `PATTERN_MATCH` selector over those patterns. toolkit-lib then
+ *   validates ONLY the matched stacks, so a sibling stack the user did NOT target can fail a
+ *   context lookup without aborting synth. `PATTERN_MATCH` (NOT `PATTERN_MUST_MATCH`) is
+ *   deliberate: it halts successfully — never throws — when the patterns match zero stacks.
+ *   The selector matches on the toolkit's HIERARCHICAL id (`Stage/Stack` for a staged stack)
+ *   via picomatch, which can differ from the deployed stackName resolveStacks filters on, so
+ *   a staged-stack pattern may legitimately match nothing here; that must not error. The
+ *   real "unknown stack / no-match glob" errors stay in resolveStacks, checked against the
+ *   FULL discovered stack list (this selector only narrows what gets VALIDATED, never what
+ *   gets discovered — the returned assembly still carries every stack).
+ */
+export function buildStackSelector(patterns: string[] | undefined): StackSelector | undefined {
+  if (!patterns || patterns.length === 0) return undefined;
+  return { strategy: StackSelectionStrategy.PATTERN_MATCH, patterns };
 }
 
 export interface SynthStack {
@@ -106,6 +143,10 @@ function cleanupEmptyContextFile(file: string, existedBefore: boolean): void {
 
 export async function synthApp(app: string, opts: SynthOptions = {}): Promise<SynthStack[]> {
   const { region, profile, context = {} } = opts;
+  // #905: scope synth's metadata validation to the TARGET stacks, so a failing context
+  // lookup in an unrelated sibling does not abort a named-stack check (undefined = validate
+  // all, the discovery / --all default).
+  const stackSelector = buildStackSelector(opts.stackPatterns);
   const toolkit = new Toolkit({
     ioHost: new QuietIoHost(),
     sdkConfig: {
@@ -149,7 +190,9 @@ export async function synthApp(app: string, opts: SynthOptions = {}): Promise<Sy
     });
   }
 
-  const cached = await toolkit.synth(source);
+  // Pass the selector only when scoped: an omitted `stacks` defaults to ALL_STACKS in
+  // toolkit-lib, so no-scope discovery / --all keeps the exact pre-#905 call shape.
+  const cached = await toolkit.synth(source, stackSelector ? { stacks: stackSelector } : undefined);
   // Best-effort: if synth just created an EMPTY cdk.context.json (every lookup failed → `{}`),
   // remove it so a read-only `check` does not dirty the user's git tree with a useless file.
   // Guarded to never touch a pre-existing or non-empty file (#906). Skipped on the dir path.
