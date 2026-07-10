@@ -1,3 +1,10 @@
+## [0.4.15](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.14...v0.4.15) (2026-07-10)
+
+
+### Bug Fixes
+
+* **read:** connection + request timeouts on every AWS client — no more forever-hang ([#1066](https://github.com/go-to-k/cdk-real-drift/issues/1066)) ([#1106](https://github.com/go-to-k/cdk-real-drift/issues/1106)) ([b61493b](https://github.com/go-to-k/cdk-real-drift/commit/b61493bc5521d32750fb1d37fb55a420fc7c8630))
+
 ## [0.4.14](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.13...v0.4.14) (2026-07-10)
 
 
