@@ -2760,10 +2760,11 @@ export const EB_OPTION_DERIVED: Record<string, Record<string, string>> = {
 };
 export const EB_OPTION_VALUE_INDEPENDENT: ReadonlySet<string> = new Set([
   'aws:autoscaling:launchconfiguration|ImageId',
-  'aws:autoscaling:launchconfiguration|InstanceType',
-  // the environment's own EC2 security group (an awseb-e-… generated name) + the ELB's
-  'aws:autoscaling:launchconfiguration|SecurityGroups',
-  'aws:elb:loadbalancer|SecurityGroups',
+  // #893: InstanceType and the two SecurityGroups keys are NO LONGER value-independent — they
+  // are MUTABLE security/cost settings a value-independent fold hid forever (a rogue SG on every
+  // instance, a silent p4d.24xlarge cost bomb). ebOptionSettingTier now gates them: SecurityGroups
+  // folds only the environment's own awseb-* generated group; InstanceType is derived from the
+  // sibling aws:ec2:instances|InstanceTypes option's first element. Any other value surfaces.
   'aws:cloudformation:template:parameter|AppSource',
   'aws:cloudformation:template:parameter|HooksPkgUrl',
   'aws:cloudformation:template:parameter|InstanceTypeFamily',
@@ -2783,17 +2784,47 @@ export const EB_OPTION_VALUE_INDEPENDENT: ReadonlySet<string> = new Set([
 // default (value-independent, derived-from-EnvironmentType, or equality-gated constant), else
 // 'undeclared' so a change away from the default still surfaces. `envType` is the sibling
 // `EnvironmentType` option's value (defaults to LoadBalanced, AWS's default when unset).
+// #893: an undeclared EB SecurityGroups option folds ONLY when every element is the
+// environment's own AWS-generated `awseb-*` security group (the value AWS assigns when the
+// user never set the option) — a resolved `awseb-e-…-AWSEBSecurityGroup-…` name or the
+// unresolved `{"Ref":"AWSEB…SecurityGroup"}` a ConfigurationTemplate still carries. A rogue
+// SG (`eb update-environment …SecurityGroups=sg-…`) matches neither and surfaces.
+function isAllEbGeneratedGroups(value: unknown): boolean {
+  if (typeof value !== 'string' || value === '') return false;
+  return value.split(',').every((el) => /awseb/i.test(el.trim()));
+}
 export function ebOptionSettingTier(
   namespace: unknown,
   optionName: unknown,
   value: unknown,
-  envType: string
+  envType: string,
+  // #893: look up a SIBLING option's live Value on the same environment (returns undefined
+  // when absent). Threaded by the classify caller from the full OptionSettings array so a
+  // derived default (InstanceType = InstanceTypes[0]) can be computed and equality-gated.
+  siblingOption?: (namespace: string, optionName: string) => unknown
 ): 'atDefault' | 'undeclared' {
   // An unset option: DescribeConfigurationSettings returns many option keys with a null or
   // empty Value (BlockDeviceMappings, VPCId, Notification*, RootVolume*, …). Unset is not
   // drift → fold. A change TO a non-empty value is not '' so it still runs the tables below.
   if (value == null || value === '') return 'atDefault';
   const key = `${String(namespace)}|${String(optionName)}`;
+  // #893: SecurityGroups — the environment's own awseb-* group folds; a rogue SG surfaces.
+  if (
+    key === 'aws:autoscaling:launchconfiguration|SecurityGroups' ||
+    key === 'aws:elb:loadbalancer|SecurityGroups'
+  ) {
+    return isAllEbGeneratedGroups(value) ? 'atDefault' : 'undeclared';
+  }
+  // #893: InstanceType — derived default = the first element of the sibling InstanceTypes
+  // option; a bump that differs (the silent cost bomb) surfaces. When the sibling is absent
+  // the value cannot be derived, so fall back to the prior value-independent fold (no FP).
+  if (key === 'aws:autoscaling:launchconfiguration|InstanceType') {
+    const instanceTypes = siblingOption?.('aws:ec2:instances', 'InstanceTypes');
+    const first =
+      typeof instanceTypes === 'string' ? instanceTypes.split(',')[0]?.trim() : undefined;
+    if (first !== undefined) return first === value ? 'atDefault' : 'undeclared';
+    return 'atDefault';
+  }
   if (EB_OPTION_VALUE_INDEPENDENT.has(key)) return 'atDefault';
   const derived = EB_OPTION_DERIVED[key];
   if (derived) return derived[envType] === value ? 'atDefault' : 'undeclared';

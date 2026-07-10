@@ -3069,6 +3069,55 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
       expect(ebOptionSettingTier('aws:x', 'Novel', 'v', 'LoadBalanced')).toBe('undeclared');
     });
 
+    it('#893: SecurityGroups folds only the awseb-* generated group; a rogue SG surfaces', () => {
+      const lc = ['aws:autoscaling:launchconfiguration', 'SecurityGroups'] as const;
+      const elb = ['aws:elb:loadbalancer', 'SecurityGroups'] as const;
+      // resolved generated group name (Environment read) + unresolved Ref (ConfigurationTemplate)
+      expect(
+        ebOptionSettingTier(
+          lc[0],
+          lc[1],
+          'awseb-e-7k58e7ph74-stack-AWSEBSecurityGroup-uvld',
+          'LoadBalanced'
+        )
+      ).toBe('atDefault');
+      expect(
+        ebOptionSettingTier(
+          elb[0],
+          elb[1],
+          '{"Ref":"AWSEBLoadBalancerSecurityGroup"}',
+          'LoadBalanced'
+        )
+      ).toBe('atDefault');
+      // a rogue SG attached out of band surfaces (the security FN this fixes)
+      expect(ebOptionSettingTier(lc[0], lc[1], 'sg-0badc0de', 'LoadBalanced')).toBe('undeclared');
+      // a mixed list where ONE element is not the awseb group surfaces
+      expect(
+        ebOptionSettingTier(
+          lc[0],
+          lc[1],
+          'awseb-e-x-AWSEBSecurityGroup-y, sg-0badc0de',
+          'LoadBalanced'
+        )
+      ).toBe('undeclared');
+    });
+
+    it('#893: InstanceType is derived from the sibling InstanceTypes option first element', () => {
+      const k = ['aws:autoscaling:launchconfiguration', 'InstanceType'] as const;
+      const sibling = (ns: string, opt: string): unknown =>
+        ns === 'aws:ec2:instances' && opt === 'InstanceTypes' ? 't3.micro, t3.small' : undefined;
+      // matches InstanceTypes[0] -> atDefault
+      expect(ebOptionSettingTier(k[0], k[1], 't3.micro', 'LoadBalanced', sibling)).toBe(
+        'atDefault'
+      );
+      // an out-of-band bump (cost bomb) that differs from InstanceTypes[0] surfaces
+      expect(ebOptionSettingTier(k[0], k[1], 'p4d.24xlarge', 'LoadBalanced', sibling)).toBe(
+        'undeclared'
+      );
+      // no sibling InstanceTypes to derive from -> falls back to the value-independent fold
+      expect(ebOptionSettingTier(k[0], k[1], 'p4d.24xlarge', 'LoadBalanced')).toBe('atDefault');
+    });
+
     it('an unset option (null or empty Value) folds — DescribeConfigurationSettings returns many', () => {
       expect(ebOptionSettingTier('aws:ec2:vpc', 'VPCId', null, 'LoadBalanced')).toBe('atDefault');
       expect(
