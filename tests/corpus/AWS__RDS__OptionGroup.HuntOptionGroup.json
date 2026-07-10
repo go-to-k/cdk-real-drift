@@ -123,7 +123,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "HuntOptionGroup",
       "resourceType": "AWS::RDS::OptionGroup",
       "path": "OptionConfigurations.0.OptionSettings[SERVER_AUDIT]",
@@ -136,7 +136,7 @@
       "constructPath": "CdkRealDriftIntegRdsOptEvsub/HuntOptionGroup"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "HuntOptionGroup",
       "resourceType": "AWS::RDS::OptionGroup",
       "path": "OptionConfigurations.0.OptionSettings[SERVER_AUDIT_EXCL_USERS]",
@@ -148,7 +148,7 @@
       "constructPath": "CdkRealDriftIntegRdsOptEvsub/HuntOptionGroup"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "HuntOptionGroup",
       "resourceType": "AWS::RDS::OptionGroup",
       "path": "OptionConfigurations.0.OptionSettings[SERVER_AUDIT_FILE_PATH]",
@@ -161,7 +161,7 @@
       "constructPath": "CdkRealDriftIntegRdsOptEvsub/HuntOptionGroup"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "HuntOptionGroup",
       "resourceType": "AWS::RDS::OptionGroup",
       "path": "OptionConfigurations.0.OptionSettings[SERVER_AUDIT_FILE_ROTATE_SIZE]",
@@ -173,7 +173,7 @@
       "constructPath": "CdkRealDriftIntegRdsOptEvsub/HuntOptionGroup"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "HuntOptionGroup",
       "resourceType": "AWS::RDS::OptionGroup",
       "path": "OptionConfigurations.0.OptionSettings[SERVER_AUDIT_FILE_ROTATIONS]",
@@ -185,7 +185,7 @@
       "constructPath": "CdkRealDriftIntegRdsOptEvsub/HuntOptionGroup"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "HuntOptionGroup",
       "resourceType": "AWS::RDS::OptionGroup",
       "path": "OptionConfigurations.0.OptionSettings[SERVER_AUDIT_INCL_USERS]",
@@ -197,7 +197,7 @@
       "constructPath": "CdkRealDriftIntegRdsOptEvsub/HuntOptionGroup"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "HuntOptionGroup",
       "resourceType": "AWS::RDS::OptionGroup",
       "path": "OptionConfigurations.0.OptionSettings[SERVER_AUDIT_LOGGING]",

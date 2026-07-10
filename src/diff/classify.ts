@@ -843,6 +843,44 @@ function isSelfEchoTrivialEmpty(v: unknown, physicalId: string | undefined): boo
   return rest.length < entries.length && rest.every(([, val]) => isTrivialEmpty(val));
 }
 
+// #978: AWS::RDS::OptionGroup default-fill — configuring an option (e.g. MARIADB_AUDIT_PLUGIN)
+// makes RDS materialize EVERY plugin setting the template did not declare, in two shapes:
+//   1. value-bearing AWS defaults (stable per plugin) — SERVER_AUDIT=FORCE_PLUS_PERMANENT, ...
+//   2. value-less `{Name}`-only husks — a listed-but-unset setting (no `Value` member).
+// Both are service-materialized first-run defaults, never user intent, so each folds
+// `atDefault` (the undeclared-tier twin of the closed #480 declared-tier fold). Equality-gated
+// so out-of-band detection survives: a husk that GAINS a Value, or a pinned default whose Value
+// CHANGES, no longer matches and surfaces as undeclared. Setting names are plugin-unique
+// (SERVER_AUDIT_* belong only to MARIADB_AUDIT_PLUGIN), so keying by Name alone carries no
+// cross-option collision. Values observed live (mariadb 10.11, us-east-1; corpus
+// AWS__RDS__OptionGroup.HuntOptionGroup).
+const RDS_OPTION_SETTING_DEFAULTS: Record<string, string> = {
+  SERVER_AUDIT: 'FORCE_PLUS_PERMANENT',
+  SERVER_AUDIT_LOGGING: 'ON',
+  SERVER_AUDIT_FILE_PATH: '/rdsdbdata/log/audit/',
+};
+
+// A `{<idField>: X}` element whose ONLY non-trivial member is its identity field — an
+// identity-only husk (the #648 `Targets[].AvailabilityZone` in-element husk class). Carries no
+// configuration, so it is a listed-but-unset default placeholder; a real value under any other
+// member makes it non-trivial and it stops folding.
+function isIdentityOnlyHusk(el: Record<string, unknown>, idField: string): boolean {
+  return Object.entries(el).every(([k, v]) => k === idField || isTrivialEmpty(v));
+}
+
+// True when a live-only RDS OptionGroup OptionSetting is a service-materialized default-fill
+// (value-bearing pinned default OR identity-only husk) that must fold `atDefault`.
+function isRdsOptionSettingDefault(
+  resourceType: string,
+  el: Record<string, unknown>,
+  name: string,
+  value: unknown
+): boolean {
+  if (resourceType !== 'AWS::RDS::OptionGroup') return false;
+  if (isIdentityOnlyHusk(el, 'Name')) return true;
+  return name in RDS_OPTION_SETTING_DEFAULTS && value === RDS_OPTION_SETTING_DEFAULTS[name];
+}
+
 // A live-only policy DOCUMENT whose statements were ALL subtracted as AWS-managed
 // (canonicalizePolicy drops the delivery.logs `AWSLogDelivery*` statements a service
 // auto-attaches when vended logs are pointed at a log group — a CloudWatch Logs
@@ -2417,8 +2455,16 @@ export function classifyResource(
               resourceType === 'AWS::KinesisFirehose::DeliveryStream' &&
               loName === 'NumberOfRetries' &&
               loValue === '3';
+            // #978: RDS OptionGroup materializes every unset plugin setting as a default-fill
+            // (value-bearing default or `{Name}`-only husk) — fold atDefault, equality-gated.
+            const isRdsOptionDefault = isRdsOptionSettingDefault(
+              resourceType,
+              loRec,
+              loName,
+              loValue
+            );
             findings.push({
-              tier: isFirehoseRetriesDefault ? 'atDefault' : 'undeclared',
+              tier: isFirehoseRetriesDefault || isRdsOptionDefault ? 'atDefault' : 'undeclared',
               logicalId,
               resourceType,
               path: `${d.path}[${loName}]`,

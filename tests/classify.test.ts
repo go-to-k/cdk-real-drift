@@ -2701,15 +2701,21 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
       { Name: 'SERVER_AUDIT_EXCL_USERS' },
     ];
 
-    it('a reordered + default-filled OptionSettings is NOT declared drift; live-only settings surface as undeclared', () => {
+    it('a reordered + default-filled OptionSettings is NOT declared drift; live-only default-fill settings fold to atDefault (#978)', () => {
+      // #978: the service-materialized default-fill settings (value-bearing AWS defaults +
+      // value-less `{Name}`-only husks) are not user intent, so they fold `atDefault` (zero
+      // first-run drift) instead of surfacing as undeclared — the undeclared-tier twin of the
+      // #480 declared-tier fold. Detection is preserved (a diverged value / a husk that gains a
+      // value re-surfaces undeclared; covered in classify-978-rds-optiongroup-default-fill).
       const findings = classifyResource(
         res(T, declared),
         liveConfigs(liveDefaultFilled),
         emptySchema
       );
       expect(findings.filter((f) => f.tier === 'declared')).toEqual([]);
-      const undeclared = findings.filter((f) => f.tier === 'undeclared');
-      expect(undeclared.map((f) => f.path).sort()).toEqual([
+      expect(findings.filter((f) => f.tier === 'undeclared')).toEqual([]);
+      const atDefault = findings.filter((f) => f.tier === 'atDefault');
+      expect(atDefault.map((f) => f.path).sort()).toEqual([
         'OptionConfigurations.0.OptionSettings[SERVER_AUDIT]',
         'OptionConfigurations.0.OptionSettings[SERVER_AUDIT_EXCL_USERS]',
         'OptionConfigurations.0.OptionSettings[SERVER_AUDIT_FILE_PATH]',
@@ -2718,7 +2724,7 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
         'OptionConfigurations.0.OptionSettings[SERVER_AUDIT_INCL_USERS]',
         'OptionConfigurations.0.OptionSettings[SERVER_AUDIT_LOGGING]',
       ]);
-      expect(undeclared.every((f) => f.nested === true)).toBe(true);
+      expect(atDefault.every((f) => f.nested === true)).toBe(true);
     });
 
     it('a genuine change to a DECLARED setting value still surfaces as declared drift (fail-closed)', () => {
