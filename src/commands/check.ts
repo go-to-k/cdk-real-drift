@@ -8,6 +8,7 @@
 // stacks.
 import { readdirSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { GetCallerIdentityCommand, STSClient } from '@aws-sdk/client-sts';
 import { isStackNotDeployed, StackNotCheckableError } from '../aws-errors.js';
 import {
   applyBaseline,
@@ -33,6 +34,7 @@ import {
   stackSeparator,
 } from '../report/report.js';
 import { style } from '../report/style.js';
+import { CLIENT_TIMEOUTS } from '../read/client-config.js';
 import { resolveApp } from '../synth/resolve-app.js';
 import { synthApp } from '../synth/synth.js';
 import type { DesiredResource, Finding } from '../types.js';
@@ -241,10 +243,23 @@ export function finalCheckExit(code: number, fail: boolean): number {
  * A case-sensitive `readdirSync` prefix would MISS a baseline committed as `mystack.….json`
  * when checking `MyStack`, silently downgrading a genuinely deleted stack to a benign skip.
  *
+ * #1046: when the CURRENT account is known (resolved via `resolveCallerAccount`), PIN the
+ * filename's account segment too — else a same-named stack that lives in ANOTHER account
+ * (the common `env: { account: PERSONAL || SHARED }` CDK pattern, which the baseline filename
+ * design explicitly serves) but was never deployed in THIS account is falsely reported
+ * "deleted out of band" (multi-account CI goes permanently red the moment the other account's
+ * baseline is committed). The account is only wildcarded when it genuinely cannot be resolved
+ * (an STS failure), preserving today's behavior as a fallback — the account axis twin of the
+ * region pin the #942 fix applied.
+ *
  * The baselines directory is derived from `baselinePath` so the layout stays single-sourced.
  * Pure (filesystem-only, no AWS) + exported for unit tests. Missing dir → false.
  */
-export function hasBaselineForStack(stackName: string, region: string): boolean {
+export function hasBaselineForStack(
+  stackName: string,
+  region: string,
+  accountId?: string
+): boolean {
   const dir = dirname(baselinePath(stackName, 'a', 'r'));
   let entries: string[];
   try {
@@ -252,12 +267,34 @@ export function hasBaselineForStack(stackName: string, region: string): boolean 
   } catch {
     return false; // no `.cdkrd/baselines/` directory at all → nothing was ever recorded
   }
-  const prefix = `${stackName}.`.toLowerCase();
+  // Stack names are alphanumeric/hyphen (no dots) and an accountId is digits, so
+  // `${stackName}.${accountId}.` is an unambiguous prefix. Without a known account the
+  // account segment stays wildcarded (region-only pin, today's behavior).
+  const prefix = (accountId ? `${stackName}.${accountId}.` : `${stackName}.`).toLowerCase();
   const suffix = `.${region}.json`.toLowerCase();
   return entries.some((f) => {
     const lower = f.toLowerCase();
     return lower.startsWith(prefix) && lower.endsWith(suffix);
   });
+}
+
+/**
+ * #1046: resolve the CURRENT account (region-free `sts:GetCallerIdentity`, a zero-permission
+ * call) so `hasBaselineForStack` can pin the baseline filename's account segment. Returns
+ * `undefined` on ANY failure (expired creds, blocked STS, network) so the caller falls back
+ * to today's account-wildcard rather than erroring — a `check` that reached the not-deployed
+ * catch already has working creds, so the STS call almost always succeeds. `--profile` is
+ * already in `process.env.AWS_PROFILE` (set by the verb entry points), so the default
+ * credential chain resolves it. Exported for unit tests.
+ */
+export async function resolveCallerAccount(region: string): Promise<string | undefined> {
+  try {
+    const sts = new STSClient({ region, ...CLIENT_TIMEOUTS });
+    const id = await sts.send(new GetCallerIdentityCommand({}));
+    return id.Account;
+  } catch {
+    return undefined;
+  }
 }
 
 // #1060 — the top-level `--json` emit runs AFTER the per-stack loop, OUTSIDE any
@@ -406,6 +443,13 @@ export async function runCheck(args: string[]): Promise<number> {
   const separate = stackSeparator();
   // The gather-phase spinner (see gatherWithProgress) — text mode + TTY only.
   const showProgress = !a.json && isInteractive();
+  // #1046: the CURRENT account, resolved AT MOST ONCE per run (lazily, only when a
+  // not-deployed stack is hit) and cached — used to pin the deleted-out-of-band detector's
+  // baseline account segment so a shared-account baseline does not false-flag a stack never
+  // deployed in THIS account. `callerAccountResolved` guards the one-shot resolution; an
+  // `undefined` `callerAccount` afterwards means STS could not answer → wildcard fallback.
+  let callerAccount: string | undefined;
+  let callerAccountResolved = false;
   for (const [idx, { stackName, region, template }] of stacks.entries()) {
     if (!region) {
       const msg =
@@ -674,7 +718,14 @@ export async function runCheck(args: string[]): Promise<number> {
         // proof the stack was once deployed, so its presence promotes this from a benign skip
         // (exit 0) to real drift: the deployed state is GONE. Without this, `check --fail`
         // (and `--strict`) exit 0 on a deleted stack, indistinguishable from never-deployed.
-        if (hasBaselineForStack(stackName, region)) {
+        // #1046: resolve the current account (once per run, cached) and pin the baseline's
+        // account segment — else another account's committed baseline false-flags a stack
+        // never deployed in THIS account as "deleted out of band" (multi-account CI red).
+        if (!callerAccountResolved) {
+          callerAccount = await resolveCallerAccount(region);
+          callerAccountResolved = true;
+        }
+        if (hasBaselineForStack(stackName, region, callerAccount)) {
           const msg = 'deployed baseline exists but the stack is gone — deleted out of band';
           const label = `${stackName} (${region})`;
           console.error(`[Drift] ${label}: ${msg}`);

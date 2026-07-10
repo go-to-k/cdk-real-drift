@@ -11,12 +11,18 @@
 // exists → keep the benign skip + exit 0. This test drives the pure `hasBaselineForStack`
 // probe (filesystem-only, no AWS) plus `finalCheckExit`, mirroring the catch's exit math.
 
+import { GetCallerIdentityCommand, STSClient } from '@aws-sdk/client-sts';
+import { mockClient } from 'aws-sdk-client-mock';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 import { baselinePath } from '../src/baseline/baseline-file.js';
-import { finalCheckExit, hasBaselineForStack } from '../src/commands/check.js';
+import {
+  finalCheckExit,
+  hasBaselineForStack,
+  resolveCallerAccount,
+} from '../src/commands/check.js';
 
 const STACK = 'MyStack';
 const ACCOUNT = '111122223333';
@@ -128,6 +134,32 @@ describe('#781 deleted-out-of-band stack surfaces as drift, not a skip', () => {
       await writeFile(join(dirname(p), `${STACK}.note.txt`), 'x', 'utf8');
       expect(hasBaselineForStack(STACK, REGION)).toBe(false);
     });
+
+    // #1046: when the current account is KNOWN, the filename's account segment is pinned too,
+    // so ANOTHER account's committed baseline no longer false-matches a stack never deployed
+    // in THIS account (the multi-account `env: { account: PERSONAL || SHARED }` pattern).
+    const SHARED = '222222222222';
+    const PERSONAL = '111111111111';
+
+    it('a SHARED-account baseline does NOT match when checking under the PERSONAL account (#1046)', async () => {
+      await writeBaseline(STACK, SHARED, REGION);
+      expect(hasBaselineForStack(STACK, REGION, PERSONAL)).toBe(false); // pinned → no false "deleted"
+    });
+
+    it('matches when the pinned account IS the baseline account (#1046)', async () => {
+      await writeBaseline(STACK, SHARED, REGION);
+      expect(hasBaselineForStack(STACK, REGION, SHARED)).toBe(true);
+    });
+
+    it('falls back to today wildcard match when the account is UNKNOWN (STS failed, #1046)', async () => {
+      await writeBaseline(STACK, SHARED, REGION);
+      expect(hasBaselineForStack(STACK, REGION, undefined)).toBe(true); // no account → region-only pin
+    });
+
+    it('the account pin is case-insensitive-safe and still region-bounded (#1046)', async () => {
+      await writeBaseline(STACK, SHARED, 'eu-west-1');
+      expect(hasBaselineForStack(STACK, REGION, SHARED)).toBe(false); // right account, wrong region
+    });
   });
 
   describe('exit-code contract of the not-deployed catch (#781)', () => {
@@ -152,5 +184,28 @@ describe('#781 deleted-out-of-band stack surfaces as drift, not a skip', () => {
       expect(hasBaselineForStack(STACK, REGION)).toBe(false);
       expect(notDeployedExit(hasBaselineForStack(STACK, REGION), true, true)).toBe(0);
     });
+  });
+});
+
+// #1046: resolveCallerAccount is a region-free sts:GetCallerIdentity that returns the account
+// (to pin the baseline account segment) and NEVER throws — any STS failure falls back to
+// undefined so the caller keeps today's account-wildcard behavior (no regression).
+describe('#1046 resolveCallerAccount', () => {
+  const sts = mockClient(STSClient);
+  beforeEach(() => sts.reset());
+
+  it('returns the Account from GetCallerIdentity', async () => {
+    sts.on(GetCallerIdentityCommand).resolves({ Account: '111111111111' });
+    expect(await resolveCallerAccount('us-east-1')).toBe('111111111111');
+  });
+
+  it('returns undefined (wildcard fallback) when STS throws', async () => {
+    sts.on(GetCallerIdentityCommand).rejects(new Error('ExpiredToken'));
+    expect(await resolveCallerAccount('us-east-1')).toBeUndefined();
+  });
+
+  it('returns undefined when GetCallerIdentity has no Account field', async () => {
+    sts.on(GetCallerIdentityCommand).resolves({});
+    expect(await resolveCallerAccount('us-east-1')).toBeUndefined();
   });
 });
