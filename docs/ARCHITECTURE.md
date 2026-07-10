@@ -74,15 +74,15 @@ fields, canonicalization) rather than by maintaining a hand-curated allow-list o
 3. **Cloud Control API as the universal reader.** CC API auto-covers new resource
    types without per-type code; SDK overrides fill only the gaps. _Does CC API's
    coverage + model fidelity hold up across the breadth users will throw at it, or
-   does the SDK-override list grow until the "generic" claim breaks?_ **Tracking
-   (as of the R85 pass):** `SDK_OVERRIDES` holds 14 types, 13 genuine CC-API gaps
+   does the SDK-override list grow until the "generic" claim breaks?_ **Tracking:**
+   `SDK_OVERRIDES` holds ~50 types, the large majority genuine CC-API gaps
    (`UnsupportedActionException` / `ValidationException` from GetResource — plus
    Scheduler::Schedule, whose CC read handler only finds schedules in the DEFAULT
-   group) and one read-ENRICH override (Cognito::IdentityPool, which CC reads fine
-   for every base property but cannot return its writeOnly `CognitoEvents` Sync
+   group) and a few read-ENRICH overrides (e.g. Cognito::IdentityPool, which CC reads
+   fine for every base property but cannot return its writeOnly `CognitoEvents` Sync
    trigger — so the override reads the base via CC and only enriches that one field),
-   surfaced across 2 real-app dogfoods + 10 integ fixtures. The bet holds
-   while the count grows only a few types per new dogfood; revisit it if a single
+   grown across real-app dogfoods + bug-hunt rounds. The bet holds while the count
+   grows only a few types per new dogfood; revisit it if a single
    new stack adds many overrides at once (= the generic claim is breaking). A
    second, smaller gap class is CC IDENTIFIERS: some types' CFn physical id is not
    the CC primaryIdentifier (AppSync GraphQLApi ARN vs ApiId; and the
