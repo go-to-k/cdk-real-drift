@@ -30,7 +30,10 @@ un-deployed code edits would show as false "drift".
      - cc-api strip   (timestamps, revision ids, ...)
      - policy canonical (Action/Resource/Principal scalar-vs-array unify, statement
        sort, account-id<->root-ARN; Version kept only when declared — never fabricated)
-     - aws:* tags (list + map); schema-defaults (at ANY depth, via $ref-resolved
+     - aws:* tags (list + map); CFn STACK-level tags (`cdk deploy --tags`, propagated
+       by CFN onto every resource, never in the template — subtracted from each
+       resource's live `Tags` except keys the resource itself declares; #683);
+       schema-defaults (at ANY depth, via $ref-resolved
        nested `default` extraction; R103) + per-type known-defaults are NOT dropped
        but tagged `atDefault` (folded, never drift; R86); auto-generated identifiers
        AWS assigns at deploy and absent from the template, keyed by the resource's
