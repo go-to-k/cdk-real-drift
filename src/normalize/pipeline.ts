@@ -10,7 +10,7 @@
 // lists (unordered set -> sorted by Key), then AWS-id arrays (unordered set ->
 // sorted). It does NOT strip AWS-managed fields / aws:* tags / schema paths — those
 // are live-only concerns the caller applies before this.
-import { stripCcApiAwsManagedFields } from './cc-api-strip.js';
+import { FREE_FORM_MAP_PARENTS, stripCcApiAwsManagedFields } from './cc-api-strip.js';
 import {
   canonicalizeIdArraysDeep,
   canonicalizeIpv6CidrsDeep,
@@ -84,7 +84,37 @@ function sortObjectArraysDeep(v: unknown): unknown {
 // model-root-less compare cannot supply. In practice those two already ran on both sides at
 // record/read time via `normalizeLiveModel` (the recorded value came from a normalized model),
 // so only a NEW schema readOnly/writeOnly path added in a later version is left uncovered.
-export function canonicalizeBaselineForCompare(v: unknown, resourceType?: string): unknown {
-  const stripped = stripAwsTagsDeep(stripCcApiAwsManagedFields(v as Record<string, unknown>));
+//
+// #1267: a stored baseline value is a bare FRAGMENT rooted AT its entry path — it has no
+// ancestor keys left, so the strip walk (which normally engages free-form protection on
+// SEEING a `FREE_FORM_MAP_PARENTS` parent key) never protects a fragment whose root IS the
+// map content. A recorded undeclared free-form-map value (`UserPoolTags`,
+// `Environment.Variables`, `Parameters`, `DockerLabels`, map `Tags`, …) containing a USER
+// key that collides with a managed-field name (`CreatedBy`, `OwnerId`, an #1251 timestamp
+// variant) then has that key stripped from BOTH compare sides, so an out-of-band change /
+// add / remove of it can never surface (an FN #1205 introduced). The caller passes the
+// entry's dotted `path`; if ANY of its segments is a free-form-map parent, the fragment
+// content is user data, so seed the walk `freeForm=true` — mirroring the protection the
+// full-model live walk gets from seeing that same parent key. `path` is optional: a
+// path-less call stays the pre-#1267 behavior (seed false), keeping every non-free-form
+// caller identical (so the #766/#1205 managed-field strip is preserved).
+function seedFreeFormFromPath(path: string | undefined): boolean {
+  if (!path) return false;
+  const segments = path
+    .replace(/\[([^\]]*)\]/g, '.$1')
+    .split('.')
+    .filter((s) => s.length > 0);
+  return segments.some((s) => FREE_FORM_MAP_PARENTS.has(s));
+}
+
+export function canonicalizeBaselineForCompare(
+  v: unknown,
+  resourceType?: string,
+  path?: string
+): unknown {
+  const freeFormSeed = seedFreeFormFromPath(path);
+  const stripped = stripAwsTagsDeep(
+    stripCcApiAwsManagedFields(v as Record<string, unknown>, freeFormSeed)
+  );
   return sortObjectArraysDeep(canonicalizeForCompare(stripped, resourceType));
 }
