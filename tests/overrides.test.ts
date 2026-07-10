@@ -1299,7 +1299,7 @@ describe('SDK overrides', () => {
           State: 'ENABLED',
           ExecutionRoleArn: 'arn:aws:iam::123456789012:role/dlm',
           PolicyDetails: livePolicyDetails,
-          Tags: { team: 'ops' }, // map shape — deliberately NOT projected
+          Tags: { team: 'ops' },
         },
       } as never);
       const out = await SDK_OVERRIDES['AWS::DLM::LifecyclePolicy'](
@@ -1310,6 +1310,7 @@ describe('SDK overrides', () => {
         State: 'ENABLED',
         ExecutionRoleArn: 'arn:aws:iam::123456789012:role/dlm',
         PolicyDetails: livePolicyDetails,
+        Tags: [{ Key: 'team', Value: 'ops' }],
       });
       const call = dlm.commandCalls(GetLifecyclePolicyCommand)[0]!;
       expect(call.args[0].input).toEqual({ PolicyId: 'policy-0abc' });
