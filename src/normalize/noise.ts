@@ -1193,6 +1193,11 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     // first-run noise whenever a template omits it. Equality-gated: a longer retention the
     // user sets (or later changes out of band) is not 1, so it still surfaces.
     BackupRetentionPeriod: 1,
+    // DocDB's documented default storage type ('standard') / network type ('IPV4'), read back
+    // on every cluster now that readDocDbCluster projects them (#1303). Equality-gated: a
+    // switch to 'iopt1' (a cost knob) / 'DUAL' (IPv6) is not the default, so it still surfaces.
+    StorageType: 'standard',
+    NetworkType: 'IPV4',
   },
   'AWS::DocDB::DBInstance': {
     // The current AWS default server certificate authority a DocDB instance reads back on a
