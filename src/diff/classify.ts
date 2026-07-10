@@ -1152,22 +1152,30 @@ function isIdentityOnlyHusk(el: Record<string, unknown>, idField: string): boole
 }
 
 // The gather-resolved catalog default for `settingName` under the OptionConfiguration at `path`'s
-// array index (its OptionName read from the declared side). Returns the DefaultValue string, `null`
-// for a catalog husk, or `undefined` when unresolvable (no catalog, unknown option/setting) — in
-// which case the value-bearing fold does not apply.
+// array index. Returns the DefaultValue string, `null` for a catalog husk, or `undefined` when
+// unresolvable (no catalog, unknown option/setting) — in which case the value-bearing fold does
+// not apply.
+//
+// `OptionConfigurations` is `insertionOrder:false`, so classify sorts BOTH sides by canonical JSON
+// before the positional diff — `path`'s array index is the SORTED index, NOT the raw template
+// index. The owning option NAME must therefore be resolved from the array the diff index actually
+// refers to: the diff was computed over the sorted `liveVal`, whose element at the diff index is
+// order-aligned with `path` and carries the same `OptionName` as its declared counterpart. Reading
+// the name from the RAW, unsorted declared model would pick the WRONG option whenever raw order ≠
+// sorted order (a multi-option group whose template order differs from canonical sort), silently
+// dropping the fold and surfacing every catalog default as first-run undeclared drift (#1318).
 function rdsMaterializedDefault(
   catalog: Record<string, Record<string, Record<string, string | null>>> | undefined,
   physicalId: string | undefined,
-  declared: unknown,
+  aligned: unknown,
   path: string,
   settingName: string
 ): string | null | undefined {
   if (!catalog || physicalId === undefined) return undefined;
   const m = /OptionConfigurations\.(\d+)\.OptionSettings$/.exec(path);
   if (!m) return undefined;
-  const configs = (declared as { OptionConfigurations?: unknown } | undefined)
-    ?.OptionConfigurations;
-  const optName = Array.isArray(configs)
+  const configs = Array.isArray(aligned) ? aligned : undefined;
+  const optName = configs
     ? (configs[Number(m[1])] as { OptionName?: unknown } | undefined)?.OptionName
     : undefined;
   if (typeof optName !== 'string') return undefined;
@@ -3187,10 +3195,14 @@ export function classifyResource(
               if (isIdentityOnlyHusk(loRec, nvSubsetSpec.nameField)) {
                 isRdsOptionDefault = true;
               } else {
+                // Resolve the owning option NAME from the SORTED, index-aligned array the diff
+                // index refers to (`liveVal`) — NOT the raw declared model, whose order can differ
+                // from the sorted diff index (#1318). The live element at the diff index carries
+                // the same `OptionName` as its declared counterpart.
                 const matDefault = rdsMaterializedDefault(
                   opts.rdsOptionSettingDefaults,
                   physicalId,
-                  declaredIn,
+                  liveVal,
                   d.path,
                   loName
                 );
