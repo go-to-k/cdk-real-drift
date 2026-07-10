@@ -142,27 +142,35 @@ export async function resolveStacks(a: CommonArgs): Promise<ResolvedStack[]> {
   // still returns every stack the app defines regardless — this only narrows VALIDATION — so
   // the exact-name-typo / no-match-glob errors below still see the full known-stack list.
   const scopePatterns = !a.all && a.stackNames.length > 0 ? a.stackNames : undefined;
+
+  // Region fallback chain for an env-agnostic stack (no `env` on the stack): an
+  // explicit --region / $AWS_REGION (`a.region`) first, then the active AWS
+  // profile's configured region. Resolve the profile region BEFORE the discovery
+  // synth (#957): `discoverStacks` synthesizes the app in a subprocess that inherits
+  // AWS_REGION / CDK_DEFAULT_REGION from `a.region`, and check's --pre-deploy path
+  // synthesizes it a SECOND time. If the backfill happened only AFTER discovery, the
+  // second synth would see a region the first did not — an app whose stack set or
+  // templates branch on process.env.AWS_REGION would then synthesize DIFFERENTLY
+  // across the two passes (a stack silently skipped as "not in synth output", or
+  // compared against the wrong template). Resolving + backfilling `a.region` here
+  // makes both synths see the SAME region env. This costs one local config read even
+  // for a fully region-pinned app (the previous "peek at discovered stacks first"
+  // optimization is deliberately dropped, per #957) — but only when no region is set
+  // at all. If resolveProfileRegion resolves nothing, `a.region` stays undefined and
+  // behavior is IDENTICAL to before: discovery gets undefined, env-agnostic stacks
+  // end up with region undefined, and the loud "no region" error still fires
+  // downstream as the last resort (never a silent us-east-1).
+  if (!a.region) {
+    a.region = await resolveProfileRegion(a.profile);
+  }
+  const fallbackRegion = a.region;
+
   const discovered = await discoverStacks(app, {
     region: a.region,
     profile: a.profile,
     context: a.context,
     stackPatterns: scopePatterns,
   });
-
-  // Region fallback chain for an env-agnostic stack (no `env` on the stack): an
-  // explicit --region / $AWS_REGION (`a.region`) first, then the active AWS
-  // profile's configured region. Resolve the profile region only when it is
-  // actually needed — no explicit region AND at least one discovered stack lacks
-  // its own — so a fully-region-pinned app makes no extra config read.
-  let fallbackRegion = a.region;
-  if (!fallbackRegion && discovered.some((s) => !s.region)) {
-    fallbackRegion = await resolveProfileRegion(a.profile);
-    // Backfill so EVERY downstream `?? a.region` site (notably check's --pre-deploy
-    // synthTemplates keying) resolves an env-agnostic stack to the same region the
-    // loop queries it in — otherwise the synthKey would mismatch and the stack would
-    // wrongly read as "not in the synth output".
-    a.region = fallbackRegion;
-  }
 
   // --all, or no names → every stack the app defines. --all is the explicit form of the
   // no-argument default; it also overrides any positional names (target everything).
