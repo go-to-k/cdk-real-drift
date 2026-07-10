@@ -1,3 +1,21 @@
+# [0.12.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.11.2...v0.12.0) (2026-07-10)
+
+
+### Bug Fixes
+
+* **diff:** derive the VPC default SG to gate ENI GroupSet / ALB SecurityGroups instead of value-independent folding ([#889](https://github.com/go-to-k/cdk-real-drift/issues/889)) ([#1244](https://github.com/go-to-k/cdk-real-drift/issues/1244)) ([6ad1140](https://github.com/go-to-k/cdk-real-drift/commit/6ad1140dafcaaf6bd100e45e364260f5b6b0a67c))
+* **diff:** gate EIP NetworkInterfaceId on a declared sibling association instead of value-independent ([#892](https://github.com/go-to-k/cdk-real-drift/issues/892)) ([#1246](https://github.com/go-to-k/cdk-real-drift/issues/1246)) ([9dd226a](https://github.com/go-to-k/cdk-real-drift/commit/9dd226a123fc1da320892342b3b911504d17a618))
+
+
+### Features
+
+* **read:** add AWS::LakeFormation::Resource SDK_OVERRIDES reader for the CC read gap ([#930](https://github.com/go-to-k/cdk-real-drift/issues/930)) ([#1245](https://github.com/go-to-k/cdk-real-drift/issues/1245)) ([2dd840c](https://github.com/go-to-k/cdk-real-drift/commit/2dd840c2fd96ce03a301d3a0e44d0c3dbe13cb29))
+
+
+### Reverts
+
+* back out the [#805](https://github.com/go-to-k/cdk-real-drift/issues/805) op.prior stale-index guard (shape-fragile, deterministic false-abort) ([#1243](https://github.com/go-to-k/cdk-real-drift/issues/1243)) ([e58704d](https://github.com/go-to-k/cdk-real-drift/commit/e58704d3f6b7a692f77bfd94d512acd332e5731e))
+
 ## [0.11.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.11.1...v0.11.2) (2026-07-10)
 
 
