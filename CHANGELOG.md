@@ -1,3 +1,15 @@
+# [0.9.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.8.0...v0.9.0) (2026-07-10)
+
+
+### Bug Fixes
+
+* **noise:** fold undeclared Neptune DBCluster EngineVersion value-independent ([#1186](https://github.com/go-to-k/cdk-real-drift/issues/1186)) ([#1192](https://github.com/go-to-k/cdk-real-drift/issues/1192)) ([142c579](https://github.com/go-to-k/cdk-real-drift/commit/142c5791396c4adf9fcb2519dde85b7c073b88c1))
+
+
+### Features
+
+* **read:** fold RDS OptionGroup default-fill via the live option catalog ([#978](https://github.com/go-to-k/cdk-real-drift/issues/978) follow-up) ([#1200](https://github.com/go-to-k/cdk-real-drift/issues/1200)) ([27acc1a](https://github.com/go-to-k/cdk-real-drift/commit/27acc1a812cf9ddecbc05598b66a6d91db878dbb))
+
 # [0.8.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.7.6...v0.8.0) (2026-07-10)
 
 
