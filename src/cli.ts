@@ -85,7 +85,7 @@ EXIT CODES
   record: 0 = written   2 = error/refused
   ignore: 0 = rule(s) written / nothing to ignore   2 = error/refused
   revert: 0 = converged/aborted   1 = drift remains   2 = error/apply failure
-  all:    130 = interrupted (Ctrl-C / ESC) during the gather/read phase — never mistaken for clean
+  all:    130 = interrupted (Ctrl-C / ESC / SIGINT)   143 = terminated (SIGTERM) — never mistaken for clean; an unhandled error always exits 2
 
 The baseline lives at .cdkrd/baselines/<stack>.<accountId>.<region>.json — commit it; review
 its diff in PRs. Ignore rules live in .cdkrd/ignore.yaml — also git-committed.`;

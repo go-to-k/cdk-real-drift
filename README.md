@@ -343,10 +343,13 @@ CI (with `--yes`).
   is always surfaced regardless (as the `skipped=N` footer line or a loud
   `warning:`); `--strict` only decides whether it fails the build.
 - Errors always exit `2`; `revert` exits `1` when drift remains after it.
-- Interrupting a run with **Ctrl-C** (or **ESC**) during the gather/read phase
-  exits `130` (128 + SIGINT) for every verb — never `0`, so an aborted
-  `check --fail` can never be mistaken for "no drift" and an aborted `record` is
-  never a false "written".
+- Interrupting a run with **Ctrl-C** (or **ESC** / SIGINT) during the gather/read
+  phase exits `130` (128 + SIGINT) for every verb, and a **SIGTERM** (CI
+  cancellation, `timeout`, a supervisor) exits `143` promptly on the first signal
+  — never `0`, so an aborted `check --fail` can never be mistaken for "no drift"
+  and an aborted `record` is never a false "written". An unhandled internal error
+  (a stray promise rejection / uncaught exception) always exits `2` (the error
+  code), never `0` or `1`.
 
 ```yaml
 - run: npm ci # cdkrd resolves the CDK app, so its deps must be installed

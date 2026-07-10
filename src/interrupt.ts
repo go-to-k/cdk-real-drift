@@ -11,8 +11,14 @@
 // exit-0 to 130 (128 + SIGINT, the conventional interrupt code) via a thin process.exit
 // wrapper, and install real SIGINT/SIGTERM handlers for the phases where stdin is NOT in
 // raw mode (synth/discovery, the interactive prompt gap) so those interrupts also land on
-// 130 with the cursor restored. Outside the gather window the wrapper is a pass-through,
+// 130/143 with the cursor restored. Outside the gather window the wrapper is a pass-through,
 // so a clean 0 / drift 1 / error 2 exit is unaffected.
+//
+// #951 extends the same central handlers to the OTHER process-level listeners @clack also
+// registers-and-swallows while the spinner is active: a SIGTERM (or signal-delivered SIGINT)
+// no longer just prints "Canceled" and continues (it exits 143/130), and a stray unhandled
+// rejection / uncaught exception exits 2 (the error code) instead of being swallowed to a
+// clean exit 0 in the spinner window or defaulting to exit 1 (the drift code) outside it.
 
 let gatherActive = false;
 
@@ -44,13 +50,35 @@ export function installInterruptGuard(): void {
   const realExit = process.exit.bind(process) as (code?: number) => never;
   (process as unknown as { exit: (code?: number) => never }).exit = (code?: number): never =>
     realExit(interruptExitCode(code, gatherActive));
-  const onSignal = (): never => {
-    // Restore the cursor the spinner may have hidden, then exit with the interrupt code.
-    // (Overrides Node's default SIGINT handler, which would exit 130 anyway but without
-    // the cursor-restore.) Bypass the wrapper — this is unambiguously an interrupt.
+  const onSignal = (code: number) => (): never => {
+    // Restore the cursor the spinner may have hidden, then exit with the conventional
+    // 128+signal code. (Overrides Node's default handler — which would exit with the same
+    // code but without the cursor-restore — AND neutralizes @clack's spinner listener,
+    // which otherwise just prints "Canceled" and lets the run CONTINUE, so a CI
+    // cancellation / `timeout` / supervisor kill needed a SECOND signal to terminate,
+    // #951.) Bypass the exit wrapper — this is unambiguously an interrupt.
     process.stderr.write('\x1B[?25h');
-    return realExit(130);
+    return realExit(code);
   };
-  process.on('SIGINT', onSignal);
-  process.on('SIGTERM', onSignal);
+  process.on('SIGINT', onSignal(130)); // 128 + SIGINT(2)
+  process.on('SIGTERM', onSignal(143)); // 128 + SIGTERM(15)
+  // #951: a stray unhandled rejection / uncaught exception is an ERROR — exit 2 per the
+  // documented contract ("errors always 2"), in AND out of the gather-spinner window. While
+  // the spinner is active @clack registers its own unhandledRejection /
+  // uncaughtExceptionMonitor listeners that only stop the spinner and CONTINUE (swallowing a
+  // real dependency failure into a clean exit 0); OUTSIDE it, Node's default kills with exit
+  // 1 — which collides with `check --fail`'s "drift found" code. Registered here at startup
+  // (before any spinner), cdkrd's handler coexists with clack's transient one and performs
+  // the real exit. cli.ts's own `main().catch` still handles main's rejection (also exit 2);
+  // this covers the STRAY ones that never flow through main's promise.
+  const onFatal =
+    (kind: string) =>
+    (err: unknown): void => {
+      process.stderr.write('\x1B[?25h');
+      const detail = err instanceof Error ? (err.stack ?? err.message) : String(err);
+      console.error(`error: ${kind}: ${detail}`);
+      realExit(2);
+    };
+  process.on('unhandledRejection', onFatal('unhandled rejection'));
+  process.on('uncaughtException', onFatal('uncaught exception'));
 }
