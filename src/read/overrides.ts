@@ -2300,12 +2300,7 @@ const readCodeBuildProject: OverrideReader = async ({ physicalId, declared, regi
   // absent unless set, so no noise. FileSystemLocations — EFS mounts into the build
   // (Identifier/Type/Location/MountPoint/MountOptions are all USER-specified, no server
   // default), absent unless the project mounts a file system. Both were omitted, so an
-  // out-of-band change was invisible. (secondarySources / secondaryArtifacts /
-  // buildBatchConfig / autoRetryLimit are deliberately NOT projected yet: the read shapes
-  // diverge from the declared CFn shapes [secondaryArtifacts reads as BuildArtifacts —
-  // missing Type/Name/NamespaceType/Packaging], carry server defaults [autoRetryLimit=0,
-  // batch nested defaults], or are order-sensitive arrays — each needs its own FP-safe
-  // handling, added when a real gap surfaces per the "widen coverage as gaps surface" rule.)
+  // out-of-band change was invisible.
   if (p.resourceAccessRole !== undefined) model.ResourceAccessRole = p.resourceAccessRole;
   if (p.fileSystemLocations !== undefined && p.fileSystemLocations.length > 0)
     model.FileSystemLocations = p.fileSystemLocations.map((f) => ({
@@ -2381,6 +2376,97 @@ const readCodeBuildProject: OverrideReader = async ({ physicalId, declared, regi
   // on non-empty so an untagged project emits no `Tags` and stays clean.
   if (Array.isArray(p.tags) && p.tags.length > 0)
     model.Tags = p.tags.map((t) => ({ Key: t.key, Value: t.value }));
+  // Secondary sources / artifacts / source versions — CFn-declarable COLLECTION props
+  // that BatchGetProjects returns but the projection omitted. For a project that DECLARES
+  // any of them (e.g. `SecondarySources: [...]`), the live read carried NO counterpart,
+  // so the classify "removed collection" branch emitted a false DECLARED drift
+  // (actual=undefined) on every clean deploy (#1299). AWS echoes exactly the declared
+  // members, so projecting them makes the declared compare match; guarded on non-empty so
+  // a single-source project emits nothing and stays clean. The SDK shapes are the SAME
+  // ProjectSource / ProjectArtifacts used for the primary Source / Artifacts above (each
+  // gains a SourceIdentifier / ArtifactIdentifier that CFn requires for a secondary), so
+  // mirror those PascalCase mappings.
+  if (Array.isArray(p.secondarySources) && p.secondarySources.length > 0)
+    model.SecondarySources = p.secondarySources.map((s) => ({
+      ...(s.type !== undefined && { Type: s.type }),
+      ...(s.location !== undefined && { Location: s.location }),
+      ...(s.buildspec !== undefined && { BuildSpec: s.buildspec }),
+      ...(s.gitCloneDepth !== undefined && { GitCloneDepth: s.gitCloneDepth }),
+      ...(s.insecureSsl !== undefined && { InsecureSsl: s.insecureSsl }),
+      ...(s.reportBuildStatus !== undefined && { ReportBuildStatus: s.reportBuildStatus }),
+      ...(s.sourceIdentifier !== undefined && { SourceIdentifier: s.sourceIdentifier }),
+    }));
+  if (Array.isArray(p.secondaryArtifacts) && p.secondaryArtifacts.length > 0)
+    model.SecondaryArtifacts = p.secondaryArtifacts.map((a) => ({
+      ...(a.type !== undefined && { Type: a.type }),
+      ...(a.location !== undefined && { Location: a.location }),
+      ...(a.name !== undefined && { Name: a.name }),
+      ...(a.namespaceType !== undefined && { NamespaceType: a.namespaceType }),
+      ...(a.packaging !== undefined && { Packaging: a.packaging }),
+      ...(a.path !== undefined && { Path: a.path }),
+      ...(a.artifactIdentifier !== undefined && { ArtifactIdentifier: a.artifactIdentifier }),
+      ...(a.overrideArtifactName !== undefined && { OverrideArtifactName: a.overrideArtifactName }),
+      ...(a.encryptionDisabled !== undefined && { EncryptionDisabled: a.encryptionDisabled }),
+    }));
+  if (Array.isArray(p.secondarySourceVersions) && p.secondarySourceVersions.length > 0)
+    model.SecondarySourceVersions = p.secondarySourceVersions.map((v) => ({
+      ...(v.sourceIdentifier !== undefined && { SourceIdentifier: v.sourceIdentifier }),
+      ...(v.sourceVersion !== undefined && { SourceVersion: v.sourceVersion }),
+    }));
+  // BuildBatchConfig — the batch-build config object; absent unless the project enables
+  // batch builds, so no noise when unused. When set, the template declares it and AWS
+  // echoes exactly the configured shape; each nested field is projected only when present
+  // so a partial config matches its template (a live-added default nested field would fold
+  // via nested-undeclared handling, not surface a declared FP).
+  const batch = p.buildBatchConfig;
+  if (batch) {
+    const restrictions = batch.restrictions;
+    model.BuildBatchConfig = {
+      ...(batch.serviceRole !== undefined && { ServiceRole: batch.serviceRole }),
+      ...(batch.combineArtifacts !== undefined && { CombineArtifacts: batch.combineArtifacts }),
+      ...(batch.timeoutInMins !== undefined && { TimeoutInMins: batch.timeoutInMins }),
+      ...(batch.batchReportMode !== undefined && { BatchReportMode: batch.batchReportMode }),
+      ...(restrictions && {
+        Restrictions: {
+          ...(restrictions.maximumBuildsAllowed !== undefined && {
+            MaximumBuildsAllowed: restrictions.maximumBuildsAllowed,
+          }),
+          ...(restrictions.computeTypesAllowed !== undefined && {
+            ComputeTypesAllowed: restrictions.computeTypesAllowed,
+          }),
+        },
+      }),
+    };
+  }
+  // AutoRetryLimit — max additional automatic retries after a failed build; projected only
+  // when present so a project that never set it emits nothing and stays clean, while a
+  // declared value matches its template and an out-of-band change surfaces.
+  if (p.autoRetryLimit !== undefined) model.AutoRetryLimit = p.autoRetryLimit;
+  // Triggers — the CFn `ProjectTriggers` shape mirrors the SDK `webhook` OBJECT: a project
+  // that declares `Triggers` (a webhook) reads back `webhook: {...}`, but the projection
+  // omitted it, so `Triggers` had NO live counterpart → a false DECLARED drift
+  // (actual=undefined) on every clean deploy of a webhook project (#1299). The CFn
+  // `Triggers.Webhook` is a BOOLEAN meaning "a webhook is configured" — the presence of the
+  // SDK `webhook` object IS that boolean, so map it to `Webhook: true`; `FilterGroups`
+  // (WebhookFilter[][]) and `BuildType` come straight from the object. `url` / `secret` /
+  // `payloadUrl` etc. are AWS-managed webhook attributes, not CFn-declarable, so omitted.
+  const webhook = p.webhook;
+  if (webhook)
+    model.Triggers = {
+      Webhook: true,
+      ...(webhook.buildType !== undefined && { BuildType: webhook.buildType }),
+      ...(webhook.filterGroups !== undefined && {
+        FilterGroups: webhook.filterGroups.map((group) =>
+          group.map((f) => ({
+            ...(f.type !== undefined && { Type: f.type }),
+            ...(f.pattern !== undefined && { Pattern: f.pattern }),
+            ...(f.excludeMatchedPattern !== undefined && {
+              ExcludeMatchedPattern: f.excludeMatchedPattern,
+            }),
+          }))
+        ),
+      }),
+    };
   return model;
 };
 
