@@ -1,3 +1,10 @@
+## [0.9.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.1...v0.9.2) (2026-07-10)
+
+
+### Bug Fixes
+
+* **check:** emit the no-baseline note under --json + carry a baseline-presence flag ([#1095](https://github.com/go-to-k/cdk-real-drift/issues/1095)) ([#1203](https://github.com/go-to-k/cdk-real-drift/issues/1203)) ([aed9261](https://github.com/go-to-k/cdk-real-drift/commit/aed9261918d5e9593369530aa883cfffc9b51489))
+
 ## [0.9.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.0...v0.9.1) (2026-07-10)
 
 
