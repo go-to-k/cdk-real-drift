@@ -1,3 +1,10 @@
+## [0.12.24](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.23...v0.12.24) (2026-07-10)
+
+
+### Bug Fixes
+
+* **noise:** fold S3 AccelerateConfiguration Suspended off-state ([#1288](https://github.com/go-to-k/cdk-real-drift/issues/1288)) ([#1358](https://github.com/go-to-k/cdk-real-drift/issues/1358)) ([f95dbb3](https://github.com/go-to-k/cdk-real-drift/commit/f95dbb370c8a9b27b6c1c157fa1116f8a51560a2))
+
 ## [0.12.23](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.22...v0.12.23) (2026-07-10)
 
 
