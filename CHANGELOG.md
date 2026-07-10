@@ -1,3 +1,15 @@
+# [0.8.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.7.6...v0.8.0) (2026-07-10)
+
+
+### Bug Fixes
+
+* **check:** a Custom::* skip is informational, not a --strict failure ([#724](https://github.com/go-to-k/cdk-real-drift/issues/724)) ([#1202](https://github.com/go-to-k/cdk-real-drift/issues/1202)) ([df49a25](https://github.com/go-to-k/cdk-real-drift/commit/df49a2572057d24563f034519d749e94777692e9))
+
+
+### Features
+
+* **read:** add SDK read override for SageMaker::EndpointConfig ([#857](https://github.com/go-to-k/cdk-real-drift/issues/857), SageMaker half) ([#1201](https://github.com/go-to-k/cdk-real-drift/issues/1201)) ([4641769](https://github.com/go-to-k/cdk-real-drift/commit/4641769bf36c331b4b423187623f2c18834302e0))
+
 ## [0.7.6](https://github.com/go-to-k/cdk-real-drift/compare/v0.7.5...v0.7.6) (2026-07-10)
 
 
