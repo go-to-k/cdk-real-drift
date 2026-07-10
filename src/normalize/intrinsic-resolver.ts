@@ -52,8 +52,22 @@ export function containsDynamicReference(v: string): boolean {
 // Use the contains-form so an EMBEDDED token in a larger produced string is muted too
 // (see #722); a whole-string token is a subset of it.
 // See #1073 (the indirect siblings of the direct-literal guard #722).
+// A produced CONTAINER (a CommaDelimitedList/List<> parameter value split by
+// buildResolverContext.toParam, an Fn::FindInMap list value) may carry the token as
+// an ELEMENT — a string-only gate would let it through uninspected, the same leak one
+// level down. Fail closed on the WHOLE container when ANY string leaf carries a
+// token: per-element muting would fabricate a list whose shape differs from live,
+// so whole-value muting matches the scalar precedent. See #1331.
+function containsDynamicReferenceDeep(v: unknown): boolean {
+  if (typeof v === 'string') return containsDynamicReference(v);
+  if (Array.isArray(v)) return v.some(containsDynamicReferenceDeep);
+  if (v !== null && typeof v === 'object') {
+    return Object.values(v).some(containsDynamicReferenceDeep);
+  }
+  return false;
+}
 function checkResolvedDynamicRef(r: unknown): unknown {
-  return typeof r === 'string' && containsDynamicReference(r) ? UNRESOLVED : r;
+  return containsDynamicReferenceDeep(r) ? UNRESOLVED : r;
 }
 
 // A value safe to interpolate into a joined / substituted STRING: a primitive
@@ -154,6 +168,13 @@ export function resolve(node: unknown, ctx: ResolverContext, inCondition = false
         const [idxRaw, list] = v as [unknown, unknown];
         const arr = resolve(list, ctx);
         if (!Array.isArray(arr)) return UNRESOLVED;
+        // CloudFormation REMOVES a list element whose value resolves to AWS::NoValue,
+        // so the list COMPACTS and indices shift BEFORE Fn::Select runs — mirror the
+        // compaction Fn::Join already does, else an index after the NoValue slot
+        // selects the WRONG element (a fabricated declared value) and an index AT the
+        // slot leaks the NOVALUE symbol (pruneNoValue then deletes the whole declared
+        // property). See #1329.
+        const compacted = arr.filter((x) => x !== NOVALUE);
         // The index may itself be an intrinsic (CFn allows e.g. { Ref: SomeParam } /
         // Fn::FindInMap as the index) — resolve it before coercing. (Number() on the
         // raw UNRESOLVED symbol would throw, so guard it first.)
@@ -163,8 +184,8 @@ export function resolve(node: unknown, ctx: ResolverContext, inCondition = false
         // Fail-closed: out-of-range index (or a NaN index) would otherwise yield
         // `undefined` and report false `desired: undefined` drift. The selected
         // element itself being UNRESOLVED also propagates.
-        if (!Number.isInteger(i) || i < 0 || i >= arr.length) return UNRESOLVED;
-        const sel = arr[i];
+        if (!Number.isInteger(i) || i < 0 || i >= compacted.length) return UNRESOLVED;
+        const sel = compacted[i];
         return sel === UNRESOLVED ? UNRESOLVED : checkResolvedDynamicRef(sel);
       }
       case 'Fn::FindInMap': {
