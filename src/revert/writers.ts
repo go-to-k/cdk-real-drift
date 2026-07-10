@@ -1622,24 +1622,57 @@ const writeDaxCluster: SdkWriter = async (ctx, ops) => {
 const writeDaxParameterGroup: SdkWriter = async (ctx, ops) => {
   const name = str(ctx.physicalId) ?? str(ctx.declared['ParameterGroupName']);
   if (!name) throw new Error('cannot resolve DAX parameter-group name for revert');
-  const desired = await desiredModel('AWS::DAX::ParameterGroup', ctx, ops);
+  // Read the LIVE model directly (not just the post-ops desired): a whole-map `remove` op leaves
+  // `desired.ParameterNameValues` empty, so the keys it would (fail to) clear are only knowable
+  // from the live map. `desiredModel` = `applyOps(live, ops)`; DAX carries no PolicyDocument, so
+  // its canonicalization is a no-op here and applying the ops locally is equivalent.
+  const reader = SDK_OVERRIDES['AWS::DAX::ParameterGroup'];
+  const live = (reader && (await reader(ctx))) ?? {};
+  const liveValues = (live.ParameterNameValues as Record<string, unknown> | undefined) ?? {};
+  const desired = applyOps(live, ops);
   const desiredValues = (desired.ParameterNameValues as Record<string, unknown> | undefined) ?? {};
   // Collect the parameter keys the revert ops touch (path `/ParameterNameValues/<key>`), plus a
   // whole-map op (`/ParameterNameValues`). Re-send each from the desired map.
+  //
+  // A `remove` op reverts an out-of-band-ADDED parameter back to unset. DAX has NO
+  // ResetParameterGroup API (unlike ElastiCache/MemoryDB whose writers reset removed keys) —
+  // UpdateParameterGroup can only re-assert a value, never clear one — so a `remove` is
+  // UN-EXPRESSIBLE. Collect those keys and THROW once (the #928/#1002/#1102 pattern) rather than
+  // silently dropping the op and reporting a false `reverted:` (the parameter would never clear).
+  // Expressible add/set ops are applied FIRST so a convergeable sibling still lands even alongside
+  // an un-expressible remove.
   const keys = new Set<string>();
+  const unExpressible = new Set<string>();
   for (const op of ops) {
     const segs = op.path.replace(/^\//, '').split('/');
     if (segs[0] !== 'ParameterNameValues') continue;
-    if (segs[1] !== undefined) keys.add(segs[1].replace(/~1/g, '/').replace(/~0/g, '~'));
-    else for (const k of Object.keys(desiredValues)) keys.add(k);
+    if (segs[1] !== undefined) {
+      const key = segs[1].replace(/~1/g, '/').replace(/~0/g, '~');
+      if (op.op === 'remove') unExpressible.add(key);
+      else keys.add(key);
+    } else if (op.op === 'remove') {
+      // A whole-map remove clears every currently-set parameter — equally un-expressible. The
+      // keys live in the LIVE map (`desiredValues` is already empty post-remove). If the live map
+      // is empty there is nothing to clear, so it stays a genuine no-op (no throw).
+      for (const k of Object.keys(liveValues)) unExpressible.add(k);
+    } else for (const k of Object.keys(desiredValues)) keys.add(k);
   }
   const values = [...keys]
     .filter((k) => typeof desiredValues[k] === 'string')
     .map((k) => ({ ParameterName: k, ParameterValue: desiredValues[k] as string }));
-  if (values.length === 0) return;
-  await new DAXClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
-    new UpdateDaxParameterGroupCommand({ ParameterGroupName: name, ParameterNameValues: values })
-  );
+  if (values.length > 0)
+    await new DAXClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
+      new UpdateDaxParameterGroupCommand({ ParameterGroupName: name, ParameterNameValues: values })
+    );
+  if (unExpressible.size > 0) {
+    const names = [...unExpressible].join(', ');
+    throw new Error(
+      `DAX ParameterGroup parameter ${names} cannot be cleared via UpdateParameterGroup ` +
+        `(DAX has no ResetParameterGroup API, so an out-of-band-added parameter's unset state is not expressible)` +
+        `${values.length > 0 ? '; the other revert op(s) were applied' : ''}; ` +
+        `update ${unExpressible.size > 1 ? 'them' : 'it'} manually`
+    );
+  }
 };
 
 // AWS::ElastiCache::ParameterGroup — read via an SDK override (describe-cache-parameters

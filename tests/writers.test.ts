@@ -1880,6 +1880,86 @@ describe('DAX ParameterGroup writer (NON_PROVISIONABLE; UpdateParameterGroup, is
     ]);
     expect(dax.commandCalls(UpdateDaxParameterGroupCommand)).toHaveLength(0);
   });
+
+  it('THROWS on a `remove` op — DAX has no ResetParameterGroup API to clear a parameter (#1087)', async () => {
+    // Reverting an out-of-band-ADDED parameter back to unset is UN-EXPRESSIBLE: UpdateParameterGroup
+    // can only re-assert a value, never clear one. Silently returning here reported a false
+    // `reverted:` while the parameter never cleared — throw loudly instead (#928/#1002/#1102 class).
+    stubRead({ 'record-ttl-millis': '10000' });
+    dax.on(UpdateDaxParameterGroupCommand).resolves({});
+    await expect(
+      SDK_WRITERS['AWS::DAX::ParameterGroup'](ctx({ physicalId: PGN }), [
+        {
+          op: 'remove',
+          path: '/ParameterNameValues/record-ttl-millis',
+          human: 'ParameterNameValues.record-ttl-millis -> unset (OOB-added)',
+        },
+      ])
+    ).rejects.toThrow(/cannot be cleared via UpdateParameterGroup/);
+    // and it must NOT have silently "succeeded" via an UpdateParameterGroup call for the remove
+    expect(dax.commandCalls(UpdateDaxParameterGroupCommand)).toHaveLength(0);
+  });
+
+  it('THROWS on the mixed [remove k1, add k2] case rather than partially applying k2 and lying (#1087)', async () => {
+    // The remove makes the whole item un-convergent; the convergeable add IS applied, but the
+    // writer must still throw so the un-expressible remove is not reported as reverted.
+    stubRead({ 'query-ttl-millis': '5000' });
+    dax.on(UpdateDaxParameterGroupCommand).resolves({});
+    await expect(
+      SDK_WRITERS['AWS::DAX::ParameterGroup'](ctx({ physicalId: PGN }), [
+        {
+          op: 'remove',
+          path: '/ParameterNameValues/record-ttl-millis',
+          human: 'ParameterNameValues.record-ttl-millis -> unset (OOB-added)',
+        },
+        {
+          op: 'add',
+          path: '/ParameterNameValues/query-ttl-millis',
+          value: '5000',
+          human: 'ParameterNameValues.query-ttl-millis -> deployed-template value',
+        },
+      ])
+    ).rejects.toThrow(/record-ttl-millis/);
+    // the expressible add IS applied first (so the convergeable sibling still lands) ...
+    const calls = dax.commandCalls(UpdateDaxParameterGroupCommand);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.args[0].input).toEqual({
+      ParameterGroupName: PGN,
+      ParameterNameValues: [{ ParameterName: 'query-ttl-millis', ParameterValue: '5000' }],
+    });
+  });
+
+  it('THROWS on a whole-map `remove /ParameterNameValues` (--remove-unrecorded) — keys sourced from the LIVE map (#1087)', async () => {
+    // An undeclared, unrecorded ParameterNameValues reverted with --remove-unrecorded plans a
+    // WHOLE-PROPERTY remove. After applyOps the desired map is EMPTY, so the keys to (fail to)
+    // clear are only knowable from the LIVE model. The CdkrdDaxVerify live-test caught the writer
+    // silently no-op'ing here (false `reverted:`, only the #631 post-hoc detector flagged it)
+    // because it enumerated the post-remove desired map. It must throw, naming the live keys.
+    stubRead({ 'query-ttl-millis': '75000', 'record-ttl-millis': '300000' });
+    dax.on(UpdateDaxParameterGroupCommand).resolves({});
+    await expect(
+      SDK_WRITERS['AWS::DAX::ParameterGroup'](ctx({ physicalId: PGN }), [
+        {
+          op: 'remove',
+          path: '/ParameterNameValues',
+          human: 'ParameterNameValues -> unset (undeclared, --remove-unrecorded)',
+        },
+      ])
+    ).rejects.toThrow(/query-ttl-millis/);
+    expect(dax.commandCalls(UpdateDaxParameterGroupCommand)).toHaveLength(0);
+  });
+
+  it('a whole-map `remove` when the live map is already EMPTY is a genuine no-op, not a throw (#1087)', async () => {
+    // Nothing is set live, so "clear everything" clears nothing — must succeed silently.
+    stubRead({});
+    dax.on(UpdateDaxParameterGroupCommand).resolves({});
+    await expect(
+      SDK_WRITERS['AWS::DAX::ParameterGroup'](ctx({ physicalId: PGN }), [
+        { op: 'remove', path: '/ParameterNameValues', human: 'ParameterNameValues -> unset' },
+      ])
+    ).resolves.toBeUndefined();
+    expect(dax.commandCalls(UpdateDaxParameterGroupCommand)).toHaveLength(0);
+  });
 });
 
 describe('ElastiCache ParameterGroup writer (source=user reader; Modify/Reset)', () => {
