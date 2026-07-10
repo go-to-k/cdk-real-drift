@@ -1,3 +1,11 @@
+## [0.11.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.11.0...v0.11.1) (2026-07-10)
+
+
+### Bug Fixes
+
+* **read:** skip OpenSearch service-created UserPoolClient in the Cognito enumerator ([#897](https://github.com/go-to-k/cdk-real-drift/issues/897)) ([#1240](https://github.com/go-to-k/cdk-real-drift/issues/1240)) ([6b4d4d1](https://github.com/go-to-k/cdk-real-drift/commit/6b4d4d155921d2e8a0dc4afbff7b3f5344e0b96f))
+* **revert:** whole-array revert for value changes inside canonicalize-sorted tag lists ([#750](https://github.com/go-to-k/cdk-real-drift/issues/750)) ([#1241](https://github.com/go-to-k/cdk-real-drift/issues/1241)) ([0746701](https://github.com/go-to-k/cdk-real-drift/commit/07467010f28cffe19342f58bc184e578cc3e01b2))
+
 # [0.11.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.10.3...v0.11.0) (2026-07-10)
 
 
