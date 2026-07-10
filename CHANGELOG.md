@@ -1,3 +1,10 @@
+## [0.12.10](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.9...v0.12.10) (2026-07-10)
+
+
+### Bug Fixes
+
+* **read:** detect out-of-band Lambda function code swaps via a recorded CodeSha256 signal ([#646](https://github.com/go-to-k/cdk-real-drift/issues/646)) ([#1260](https://github.com/go-to-k/cdk-real-drift/issues/1260)) ([b0a963a](https://github.com/go-to-k/cdk-real-drift/commit/b0a963a4767fdd9eb46f1581780a650141513b15))
+
 ## [0.12.9](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.8...v0.12.9) (2026-07-10)
 
 
