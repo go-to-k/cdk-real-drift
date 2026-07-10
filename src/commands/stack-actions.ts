@@ -39,6 +39,7 @@ import { applyRevertDelete, applyRevertDeletes, applyRevertItem } from '../rever
 import {
   buildRevertPlan,
   isContractOp,
+  maskReadGapKeysOf,
   rejectedEmptyStripOps,
   type RevertItem,
   type RevertPlan,
@@ -1204,6 +1205,10 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     // raw live models so a CC revert patch can strip a bare-null array husk out of CC's
     // server-side model (#641 symptom 2), else the unrelated-property revert fails validation.
     liveByLogical: gathered.liveByLogical,
+    // computed over the FULL reconciled findings — `drifted` may be the picked subset,
+    // which never includes the (unpickable) GetTemplate-masked readGaps the whole-array
+    // mask guard correlates against.
+    maskReadGapKeys: maskReadGapKeysOf(reconciled),
   });
 
   if (plan.items.length === 0 && plan.notRevertable.length === 0) {
