@@ -1,3 +1,10 @@
+## [0.4.43](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.42...v0.4.43) (2026-07-10)
+
+
+### Bug Fixes
+
+* **synth:** hoist the profile-region backfill ahead of the discovery synth so both --pre-deploy synths share one region env ([#957](https://github.com/go-to-k/cdk-real-drift/issues/957)) ([#1173](https://github.com/go-to-k/cdk-real-drift/issues/1173)) ([a1682e8](https://github.com/go-to-k/cdk-real-drift/commit/a1682e882c035f26673c4dff90646b7dfed645ce))
+
 ## [0.4.42](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.41...v0.4.42) (2026-07-10)
 
 
