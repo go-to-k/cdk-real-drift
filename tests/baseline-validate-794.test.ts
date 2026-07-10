@@ -209,3 +209,77 @@ describe('#1047 loadBaseline duplicate-identity rejection', () => {
     expect(loaded?.recorded).toHaveLength(2);
   });
 });
+
+// #1048: a baseline is a git-committed, hand-editable artifact, so a typo'd key must fail
+// LOUDLY (like config-file.ts) rather than silently disable detection — a top-level typo
+// (`completeResource`/`recordedPhysicalId`) turns a whole mechanism off, a per-entry typo
+// (`Value`) drops the value to recorded `undefined` = a confirmed-drift false positive.
+describe('#1048 loadBaseline unknown-key rejection', () => {
+  let cwd: string;
+  let dir: string;
+  beforeEach(async () => {
+    cwd = process.cwd();
+    dir = await mkdtemp(join(tmpdir(), 'cdkrd-baseline-1048-'));
+    process.chdir(dir);
+  });
+  afterEach(async () => {
+    process.chdir(cwd);
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  const base = (extra: Record<string, unknown>): string =>
+    JSON.stringify({
+      schemaVersion: 2,
+      stackName: STACK,
+      region: REGION,
+      accountId: ACCOUNT,
+      capturedAt: '',
+      templateHash: '',
+      recorded: [],
+      ...extra,
+    });
+
+  it('an unknown TOP-LEVEL key throws, naming the offender (completeResource typo)', async () => {
+    await expect(loadRaw(base({ completeResource: ['Res'] }))).rejects.toThrow(
+      /baseline file .*unknown key\(s\) "completeResource"/
+    );
+  });
+
+  it('a recordedPhysicalId (missing s) typo throws instead of silently disabling #674 voiding', async () => {
+    await expect(loadRaw(base({ recordedPhysicalId: { Res: 'phys' } }))).rejects.toThrow(
+      /unknown key\(s\) "recordedPhysicalId"/
+    );
+  });
+
+  it('all known optional keys ABSENT still loads (old file — only PRESENT strangers rejected)', async () => {
+    const loaded = await loadRaw(base({}));
+    expect(loaded?.recorded).toEqual([]);
+  });
+
+  it('an unknown PER-ENTRY key throws (a capital-V `Value` typo)', async () => {
+    await expect(
+      loadRaw(
+        base({
+          recorded: [{ logicalId: 'L', resourceType: 'AWS::S3::Bucket', path: 'P', Value: 'v1' }],
+        })
+      )
+    ).rejects.toThrow(/`recorded`\[0\]: unknown key\(s\) "Value"/);
+  });
+
+  it('a per-entry with `value` ABSENT throws (undefined-by-absence is indistinguishable from a typo)', async () => {
+    await expect(
+      loadRaw(base({ recorded: [{ logicalId: 'L', resourceType: 'AWS::S3::Bucket', path: 'P' }] }))
+    ).rejects.toThrow(/`recorded`\[0\]: "value" is required/);
+  });
+
+  it('an intentional recorded null value is accepted (value PRESENT as null)', async () => {
+    const loaded = await loadRaw(
+      base({
+        recorded: [{ logicalId: 'L', resourceType: 'AWS::S3::Bucket', path: 'P', value: null }],
+      })
+    );
+    expect(loaded?.recorded).toEqual([
+      { logicalId: 'L', resourceType: 'AWS::S3::Bucket', path: 'P', value: null },
+    ]);
+  });
+});

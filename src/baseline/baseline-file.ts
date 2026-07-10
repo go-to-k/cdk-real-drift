@@ -63,6 +63,26 @@ export interface BaselineFile {
   recordedPhysicalIds?: Record<string, string>;
 }
 
+// #1048: the known top-level keys of a baseline file (the `BaselineFile` fields). Used to
+// reject an unknown/typo'd top-level key at load. `accepted` is the legacy alias migrated to
+// `recorded` (and deleted) BEFORE this check runs, so it is intentionally NOT listed here.
+const KNOWN_BASELINE_KEYS = new Set<string>([
+  'schemaVersion',
+  'stackName',
+  'region',
+  'accountId',
+  'capturedAt',
+  'templateHash',
+  'recorded',
+  'completeResources',
+  'recordedPhysicalIds',
+]);
+// #1048: the known keys of a `recorded` array element. A typo'd key (`Value`, `vaule`) whose
+// intended `value` is then ABSENT reads as recorded `undefined` — a confirmed-drift false
+// positive that survives `check`. So per entry, unknown keys are rejected AND `value` must be
+// PRESENT (an intentional recorded `null` is expressible as `null`).
+const KNOWN_RECORDED_ENTRY_KEYS = new Set<string>(['logicalId', 'resourceType', 'path', 'value']);
+
 export function baselinePath(stackName: string, accountId: string, region: string): string {
   return `.cdkrd/baselines/${stackName}.${accountId}.${region}.json`;
 }
@@ -139,6 +159,17 @@ export async function loadBaseline(
     );
   if (!Array.isArray(parsed.recorded))
     throw new Error(`baseline file ${path} is malformed: \`recorded\` is missing or not an array`);
+  // #1048: reject UNKNOWN top-level keys, naming the offender — a baseline is a git-committed,
+  // hand-editable artifact, and a typo'd optional key (`completeResource`, `recordedPhysicalId`)
+  // otherwise slips through SILENTLY and turns a whole detection mechanism off (R62 completeness,
+  // #674 replacement voiding). Mirrors config-file.ts's top-level unknown-key rejection. Only
+  // PRESENT strangers are rejected — ABSENT optional keys (old files) still load fine, and a
+  // future schemaVersion's new keys are refused earlier by the `> 2` guard above.
+  const unknownTop = Object.keys(parsed).filter((k) => !KNOWN_BASELINE_KEYS.has(k));
+  if (unknownTop.length > 0)
+    throw new Error(
+      `baseline file ${path}: unknown key(s) ${unknownTop.map((k) => `"${k}"`).join(', ')} — known keys: ${[...KNOWN_BASELINE_KEYS].map((k) => `"${k}"`).join(', ')} (a typo silently disables detection; correct or remove it)`
+    );
   // Element-level validation (#794): the container shape passing is not enough — a
   // baseline is git-committed, hand-editable, and merge-conflictable, so a malformed
   // ELEMENT (a `null` entry from a bad merge, a scalar where an array/map is expected)
@@ -171,6 +202,20 @@ function validateRecordedEntry(entry: unknown, index: number, path: string): voi
   for (const k of ['logicalId', 'resourceType', 'path'] as const)
     if (typeof obj[k] !== 'string')
       throw new Error(`${at}: "${k}" is required and must be a string`);
+  // #1048: reject an unknown/typo'd per-entry key (`Value`, `vaule`) — otherwise the intended
+  // `value` is ABSENT, reads as recorded `undefined`, and false-surfaces the live value as
+  // confirmed drift (invisible: the typo'd key shows nowhere). Mirrors config-file.ts's
+  // per-rule unknown-key rejection.
+  const unknown = Object.keys(obj).filter((k) => !KNOWN_RECORDED_ENTRY_KEYS.has(k));
+  if (unknown.length > 0)
+    throw new Error(
+      `${at}: unknown key(s) ${unknown.map((k) => `"${k}"`).join(', ')} — known keys: "logicalId", "resourceType", "path", "value" (a typo'd "value" false-flags confirmed drift)`
+    );
+  // `value` must be PRESENT: absence is indistinguishable from a typo and means recorded
+  // `undefined` (compares false against everything). An intentional recorded value of nothing
+  // is written as `null`.
+  if (!('value' in obj))
+    throw new Error(`${at}: "value" is required (use null for an empty value)`);
 }
 
 /**
