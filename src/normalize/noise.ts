@@ -1035,14 +1035,20 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::EC2::IPAM': {
     MeteredAccount: 'ipam-owner',
   },
-  // A Client VPN endpoint that declares neither VpnPort nor DisconnectOnSessionTimeout
-  // reads back the constant service defaults (port 443, disconnect-on-timeout on).
-  // Observed live on a fresh ClientVPN deploy (us-east-1, 2026-07-03; #554 from #534's
-  // live verify). Equality-gated: flip either out of band (e.g. VpnPort=1194) and the
-  // value no longer matches, so it re-surfaces as real undeclared drift.
+  // A Client VPN endpoint that declares none of VpnPort / DisconnectOnSessionTimeout /
+  // TransportProtocol / SessionTimeoutHours reads back the constant service defaults
+  // (port 443, disconnect-on-timeout on, UDP transport, 24h session timeout). Observed
+  // live on a fresh ClientVPN deploy (VpnPort/DisconnectOnSessionTimeout: us-east-1,
+  // 2026-07-03, #554; TransportProtocol='udp' + SessionTimeoutHours=24: us-east-1,
+  // 2026-07-10, #1102 — surfaced as first-run [Potential Drift] while live-verifying the
+  // #912/#1019 VpnPort set-default). Equality-gated: flip any out of band (e.g.
+  // VpnPort=1194, TransportProtocol='tcp') and the value no longer matches, so it
+  // re-surfaces as real undeclared drift.
   'AWS::EC2::ClientVpnEndpoint': {
     VpnPort: 443,
     DisconnectOnSessionTimeout: true,
+    TransportProtocol: 'udp',
+    SessionTimeoutHours: 24,
   },
   // A DAX cluster that declares no ClusterEndpointEncryptionType reads back "NONE" (the
   // constant service default; the only other value, "TLS", is an explicit opt-in).
