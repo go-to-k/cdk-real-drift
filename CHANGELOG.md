@@ -1,3 +1,16 @@
+## [0.4.22](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.21...v0.4.22) (2026-07-10)
+
+
+### Bug Fixes
+
+* **baseline:** reject duplicate recorded identity keys at load ([#1047](https://github.com/go-to-k/cdk-real-drift/issues/1047)) ([#1117](https://github.com/go-to-k/cdk-real-drift/issues/1117)) ([d146f2b](https://github.com/go-to-k/cdk-real-drift/commit/d146f2b67d20556a44ca3b6f1b35e59ae1527dd2))
+* **check:** guard top-level --json stringify against non-serializable finding values ([#1060](https://github.com/go-to-k/cdk-real-drift/issues/1060)) ([#1129](https://github.com/go-to-k/cdk-real-drift/issues/1129)) ([b88a085](https://github.com/go-to-k/cdk-real-drift/commit/b88a08549451a3637f3f10e8a1aebb4d34e3c970))
+* **noise:** fold Chatbot GuardrailPolicies per-partition via array-valued CONTEXT_ARN_DEFAULTS ([#1120](https://github.com/go-to-k/cdk-real-drift/issues/1120)) ([e68a6a8](https://github.com/go-to-k/cdk-real-drift/commit/e68a6a83a74d2d9fc8d24791607ae2a0811ff73c))
+* **read:** readLambdaPermission throws ResourceGoneError on exact-Sid miss ([#1084](https://github.com/go-to-k/cdk-real-drift/issues/1084)) ([#1119](https://github.com/go-to-k/cdk-real-drift/issues/1119)) ([e15d162](https://github.com/go-to-k/cdk-real-drift/commit/e15d162cc8730c1b0a30ddc2eb5bada6c1f2b970))
+* **read:** route enumerator fails safe on UNRESOLVED DestinationCidrBlock ([#1082](https://github.com/go-to-k/cdk-real-drift/issues/1082)) ([#1118](https://github.com/go-to-k/cdk-real-drift/issues/1118)) ([34113d7](https://github.com/go-to-k/cdk-real-drift/commit/34113d7ccb95865cbe960c2032556dd9cf31177e))
+* **report:** escape Unicode bidi/zero-width controls in sanitizeForTerminal ([#1058](https://github.com/go-to-k/cdk-real-drift/issues/1058)) ([#1116](https://github.com/go-to-k/cdk-real-drift/issues/1116)) ([0a0cc74](https://github.com/go-to-k/cdk-real-drift/commit/0a0cc746f89d7cbcc6ef3dc73c4a76197b52d104))
+* **schema:** resolve $ref and descend oneOf/anyOf/allOf when collecting schema defaults ([#1068](https://github.com/go-to-k/cdk-real-drift/issues/1068), [#1069](https://github.com/go-to-k/cdk-real-drift/issues/1069)) ([#1126](https://github.com/go-to-k/cdk-real-drift/issues/1126)) ([2d3b6e1](https://github.com/go-to-k/cdk-real-drift/commit/2d3b6e1a1228576e09bb9eb6008af762498a7385))
+
 ## [0.4.21](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.20...v0.4.21) (2026-07-10)
 
 
