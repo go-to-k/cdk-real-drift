@@ -960,8 +960,12 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
           // resolves — pass it so its GetResource/UpdateResource doesn't ValidationException
           // on the bare physical id. Falls back to the physical id when no adapter applies.
           const identifier =
-            CC_IDENTIFIER_ADAPTERS[item.resourceType]?.(item.physicalId, res?.declared ?? {}) ??
-            item.physicalId;
+            CC_IDENTIFIER_ADAPTERS[item.resourceType]?.(
+              item.physicalId,
+              res?.declared ?? {},
+              region,
+              gathered.desired.accountId
+            ) ?? item.physicalId;
           await writer(
             {
               physicalId: item.physicalId,
@@ -981,8 +985,12 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     } else {
       const res = byLogical.get(item.logicalId);
       const identifier =
-        CC_IDENTIFIER_ADAPTERS[item.resourceType]?.(item.physicalId, res?.declared ?? {}) ??
-        item.physicalId;
+        CC_IDENTIFIER_ADAPTERS[item.resourceType]?.(
+          item.physicalId,
+          res?.declared ?? {},
+          region,
+          gathered.desired.accountId
+        ) ?? item.physicalId;
       // Re-attach the live aws:* managed tags onto any /Tags op, so the Cloud Control
       // read-modify-write does not tell the provider to UNtag them (AWS rejects an
       // external write that drops an aws:-prefixed key). Uses the UN-stripped live model

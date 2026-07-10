@@ -832,6 +832,117 @@ describe('revertStack convergence re-check (R44 — scoped to touched resources)
   });
 });
 
+describe('revertStack custom-bus Events::Rule identifier (#1088 — revert must send the rule ARN, not the raw composite)', () => {
+  // #1088: PR #1003 taught the READ path (readLive) to pass region+account to the
+  // CC_IDENTIFIER_ADAPTERS Events::Rule adapter so a custom-bus rule's `<bus>|<name>`
+  // composite becomes the full rule ARN. But the REVERT-side call site omitted
+  // region/account — so with the common CDK `EventBusName: { Ref: Bus }` (which resolves
+  // to the bare bus NAME, not the bus ARN) the adapter fell through to `undefined` and the
+  // `?? item.physicalId` fallback sent the raw `myBus|myRule` composite to UpdateResource →
+  // ValidationException → exit 2. The fix threads region + gathered.desired.accountId into
+  // both revert call sites so the region/account branch fires and the ARN is built.
+  const EMPTY_SCHEMA = {
+    readOnly: new Set<string>(),
+    writeOnly: new Set<string>(),
+    createOnly: new Set<string>(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  } as SchemaInfo;
+
+  // A declared State drift on a rule bound to a CUSTOM bus. The physical id is the
+  // `<busName>|<ruleName>` composite; EventBusName resolves to the bare bus NAME (the
+  // Ref-of-EventBus case), so ONLY the region/account adapter branch can build the ARN.
+  const ruleDrift = (): Finding => ({
+    tier: 'declared',
+    logicalId: 'R',
+    resourceType: 'AWS::Events::Rule',
+    path: 'State',
+    physicalId: 'myBus|myRule',
+    desired: 'ENABLED',
+    actual: 'DISABLED',
+  });
+
+  const gathered = (): GatherResult =>
+    ({
+      desired: {
+        stackName: 's',
+        region: 'us-east-1',
+        accountId: '111111111111',
+        resources: [
+          {
+            logicalId: 'R',
+            resourceType: 'AWS::Events::Rule',
+            physicalId: 'myBus|myRule',
+            declared: { State: 'ENABLED', EventBusName: 'myBus' },
+          },
+        ],
+        rawTemplate: '{}',
+        ctx: {
+          params: {},
+          pseudo: {},
+          conditions: {},
+          physIds: {},
+          liveAttrs: {},
+          mappings: {},
+          exports: {},
+          condCache: new Map(),
+        },
+      },
+      findings: [ruleDrift()],
+      schemas: new Map([['AWS::Events::Rule', EMPTY_SCHEMA]]),
+      liveByLogical: new Map(),
+    }) as GatherResult;
+
+  const params = () => ({
+    stackName: 's',
+    region: 'us-east-1',
+    gathered: gathered(),
+    baseline: undefined,
+    config: { ignore: [] },
+    dryRun: false,
+    yes: true,
+    removeUnrecorded: false,
+    verbose: false,
+    interactive: false,
+    convergeRetryDelayMs: 0,
+  });
+
+  it('sends the full rule ARN as the UpdateResource identifier (region/account branch), NOT the raw bus|name composite', async () => {
+    const cc = mockClient(CloudControlClient);
+    cc.on(UpdateResourceCommand).resolves({
+      ProgressEvent: { OperationStatus: 'SUCCESS', RequestToken: 't' },
+    });
+    // Post-revert convergence re-read: report the desired State so the run reports CLEAN.
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: {
+        Identifier: 'arn:aws:events:us-east-1:111111111111:rule/myBus/myRule',
+        Properties: JSON.stringify({ State: 'ENABLED' }),
+      },
+    });
+
+    const logs: string[] = [];
+    const orig = console.log;
+    console.log = (s: unknown) => logs.push(String(s));
+    try {
+      await revertStack(params());
+    } finally {
+      console.log = orig;
+    }
+
+    const calls = cc.commandCalls(UpdateResourceCommand);
+    expect(calls).toHaveLength(1);
+    const ident = calls[0]!.args[0]!.input.Identifier;
+    // WITHOUT the fix this is the raw `myBus|myRule` composite (the adapter returns
+    // undefined for a bare-name EventBusName when region/account are not threaded through)
+    // → ValidationException. WITH the fix it is the full rule ARN.
+    expect(ident).toBe('arn:aws:events:us-east-1:111111111111:rule/myBus/myRule');
+    expect(ident).not.toBe('myBus|myRule');
+  });
+});
+
 describe('recordStack non-interactive refusal (R38)', () => {
   it('yes:false + interactive:false + undeclared present → refuses, writes nothing, errors', async () => {
     // Unique account/region so no baseline file exists on disk for this stack.
