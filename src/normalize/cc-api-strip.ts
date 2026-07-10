@@ -90,10 +90,20 @@ export const TAG_PROPERTY_NAMES: ReadonlySet<string> = new Set([
   'TestAliasTags', // AWS::Bedrock::Agent / AWS::Bedrock::Flow secondary (map)
 ]);
 
+// `freeFormSeed` seeds the strip walk's free-form flag at the ROOT of `awsProps`.
+// Normally `false` (the top-level live model root is never itself free-form user data),
+// but the BASELINE compare (#1267) passes a bare undeclared FRAGMENT whose root IS the
+// content of a free-form map (a recorded `UserPoolTags` / `Environment.Variables` value):
+// there is no ancestor key left in the fragment for `FREE_FORM_MAP_PARENTS` to match, so
+// the caller — which still knows the entry's dotted PATH — seeds `true` to restore the
+// same protection the full-model live walk gets from seeing the parent key. A user key
+// colliding with a managed-field name (`CreatedBy`, `OwnerId`, an #1251 timestamp variant)
+// then survives on both compare sides, so an out-of-band change to it still surfaces.
 export function stripCcApiAwsManagedFields(
-  awsProps: Record<string, unknown>
+  awsProps: Record<string, unknown>,
+  freeFormSeed = false
 ): Record<string, unknown> {
-  return stripWalk(awsProps, false) as Record<string, unknown>;
+  return stripWalk(awsProps, freeFormSeed) as Record<string, unknown>;
 }
 
 // `freeForm` = this subtree lives under a free-form USER map (Lambda env Variables, Glue

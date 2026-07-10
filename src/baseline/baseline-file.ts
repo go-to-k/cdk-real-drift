@@ -775,10 +775,18 @@ export function carryForwardIgnored(
 // `canonicalizeBaselineForCompare` for which strips are (and are not) covered. `resourceType`
 // is optional: every call site has the recorded entry's / finding's type available and passes
 // it, but a type-less call stays correct (the type only tightens WAF/order-significant folds).
+// #1267: `path` (the entry's / finding's dotted property path) is threaded through so
+// `canonicalizeBaselineForCompare` can seed the AWS-managed-field strip's free-form flag
+// when a path segment is a free-form-map parent (UserPoolTags / Environment.Variables /
+// …). Without it, a recorded map fragment's USER key that collides with a managed-field
+// name (`CreatedBy`, …) is stripped from BOTH sides, hiding a real out-of-band change (an
+// FN). Every call site has the entry/finding path at hand and passes it; a path-less call
+// stays the pre-#1267 behavior (seed false), so no existing caller changes.
 export function baselineValueMatches(
   baselineValue: unknown,
   currentCanonicalValue: unknown,
-  resourceType?: string
+  resourceType?: string,
+  path?: string
 ): boolean {
   // #798 persistence half: a secret-bearing baseline value is a HASH SENTINEL (record stored
   // the hash of the canonicalized live value, never the plaintext). When either side is a
@@ -790,13 +798,13 @@ export function baselineValueMatches(
   if (isRedactedHashSentinel(baselineValue) || isRedactedHashSentinel(currentCanonicalValue)) {
     const asHash = (v: unknown): string =>
       redactedHashOf(
-        isRedactedHashSentinel(v) ? v : canonicalizeBaselineForCompare(v, resourceType)
+        isRedactedHashSentinel(v) ? v : canonicalizeBaselineForCompare(v, resourceType, path)
       );
     return asHash(baselineValue) === asHash(currentCanonicalValue);
   }
   return deepEqual(
-    canonicalizeBaselineForCompare(baselineValue, resourceType),
-    canonicalizeBaselineForCompare(currentCanonicalValue, resourceType)
+    canonicalizeBaselineForCompare(baselineValue, resourceType, path),
+    canonicalizeBaselineForCompare(currentCanonicalValue, resourceType, path)
   );
 }
 
@@ -892,7 +900,10 @@ export function splitRecordedByBaseline(
         a.path === entry.path &&
         a.resourceType === entry.resourceType
     );
-    if (baselineEntry && baselineValueMatches(baselineEntry.value, entry.value, entry.resourceType))
+    if (
+      baselineEntry &&
+      baselineValueMatches(baselineEntry.value, entry.value, entry.resourceType, entry.path)
+    )
       unchanged.push(entry);
     else changed.push(entry);
   }
@@ -1223,7 +1234,7 @@ export function applyBaseline(
         kept.push({ ...f, unrecorded: true });
         continue;
       }
-      if (entry && baselineValueMatches(entry.value, f.actual, f.resourceType)) continue; // recorded, unchanged
+      if (entry && baselineValueMatches(entry.value, f.actual, f.resourceType, f.path)) continue; // recorded, unchanged
       if (entry) {
         kept.push({
           ...f,
@@ -1257,7 +1268,7 @@ export function applyBaseline(
     // (f.actual is already canonical from classify): a baseline recorded under older
     // normalization rules still matches today's live, so a cdkrd version bump alone
     // never resurfaces a suppressed value as false drift.
-    if (entry && baselineValueMatches(entry.value, f.actual, f.resourceType)) continue; // recorded, unchanged
+    if (entry && baselineValueMatches(entry.value, f.actual, f.resourceType, f.path)) continue; // recorded, unchanged
     if (entry) {
       // recorded value CHANGED -> drift. This takes PRIORITY over the at-default fold
       // below: a recorded NON-default value reset out of band to the AWS default is a
