@@ -2801,6 +2801,157 @@ describe('Lambda alias/version-bound children match on unqualified function iden
   });
 });
 
+// #1281: the documented partial-ARN FunctionName form `<accountId>:function:<name>[:qualifier]`
+// does NOT start with `arn:`, so the short-form truncation collapsed it to the account id —
+// matching neither the parent's bare name nor its full ARN, so a DECLARED ESM/Version/Alias/Url
+// using this form was dropped from the declared set and its live counterpart falsely flagged
+// `added` (with a destructive DeleteResource offer). unqualifiedFunctionRef must extract the bare
+// name; the Alias/Url matchers must normalize both sides like the ESM/Version paths already do.
+describe('Lambda children match on the partial-ARN FunctionName form (#1281)', () => {
+  const fnArn = 'arn:aws:lambda:us-east-1:111122223333:function:my-fn';
+  const partial = '111122223333:function:my-fn';
+
+  it('unqualifiedFunctionRef extracts the bare name from a partial ARN (± qualifier)', () => {
+    expect(unqualifiedFunctionRef(partial)).toBe('my-fn');
+    expect(unqualifiedFunctionRef(`${partial}:prod`)).toBe('my-fn');
+    expect(unqualifiedFunctionRef(`${partial}:$LATEST`)).toBe('my-fn');
+  });
+
+  it('a declared ESM with a partial-ARN FunctionName is NOT flagged added', async () => {
+    const declaredUuid = '11111111-2222-3333-4444-555555555555';
+    const lambda = mockClient(LambdaClient);
+    lambda
+      .on(ListEventSourceMappingsCommand)
+      .resolves({ EventSourceMappings: [{ UUID: declaredUuid, EventSourceArn: 'q' }] })
+      .on(ListFunctionUrlConfigsCommand)
+      .resolves({ FunctionUrlConfigs: [] })
+      .on(ListAliasesCommand)
+      .resolves({ Aliases: [] })
+      .on(ListVersionsByFunctionCommand)
+      .resolves({ Versions: [] });
+    const ctx = {
+      parent: { physicalId: 'my-fn', logicalId: 'Fn' },
+      desired: {
+        resources: [
+          {
+            resourceType: 'AWS::Lambda::EventSourceMapping',
+            physicalId: declaredUuid,
+            declared: { FunctionName: partial },
+          },
+        ],
+        ctx: { liveAttrs: { Fn: { Arn: fnArn } } },
+      },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    const added = await enumerateLambdaFunctionChildren(ctx);
+    expect(added).toEqual([]);
+    lambda.restore();
+  });
+
+  it('a declared Alias with a partial-ARN FunctionName is NOT flagged added', async () => {
+    const aliasArn = `${fnArn}:live`;
+    const lambda = mockClient(LambdaClient);
+    lambda
+      .on(ListEventSourceMappingsCommand)
+      .resolves({ EventSourceMappings: [] })
+      .on(ListFunctionUrlConfigsCommand)
+      .resolves({ FunctionUrlConfigs: [] })
+      .on(ListAliasesCommand)
+      .resolves({ Aliases: [{ AliasArn: aliasArn, Name: 'live' }] })
+      .on(ListVersionsByFunctionCommand)
+      .resolves({ Versions: [] });
+    const ctx = {
+      parent: { physicalId: 'my-fn', logicalId: 'Fn' },
+      desired: {
+        resources: [
+          {
+            resourceType: 'AWS::Lambda::Alias',
+            physicalId: aliasArn,
+            declared: { FunctionName: partial },
+          },
+        ],
+        ctx: { liveAttrs: { Fn: { Arn: fnArn } } },
+      },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    const added = await enumerateLambdaFunctionChildren(ctx);
+    expect(added).toEqual([]);
+    lambda.restore();
+  });
+
+  it('a declared function URL with a partial-ARN TargetFunctionArn is NOT flagged added', async () => {
+    const lambda = mockClient(LambdaClient);
+    lambda
+      .on(ListEventSourceMappingsCommand)
+      .resolves({ EventSourceMappings: [] })
+      .on(ListFunctionUrlConfigsCommand)
+      .resolves({
+        FunctionUrlConfigs: [
+          {
+            FunctionArn: fnArn,
+            AuthType: 'NONE',
+            FunctionUrl: 'https://abc.lambda-url.us-east-1.on.aws/',
+            CreationTime: '2020-01-01T00:00:00Z',
+            LastModifiedTime: '2020-01-01T00:00:00Z',
+          },
+        ],
+      })
+      .on(ListAliasesCommand)
+      .resolves({ Aliases: [] })
+      .on(ListVersionsByFunctionCommand)
+      .resolves({ Versions: [] });
+    const ctx = {
+      parent: { physicalId: 'my-fn', logicalId: 'Fn' },
+      desired: {
+        resources: [
+          {
+            resourceType: 'AWS::Lambda::Url',
+            physicalId: fnArn,
+            declared: { TargetFunctionArn: partial },
+          },
+        ],
+        ctx: { liveAttrs: { Fn: { Arn: fnArn } } },
+      },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    const added = await enumerateLambdaFunctionChildren(ctx);
+    expect(added).toEqual([]);
+    lambda.restore();
+  });
+
+  it('a genuinely out-of-band alias (no declared partial-ARN counterpart) IS still flagged added', async () => {
+    const rogueArn = `${fnArn}:rogue`;
+    const lambda = mockClient(LambdaClient);
+    lambda
+      .on(ListEventSourceMappingsCommand)
+      .resolves({ EventSourceMappings: [] })
+      .on(ListFunctionUrlConfigsCommand)
+      .resolves({ FunctionUrlConfigs: [] })
+      .on(ListAliasesCommand)
+      .resolves({ Aliases: [{ AliasArn: rogueArn, Name: 'rogue' }] })
+      .on(ListVersionsByFunctionCommand)
+      .resolves({ Versions: [] });
+    const ctx = {
+      parent: { physicalId: 'my-fn', logicalId: 'Fn' },
+      desired: {
+        // A DIFFERENT function is declared by partial ARN; the rogue alias is not in the template.
+        resources: [
+          {
+            resourceType: 'AWS::Lambda::Alias',
+            physicalId: `${fnArn}:other`,
+            declared: { FunctionName: '111122223333:function:other-fn' },
+          },
+        ],
+        ctx: { liveAttrs: { Fn: { Arn: fnArn } } },
+      },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    const added = await enumerateLambdaFunctionChildren(ctx);
+    expect(added.map((a) => a.identifier)).toEqual([rogueArn]);
+    lambda.restore();
+  });
+});
+
 describe('diffRoute53HostedZoneChildren (Route53 hosted zone record sets, #1042)', () => {
   const ZONE = 'Z1234567890ABC';
   const APEX = 'example.com';

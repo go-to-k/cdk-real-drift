@@ -174,6 +174,13 @@ export function unqualifiedFunctionRef(ref: unknown): unknown {
     if (seg.length >= 8 && seg[5] === 'function') return seg.slice(0, 7).join(':');
     return ref;
   }
+  // Partial ARN `<accountId>:function:NAME[:QUALIFIER]` — a documented FunctionName form that
+  // is NOT prefixed `arn:`, so without this it falls into the short-form truncation below and
+  // collapses to the account id (`123456789012`), matching neither the parent's bare name nor
+  // its full ARN → the declared child is dropped and falsely flagged `added` (#1281). The bare
+  // function name is the segment after `function:`.
+  const partial = ref.match(/^\d{12}:function:([^:]+)/);
+  if (partial) return partial[1];
   // Short forms: `NAME:QUALIFIER` (single colon) → `NAME`. A bare `NAME` has no colon.
   const i = ref.indexOf(':');
   return i === -1 ? ref : ref.slice(0, i);
@@ -1392,7 +1399,9 @@ export async function enumerateLambdaFunctionChildren(
   for (const r of desired.resources) {
     if (r.resourceType !== 'AWS::Lambda::Url') continue;
     const target = r.declared.TargetFunctionArn;
-    const targetsThis = parentRefMatches(target, functionName, fnArn);
+    // Normalize BOTH sides to the unqualified function identity so the documented partial-ARN
+    // FunctionName form (`123456789012:function:my-fn`) matches this parent (#1281, #803).
+    const targetsThis = lambdaFunctionRefMatches(target, functionName, fnArn);
     if (targetsThis) {
       // The URL's FunctionArn (its primaryIdentifier) is the function's bare ARN for an
       // unqualified URL; prefer the resolved live function ARN, else the declared physicalId.
@@ -1412,7 +1421,10 @@ export async function enumerateLambdaFunctionChildren(
   const declaredAliasArns: string[] = [];
   for (const r of desired.resources) {
     if (r.resourceType !== 'AWS::Lambda::Alias' || !r.physicalId) continue;
-    if (parentRefMatches(r.declared.FunctionName, functionName, fnArn)) {
+    // Same unqualified-identity match as the ESM/Version paths: an alias whose declared
+    // FunctionName is a partial ARN (`123456789012:function:my-fn`) or a qualified ref still
+    // targets this parent function (#1281, #803). Keeps the UNRESOLVED fail-safe.
+    if (lambdaFunctionRefMatches(r.declared.FunctionName, functionName, fnArn)) {
       declaredAliasArns.push(r.physicalId);
     }
   }
