@@ -817,6 +817,41 @@ describe('noise suppressors', () => {
     });
   });
 
+  it('Chatbot GuardrailPolicies default is an ARRAY-valued context-ARN default, not a KNOWN_DEFAULTS literal (#1071)', () => {
+    // The AWS-managed AdministratorAccess policy ARN is PARTITION-scoped, so a KNOWN_DEFAULTS
+    // constant `arn:aws:` literal false-positived non-commercial first runs. It lives in
+    // CONTEXT_ARN_DEFAULTS as a single-element array templated on {partition} (exercised
+    // end-to-end by the classify #1071 fold test).
+    expect(CONTEXT_ARN_DEFAULTS['AWS::Chatbot::SlackChannelConfiguration']).toEqual({
+      GuardrailPolicies: ['arn:{partition}:iam::aws:policy/AdministratorAccess'],
+    });
+    // It must NOT linger in KNOWN_DEFAULTS (where the partition-hardcoded literal was the bug).
+    expect(KNOWN_DEFAULTS['AWS::Chatbot::SlackChannelConfiguration']).toBeUndefined();
+  });
+
+  it('no KNOWN_DEFAULTS / KNOWN_DEFAULT_PATHS value pins a partition-hardcoded `arn:aws:` literal (#1071 class guard)', () => {
+    // A default whose VALUE is an ARN must template `arn:{partition}:…` (CONTEXT_ARN_DEFAULTS),
+    // never a hardcoded `arn:aws:…` literal that FPs aws-us-gov / aws-cn / aws-iso partitions.
+    // Whitelist: the CodeStarConnections HostArn all-zeros sentinel (noise.ts ~1522) is a
+    // documented service "no host" placeholder proven region-invariant by corpus; its partition
+    // segment is not yet partition-proven, so it stays a literal until then (#1071 leaves as-is).
+    const WHITELIST = new Set(['AWS::CodeStarConnections::Connection']);
+    const hasArnAwsLiteral = (val: unknown): boolean => {
+      if (typeof val === 'string') return /(^|["\s])arn:aws:/.test(val);
+      if (Array.isArray(val)) return val.some(hasArnAwsLiteral);
+      if (val && typeof val === 'object') return Object.values(val).some(hasArnAwsLiteral);
+      return false;
+    };
+    for (const [type, defaults] of Object.entries(KNOWN_DEFAULTS)) {
+      if (WHITELIST.has(type)) continue;
+      expect(hasArnAwsLiteral(defaults), `KNOWN_DEFAULTS[${type}]`).toBe(false);
+    }
+    for (const [type, defaults] of Object.entries(KNOWN_DEFAULT_PATHS)) {
+      if (WHITELIST.has(type)) continue;
+      expect(hasArnAwsLiteral(defaults), `KNOWN_DEFAULT_PATHS[${type}]`).toBe(false);
+    }
+  });
+
   it('KinesisVideo Stream/SignalingChannel first-run defaults fold (#624)', () => {
     // Tier-1 constants (auto-exercised by the generic KNOWN_DEFAULTS atDefault test + corpus).
     expect(KNOWN_DEFAULTS['AWS::KinesisVideo::Stream']).toEqual({ DataRetentionInHours: 0 });

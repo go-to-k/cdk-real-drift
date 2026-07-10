@@ -2726,19 +2726,22 @@ export function classifyResource(
     // Equality-gated (a view scoped elsewhere still surfaces); with no resolved account/region
     // it falls through to plain `undeclared` (recordable), never a wrong fold.
     const ctxArnTemplate = CONTEXT_ARN_DEFAULTS[resourceType]?.[k];
-    if (
-      ctxArnTemplate !== undefined &&
-      opts.region !== undefined &&
-      opts.accountId !== undefined &&
-      typeof v === 'string'
-    ) {
+    if (ctxArnTemplate !== undefined && opts.region !== undefined && opts.accountId !== undefined) {
       // Canonical partition helper (#945): folds ISO partitions too. region is defined here.
       const partition = partitionForRegion(opts.region).partition;
-      const ctxArnDefault = ctxArnTemplate
-        .replace('{partition}', partition)
-        .replace('{region}', opts.region)
-        .replace('{accountId}', opts.accountId);
-      if (v === ctxArnDefault) {
+      const region = opts.region;
+      const accountId = opts.accountId;
+      const substitute = (t: string): string =>
+        t
+          .replace('{partition}', partition)
+          .replace('{region}', region)
+          .replace('{accountId}', accountId);
+      // A scalar template folds a single ARN string; an ARRAY template (a list-valued default
+      // like Chatbot's GuardrailPolicies, #1071) folds the whole live array element-for-element.
+      const matches = Array.isArray(ctxArnTemplate)
+        ? deepEqual(v, ctxArnTemplate.map(substitute))
+        : typeof v === 'string' && v === substitute(ctxArnTemplate);
+      if (matches) {
         findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
         continue;
       }

@@ -373,11 +373,10 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     EncryptionOptions: { UseAwsOwnedKey: true },
     DataReplicationMode: 'NONE',
   },
-  // Chatbot applies the AdministratorAccess guardrail when none is declared
-  // (verified live on a default-config SlackChannelConfiguration).
-  'AWS::Chatbot::SlackChannelConfiguration': {
-    GuardrailPolicies: ['arn:aws:iam::aws:policy/AdministratorAccess'],
-  },
+  // (Chatbot's undeclared AdministratorAccess guardrail default lives in
+  // CONTEXT_ARN_DEFAULTS below — the AWS-managed policy ARN is partition-scoped, so a
+  // hardcoded commercial `arn:aws:` literal here false-positived aws-us-gov / aws-cn
+  // first runs, #1071.)
   // CloudTrail materializes the default management-events selector when the
   // template declares EventSelectors [] or omits it (observed live on the
   // harvest3 fixture, R74 — CDK's Trail construct synthesizes `EventSelectors:
@@ -2210,8 +2209,10 @@ export const CONTEXT_DEFAULTS: Record<string, Record<string, 'region' | 'regionL
 // gated against the live value: a resource that points the property at a DIFFERENT scope / key
 // still surfaces as real undeclared drift (detection preserved, unlike a value-independent
 // fold). With no resolved account/region the substitution is skipped and the value stays
-// `undeclared` (recordable), never a wrong fold.
-export const CONTEXT_ARN_DEFAULTS: Record<string, Record<string, string>> = {
+// `undeclared` (recordable), never a wrong fold. A value may be a single templated ARN string
+// or an ARRAY of them (a list-valued default like Chatbot's GuardrailPolicies, #1071) — each
+// element is substituted and the whole list is equality-gated against the live array.
+export const CONTEXT_ARN_DEFAULTS: Record<string, Record<string, string | string[]>> = {
   // A ResourceExplorer2 View that declares no Scope reads back the account-root ARN — the
   // whole-account default scope. createOnly (never drifts), but derived rather than value-
   // independent per the fold-strategy order. Live, hunt 2026-07-08 round F (#626).
@@ -2241,6 +2242,16 @@ export const CONTEXT_ARN_DEFAULTS: Record<string, Record<string, string>> = {
   // account id; equality-gated, so an AccessPoint pointed at a cross-account bucket owner still
   // surfaces. Live-confirmed on a fresh s3objectlambda-rich AccessPoint (#919).
   'AWS::S3::AccessPoint': { BucketAccountId: '{accountId}' },
+  // A SlackChannelConfiguration that declares no GuardrailPolicies reads back the single
+  // AWS-managed `AdministratorAccess` policy ARN — the service default guardrail. The
+  // AWS-managed policy ARN is PARTITION-scoped (`arn:aws-cn:…` in China, `arn:aws-us-gov:…`
+  // in GovCloud), so a KNOWN_DEFAULTS constant `arn:aws:…` literal false-positived every
+  // non-commercial first run (#1071). Array-valued (one templated ARN), equality-gated: a
+  // config that scopes to a narrower/custom guardrail policy still surfaces. Verified live
+  // on a default-config SlackChannelConfiguration (commercial partition).
+  'AWS::Chatbot::SlackChannelConfiguration': {
+    GuardrailPolicies: ['arn:{partition}:iam::aws:policy/AdministratorAccess'],
+  },
 };
 
 // Top-level UNDECLARED keys whose service default VALUE is derived from the resource's own
