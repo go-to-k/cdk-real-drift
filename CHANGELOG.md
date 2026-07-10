@@ -1,3 +1,10 @@
+## [0.4.26](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.25...v0.4.26) (2026-07-10)
+
+
+### Bug Fixes
+
+* **revert:** thread region/account into CC identifier adapter so custom-bus Events::Rule revert converges ([#1122](https://github.com/go-to-k/cdk-real-drift/issues/1122)) ([bf319fa](https://github.com/go-to-k/cdk-real-drift/commit/bf319fa0bd9b61a479cd3af9d9b365ebf472d811))
+
 ## [0.4.25](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.24...v0.4.25) (2026-07-10)
 
 
