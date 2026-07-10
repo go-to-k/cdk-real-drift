@@ -1,3 +1,10 @@
+## [0.12.15](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.14...v0.12.15) (2026-07-10)
+
+
+### Bug Fixes
+
+* **report:** break GetTemplate-masked readGaps out of "not returned by AWS" ([#1345](https://github.com/go-to-k/cdk-real-drift/issues/1345)) ([da66ce9](https://github.com/go-to-k/cdk-real-drift/commit/da66ce9edef50efd46b9e4428e97e9aef6061e19))
+
 ## [0.12.14](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.13...v0.12.14) (2026-07-10)
 
 
