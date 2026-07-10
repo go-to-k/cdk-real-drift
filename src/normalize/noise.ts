@@ -2842,12 +2842,15 @@ export function ebOptionSettingTier(
 //   and "DISABLED" on others (both observed live), depending on how/when the service was
 //   created; neither is "the" default.
 export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySet<string>> = {
-  //   AWS::ElasticLoadBalancingV2::LoadBalancer.SecurityGroups — an ALB that declares no
-  //   SecurityGroups is placed in its VPC's default security group (an AWS-assigned sg-…
-  //   id, not in the LB's declared inputs and not derivable without a VPC lookup). Undeclared,
-  //   so whatever SG AWS attached is its default, never user intent — a user who wants a
-  //   specific SG DECLARES it, and it is then compared in the declared loop.
-  'AWS::ElasticLoadBalancingV2::LoadBalancer': new Set(['SecurityGroups']),
+  //   #889: AWS::ElasticLoadBalancingV2::LoadBalancer.SecurityGroups and
+  //   AWS::EC2::NetworkInterface.GroupSet are NO LONGER value-independent here — an ALB/ENI that
+  //   declares no security groups is placed in its VPC's DEFAULT security group (exactly ONE
+  //   group), and a value-independent fold HID an out-of-band SG swap/append (a mutable security
+  //   boundary: `elbv2 set-security-groups`, `ec2 modify-network-interface-attribute --groups`).
+  //   That single default is DERIVABLE, so classify now gates it against the account/region
+  //   VPC-default SG ids (prefetched into opts.defaultSgIds) via shouldFoldDefaultSgList: a single
+  //   default SG folds atDefault, a 2+-element append or a single non-default swap surfaces. Fail
+  //   open (fold) when the prefetch is unavailable — no new first-run false positive.
   //   AWS::ApiGateway::ApiKey.Value — an API key that declares no Value reads back AWS-generated
   //   40-char key material (createOnly — it can never drift out of band). It is a service-minted
   //   secret, not user intent — a user who pins a specific key DECLARES Value, compared in the
@@ -3178,13 +3181,16 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   AWS::EC2::NetworkInterface.PrivateIpAddresses — an ENI that declares no
   //   PrivateIpAddresses reads back the single auto-assigned primary
   //   ([{PrivateIpAddress:"10.0.0.x", Primary:true}]) — the plural-array twin of the singular
-  //   PrivateIpAddress fold above. GroupSet — an ENI that declares no security groups is
-  //   placed in its VPC's default group (an AWS-assigned sg-… id, not derivable without a VPC
-  //   lookup); the exact twin of the ElasticLoadBalancingV2::LoadBalancer.SecurityGroups fold.
-  //   Both are undeclared → whatever AWS assigned is its default, never user intent; a user who
-  //   manages the ENI's IPs or SGs DECLARES them (the eni-rich fixture does), and they are then
-  //   compared in the declared loop. Live-confirmed on fresh eni-rich ENIs (2026-07-08, #640).
-  'AWS::EC2::NetworkInterface': new Set(['PrivateIpAddress', 'PrivateIpAddresses', 'GroupSet']),
+  //   PrivateIpAddress fold above. Undeclared → whatever AWS assigned is its default, never user
+  //   intent; a user who manages the ENI's IPs DECLARES them (the eni-rich fixture does), and they
+  //   are then compared in the declared loop. Live-confirmed on fresh eni-rich ENIs (2026-07-08,
+  //   #640).
+  //   #889: GroupSet is NO LONGER value-independent here — an ENI that declares no security groups
+  //   gets its VPC's DEFAULT security group (exactly one), a MUTABLE boundary a value-independent
+  //   fold hid from an out-of-band swap/append (`ec2 modify-network-interface-attribute --groups`).
+  //   classify now derives+gates it against the VPC-default SG ids (opts.defaultSgIds); see the
+  //   ElasticLoadBalancingV2::LoadBalancer note in VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS.
+  'AWS::EC2::NetworkInterface': new Set(['PrivateIpAddress', 'PrivateIpAddresses']),
   //   AWS::EC2::Volume.KmsKeyId — an encrypted volume (Encrypted:true) that declares no key
   //   reads back the account aws/ebs managed-key ARN (per-account, AWS-assigned) — the exact
   //   twin of the RDS/OpenSearch/EFS AWS-assigned KmsKeyId folds (#533). An EBS volume's key is
