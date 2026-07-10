@@ -48,7 +48,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "generated",
       "logicalId": "RegexSet",
       "resourceType": "AWS::WAFv2::RegexPatternSet",
       "path": "Name",

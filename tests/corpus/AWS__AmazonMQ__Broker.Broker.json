@@ -170,7 +170,7 @@
       "constructPath": "CdkRealDriftIntegAmazonMqVersionFp/Broker"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Broker",
       "resourceType": "AWS::AmazonMQ::Broker",
       "path": "SecurityGroups",
@@ -188,7 +188,7 @@
       "constructPath": "CdkRealDriftIntegAmazonMqVersionFp/Broker"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Broker",
       "resourceType": "AWS::AmazonMQ::Broker",
       "path": "SubnetIds",
