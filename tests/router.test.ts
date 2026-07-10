@@ -1487,11 +1487,18 @@ describe('readLive (SDK supplement path — ECS Service ServiceConnectConfigurat
   });
 });
 
-describe('readLive (supplement failure re-folds exempted props to a readGap, #752)', () => {
+describe('readLive (supplement failure re-folds exempted props to a readGap, #752/#849)', () => {
   // When a supplement read fails (missing narrow IAM permission / throttle), a DECLARED
   // exempted prop (OVERRIDE_READABLE_WRITEONLY) must NOT false-flag as declared drift
-  // against an absent live value — it must degrade to a readGap (declared value mirrored
-  // into live so it folds to no drift) plus a LOUD stderr warning naming the failed call.
+  // against an absent live value — it must degrade to a readGap plus a LOUD stderr warning
+  // naming the failed call.
+  //
+  // #849 refines HOW the readGap is restored, by the declared value shape:
+  //   - a SCALAR is left ABSENT from live so classify emits a genuine, COUNTED `readGap`
+  //     finding (surfaced in the report's read-gap footer; blocks #795 completeness).
+  //   - a NON-EMPTY COLLECTION is still MIRRORED (declared==live folds to no drift), because
+  //     classify would otherwise treat an absent declared collection as a `declared`-tier
+  //     removal — the #752 false positive.
   let warnings: string[] = [];
   beforeEach(() => {
     warnings = [];
@@ -1505,10 +1512,15 @@ describe('readLive (supplement failure re-folds exempted props to a readGap, #75
   const ecUser = (declared: Record<string, unknown>): DesiredResource =>
     res({ resourceType: 'AWS::ElastiCache::User', physicalId: 'reader', declared });
 
-  it('mirrors the DECLARED exempted prop into live (declared==live -> no drift, a readGap)', async () => {
+  const svc = (declared: Record<string, unknown>): DesiredResource =>
+    res({ resourceType: 'AWS::ECS::Service', physicalId: 'arn:svc', declared });
+
+  it('leaves a DECLARED SCALAR exempted prop ABSENT from live so classify emits a counted readGap (#849)', async () => {
     // CC never echoes AccessString (writeOnly); the user DECLARED it. When
-    // elasticache:DescribeUsers is denied, without the fix AccessString stays absent from
-    // live and false-flags declared drift; with the fix it is mirrored from declared.
+    // elasticache:DescribeUsers is denied, the SCALAR AccessString is left ABSENT so
+    // classify's "declared key absent from live" branch emits a genuine readGap for it
+    // (counted in the report footer + blocks snapshot-completeness), NOT a mirror that
+    // hides it. It is a scalar, so it can never false-flag as a `declared` removal.
     cc.on(GetResourceCommand).resolves({
       ResourceDescription: {
         Properties: '{"UserId":"reader","UserName":"reader","Engine":"redis","Status":"active"}',
@@ -1526,10 +1538,52 @@ describe('readLive (supplement failure re-folds exempted props to a readGap, #75
       'us-east-1',
       '1'
     );
-    // The declared AccessString is mirrored onto live so declared == live -> readGap, NOT
-    // a `desired="…" actual=undefined` declared-tier drift.
-    expect(r.live?.AccessString).toBe('on ~app:* -@all +@read');
+    // The scalar is NOT mirrored — it stays absent so classify surfaces the readGap.
+    expect('AccessString' in (r.live ?? {})).toBe(false);
     expect(r.skippedReason).toBeUndefined();
+  });
+
+  it('still MIRRORS a DECLARED NON-EMPTY COLLECTION exempted prop (no false declared removal, #752)', async () => {
+    // ServiceConnectConfiguration is a writeOnly OBJECT the supplement reconstructs. When the
+    // supplement (ecs:DescribeServices) fails, an absent declared collection would false-flag
+    // as a `declared`-tier removal in classify (#752), so it is mirrored declared->live to
+    // fold to no drift — a readGap outcome preserved for the collection shape.
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: { Properties: '{"ServiceName":"svc","Cluster":"c"}' },
+    });
+    ecs.on(DescribeServicesCommand).rejects(named('AccessDeniedException'));
+    const config = { Enabled: true, Namespace: 'ns' };
+    const r = await readLive(
+      cc as unknown as CloudControlClient,
+      svc({ ServiceName: 'svc', Cluster: 'c', ServiceConnectConfiguration: config }),
+      'us-east-1',
+      '1'
+    );
+    // The non-empty collection IS mirrored so declared == live -> no false declared removal.
+    expect(r.live?.ServiceConnectConfiguration).toEqual(config);
+    expect(r.skippedReason).toBeUndefined();
+    // Confirm the supplement-FAILURE path was actually taken (loud warning names the prop).
+    expect(warnings.join('')).toContain('ServiceConnectConfiguration');
+  });
+
+  it('leaves an EMPTY-collection declared exempted prop ABSENT (declared {}/[] vs absent is not drift, #849)', async () => {
+    // An empty declared collection is not a real removal (classify exempts it), and it is
+    // never real drift — so it is left absent (classify then treats it as a readGap), not
+    // mirrored. Mirroring an empty collection would add a meaningless live={} entry.
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: { Properties: '{"ServiceName":"svc","Cluster":"c"}' },
+    });
+    ecs.on(DescribeServicesCommand).rejects(named('ThrottlingException'));
+    const r = await readLive(
+      cc as unknown as CloudControlClient,
+      svc({ ServiceName: 'svc', Cluster: 'c', ServiceConnectConfiguration: {} }),
+      'us-east-1',
+      '1'
+    );
+    expect('ServiceConnectConfiguration' in (r.live ?? {})).toBe(false);
+    expect(r.skippedReason).toBeUndefined();
+    // Confirm the supplement-FAILURE path was actually taken.
+    expect(warnings.join('')).toContain('ServiceConnectConfiguration');
   });
 
   it('emits a LOUD stderr warning naming the failed supplement call and the read-gap prop', async () => {
