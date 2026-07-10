@@ -20,18 +20,40 @@ export function isDynamicReference(v: string): boolean {
   return DYNAMIC_REFERENCE_RE.test(v);
 }
 
+// A dynamic reference EMBEDDED inside a larger string. CloudFormation also resolves a
+// `{{resolve:<service>:…}}` token that appears WITHIN a longer literal (the classic
+// connection-string pattern, e.g.
+// `"postgres://admin:{{resolve:secretsmanager:MySecret:SecretString:password}}@host:5432/db"`):
+// embedded dynamic references in a larger string are an explicitly supported CFn feature,
+// resolved at deploy time. So a declared string that merely CONTAINS a well-formed token is
+// just as deploy-time-transformed — its final live value is unknowable to cdkrd and it must
+// fold to UNRESOLVED exactly like the whole-string case. The anchored isDynamicReference above
+// misses this, so the raw token would leak out as a declared value → a false positive on every
+// clean deploy that (worse) prints the resolved secret plaintext and, on revert, writes the
+// literal `{{resolve:…}}` back into the live resource. Keep the service allow-list + a closing
+// `}}` so a malformed/partial fragment (a bare `{{resolve`, or `{{resolve:unknownsvc:x}}`) is
+// NOT swallowed — only a genuine, well-formed dynamic reference is muted. The `?` makes the
+// scan non-greedy up to the FIRST closing `}}`. A whole-string match is a subset of this, so
+// the internal muting sites use this contains-form. See #722.
+const CONTAINS_DYNAMIC_REFERENCE_RE = /\{\{resolve:(ssm|ssm-secure|secretsmanager):[\s\S]*?\}\}/;
+export function containsDynamicReference(v: string): boolean {
+  return CONTAINS_DYNAMIC_REFERENCE_RE.test(v);
+}
+
 // Re-check a resolved value that an intrinsic PRODUCED (a Ref-to-parameter value,
 // an Fn::FindInMap lookup, an Fn::Select element, an Fn::ImportValue export) for a
-// whole-string dynamic reference. The literal-string guard at the top of `resolve`
+// dynamic reference. The literal-string guard at the top of `resolve`
 // only sees a `{{resolve:…}}` token that appears DIRECTLY in the template tree; when
 // the same token arrives INDIRECTLY as the result of resolving one of these
 // intrinsics, that guard never runs, so the raw token would leak out as a declared
 // value (a false positive that also prints the secret plaintext and, on revert,
 // writes the literal `{{resolve:…}}` back). Fold it to UNRESOLVED here — the same
 // post-resolution re-check Fn::Join and Fn::Sub already do on their assembled result.
+// Use the contains-form so an EMBEDDED token in a larger produced string is muted too
+// (see #722); a whole-string token is a subset of it.
 // See #1073 (the indirect siblings of the direct-literal guard #722).
 function checkResolvedDynamicRef(r: unknown): unknown {
-  return typeof r === 'string' && isDynamicReference(r) ? UNRESOLVED : r;
+  return typeof r === 'string' && containsDynamicReference(r) ? UNRESOLVED : r;
 }
 
 // A value safe to interpolate into a joined / substituted STRING: a primitive
@@ -64,8 +86,11 @@ export function resolve(node: unknown, ctx: ResolverContext, inCondition = false
   // RDS MasterUsername declared as `{{resolve:secretsmanager:…:username::}}` reads
   // back as `admin`). cdkrd cannot — and must not — fetch the secret to resolve it,
   // so the declared side is unknowable: mark UNRESOLVED so the path is skipped, the
-  // same fail-closed treatment as Fn::GetAtt, never reported as false drift.
-  if (typeof node === 'string' && isDynamicReference(node)) return UNRESOLVED;
+  // same fail-closed treatment as Fn::GetAtt, never reported as false drift. Use the
+  // contains-form so an EMBEDDED token in a larger literal string (a connection string
+  // like `"postgres://admin:{{resolve:secretsmanager:…}}@host/db"`) is muted too, not
+  // only a whole-string token. See #722.
+  if (typeof node === 'string' && containsDynamicReference(node)) return UNRESOLVED;
   if (node === null || typeof node !== 'object') return node;
   const obj = node as Record<string, unknown>;
   const keys = Object.keys(obj);
@@ -119,8 +144,10 @@ export function resolve(node: unknown, ctx: ResolverContext, inCondition = false
         // CDK frequently ASSEMBLES a dynamic reference with Fn::Join (e.g. an RDS
         // MasterUsername = Join("", ["{{resolve:secretsmanager:", Ref(secret),
         // ":SecretString:username::}}"])); once joined the result is a deploy-time
-        // dynamic reference cdkrd cannot resolve — UNRESOLVED, never false drift.
-        return isDynamicReference(joined) ? UNRESOLVED : joined;
+        // dynamic reference cdkrd cannot resolve — UNRESOLVED, never false drift. The
+        // contains-form also catches a token joined into surrounding literal text (a
+        // connection string). See #722.
+        return containsDynamicReference(joined) ? UNRESOLVED : joined;
       }
       case 'Fn::Select': {
         if (!Array.isArray(v)) return UNRESOLVED;
@@ -533,8 +560,10 @@ export function resolveSub(v: unknown, ctx: ResolverContext): unknown {
   });
   if (unresolved) return UNRESOLVED;
   // an Fn::Sub may also ASSEMBLE a dynamic reference (`{{resolve:…}}`) — the
-  // assembled token is deploy-time-resolved and unknowable, so UNRESOLVED.
-  return isDynamicReference(out) ? UNRESOLVED : out;
+  // assembled token is deploy-time-resolved and unknowable, so UNRESOLVED. The
+  // contains-form also catches a token embedded in surrounding literal text of the
+  // substituted string (a connection string). See #722.
+  return containsDynamicReference(out) ? UNRESOLVED : out;
 }
 
 export function hasUnresolved(v: unknown): boolean {

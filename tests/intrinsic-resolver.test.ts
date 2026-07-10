@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 import {
+  containsDynamicReference,
   hasUnresolved,
   isDynamicReference,
   NOVALUE,
@@ -607,5 +608,92 @@ describe('intrinsic resolver', () => {
     expect(isDynamicReference('prefix-{{resolve:ssm:/p:1}}')).toBe(false);
     expect(isDynamicReference('{{resolve:ssm:/p:1}}-suffix')).toBe(false);
     expect(isDynamicReference('')).toBe(false);
+  });
+
+  it('#722: containsDynamicReference matches an EMBEDDED well-formed token', () => {
+    // whole-string (subset of contains) still matches
+    expect(containsDynamicReference('{{resolve:secretsmanager:s:SecretString:pw::}}')).toBe(true);
+    expect(containsDynamicReference('{{resolve:ssm:/p:1}}')).toBe(true);
+    expect(containsDynamicReference('{{resolve:ssm-secure:/p:1}}')).toBe(true);
+    // embedded in a larger literal (the connection-string pattern)
+    expect(
+      containsDynamicReference(
+        'postgres://admin:{{resolve:secretsmanager:MySecret:SecretString:password}}@host:5432/db'
+      )
+    ).toBe(true);
+    expect(containsDynamicReference('prefix-{{resolve:ssm:/p:1}}')).toBe(true);
+    expect(containsDynamicReference('{{resolve:ssm:/p:1}}-suffix')).toBe(true);
+    // NEGATIVE: no valid service + closing `}}` completion → not muted
+    expect(containsDynamicReference('admin')).toBe(false);
+    expect(containsDynamicReference('see {{resolve later}}')).toBe(false);
+    expect(containsDynamicReference('{{resolve:unknownsvc:x}}')).toBe(false);
+    expect(containsDynamicReference('a bare {{resolve fragment')).toBe(false);
+    expect(containsDynamicReference('')).toBe(false);
+  });
+
+  it('#722: an EMBEDDED dynamic reference in a larger literal string → UNRESOLVED', () => {
+    // connection-string pattern: a declared literal carrying an embedded token is
+    // deploy-time-transformed, so its final value is unknowable → UNRESOLVED (not a
+    // literal declared value that would falsely diverge from the resolved live value).
+    expect(
+      resolve(
+        'postgres://admin:{{resolve:secretsmanager:MySecret:SecretString:password}}@host:5432/db',
+        ctx()
+      )
+    ).toBe(UNRESOLVED);
+    // whole-string still UNRESOLVED (no regression).
+    expect(resolve('{{resolve:secretsmanager:MySecret:SecretString:password}}', ctx())).toBe(
+      UNRESOLVED
+    );
+    // a nested property carrying an embedded token folds to UNRESOLVED at that leaf.
+    expect(
+      resolve(
+        { ConnStr: 'redis://{{resolve:ssm-secure:/db/pw:1}}@r.example.com', Port: 6379 },
+        ctx()
+      )
+    ).toEqual({ ConnStr: UNRESOLVED, Port: 6379 });
+  });
+
+  it('#722: a dynamic reference EMBEDDED via Fn::Join → UNRESOLVED', () => {
+    // Join assembles a token INTO surrounding literal text (a connection string) — the
+    // assembled result is a deploy-time dynamic reference → UNRESOLVED.
+    expect(
+      resolve(
+        {
+          'Fn::Join': [
+            '',
+            [
+              'postgres://admin:',
+              '{{resolve:secretsmanager:MySecret:SecretString:password}}',
+              '@host:5432/db',
+            ],
+          ],
+        },
+        ctx()
+      )
+    ).toBe(UNRESOLVED);
+  });
+
+  it('#722: a dynamic reference EMBEDDED via Fn::Sub → UNRESOLVED', () => {
+    // Sub interpolates around an embedded token in a larger literal → UNRESOLVED.
+    expect(
+      resolve(
+        {
+          'Fn::Sub': [
+            'postgres://admin:{{resolve:secretsmanager:MySecret:SecretString:password}}@${Host}/db',
+            { Host: 'db.example.com' },
+          ],
+        },
+        ctx()
+      )
+    ).toBe(UNRESOLVED);
+  });
+
+  it('#722 NEGATIVE: a literal that merely contains `{{resolve` without a valid token is NOT muted', () => {
+    // no valid <service> + closing `}}` completion → stays a literal declared value.
+    expect(resolve('see {{resolve later}}', ctx())).toBe('see {{resolve later}}');
+    expect(resolve('{{resolve:unknownsvc:x}}', ctx())).toBe('{{resolve:unknownsvc:x}}');
+    // a plain literal with no token is unchanged.
+    expect(resolve('just-a-plain-value', ctx())).toBe('just-a-plain-value');
   });
 });
