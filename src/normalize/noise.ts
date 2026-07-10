@@ -4512,6 +4512,13 @@ export const READGAP_COLLECTION_PATHS: Record<string, ReadonlySet<string>> = {
   // every DNS-validated cert. It is a true readGap: AWS genuinely never returns the input
   // shape (#1090).
   'AWS::CertificateManager::Certificate': new Set(['DomainValidationOptions']),
+  // `TagSpecifications` — the EC2 create-time tag INPUT shape ([{ResourceType, Tags}]). The live
+  // resource carries its tags under `Tags` (where the Cloud Control read returns them); the
+  // `TagSpecifications` input wrapper is NEVER echoed back, so classify's removed-collection
+  // branch would false-flag `[CFn-Declared Drift] TagSpecifications` on every tagged endpoint
+  // (live-observed on a clean ClientVpnEndpoint, us-east-1, 2026-07-10; #1102 F3). A true readGap:
+  // the declared input shape is simply not part of the live model.
+  'AWS::EC2::ClientVpnEndpoint': new Set(['TagSpecifications']),
 };
 
 // SCALAR_RETURNED_WHEN_SET is the ALLOWLIST inverse of the collection default in the

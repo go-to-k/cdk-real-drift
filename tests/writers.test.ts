@@ -2126,6 +2126,34 @@ describe('EC2 ClientVpnEndpoint writer (NON_PROVISIONABLE; ModifyClientVpnEndpoi
       ])
     ).rejects.toThrow(/endpoint id/);
   });
+
+  it('applies the convergeable op(s) BEFORE barring an un-expressible sibling clear — no batch abort (#1102)', async () => {
+    // A VpnPort set-default (#912, expressible) alongside a SessionTimeoutHours remove
+    // (un-expressible). Previously the un-expressible clear THREW inline and aborted the whole
+    // ModifyClientVpnEndpoint call, silently dropping the convergeable VpnPort revert.
+    stubRead({ VpnPort: 1194, SessionTimeoutHours: 99 });
+    ec2.on(ModifyClientVpnEndpointCommand).resolves({});
+    await expect(
+      SDK_WRITERS['AWS::EC2::ClientVpnEndpoint'](ctx({ physicalId: CVID }), [
+        { op: 'add', path: '/VpnPort', value: 443, human: 'VpnPort -> 443' },
+        { op: 'remove', path: '/SessionTimeoutHours', human: 'SessionTimeoutHours -> (none)' },
+      ])
+    ).rejects.toThrow(/SessionTimeoutHours cannot be cleared/);
+    // the VpnPort set-default was STILL sent (isolated from the un-expressible sibling)
+    const calls = ec2.commandCalls(ModifyClientVpnEndpointCommand);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.args[0].input).toEqual({ ClientVpnEndpointId: CVID, VpnPort: 443 });
+  });
+
+  it('bars a SessionTimeoutHours remove honestly when it is the ONLY op (nothing to send, #1102)', async () => {
+    stubRead({ SessionTimeoutHours: 99 });
+    await expect(
+      SDK_WRITERS['AWS::EC2::ClientVpnEndpoint'](ctx({ physicalId: CVID }), [
+        { op: 'remove', path: '/SessionTimeoutHours', human: 'SessionTimeoutHours -> (none)' },
+      ])
+    ).rejects.toThrow(/SessionTimeoutHours cannot be cleared/);
+    expect(ec2.commandCalls(ModifyClientVpnEndpointCommand)).toHaveLength(0);
+  });
 });
 
 describe('ServiceDiscovery HttpNamespace writer (CC read+write gap)', () => {
