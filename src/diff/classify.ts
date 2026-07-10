@@ -317,19 +317,39 @@ export const NESTED_ARRAY_IDENTITY: Record<string, Record<string, string>> = {
 // key; `aliases` maps the few keys the two APIs spell differently. The parent's own property
 // still carries detection, so no out-of-band change is hidden — and an instance value that
 // DIVERGES from the cluster (its own maintenance window, its single AZ) still surfaces.
-const CLUSTER_ECHO_CHILD: Record<string, { parentIdKey: string; aliases: Record<string, string> }> =
-  {
-    'AWS::RDS::DBInstance': {
-      parentIdKey: 'DBClusterIdentifier',
-      // The two APIs spell a few shared settings differently: an instance's VPCSecurityGroups
-      // is the cluster's VpcSecurityGroupIds; its EnablePerformanceInsights is the cluster's
-      // PerformanceInsightsEnabled (Aurora manages PI cluster-wide, so the instance mirrors it).
-      aliases: {
-        VPCSecurityGroups: 'VpcSecurityGroupIds',
-        EnablePerformanceInsights: 'PerformanceInsightsEnabled',
-      },
+// Keyed by the CHILD resource type. `parentType` is the cluster resource type whose live model
+// the child echoes — `buildClusterEchoModels` (gather.ts / corpus record.ts) reads this to know
+// which resources to harvest a parent model from, so adding an entry here wires the live path too
+// (do NOT re-hardcode the type list in gather). `parentIdKey` is the child's declared property that
+// Refs the parent's physical id; `aliases` maps a child prop name to the differently-spelled parent
+// prop name.
+export const CLUSTER_ECHO_CHILD: Record<
+  string,
+  { parentType: string; parentIdKey: string; aliases: Record<string, string> }
+> = {
+  'AWS::RDS::DBInstance': {
+    parentType: 'AWS::RDS::DBCluster',
+    parentIdKey: 'DBClusterIdentifier',
+    // The two APIs spell a few shared settings differently: an instance's VPCSecurityGroups
+    // is the cluster's VpcSecurityGroupIds; its EnablePerformanceInsights is the cluster's
+    // PerformanceInsightsEnabled (Aurora manages PI cluster-wide, so the instance mirrors it).
+    aliases: {
+      VPCSecurityGroups: 'VpcSecurityGroupIds',
+      EnablePerformanceInsights: 'PerformanceInsightsEnabled',
     },
-  };
+  },
+  // A Neptune DBInstance echoes its parent DBCluster's cluster-level DBSubnetGroupName — the
+  // CDK instance never declares it (only DBClusterIdentifier + DBInstanceClass), so it floods a
+  // first run as undeclared inventory that merely mirrors the cluster's declared value (#980).
+  // Same shape as the Aurora echo above; Neptune's instance/cluster APIs spell the shared keys
+  // identically, so no aliases are needed. Equality-gated against the parent's live model, so an
+  // instance moved to a DIFFERENT subnet group still surfaces.
+  'AWS::Neptune::DBInstance': {
+    parentType: 'AWS::Neptune::DBCluster',
+    parentIdKey: 'DBClusterIdentifier',
+    aliases: {},
+  },
+};
 
 const isKeyValueEntry = (t: unknown): t is { Key: string; Value: unknown } =>
   !!t &&

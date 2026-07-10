@@ -8,7 +8,7 @@ import {
 } from '@aws-sdk/client-cloudformation';
 import { buildCorpusCase, CORPUS_DIR_ENV, recordCorpusCase } from '../corpus/record.js';
 import { type Desired, loadDesired } from '../desired/template-adapter.js';
-import { classifyResource, normalizeLiveModel } from '../diff/classify.js';
+import { CLUSTER_ECHO_CHILD, classifyResource, normalizeLiveModel } from '../diff/classify.js';
 import { resolveProperties } from '../normalize/intrinsic-resolver.js';
 import { READ_RETRY } from '../read/client-config.js';
 import {
@@ -322,17 +322,24 @@ export function buildBucketNotificationManaged(desired: Desired): Set<string> {
 // cannot be resolved is simply not stripped (its echoes stay a one-time visible inventory,
 // never a hidden change).
 export function buildClusterEchoModels(desired: Desired): Record<string, Record<string, unknown>> {
+  // Both the parent cluster types to harvest and the child types to resolve are sourced from
+  // CLUSTER_ECHO_CHILD — the SAME table the classify strip reads — so a new echo-child entry
+  // wires this live path automatically (a hardcoded RDS-only list here silently left Neptune's
+  // fold corpus-green but live-broken, #980). A child's parentIdKey Refs its parent's physical id;
+  // physical ids are unique across types, so one clusterByPhys map serves all parent types.
+  const parentTypes = new Set(Object.values(CLUSTER_ECHO_CHILD).map((s) => s.parentType));
   const clusterByPhys: Record<string, Record<string, unknown>> = {};
   for (const r of desired.resources) {
-    if (r.resourceType !== 'AWS::RDS::DBCluster' || !r.physicalId) continue;
+    if (!parentTypes.has(r.resourceType) || !r.physicalId) continue;
     const live = desired.ctx.liveAttrs[r.logicalId];
     if (live && typeof live === 'object')
       clusterByPhys[r.physicalId] = live as Record<string, unknown>;
   }
   const map: Record<string, Record<string, unknown>> = {};
   for (const r of desired.resources) {
-    if (r.resourceType !== 'AWS::RDS::DBInstance' || !r.physicalId) continue;
-    const clusterId = (r.declared as Record<string, unknown> | undefined)?.DBClusterIdentifier;
+    const spec = CLUSTER_ECHO_CHILD[r.resourceType];
+    if (!spec || !r.physicalId) continue;
+    const clusterId = (r.declared as Record<string, unknown> | undefined)?.[spec.parentIdKey];
     if (typeof clusterId !== 'string') continue;
     const clusterLive = clusterByPhys[clusterId];
     if (clusterLive) map[r.physicalId] = clusterLive;

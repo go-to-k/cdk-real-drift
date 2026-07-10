@@ -42,7 +42,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "DataCatalog",
       "resourceType": "AWS::Athena::DataCatalog",
       "path": "Status",

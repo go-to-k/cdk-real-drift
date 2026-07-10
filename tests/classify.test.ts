@@ -11284,3 +11284,108 @@ describe('#747 dotted live-only map key -> whole map at parent path (undeclared)
     expect(undeclared[0].path).toBe('Parameters');
   });
 });
+
+// #980: first-run undeclared false positives on clean deploys, each folded via an existing
+// mechanism. Each fold is EQUALITY-GATED, so a value that DIVERGES from the default still surfaces.
+describe('#980 clean-deploy first-run folds', () => {
+  const bareSchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+
+  it('Athena DataCatalog Status=CREATE_COMPLETE folds (constant, equality-gated)', () => {
+    const resource: DesiredResource = {
+      logicalId: 'Cat',
+      resourceType: 'AWS::Athena::DataCatalog',
+      physicalId: 'my-catalog',
+      declared: { Name: 'my-catalog', Type: 'GLUE' },
+    };
+    const clean = tiers(
+      classifyResource(
+        resource,
+        { Name: 'my-catalog', Type: 'GLUE', Status: 'CREATE_COMPLETE' },
+        bareSchema
+      )
+    );
+    expect(clean.undeclared).toEqual([]);
+    expect(clean.atDefault).toEqual(['Status']);
+    // a catalog stuck in a non-steady state still surfaces
+    const drifted = tiers(
+      classifyResource(
+        resource,
+        { Name: 'my-catalog', Type: 'GLUE', Status: 'CREATE_FAILED' },
+        bareSchema
+      )
+    );
+    expect(drifted.undeclared).toEqual(['Status']);
+  });
+
+  it('VPCPeeringConnection PeerOwnerId=<account> folds (account-derived, equality-gated)', () => {
+    const resource: DesiredResource = {
+      logicalId: 'Peer',
+      resourceType: 'AWS::EC2::VPCPeeringConnection',
+      physicalId: 'pcx-1',
+      declared: { VpcId: 'vpc-a', PeerVpcId: 'vpc-b' },
+    };
+    const opts = { accountId: '111111111111', region: 'us-east-1' };
+    const clean = tiers(
+      classifyResource(
+        resource,
+        { VpcId: 'vpc-a', PeerVpcId: 'vpc-b', PeerOwnerId: '111111111111' },
+        bareSchema,
+        opts
+      )
+    );
+    expect(clean.undeclared).toEqual([]);
+    expect(clean.atDefault).toEqual(['PeerOwnerId']);
+    // a cross-account peer owner (a different account) still surfaces
+    const drifted = tiers(
+      classifyResource(
+        resource,
+        { VpcId: 'vpc-a', PeerVpcId: 'vpc-b', PeerOwnerId: '222222222222' },
+        bareSchema,
+        opts
+      )
+    );
+    expect(drifted.undeclared).toEqual(['PeerOwnerId']);
+  });
+
+  it('Neptune DBInstance DBSubnetGroupName echoes its cluster and folds (equality-gated)', () => {
+    const resource: DesiredResource = {
+      logicalId: 'Inst',
+      resourceType: 'AWS::Neptune::DBInstance',
+      physicalId: 'inst-1',
+      declared: { DBClusterIdentifier: 'clu-1', DBInstanceClass: 'db.t4g.medium' },
+    };
+    const opts = {
+      accountId: '111111111111',
+      region: 'us-east-1',
+      clusterEchoModel: { 'inst-1': { DBSubnetGroupName: 'sg-shared' } },
+    };
+    const clean = tiers(
+      classifyResource(
+        resource,
+        { DBInstanceClass: 'db.t4g.medium', DBSubnetGroupName: 'sg-shared' },
+        bareSchema,
+        opts
+      )
+    );
+    expect(clean.undeclared).toEqual([]);
+    // an instance in a DIFFERENT subnet group than its cluster still surfaces
+    const drifted = tiers(
+      classifyResource(
+        resource,
+        { DBInstanceClass: 'db.t4g.medium', DBSubnetGroupName: 'sg-other' },
+        bareSchema,
+        opts
+      )
+    );
+    expect(drifted.undeclared).toEqual(['DBSubnetGroupName']);
+  });
+});

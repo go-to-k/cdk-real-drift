@@ -1345,6 +1345,13 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::InternetMonitor::Monitor': {
     Status: 'ACTIVE',
   },
+  // An Athena DataCatalog that declares no Status reads back the steady-state "CREATE_COMPLETE"
+  // every healthy catalog materializes (observed live, corpus at 0.2.68, #980). Same class as the
+  // InternetMonitor Status: ACTIVE / WorkGroup State: ENABLED constants. Equality-gated, so a
+  // catalog stuck in CREATE_FAILED / DELETE_* still surfaces as real undeclared drift.
+  'AWS::Athena::DataCatalog': {
+    Status: 'CREATE_COMPLETE',
+  },
   // A Roles Anywhere profile that declares neither a session duration nor attribute mappings
   // reads back AWS's 3600-second default and the constant default attribute-mapping set
   // (observed live, hunt 2026-07-08, #619). DurationSeconds is a user-settable knob (equality-
@@ -2242,6 +2249,11 @@ export const CONTEXT_ARN_DEFAULTS: Record<string, Record<string, string | string
   // account id; equality-gated, so an AccessPoint pointed at a cross-account bucket owner still
   // surfaces. Live-confirmed on a fresh s3objectlambda-rich AccessPoint (#919).
   'AWS::S3::AccessPoint': { BucketAccountId: '{accountId}' },
+  // A same-account VPC peering connection that declares no PeerOwnerId reads back the deploying
+  // (caller's) account id — the default peer owner. The bare `{accountId}` placeholder substitutes
+  // to the account id; equality-gated, so a genuine cross-account peer (which declares PeerOwnerId,
+  // compared in the declared loop) still surfaces. Live corpus at 0.2.68 (#980).
+  'AWS::EC2::VPCPeeringConnection': { PeerOwnerId: '{accountId}' },
   // A SlackChannelConfiguration that declares no GuardrailPolicies reads back the single
   // AWS-managed `AdministratorAccess` policy ARN — the service default guardrail. The
   // AWS-managed policy ARN is PARTITION-scoped (`arn:aws-cn:…` in China, `arn:aws-us-gov:…`
