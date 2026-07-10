@@ -180,6 +180,69 @@ describe('baseline', () => {
     expect(applyBaseline([undeclared('A', 'P', ['x'])], b)).toEqual([]);
   });
 
+  describe('recordable generated content hash (Lambda CodeSha256 code-swap watch, #646)', () => {
+    const generated = (path: string, value: unknown): Finding => ({
+      tier: 'generated',
+      logicalId: 'Fn',
+      resourceType: 'AWS::Lambda::Function',
+      path,
+      actual: value,
+    });
+    const SHA_A = `${'a'.repeat(43)}=`;
+    const SHA_B = `${'b'.repeat(43)}=`;
+    const entry = (value: unknown) => ({
+      logicalId: 'Fn',
+      resourceType: 'AWS::Lambda::Function',
+      path: 'CodeSha256',
+      value,
+    });
+
+    it('buildRecorded snapshots the recordable-generated CodeSha256 so record can watch it', () => {
+      // The exception to "generated is never recorded": the code IS mutable out of band, so
+      // record must snapshot the hash. buildRecorded folds it in alongside undeclared/added.
+      expect(buildRecorded([generated('CodeSha256', SHA_A)])).toEqual([entry(SHA_A)]);
+    });
+
+    it('a generated value OUTSIDE the curated allowlist is still NOT snapshot (narrow exception)', () => {
+      // a different path on the same type, and the IMMUTABLE Lambda::Version CodeSha256 sibling
+      expect(buildRecorded([generated('SomeGeneratedName', 'x')])).toEqual([]);
+      expect(
+        buildRecorded([
+          {
+            tier: 'generated',
+            logicalId: 'V',
+            resourceType: 'AWS::Lambda::Version',
+            path: 'CodeSha256',
+            actual: SHA_A,
+          },
+        ])
+      ).toEqual([]);
+    });
+
+    it('first run (no baseline): the hash passes through folded — NOT unrecorded, NOT drift', () => {
+      const out = applyBaseline([generated('CodeSha256', SHA_A)], undefined);
+      expect(out[0]).toMatchObject({ tier: 'generated', path: 'CodeSha256' });
+      expect(out[0]!.unrecorded).toBeUndefined();
+    });
+
+    it('recorded then UNCHANGED code: suppressed (stays CLEAN)', () => {
+      expect(applyBaseline([generated('CodeSha256', SHA_A)], baseline([entry(SHA_A)]))).toEqual([]);
+    });
+
+    it('recorded then SWAPPED out of band: re-surfaces as undeclared drift (live hash vs recorded)', () => {
+      // applyBaseline promotes the recorded-value-CHANGED generated finding to `undeclared`
+      // (a drift tier) and carries the RECORDED hash on `desired` so the report shows the delta.
+      const out = applyBaseline([generated('CodeSha256', SHA_B)], baseline([entry(SHA_A)]));
+      expect(out).toHaveLength(1);
+      expect(out[0]).toMatchObject({
+        tier: 'undeclared',
+        path: 'CodeSha256',
+        actual: SHA_B,
+        desired: SHA_A,
+      });
+    });
+  });
+
   describe('atDefault reconciliation (R86 — folded inventory, never drift, never a false removal)', () => {
     const atDefault = (
       logicalId: string,

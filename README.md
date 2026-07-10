@@ -877,6 +877,15 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   re-surfaces as drift — otherwise invisible (the bundle location is write-only).
   It fetches the presigned S3 URL the API returns; without the permission (or on
   any fetch failure) the signal is skipped, never false-flagged.
+- Optional: `lambda:GetFunction` records the code digest of an
+  `AWS::Lambda::Function` (`CodeSha256`) so an out-of-band code swap
+  (`aws lambda update-function-code`, a console "Deploy", a SAM/hotswap sync)
+  re-surfaces as drift — otherwise invisible (the function `Code` is write-only and
+  a later `cdk deploy` does not heal it). It folds silently on a clean deploy
+  (zero first-run noise), `record` snapshots it, and a later change re-surfaces as
+  "changed since record". The old code bytes are gone, so it is detect-only (not
+  revertable — redeploy with a forced code update). Without the permission the
+  signal is skipped, never false-flagged.
 - Optional: `kms:ListAliases` enables strict verification that a declared
   `alias/aws/*` key was not swapped for a customer-managed key. Without it that case
   is conservatively suppressed AND cdkrd prints a one-line warning per region (the

@@ -1215,6 +1215,24 @@ describe('buildRevertPlan', () => {
     expect(plan.notRevertable[0]!.reason).toContain('integrity signal');
   });
 
+  it('Lambda::Function CodeSha256 (code-swap integrity signal) is notRevertable (#646)', () => {
+    // The digest of the writeOnly function code from lambda:GetFunction: it re-surfaces an
+    // out-of-band code swap, but the original bytes are gone, so there is no write target — a
+    // remove op would fail. Report it detect/record-only (hint: redeploy with a forced update).
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::Lambda::Function',
+      path: 'CodeSha256',
+      physicalId: 'my-fn',
+      actual: `${'a'.repeat(43)}=`,
+      desired: `${'b'.repeat(43)}=`,
+    });
+    const plan = buildRevertPlan([f], undefined);
+    expect(plan.items).toHaveLength(0);
+    expect(plan.notRevertable).toHaveLength(1);
+    expect(plan.notRevertable[0]!.reason).toContain('integrity signal');
+  });
+
   it('--remove-unrecorded re-enables the remove op for unrecorded values', () => {
     const f = F({
       tier: 'undeclared',
