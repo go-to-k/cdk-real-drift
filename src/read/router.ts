@@ -461,12 +461,28 @@ function compositeWith(
 // A supplement read failed, so its props (exempted from the writeOnly/readGap strip by
 // OVERRIDE_READABLE_WRITEONLY on the assumption the supplement provides the live value)
 // would false-flag as declared drift against an absent live value (#752). Restore the
-// readGap for the props the user DECLARED — mirror the declared value into the live model
-// so declared == live folds to no drift (the readGap outcome) — and warn on stderr naming
-// the failed supplement call, so a permission gap degrades LOUDLY to coverage-incomplete
-// instead of silently to false declared drift. Only exempted TOP-LEVEL props that are (a)
-// declared and (b) NOT already present in the live model are mirrored (an undeclared prop
-// has nothing to compare, and a prop the CC read already echoed is genuinely readable).
+// readGap for the props the user DECLARED, and warn on stderr naming the failed supplement
+// call, so a permission gap degrades LOUDLY to coverage-incomplete instead of silently to
+// false declared drift.
+//
+// HOW the readGap is restored depends on the DECLARED value shape (#849), because classify's
+// "declared key absent from live" branch (diff/classify.ts) treats the two shapes oppositely:
+//   - a SCALAR (or an empty collection) absent from live → classify emits a genuine
+//     `readGap`-tier finding on its own. So we LEAVE the scalar ABSENT: the readGap now
+//     surfaces in the report's `info:` read-gap count (footer) AND blocks snapshot-
+//     completeness (#795) for the failed-supplement resource — closing the gap between the
+//     stderr-only warning and the reported coverage. Since the value is absent, there is no
+//     declared==live compare, so no false declared drift either.
+//   - a NON-EMPTY COLLECTION absent from live → classify treats it as a real removal and
+//     emits a `declared`-tier finding (the #752 false positive). classify's collection
+//     read-gap denylist (READGAP_COLLECTION_PATHS) is not aware of the supplement-failure
+//     context, so leaving a collection absent would REGRESS #752. For collections we keep the
+//     original declared→live MIRROR (declared == live → folds to no drift). Surfacing a
+//     counted readGap for the collection-shaped exempted props too would require plumbing a
+//     supplement-failure signal into classify.ts — deferred (out of this router-only scope).
+// Only exempted TOP-LEVEL props that are (a) declared and (b) NOT already present in the live
+// model are handled (an undeclared prop has nothing to compare/surface; a prop the CC read
+// already echoed is genuinely readable).
 function restoreSupplementReadGaps(
   resourceType: string,
   declared: Record<string, unknown>,
@@ -477,13 +493,20 @@ function restoreSupplementReadGaps(
   const restored: string[] = [];
   for (const path of exempt ?? []) {
     if (path in declared && !(path in live)) {
-      live[path] = declared[path];
+      const value = declared[path];
+      // A NON-EMPTY collection would false-flag as a `declared`-tier removal in classify
+      // (#752) — mirror it so declared == live folds to no drift. A SCALAR / empty
+      // collection is left ABSENT so classify emits a genuine, COUNTED readGap for it (#849).
+      const isNonEmptyCollection =
+        (Array.isArray(value) && value.length > 0) ||
+        (value !== null && typeof value === 'object' && Object.keys(value as object).length > 0);
+      if (isNonEmptyCollection) live[path] = value;
       restored.push(path);
     }
   }
   const call = (error as Error)?.name || 'unknown error';
   const gap = restored.length
-    ? ` — treating ${restored.join(', ')} as an unverifiable read-gap (declared value assumed unchanged; grant the missing read permission to detect out-of-band drift on it)`
+    ? ` — treating ${restored.join(', ')} as an unverifiable read-gap (grant the missing read permission to detect out-of-band drift on it)`
     : '';
   process.stderr.write(
     `[cdkrd] warning: supplement read for ${resourceType} failed (${call})${gap}\n`
