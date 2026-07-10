@@ -12,6 +12,7 @@ import {
 import { GetParametersCommand, SSMClient, type SSMClientConfig } from '@aws-sdk/client-ssm';
 import { classifyStackStatus, StackNotCheckableError } from '../aws-errors.js';
 import { evalCondition, resolveProperties } from '../normalize/intrinsic-resolver.js';
+import { READ_RETRY } from '../read/client-config.js';
 import type { DesiredResource, ResolverContext } from '../types.js';
 import { recoverNonAsciiMasks } from './recover-nonascii.js';
 import { parseCfnTemplate } from './yaml-cfn.js';
@@ -643,7 +644,15 @@ export async function loadDesired(
       // defined, but a bare mock leaves them undefined at runtime — read defensively.
       const credentials = (client as { config?: { credentials?: SSMClientConfig['credentials'] } })
         .config?.credentials;
-      const ssm = new SSMClient(credentials ? { region, credentials } : { region });
+      // Spread READ_RETRY so this prefetch client inherits the same connection/request timeouts
+      // (#1066 — a stalled/silent SSM endpoint would otherwise hang check/record FOREVER here)
+      // AND the adaptive retry budget (maxAttempts 10 vs the SDK default 3 — a transient
+      // ThrottlingException here aborts the prefetch and downgrades EVERY reader GetAtt in the
+      // stack to UNRESOLVED for the run). Keep the CFn-inherited `credentials` LAST so it wins
+      // over READ_RETRY's default CLIENT_CREDENTIALS chain in the `--profile` case (#1286).
+      const ssm = new SSMClient(
+        credentials ? { region, ...READ_RETRY, credentials } : { region, ...READ_RETRY }
+      );
       ctx.crossRegionExports = await getCrossRegionExports(
         ssm,
         accountId,
