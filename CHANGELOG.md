@@ -1,3 +1,10 @@
+## [0.12.33](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.32...v0.12.33) (2026-07-10)
+
+
+### Bug Fixes
+
+* **diff:** EIP self-declared InstanceId/NetworkInterfaceId folds reflected NetworkInterfaceId ([#1261](https://github.com/go-to-k/cdk-real-drift/issues/1261)) ([#1384](https://github.com/go-to-k/cdk-real-drift/issues/1384)) ([5bb8c04](https://github.com/go-to-k/cdk-real-drift/commit/5bb8c0492fa3f59ee85a6a0d8bd827b3a3bda72f))
+
 ## [0.12.32](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.31...v0.12.32) (2026-07-10)
 
 
