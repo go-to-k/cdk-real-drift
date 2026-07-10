@@ -149,15 +149,30 @@ export function buildScopeOptions(
  * to be prompted, so it gets the full set, matching the pre-gate `--yes` behaviour). The
  * `--yes` case never reaches the AWS-mutating revert through here (revert has no gate).
  */
+// #1097: the scope-select and per-finding action-picker headers, pure + exported so
+// their wording is unit-tested. Both label with `Name (region)` (the #1023 `stackLabel`) —
+// after #899 exact-name selection targets EVERY same-named region instance, so a bare
+// stackName in these DECISION prompts is indistinguishable across regions right where the
+// user decides (chooseScope) or assigns per-finding record/ignore/REVERT (the picker),
+// while the menu/multiselects already name the region.
+export function scopeMessage(stackName: string, region: string, foldedCount: number): string {
+  return `${stackLabel(stackName, region)}: the report folded ${foldedCount} undeclared value(s) — which to decide on?`;
+}
+
+export function perFindingActionMessage(stackName: string, region: string): string {
+  return `${stackLabel(stackName, region)}: assign an action to each finding`;
+}
+
 async function chooseScope(
   stackName: string,
+  region: string,
   shownCount: number,
   foldedCount: number,
   yes: boolean
 ): Promise<'shown' | 'all' | null> {
   if (yes || foldedCount === 0 || shownCount === 0) return 'all';
   const choice = await select({
-    message: `${stackName}: the report folded ${foldedCount} undeclared value(s) — which to decide on?`,
+    message: scopeMessage(stackName, region, foldedCount),
     options: buildScopeOptions(shownCount, foldedCount),
     initialValue: 'shown',
   });
@@ -437,7 +452,13 @@ async function ignoreAll(p: ResolveParams): Promise<SubResult | null> {
     (f) => f.tier === 'declared' || f.tier === 'undeclared' || f.tier === 'added'
   );
   const foldedCount = ignorable.filter((f) => isFoldedFinding(f, p.verbose)).length;
-  const scope = await chooseScope(p.stackName, ignorable.length - foldedCount, foldedCount, p.yes);
+  const scope = await chooseScope(
+    p.stackName,
+    p.region,
+    ignorable.length - foldedCount,
+    foldedCount,
+    p.yes
+  );
   if (scope === null) return null; // scope prompt cancelled → back to the menu
   const findings =
     scope === 'all' ? ignorable : ignorable.filter((f) => !isFoldedFinding(f, p.verbose));
@@ -487,7 +508,13 @@ async function perFinding(p: ResolveParams, decidable: Finding[]): Promise<SubRe
   // Gate the folded undeclared inventory the same way ignore does: default the picker to
   // the report's SHOWN findings, ask before pulling the folded nested values in.
   const foldedCount = decidable.filter((f) => isFoldedFinding(f, p.verbose)).length;
-  const scope = await chooseScope(p.stackName, decidable.length - foldedCount, foldedCount, p.yes);
+  const scope = await chooseScope(
+    p.stackName,
+    p.region,
+    decidable.length - foldedCount,
+    foldedCount,
+    p.yes
+  );
   if (scope === null) return null; // scope prompt cancelled → back to the menu
   const scoped =
     scope === 'all' ? decidable : decidable.filter((f) => !isFoldedFinding(f, p.verbose));
@@ -495,7 +522,7 @@ async function perFinding(p: ResolveParams, decidable: Finding[]): Promise<SubRe
     label: pickerLabel(f, p.stackName),
     applicable: applicableActions(f),
   }));
-  const chosen = await actionPicker(`${p.stackName}: assign an action to each finding`, rows);
+  const chosen = await actionPicker(perFindingActionMessage(p.stackName, p.region), rows);
   if (chosen === undefined) return null; // picker cancelled (Esc) → back to the menu
   const groups = groupByAction(scoped, chosen);
   if (groups.record.length + groups.ignore.length + groups.revert.length === 0)
