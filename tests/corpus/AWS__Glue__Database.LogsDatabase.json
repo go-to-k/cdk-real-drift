@@ -1,0 +1,68 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "LogsDatabase",
+    "resourceType": "AWS::Glue::Database",
+    "physicalId": "cdkrd_hunt_dotkey_logs_db",
+    "declared": {
+      "CatalogId": "111111111111",
+      "DatabaseInput": {
+        "Name": "cdkrd_hunt_dotkey_logs_db"
+      }
+    }
+  },
+  "liveRaw": {
+    "DatabaseName": "cdkrd_hunt_dotkey_logs_db",
+    "DatabaseInput": {
+      "CreateTableDefaultPermissions": [
+        {
+          "Permissions": ["ALL"],
+          "Principal": {
+            "DataLakePrincipalIdentifier": "IAM_ALLOWED_PRINCIPALS"
+          }
+        }
+      ],
+      "Parameters": {},
+      "Name": "cdkrd_hunt_dotkey_logs_db"
+    },
+    "CatalogId": "111111111111"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["DatabaseName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["DatabaseName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["DatabaseInput.CreateTableDefaultPermissions"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "LogsDatabase",
+      "resourceType": "AWS::Glue::Database",
+      "path": "DatabaseInput.CreateTableDefaultPermissions",
+      "actual": [
+        {
+          "Permissions": ["ALL"],
+          "Principal": {
+            "DataLakePrincipalIdentifier": "IAM_ALLOWED_PRINCIPALS"
+          }
+        }
+      ],
+      "nested": true,
+      "physicalId": "cdkrd_hunt_dotkey_logs_db"
+    }
+  ],
+  "description": "Companion database of the dot-key projection table case (same harvest)."
+}

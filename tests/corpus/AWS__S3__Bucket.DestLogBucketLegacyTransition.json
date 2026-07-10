@@ -1,0 +1,204 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "DestLogBucketLegacyTransition",
+    "resourceType": "AWS::S3::Bucket",
+    "physicalId": "cdkrdhuntgluedotkeyparams-destlogbuckete7485d81-p68wsfq2xups",
+    "declared": {
+      "LifecycleConfiguration": {
+        "Rules": [
+          {
+            "ExpirationInDays": 730,
+            "Status": "Enabled"
+          }
+        ]
+      },
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "AbacStatus": "Disabled",
+    "PublicAccessBlockConfiguration": {
+      "RestrictPublicBuckets": true,
+      "BlockPublicPolicy": true,
+      "BlockPublicAcls": true,
+      "IgnorePublicAcls": true
+    },
+    "BucketName": "cdkrdhuntgluedotkeyparams-destlogbuckete7485d81-p68wsfq2xups",
+    "RegionalDomainName": "cdkrdhuntgluedotkeyparams-destlogbuckete7485d81-p68wsfq2xups.s3.us-east-1.amazonaws.com",
+    "OwnershipControls": {
+      "Rules": [
+        {
+          "ObjectOwnership": "BucketOwnerEnforced"
+        }
+      ]
+    },
+    "DomainName": "cdkrdhuntgluedotkeyparams-destlogbuckete7485d81-p68wsfq2xups.s3.amazonaws.com",
+    "BucketEncryption": {
+      "ServerSideEncryptionConfiguration": [
+        {
+          "BucketKeyEnabled": false,
+          "BlockedEncryptionTypes": {
+            "EncryptionType": ["SSE-C"]
+          },
+          "ServerSideEncryptionByDefault": {
+            "SSEAlgorithm": "AES256"
+          }
+        }
+      ]
+    },
+    "WebsiteURL": "http://cdkrdhuntgluedotkeyparams-destlogbuckete7485d81-p68wsfq2xups.s3-website-us-east-1.amazonaws.com",
+    "LifecycleConfiguration": {
+      "TransitionDefaultMinimumObjectSize": "varies_by_storage_class",
+      "Rules": [
+        {
+          "Status": "Enabled",
+          "ExpirationInDays": 730,
+          "Id": "ZjhhYmI1NmMtYzI4NC00YmZmLThkMDctYTFmZjllNmI0OWQz",
+          "Prefix": ""
+        }
+      ]
+    },
+    "DualStackDomainName": "cdkrdhuntgluedotkeyparams-destlogbuckete7485d81-p68wsfq2xups.s3.dualstack.us-east-1.amazonaws.com",
+    "Arn": "arn:aws:s3:::cdkrdhuntgluedotkeyparams-destlogbuckete7485d81-p68wsfq2xups",
+    "Tags": [
+      {
+        "Value": "CdkrdHuntGlueDotkeyParams",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "DestLogBucketE7485D81",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHuntGlueDotkeyParams/c2b14830-7c67-11f1-936c-0ea7cdc24351",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "DomainName", "DualStackDomainName", "RegionalDomainName", "WebsiteURL"],
+    "writeOnly": ["AccessControl", "BucketNamePrefix", "BucketNamespace"],
+    "createOnly": ["BucketName", "BucketNamePrefix", "BucketNamespace"],
+    "readOnlyPaths": [
+      "Arn",
+      "DomainName",
+      "DualStackDomainName",
+      "MetadataConfiguration.AnnotationTableConfiguration.TableArn",
+      "MetadataConfiguration.AnnotationTableConfiguration.TableName",
+      "MetadataConfiguration.Destination",
+      "MetadataConfiguration.InventoryTableConfiguration.TableArn",
+      "MetadataConfiguration.InventoryTableConfiguration.TableName",
+      "MetadataConfiguration.JournalTableConfiguration.TableArn",
+      "MetadataConfiguration.JournalTableConfiguration.TableName",
+      "MetadataTableConfiguration.S3TablesDestination.TableArn",
+      "MetadataTableConfiguration.S3TablesDestination.TableNamespace",
+      "RegionalDomainName",
+      "WebsiteURL"
+    ],
+    "writeOnlyPaths": [
+      "AccessControl",
+      "BucketNamePrefix",
+      "BucketNamespace",
+      "LifecycleConfiguration.Rules.*.ExpiredObjectDeleteMarker",
+      "LifecycleConfiguration.Rules.*.NoncurrentVersionExpirationInDays",
+      "LifecycleConfiguration.Rules.*.NoncurrentVersionTransition",
+      "LifecycleConfiguration.Rules.*.Transition",
+      "MetadataConfiguration.AnnotationTableConfiguration.EncryptionConfiguration",
+      "MetadataConfiguration.InventoryTableConfiguration.EncryptionConfiguration",
+      "MetadataConfiguration.JournalTableConfiguration.EncryptionConfiguration",
+      "ReplicationConfiguration.Rules.*.Prefix"
+    ],
+    "createOnlyPaths": ["BucketName", "BucketNamePrefix", "BucketNamespace"],
+    "defaults": {},
+    "defaultPaths": {
+      "NotificationConfiguration.EventBridgeConfiguration.EventBridgeEnabled": "true",
+      "VersioningConfiguration.Status": "Suspended"
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "DestLogBucketLegacyTransition",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "AbacStatus",
+      "actual": "Disabled",
+      "physicalId": "cdkrdhuntgluedotkeyparams-destlogbuckete7485d81-p68wsfq2xups"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DestLogBucketLegacyTransition",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "PublicAccessBlockConfiguration",
+      "actual": {
+        "RestrictPublicBuckets": true,
+        "BlockPublicPolicy": true,
+        "BlockPublicAcls": true,
+        "IgnorePublicAcls": true
+      },
+      "physicalId": "cdkrdhuntgluedotkeyparams-destlogbuckete7485d81-p68wsfq2xups"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DestLogBucketLegacyTransition",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "OwnershipControls",
+      "actual": {
+        "Rules": [
+          {
+            "ObjectOwnership": "BucketOwnerEnforced"
+          }
+        ]
+      },
+      "physicalId": "cdkrdhuntgluedotkeyparams-destlogbuckete7485d81-p68wsfq2xups"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DestLogBucketLegacyTransition",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "BucketEncryption",
+      "actual": {
+        "ServerSideEncryptionConfiguration": [
+          {
+            "BucketKeyEnabled": false,
+            "BlockedEncryptionTypes": {
+              "EncryptionType": ["SSE-C"]
+            },
+            "ServerSideEncryptionByDefault": {
+              "SSEAlgorithm": "AES256"
+            }
+          }
+        ]
+      },
+      "physicalId": "cdkrdhuntgluedotkeyparams-destlogbuckete7485d81-p68wsfq2xups"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DestLogBucketLegacyTransition",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "LifecycleConfiguration.TransitionDefaultMinimumObjectSize",
+      "actual": "varies_by_storage_class",
+      "nested": true,
+      "physicalId": "cdkrdhuntgluedotkeyparams-destlogbuckete7485d81-p68wsfq2xups"
+    }
+  ],
+  "description": "HAND-CURATED variant of DestLogBucketE7485D81: identical harvested case with TransitionDefaultMinimumObjectSize swapped to varies_by_storage_class \u2014 the documented LEGACY enum value AWS returns for lifecycle configurations created before the late-2024 default change (observed live on a real pre-change bucket; a fresh deploy cannot reproduce it). Locks the second constant of the KNOWN_DEFAULT_ONE_OF_PATHS set (PR #1249): must fold atDefault, never surface."
+}
