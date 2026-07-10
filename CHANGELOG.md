@@ -1,3 +1,10 @@
+## [0.9.9](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.8...v0.9.9) (2026-07-10)
+
+
+### Bug Fixes
+
+* **read:** enumerate VPC RouteTable + NetworkAcl children ([#1045](https://github.com/go-to-k/cdk-real-drift/issues/1045) follow-up) ([#1222](https://github.com/go-to-k/cdk-real-drift/issues/1222)) ([88d7852](https://github.com/go-to-k/cdk-real-drift/commit/88d78522257c7f3018f13964509ccb12ce2a4d20))
+
 ## [0.9.8](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.7...v0.9.8) (2026-07-10)
 
 
