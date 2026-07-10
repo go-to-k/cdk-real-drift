@@ -158,7 +158,7 @@
       "AdvancedSecurityOptions.SAMLOptions.MasterBackendRole",
       "AdvancedSecurityOptions.SAMLOptions.MasterUserName"
     ],
-    "createOnlyPaths": ["AdvancedSecurityOptions.Enabled", "DomainName", "EncryptionAtRestOptions"],
+    "createOnlyPaths": ["DomainName"],
     "defaults": {},
     "defaultPaths": {}
   },
