@@ -241,13 +241,14 @@ export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // (CLIENT_VPN_SCALAR_PARAMS): a `remove` deletes the key from the desired model, the
   // writer skips the now-undefined param, and nothing is sent — Cloud Control-style
   // "converge on omit" never applies (#912). Write the KNOWN_DEFAULTS defaults back
-  // explicitly so an out-of-band change converges. VpnPort (443) and
-  // DisconnectOnSessionTimeout (true) pull their values from KNOWN_DEFAULTS. SplitTunnel
-  // folds `atDefault` as a trivial-empty `false` (no KNOWN_DEFAULTS value), so an OOB
-  // `true` is otherwise unrevertable — its `false` default comes from
-  // REVERT_SET_DEFAULT_VALUES below, the EnableDns64 pattern.
+  // explicitly so an out-of-band change converges. VpnPort (443),
+  // DisconnectOnSessionTimeout (true), and SessionTimeoutHours (24) pull their values
+  // from KNOWN_DEFAULTS. SplitTunnel folds `atDefault` as a trivial-empty `false` (no
+  // KNOWN_DEFAULTS value), so an OOB `true` is otherwise unrevertable — its `false`
+  // default comes from REVERT_SET_DEFAULT_VALUES below, the EnableDns64 pattern.
   'AWS::EC2::ClientVpnEndpoint\0VpnPort',
   'AWS::EC2::ClientVpnEndpoint\0DisconnectOnSessionTimeout',
+  'AWS::EC2::ClientVpnEndpoint\0SessionTimeoutHours',
   'AWS::EC2::ClientVpnEndpoint\0SplitTunnel',
   // DocDB ModifyDBCluster / ModifyDBInstance are SELECTIVE-update APIs routed through SDK
   // writers whose allowlists include these props: a `remove` empties the desired model and
