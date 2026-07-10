@@ -1,3 +1,10 @@
+## [0.12.9](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.8...v0.12.9) (2026-07-10)
+
+
+### Bug Fixes
+
+* **report:** hash secret-bearing values in the baseline, not plaintext ([#798](https://github.com/go-to-k/cdk-real-drift/issues/798)) ([#1259](https://github.com/go-to-k/cdk-real-drift/issues/1259)) ([34db21a](https://github.com/go-to-k/cdk-real-drift/commit/34db21a62a57deb71cf687e3c06042c31a99a83d))
+
 ## [0.12.8](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.7...v0.12.8) (2026-07-10)
 
 
