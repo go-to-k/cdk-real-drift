@@ -824,7 +824,13 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   `glue:GetClassifier` + `glue:GetWorkflow` + `glue:GetConnection`
   (`glue:GetConnection` is issued with `HidePassword` so NO credential enters the
   baseline — read an `AWS::Glue::Classifier` / `Workflow` / `Connection`, the rest
-  of the Glue family that has no Cloud Control handler)
+  of the Glue family that has no Cloud Control handler),
+  `rds:DescribeOptionGroupOptions` (reads an `AWS::RDS::OptionGroup`'s option-default
+  catalog — the `DefaultValue` AWS materializes for every plugin setting the template
+  did not declare — so the service default-fill folds to `atDefault` instead of
+  flooding a clean first check with undeclared settings; equality-gated, so an
+  out-of-band setting change is still detected. Without the permission cdkrd warns
+  once and those default-fill settings surface as first-run drift)
 - Optional: `elasticloadbalancing:GetTrustStoreCaCertificatesBundle` records a
   content hash of an `AWS::ElasticLoadBalancingV2::TrustStore`'s live mTLS CA
   bundle (`CaCertificatesBundleSha256`) so an out-of-band CA-bundle swap

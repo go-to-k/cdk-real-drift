@@ -119,7 +119,22 @@
     "accountId": "111111111111",
     "region": "us-east-1",
     "kmsAliasTargets": {},
-    "oaiCanonicalIds": {}
+    "oaiCanonicalIds": {},
+    "rdsOptionSettingDefaults": {
+      "cdkrealdriftintegrdsoptevsub-huntoptiongroup-ukvbr6ytu287": {
+        "MARIADB_AUDIT_PLUGIN": {
+          "SERVER_AUDIT_EVENTS": "CONNECT,QUERY",
+          "SERVER_AUDIT_QUERY_LOG_LIMIT": "1024",
+          "SERVER_AUDIT_INCL_USERS": null,
+          "SERVER_AUDIT_EXCL_USERS": null,
+          "SERVER_AUDIT_FILE_ROTATE_SIZE": null,
+          "SERVER_AUDIT_FILE_ROTATIONS": null,
+          "SERVER_AUDIT_LOGGING": "ON",
+          "SERVER_AUDIT_FILE_PATH": "/rdsdbdata/log/audit/",
+          "SERVER_AUDIT": "FORCE_PLUS_PERMANENT"
+        }
+      }
+    }
   },
   "expected": [
     {
