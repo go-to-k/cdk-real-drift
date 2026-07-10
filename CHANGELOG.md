@@ -1,3 +1,11 @@
+## [0.6.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.6.0...v0.6.1) (2026-07-10)
+
+
+### Bug Fixes
+
+* **read:** counted readGap for all failed-supplement exempted props, not just scalars ([#849](https://github.com/go-to-k/cdk-real-drift/issues/849)) ([#1182](https://github.com/go-to-k/cdk-real-drift/issues/1182)) ([d94173f](https://github.com/go-to-k/cdk-real-drift/commit/d94173f85d6865bff588c5da7f10224c41634be3))
+* **read:** route-table enumerator catches IPv6 + prefix-list routes ([#1081](https://github.com/go-to-k/cdk-real-drift/issues/1081)) ([#1178](https://github.com/go-to-k/cdk-real-drift/issues/1178)) ([8c1aaad](https://github.com/go-to-k/cdk-real-drift/commit/8c1aaade0b692d511911e36f41da0fcceed0b1ab))
+
 # [0.6.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.5.4...v0.6.0) (2026-07-10)
 
 
