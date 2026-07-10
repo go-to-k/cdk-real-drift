@@ -2267,10 +2267,21 @@ export interface RouteTableChildInput {
   routeTableId: string;
   declaredCidrs: string[]; // DestinationCidrBlocks of AWS::EC2::Route declared on this table
   liveRoutes: { cidr: string }[];
+  // Fail-safe (#1082): at least one declared route on this table has an UNRESOLVED
+  // DestinationCidrBlock (a `{{resolve:ssm:...}}` dynamic ref, a degraded Fn::ImportValue,
+  // or a no-default NoEcho Ref → the UNRESOLVED symbol). The route's identity is matched
+  // ONLY through its DestinationCidrBlock (the CFn physical id is a generated token), so an
+  // UNRESOLVED cidr cannot be matched to any live route. Reporting a live route as `added`
+  // then risks a destructive `revert --remove-unrecorded` DeleteResource against a route the
+  // template DECLARES. When true, suppress `added` for THIS table's routes entirely.
+  hasUnresolvedDeclaredRoute?: boolean;
 }
 
 export function diffRouteTableChildren(input: RouteTableChildInput): AddedChild[] {
-  const { routeTableId, declaredCidrs, liveRoutes } = input;
+  const { routeTableId, declaredCidrs, liveRoutes, hasUnresolvedDeclaredRoute } = input;
+  // A declared route with an UNRESOLVED DestinationCidrBlock could be ANY of the live
+  // routes — we can't tell which — so we cannot safely call any live route `added`.
+  if (hasUnresolvedDeclaredRoute) return [];
   const declared = new Set(declaredCidrs);
   const added: AddedChild[] = [];
   for (const route of liveRoutes) {
@@ -2318,13 +2329,24 @@ async function enumerateRouteTableChildren(ctx: EnumeratorContext): Promise<Adde
   // physical id by gather). A route's CFn physical id is a generated token, so MATCH
   // declared routes by DestinationCidrBlock (the route's identity within the table).
   const declaredCidrs: string[] = [];
+  let hasUnresolvedDeclaredRoute = false;
   for (const r of desired.resources) {
     if (
-      r.resourceType === 'AWS::EC2::Route' &&
-      parentRefMatches(r.declared.RouteTableId, routeTableId) &&
-      typeof r.declared.DestinationCidrBlock === 'string'
+      r.resourceType !== 'AWS::EC2::Route' ||
+      !parentRefMatches(r.declared.RouteTableId, routeTableId)
     ) {
-      declaredCidrs.push(r.declared.DestinationCidrBlock);
+      continue;
+    }
+    const cidr = r.declared.DestinationCidrBlock;
+    if (typeof cidr === 'string') {
+      declaredCidrs.push(cidr);
+    } else if (cidr === UNRESOLVED || hasUnresolved(cidr)) {
+      // Fail-safe (#1082): an UNRESOLVED DestinationCidrBlock (dynamic ref / degraded
+      // ImportValue / no-default NoEcho Ref) is this route's ONLY identity handle, so its
+      // live counterpart cannot be matched. Suppress `added` for this table's routes rather
+      // than offer a destructive delete of a route the template declares. Mirrors the
+      // parentRefMatches / #962 fail-safe, applied to the child IDENTITY property.
+      hasUnresolvedDeclaredRoute = true;
     }
   }
 
@@ -2334,7 +2356,12 @@ async function enumerateRouteTableChildren(ctx: EnumeratorContext): Promise<Adde
     .filter(isEnumerableRoute)
     .map((route) => ({ cidr: route.DestinationCidrBlock }));
 
-  return diffRouteTableChildren({ routeTableId, declaredCidrs, liveRoutes });
+  return diffRouteTableChildren({
+    routeTableId,
+    declaredCidrs,
+    liveRoutes,
+    hasUnresolvedDeclaredRoute,
+  });
 }
 
 // ── ECS ──────────────────────────────────────────────────────────────────────

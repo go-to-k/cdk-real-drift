@@ -1594,6 +1594,37 @@ describe('diffRouteTableChildren (EC2 routes)', () => {
     ).toEqual([]);
   });
 
+  // #1082: a declared AWS::EC2::Route's identity is matched ONLY through its
+  // DestinationCidrBlock (the CFn physical id is a generated token). When that cidr is
+  // UNRESOLVED (a `{{resolve:ssm:...}}` dynamic ref, a degraded Fn::ImportValue, or a
+  // no-default NoEcho Ref → the UNRESOLVED symbol) the enumerator sets
+  // `hasUnresolvedDeclaredRoute`, and the diff must FAIL SAFE: it cannot match the declared
+  // route to any live cidr, so it must NOT flag any live route `added` (a `revert
+  // --remove-unrecorded` would then destructively DeleteResource a route the template
+  // declares).
+  it('fails safe: an UNRESOLVED declared cidr suppresses ALL added for this table (#1082)', () => {
+    expect(
+      diffRouteTableChildren({
+        routeTableId: RT,
+        // The declared cidr was UNRESOLVED, so it never made it into declaredCidrs; the
+        // enumerator instead raised the fail-safe flag.
+        declaredCidrs: [],
+        liveRoutes: [{ cidr: '10.99.0.0/16' }],
+        hasUnresolvedDeclaredRoute: true,
+      })
+    ).toEqual([]);
+  });
+
+  it('with no UNRESOLVED declared route, a genuinely out-of-band route is STILL added (no regression, #1082)', () => {
+    const added = diffRouteTableChildren({
+      routeTableId: RT,
+      declaredCidrs: ['0.0.0.0/0'],
+      liveRoutes: [{ cidr: '0.0.0.0/0' }, { cidr: '10.99.0.0/16' }],
+      hasUnresolvedDeclaredRoute: false,
+    });
+    expect(added.map((a) => a.identifier)).toEqual([`${RT}|10.99.0.0/16`]);
+  });
+
   describe('isEnumerableRoute', () => {
     it('keeps a user-declarable route (manual CreateRoute with a real CIDR)', () => {
       expect(
