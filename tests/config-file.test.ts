@@ -1,7 +1,7 @@
 import { chmod, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { buildRecorded } from '../src/baseline/baseline-file.js';
 import {
   addIgnoreRules,
@@ -18,6 +18,27 @@ import {
 } from '../src/config/config-file.js';
 import { buildRevertPlan } from '../src/revert/plan.js';
 import type { Finding } from '../src/types.js';
+
+// #1290 — deterministically reproduce a concurrent-append interleave by scripting the bytes
+// each `readFile('.cdkrd/ignore.yaml')` returns. ESM export namespaces are frozen so `readFile`
+// cannot be `vi.spyOn`-ed; instead mock `node:fs/promises` with a factory that DELEGATES every
+// call to the real module (so all other tests keep hitting the real temp filesystem) and only
+// overrides ignore.yaml reads WHEN `readScript` is set (null by default = pure pass-through).
+const { readScript } = vi.hoisted(() => ({ readScript: { seq: null as string[] | null, i: 0 } }));
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const real = await importOriginal<typeof import('node:fs/promises')>();
+  return {
+    ...real,
+    readFile: (async (path: unknown, ...args: unknown[]) => {
+      if (readScript.seq !== null && typeof path === 'string' && path.endsWith('ignore.yaml')) {
+        const next = readScript.seq[Math.min(readScript.i, readScript.seq.length - 1)];
+        readScript.i++;
+        return Buffer.from(next, 'utf8');
+      }
+      return (real.readFile as (...a: unknown[]) => unknown)(path, ...args);
+    }) as typeof real.readFile,
+  };
+});
 
 const ACCT = '111111111111';
 const cfg = (ignore: IgnoreRuleObject[]): CdkrdConfig => ({ ignore });
@@ -1148,6 +1169,47 @@ describe('addIgnoreRules', () => {
     // both the peer's rule and ours land — the write was built from the re-read, not a write
     // that overwrote the file with only our rule.
     expect((await loadConfig()).ignore).toEqual([{ path: 'Peer.appended' }, { path: 'Mine.z' }]);
+  });
+
+  it('builds the write AND the dedupe from ONE re-read snapshot — a peer rule already on disk is not re-appended as a duplicate (#1290)', async () => {
+    // The #759 re-read narrowing is only sound when the WRITE basis (`existingRaw`, re-emitted
+    // with comments) and the DEDUPE basis come from the SAME snapshot. The old code did TWO
+    // separate reads before writing: `existingRaw` = one readFile, then a SECOND `loadConfig()`
+    // (another readFile) used ONLY for dedupe. When those two reads observe DIFFERENT bytes —
+    // a concurrent `cdkrd` appending a rule between them — the dedupe basis and the write basis
+    // disagree, and the merge decision (what counts as "new") is computed against a snapshot
+    // that is not the one being written. Here a peer appends OUR rule (`Mine.z`) to disk: it is
+    // present in `existingRaw` (the write basis) but ABSENT from the stale second read (the
+    // dedupe basis), so the old code judged `Mine.z` new and appended it ON TOP of the copy
+    // that already had it — a DUPLICATE. The fix derives the dedupe basis from
+    // `parseConfigRaw(existingRaw)` (one snapshot), so the peer's `Mine.z` is seen as present
+    // and the write is a no-op. We script the sequence of on-disk-config reads to reproduce the
+    // exact interleave the issue names.
+    await mkdir('.cdkrd', { recursive: true });
+    const raw1 = 'ignore:\n  - path: Base.x\n';
+    // The peer process, racing us, appends OUR rule to disk in the window between our reads.
+    const raw2 = `${raw1}  - path: Mine.z\n`;
+    // Seed the REAL file with the peer-included state (raw2) so the final loadConfig assertion
+    // reads the true on-disk result after the spy is restored.
+    await writeFile('.cdkrd/ignore.yaml', raw2, 'utf8');
+    // Read order in addIgnoreRules: (1) top loadConfig, (2) existingRaw = the write basis,
+    // (3) OLD-ONLY second loadConfig = the dedupe basis. Scripting existingRaw to see the
+    // peer (raw2) but the stale dedupe read to miss it (raw1) is the divergence the issue
+    // describes. The NEW code never does read (3), so its dedupe basis IS raw2 and the write
+    // is a no-op. After the scripted reads are exhausted, later reads (the assertion's
+    // loadConfig) fall through to the LAST scripted value; we clear the script instead so the
+    // final assertion reads the true on-disk file.
+    readScript.seq = [raw1, raw2, raw1];
+    readScript.i = 0;
+    try {
+      await addIgnoreRules([p('Mine.z')]);
+    } finally {
+      readScript.seq = null;
+      readScript.i = 0;
+    }
+    // Exactly one Mine.z — the peer's rule is deduped against the SAME snapshot the write is
+    // built from, so the stale second read can no longer make us re-append a duplicate.
+    expect((await loadConfig()).ignore).toEqual([{ path: 'Base.x' }, { path: 'Mine.z' }]);
   });
 
   it('appends to a UTF-16 LE existing file without mojibaking its prior rules (#1291 re-read)', async () => {
