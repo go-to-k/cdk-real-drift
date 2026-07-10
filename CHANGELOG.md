@@ -1,3 +1,17 @@
+## [0.4.13](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.12...v0.4.13) (2026-07-10)
+
+
+### Bug Fixes
+
+* ACM Certificate folds ([#1090](https://github.com/go-to-k/cdk-real-drift/issues/1090)) + [#845](https://github.com/go-to-k/cdk-real-drift/issues/845) sibling-shape folds ([#1094](https://github.com/go-to-k/cdk-real-drift/issues/1094)) ([#1099](https://github.com/go-to-k/cdk-real-drift/issues/1099)) ([152f117](https://github.com/go-to-k/cdk-real-drift/commit/152f1173e774fe541a029c27314c261fece6abc5))
+* **check:** whole-stack skips escape --strict exit aggregation ([#948](https://github.com/go-to-k/cdk-real-drift/issues/948)) ([#1022](https://github.com/go-to-k/cdk-real-drift/issues/1022)) ([7de287f](https://github.com/go-to-k/cdk-real-drift/commit/7de287ff42d8535586ce4e7a7ba46de4043c3078))
+* **cli:** route swallowed signals/rejections to real exit codes (SIGTERM 143, unhandled error 2) ([#951](https://github.com/go-to-k/cdk-real-drift/issues/951)) ([#1100](https://github.com/go-to-k/cdk-real-drift/issues/1100)) ([fc7627d](https://github.com/go-to-k/cdk-real-drift/commit/fc7627da510747e7b064c4a3a94050698c86a45f))
+* **commands:** region in per-finding decision prompts ([#1097](https://github.com/go-to-k/cdk-real-drift/issues/1097)) ([#1098](https://github.com/go-to-k/cdk-real-drift/issues/1098)) ([189dfa0](https://github.com/go-to-k/cdk-real-drift/commit/189dfa0ef15c9a4d3c589b493b4f76c0d5a65dcb))
+* **normalize:** {Condition: name} in property position is literal data ([#783](https://github.com/go-to-k/cdk-real-drift/issues/783)) ([#1026](https://github.com/go-to-k/cdk-real-drift/issues/1026)) ([efb7a5a](https://github.com/go-to-k/cdk-real-drift/commit/efb7a5a7f5e1494492bef8f2379e1e610178cd61))
+* **read:** Aurora AAS read-replicas falsely 'added' ([#801](https://github.com/go-to-k/cdk-real-drift/issues/801)) ([#1030](https://github.com/go-to-k/cdk-real-drift/issues/1030)) ([3d28e20](https://github.com/go-to-k/cdk-real-drift/commit/3d28e2012589a9153f07647af03526beb4545fb2))
+* **report:** --pre-deploy pending-creation footer + deploy-will-delete surface ([#883](https://github.com/go-to-k/cdk-real-drift/issues/883)) ([#1032](https://github.com/go-to-k/cdk-real-drift/issues/1032)) ([f079227](https://github.com/go-to-k/cdk-real-drift/commit/f079227ede982a126fc887dff8dde2c18f8b1010))
+* **synth:** surface silent context lookups + cdk.context.json write ([#906](https://github.com/go-to-k/cdk-real-drift/issues/906)) ([#1037](https://github.com/go-to-k/cdk-real-drift/issues/1037)) ([0af729c](https://github.com/go-to-k/cdk-real-drift/commit/0af729c8940cebb7bc77d89b64d62577ae8e0e09))
+
 ## [0.4.12](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.11...v0.4.12) (2026-07-10)
 
 
