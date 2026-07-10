@@ -4,6 +4,7 @@ import {
   GetTemplateCommand,
   ListExportsCommand,
   ListStackResourcesCommand,
+  type StackStatus,
 } from '@aws-sdk/client-cloudformation';
 import { mockClient } from 'aws-sdk-client-mock';
 import { describe, expect, it, vi } from 'vite-plus/test';
@@ -14,7 +15,10 @@ import {
   deletedResourceInfo,
   loadDesired,
   parseTemplateBody,
+  typeChangedResources,
+  typeChangeReplaceInfo,
 } from '../src/desired/template-adapter.js';
+import { StackNotCheckableError } from '../src/aws-errors.js';
 import { UNRESOLVED } from '../src/normalize/intrinsic-resolver.js';
 
 describe('collectPrincipalsWithSiblingPolicies', () => {
@@ -841,5 +845,210 @@ describe('loadDesired resource-level Condition (#689)', () => {
     const ids = desired.resources.map((r) => r.logicalId).sort();
     // ProdOnly (condition false, no physical id) is dropped; everything else survives.
     expect(ids).toEqual(['Always', 'AnomalyFalse', 'DevOnly', 'Unk']);
+  });
+});
+
+describe('#882 — typeChangedResources / typeChangeReplaceInfo (pure)', () => {
+  it('flags a logical id whose declared Type differs from the deployed Type', () => {
+    const template = { X: { Type: 'AWS::SNS::Topic' }, Keep: { Type: 'AWS::S3::Bucket' } };
+    const deployed = { X: 'AWS::SQS::Queue', Keep: 'AWS::S3::Bucket' };
+    expect(typeChangedResources(template, deployed)).toEqual(['X']); // Queue -> Topic
+  });
+
+  it('does NOT flag a brand-new logical id absent from the deployed stack (a normal create)', () => {
+    const template = { New: { Type: 'AWS::SNS::Topic' } };
+    const deployed = {}; // New not deployed yet
+    expect(typeChangedResources(template, deployed)).toEqual([]);
+  });
+
+  it('does NOT flag a logical id with the same Type on both sides', () => {
+    const template = { Same: { Type: 'AWS::S3::Bucket' } };
+    const deployed = { Same: 'AWS::S3::Bucket' };
+    expect(typeChangedResources(template, deployed)).toEqual([]);
+  });
+
+  it('builds a "will REPLACE" note showing old -> new types, capped at 10', () => {
+    const template: Record<string, { Type?: string }> = {};
+    const deployed: Record<string, string> = {};
+    for (let i = 0; i < 12; i++) {
+      template[`R${String(i).padStart(2, '0')}`] = { Type: 'AWS::SNS::Topic' };
+      deployed[`R${String(i).padStart(2, '0')}`] = 'AWS::SQS::Queue';
+    }
+    const changed = typeChangedResources(template, deployed);
+    const line = typeChangeReplaceInfo(changed, template, deployed, 'S')!;
+    expect(line).toContain('12 resource(s) changed Type');
+    expect(line).toContain('AWS::SQS::Queue -> AWS::SNS::Topic');
+    expect(line).toContain('…(+2 more)');
+  });
+
+  it('returns null when nothing changed type', () => {
+    expect(typeChangeReplaceInfo([], {}, {}, 'S')).toBeNull();
+  });
+});
+
+describe('#882 — loadDesired same-logical-id Type change under --pre-deploy', () => {
+  function typeSwapStack(cfn: ReturnType<typeof mockClient>): void {
+    // Deployed stack has X as an SQS Queue with a real physical id.
+    cfn.on(ListStackResourcesCommand).resolves({
+      StackResourceSummaries: [
+        {
+          LogicalResourceId: 'X',
+          PhysicalResourceId: 'https://sqs.us-east-1.amazonaws.com/111122223333/old-queue',
+          ResourceType: 'AWS::SQS::Queue',
+          LastUpdatedTimestamp: new Date(0),
+          ResourceStatus: 'CREATE_COMPLETE',
+        },
+      ],
+    });
+    cfn.on(DescribeStacksCommand).resolves({
+      Stacks: [
+        {
+          StackId: 'arn:aws:cloudformation:us-east-1:111122223333:stack/S/x',
+          StackName: 'S',
+          CreationTime: new Date(0),
+          StackStatus: 'CREATE_COMPLETE',
+          Parameters: [],
+        },
+      ],
+    });
+  }
+
+  it('withholds the deployed phys id when the local template swaps the type at the same id', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    cfn.on(GetTemplateCommand).rejects(new Error('GetTemplate must NOT be called in pre-deploy'));
+    typeSwapStack(cfn);
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    let msg = '';
+    let physicalId: string | undefined;
+    try {
+      // local synth swapped X from a Queue to a Topic (same logical id, new Type)
+      const desired = await loadDesired(cfn as unknown as CloudFormationClient, 'S', 'us-east-1', {
+        Resources: { X: { Type: 'AWS::SNS::Topic', Properties: {} } },
+      });
+      physicalId = desired.resources.find((r) => r.logicalId === 'X')?.physicalId;
+      msg = err.mock.calls.map((c) => String(c[0])).join('\n');
+    } finally {
+      err.mockRestore();
+    }
+    // The stale Queue phys id is NOT attached (would GetResource as a Topic → false deletion).
+    expect(physicalId).toBeUndefined();
+    // Instead the user is told the deploy will REPLACE it.
+    expect(msg).toContain('changed Type at the same logical id — the next deploy will REPLACE');
+    expect(msg).toContain('AWS::SQS::Queue -> AWS::SNS::Topic');
+  });
+
+  it('KEEPS the phys id when the type is unchanged (no false replace)', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    cfn.on(GetTemplateCommand).rejects(new Error('GetTemplate must NOT be called in pre-deploy'));
+    typeSwapStack(cfn);
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    let physicalId: string | undefined;
+    let msg = '';
+    try {
+      // same type as deployed → phys id kept, no replace note
+      const desired = await loadDesired(cfn as unknown as CloudFormationClient, 'S', 'us-east-1', {
+        Resources: { X: { Type: 'AWS::SQS::Queue', Properties: {} } },
+      });
+      physicalId = desired.resources.find((r) => r.logicalId === 'X')?.physicalId;
+      msg = err.mock.calls.map((c) => String(c[0])).join('\n');
+    } finally {
+      err.mockRestore();
+    }
+    expect(physicalId).toBe('https://sqs.us-east-1.amazonaws.com/111122223333/old-queue');
+    expect(msg).not.toContain('changed Type');
+  });
+});
+
+describe('#882 — loadDesired stack-state gate under --pre-deploy', () => {
+  function stateStack(cfn: ReturnType<typeof mockClient>, status: StackStatus): void {
+    cfn.on(GetTemplateCommand).rejects(new Error('GetTemplate must NOT be called in pre-deploy'));
+    cfn.on(ListStackResourcesCommand).resolves({ StackResourceSummaries: [] });
+    cfn.on(DescribeStacksCommand).resolves({
+      Stacks: [
+        {
+          StackId: 'arn:aws:cloudformation:us-east-1:111122223333:stack/S/x',
+          StackName: 'S',
+          CreationTime: new Date(0),
+          StackStatus: status,
+          Parameters: [],
+        },
+      ],
+    });
+  }
+
+  it('SKIPS (throws StackNotCheckableError) a DELETE_IN_PROGRESS stack even under --pre-deploy', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    stateStack(cfn, 'DELETE_IN_PROGRESS');
+    await expect(
+      loadDesired(cfn as unknown as CloudFormationClient, 'S', 'us-east-1', {
+        Resources: { B: { Type: 'AWS::S3::Bucket', Properties: {} } },
+      })
+    ).rejects.toBeInstanceOf(StackNotCheckableError);
+  });
+
+  it('WARNS (stackStatusWarning) for a mid-operation stack even under --pre-deploy', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    stateStack(cfn, 'UPDATE_IN_PROGRESS');
+    const desired = await loadDesired(cfn as unknown as CloudFormationClient, 'S', 'us-east-1', {
+      Resources: { B: { Type: 'AWS::S3::Bucket', Properties: {} } },
+    });
+    expect(desired.stackStatusWarning).toContain('mid-operation');
+  });
+
+  it('stays OK (no warning) for a stable CREATE_COMPLETE stack under --pre-deploy', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    stateStack(cfn, 'CREATE_COMPLETE');
+    const desired = await loadDesired(cfn as unknown as CloudFormationClient, 'S', 'us-east-1', {
+      Resources: { B: { Type: 'AWS::S3::Bucket', Properties: {} } },
+    });
+    expect(desired.stackStatusWarning).toBeUndefined();
+  });
+});
+
+describe('#882 — buildResolverContext does NOT seed an SSM-typed param Default (resolves UNRESOLVED)', () => {
+  it('skips the SSM KEY Default of a NEW SSM-typed param so Ref does not resolve to the key', () => {
+    // A new local `Type: AWS::SSM::Parameter::Value<String>` param with Default '/golden/ami'
+    // has no deployed ResolvedValue. Seeding its Default would make Ref resolve to the KEY
+    // string, not the live AMI id — a fabricated declared FP. It must stay out of ctx.
+    const template = {
+      Parameters: {
+        Ami: { Type: 'AWS::SSM::Parameter::Value<String>', Default: '/golden/ami' },
+        Plain: { Type: 'String', Default: 'kept' },
+      },
+    };
+    const ctx = buildResolverContext(template, {}, {}, 'us-east-1', '999', 'S', 'arn');
+    expect('Ami' in ctx.params).toBe(false); // SSM-typed Default NOT seeded (would be the key)
+    expect(ctx.params.Plain).toBe('kept'); // an ordinary Default is still seeded
+  });
+
+  it('a deployed ResolvedValue still WINS for an SSM-typed param (existing param)', () => {
+    // When the param IS deployed, the DescribeStacks ResolvedValue is passed in stackParams
+    // and overrides — the fix only withholds the KEY-string Default, never the real value.
+    const template = {
+      Parameters: { Ami: { Type: 'AWS::SSM::Parameter::Value<String>', Default: '/golden/ami' } },
+    };
+    const ctx = buildResolverContext(
+      template,
+      { Ami: 'ami-0abc123' }, // deployed ResolvedValue (loadDesired prefers ResolvedValue)
+      {},
+      'us-east-1',
+      '999',
+      'S',
+      'arn'
+    );
+    expect(ctx.params.Ami).toBe('ami-0abc123'); // real deployed value, not the key
+  });
+
+  it('an SSM LIST-typed Default is likewise withheld (would be the key, not the values)', () => {
+    const template = {
+      Parameters: {
+        Sgs: {
+          Type: 'AWS::SSM::Parameter::Value<List<AWS::EC2::SecurityGroup::Id>>',
+          Default: '/my/sgs',
+        },
+      },
+    };
+    const ctx = buildResolverContext(template, {}, {}, 'us-east-1', '999', 'S', 'arn');
+    expect('Sgs' in ctx.params).toBe(false);
   });
 });

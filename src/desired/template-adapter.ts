@@ -57,6 +57,52 @@ export function deletedResourceInfo(
   return `info: ${stackName}: ${deleted.length} deployed resource(s) absent from the local template — the next deploy will DELETE them: ${shown.join(', ')}${more}`;
 }
 
+// #882: under --pre-deploy the declared type at a logical id comes from the LOCAL synth
+// template, while physIds + deployedTypeOf come from the deployed stack. Swapping a construct
+// at the SAME construct path (`new sqs.Queue(this,'X')` -> `new sns.Topic(this,'X')`) keeps
+// the logical id but changes the Type. Attaching the deployed QUEUE's physical id to a
+// DesiredResource of the new TOPIC type makes the live read do
+// GetResource(TypeName=<new>, Identifier=<old-queue-id>) -> not-found -> a FALSE "resource
+// deleted out of band". In reality the next deploy will REPLACE the resource (delete the old,
+// create the new). Detect it (template type != deployed type at the same logical id) so the
+// caller can (a) withhold the stale physical id and (b) surface a "will REPLACE" note instead
+// of a false deletion. Returns the changed logical ids (sorted) — pure + exported for tests.
+export function typeChangedResources(
+  templateResources: Record<string, { Type?: string }>,
+  deployedTypeOf: Record<string, string>
+): string[] {
+  return Object.entries(templateResources)
+    .filter(([lid, res]) => {
+      const declaredType = res?.Type;
+      const deployedType = deployedTypeOf[lid];
+      // both types must be known AND differ; an unknown deployed type (id not in the live
+      // stack — a brand-new resource) is a normal creation, not a type change.
+      return (
+        typeof declaredType === 'string' &&
+        typeof deployedType === 'string' &&
+        declaredType !== deployedType
+      );
+    })
+    .map(([lid]) => lid)
+    .sort();
+}
+
+// Build the human-facing "this deploy will REPLACE" note for type-changed logical ids under
+// --pre-deploy. Returns null when none changed. Pure + exported for unit tests.
+export function typeChangeReplaceInfo(
+  changed: string[],
+  templateResources: Record<string, { Type?: string }>,
+  deployedTypeOf: Record<string, string>,
+  stackName: string
+): string | null {
+  if (changed.length === 0) return null;
+  const shown = changed
+    .slice(0, 10)
+    .map((lid) => `${lid} (${deployedTypeOf[lid]} -> ${templateResources[lid]?.Type})`);
+  const more = changed.length > shown.length ? `, …(+${changed.length - shown.length} more)` : '';
+  return `info: ${stackName}: ${changed.length} resource(s) changed Type at the same logical id — the next deploy will REPLACE them (old resource deleted, new created): ${shown.join(', ')}${more}`;
+}
+
 // The AWS::Partition / AWS::URLSuffix pseudo-parameters are a deterministic function of the
 // region, NOT a commercial-partition constant. CDK env-agnostic stacks emit ${AWS::Partition}
 // inside nearly every Sub/Join-built ARN, so hard-coding `aws` / `amazonaws.com` mis-resolves
@@ -122,6 +168,16 @@ export function buildResolverContext(
     // Default too and let the param resolve UNRESOLVED (property skipped, conditions
     // fail-closed) — the same safe treatment as the masked deployed value (#744).
     if (def?.NoEcho === true || def?.NoEcho === 'true') continue;
+    // An SSM-typed parameter (Type: AWS::SSM::Parameter::Value<...>) carries the SSM
+    // parameter NAME/KEY in its Default, NOT the dereferenced value AWS will resolve at
+    // deploy time. The deployed ResolvedValue (set below from DescribeStacks) is the real
+    // value and overrides — but a parameter that is NEW in the LOCAL --pre-deploy template
+    // has no deployed value yet, so seeding its Default would make Ref resolve to the KEY
+    // string (`/golden/ami`) rather than the live value (`ami-0abc…`): a fabricated declared
+    // FP, and the wrong literal fed into any Condition/Fn::If over it. Skip the Default and
+    // let it resolve UNRESOLVED (property skipped, conditions fail-closed) — the same safe
+    // treatment as a masked/unresolvable value; a deployed ResolvedValue still wins (#882).
+    if ((def?.Type ?? '').includes('::Parameter::Value<')) continue;
     if (def && 'Default' in def) params[k] = toParam(k, String(def.Default));
   }
   for (const [k, v] of Object.entries(stackParams)) params[k] = toParam(k, v); // deployed values win
@@ -222,7 +278,7 @@ export async function loadDesired(
 ): Promise<Desired> {
   // GetTemplate + DescribeStacks are single calls (kept in Promise.all); ListStackResources
   // is paginated separately (DescribeStackResources caps at 100, CDK stacks reach ~500).
-  const [tmplRes, stkRes, { physIds }] = await Promise.all([
+  const [tmplRes, stkRes, { physIds, typeOf: deployedTypeOf }] = await Promise.all([
     templateOverride
       ? Promise.resolve({ TemplateBody: undefined })
       : client.send(new GetTemplateCommand({ StackName: stackName })),
@@ -235,11 +291,17 @@ export async function loadDesired(
   // would otherwise blow up parseTemplateBody with "Unexpected end of JSON input". Skip
   // a stack with no meaningful deployed reality (REVIEW_IN_PROGRESS / deleting) rather
   // than silently compare live state against a never-deployed template; carry a warning
-  // for mid-operation / failed states. Skipped under --pre-deploy (the declared source
-  // is the LOCAL synth, not the deployed stack).
-  const stateClass = templateOverride
-    ? ({ kind: 'ok', message: '' } as const)
-    : classifyStackStatus(stack?.StackStatus);
+  // for mid-operation / failed states.
+  //
+  // #882: this gate runs under --pre-deploy too. The templateOverride only substitutes the
+  // DECLARED source (the local synth template replaces GetTemplate); physIds + every live
+  // read still come from the DEPLOYED stack, so the deployed stack's state is just as
+  // relevant. Skipping the gate under --pre-deploy meant a DELETE_IN_PROGRESS stack was
+  // compared against half-deleted reality (red `deleted` findings), and a mid-operation /
+  // failed stack proceeded with NO stackStatusWarning (always undefined). Keep the
+  // classification. (REVIEW_IN_PROGRESS still returns an empty GetTemplate, but that body
+  // is never parsed under --pre-deploy — it is skipped by the `skip` branch just the same.)
+  const stateClass = classifyStackStatus(stack?.StackStatus);
   if (stateClass.kind === 'skip') throw new StackNotCheckableError(stateClass.message);
   const stackStatusWarning = stateClass.kind === 'warn' ? stateClass.message : undefined;
   const template = (templateOverride ?? parseTemplateBody(tmplRes.TemplateBody ?? '{}')) as Record<
@@ -280,6 +342,27 @@ export async function loadDesired(
   if (templateOverride) {
     const deletedInfo = deletedResourceInfo(physIds, template, stackName);
     if (deletedInfo) console.error(deletedInfo);
+  }
+
+  // #882: detect logical ids whose Type changed between the deployed stack and the declared
+  // template (a same-path construct swap under --pre-deploy). On the deployed path the declared
+  // type IS the deployed type, so this set is always empty there — but compute unconditionally
+  // and use it in the resource loop below to WITHHOLD the stale physical id (a phys id from the
+  // OLD type can't be read as the NEW type → false "deleted out of band"). Under --pre-deploy,
+  // also surface a "will REPLACE" note so the type change is not silently swallowed.
+  const templateResourcesForTypeCheck = (template.Resources ?? {}) as Record<
+    string,
+    { Type?: string }
+  >;
+  const typeChanged = new Set(typeChangedResources(templateResourcesForTypeCheck, deployedTypeOf));
+  if (templateOverride && typeChanged.size > 0) {
+    const replaceInfo = typeChangeReplaceInfo(
+      [...typeChanged].sort(),
+      templateResourcesForTypeCheck,
+      deployedTypeOf,
+      stackName
+    );
+    if (replaceInfo) console.error(replaceInfo);
   }
 
   const ctx = buildResolverContext(
@@ -361,10 +444,16 @@ export async function loadDesired(
     }
     const cdkPath = res.Metadata?.['aws:cdk:path'];
     const declaredRaw = (res.Properties ?? {}) as Record<string, unknown>;
+    // #882: withhold the physical id when the Type changed at this logical id — the deployed
+    // phys id belongs to the OLD type and can't be GetResource'd as the NEW type. Leaving it
+    // undefined makes the live read find nothing to fetch (the resource does not yet exist
+    // under the new type), so classify tags it a normal pending create rather than emitting a
+    // false "resource deleted out of band" (the note above already told the user it'll REPLACE).
+    const physicalId = typeChanged.has(logicalId) ? undefined : physIds[logicalId];
     resources.push({
       logicalId,
       resourceType: res.Type as string,
-      physicalId: physIds[logicalId],
+      physicalId,
       constructPath: typeof cdkPath === 'string' ? prettyConstructPath(cdkPath) : undefined,
       // first-pass resolution (no live attrs yet → GetAtt is UNRESOLVED). gather
       // re-resolves declaredRaw once liveAttrs is populated, reducing UNRESOLVED.
