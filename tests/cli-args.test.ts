@@ -59,6 +59,28 @@ describe('parseCommonArgs', () => {
     }
   });
 
+  it('#954: sets CDKRD_EXPLICIT_PROFILE only for an EXPLICIT --profile, not inherited $AWS_PROFILE', () => {
+    const saved = { p: process.env.AWS_PROFILE, x: process.env.CDKRD_EXPLICIT_PROFILE };
+    try {
+      // Inherited $AWS_PROFILE (no --profile) must NOT mark explicit — env creds should still
+      // win over that profile (the toolkit-lib rule the raw clients now mirror).
+      delete process.env.CDKRD_EXPLICIT_PROFILE;
+      process.env.AWS_PROFILE = 'dev';
+      parseCommonArgs(['S']);
+      expect(process.env.CDKRD_EXPLICIT_PROFILE).toBeUndefined();
+
+      // An explicit --profile marks it, so client-config's shouldPrioritizeEnv defers to the
+      // profile (fromIni) — matching toolkit-lib's explicit-profile branch.
+      parseCommonArgs(['S', '--profile', 'explicit']);
+      expect(process.env.CDKRD_EXPLICIT_PROFILE).toBe('1');
+    } finally {
+      if (saved.p !== undefined) process.env.AWS_PROFILE = saved.p;
+      else delete process.env.AWS_PROFILE;
+      if (saved.x !== undefined) process.env.CDKRD_EXPLICIT_PROFILE = saved.x;
+      else delete process.env.CDKRD_EXPLICIT_PROFILE;
+    }
+  });
+
   it('recognizes --show-all, --yes/-y, --pre-deploy', () => {
     expect(parseCommonArgs(['S', '--show-all']).showAll).toBe(true);
     expect(parseCommonArgs(['S', '-y']).yes).toBe(true);

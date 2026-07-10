@@ -225,6 +225,14 @@ export function parseCommonArgs(args: string[], verb?: Verb): CommonArgs {
   if (scopes.length > 1) {
     throw new Error(`${scopes.join(' and ')} are mutually exclusive — see cdkrd --help`);
   }
+
+  // #954: mark an EXPLICIT `--profile` (as opposed to an inherited $AWS_PROFILE) so the raw
+  // SDK clients' credential chain (read/client-config `shouldPrioritizeEnv`) mirrors
+  // toolkit-lib: an explicit `--profile` uses that profile EXCLUSIVELY (env creds do NOT
+  // win), whereas a bare $AWS_PROFILE + env creds prioritizes env. The verb entry points
+  // also export the resolved profile as $AWS_PROFILE; this marker is the "was it explicit?"
+  // bit that export loses. Set only when `--profile` is actually present.
+  if (values['--profile'] !== undefined) process.env.CDKRD_EXPLICIT_PROFILE = '1';
   return {
     stackNames,
     all: has('--all'),
