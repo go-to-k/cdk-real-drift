@@ -125,3 +125,87 @@ describe('#794 loadBaseline element-level validation', () => {
     expect(loaded?.recorded).toHaveLength(1);
   });
 });
+
+// #1047: two `recorded` entries sharing the SAME (logicalId, path, resourceType) identity but
+// DIFFERENT values (a bad merge / hand-edit) must be REJECTED LOUDLY at load — the match sites
+// (`recorded.find`) silently first-win, so a live value equal to the SECOND duplicate would
+// false-surface as drift, and the removed-since-record loop would double-count. Fail rather
+// than silently pick the first.
+describe('#1047 loadBaseline duplicate-identity rejection', () => {
+  let cwd: string;
+  let dir: string;
+  beforeEach(async () => {
+    cwd = process.cwd();
+    dir = await mkdtemp(join(tmpdir(), 'cdkrd-baseline-1047-'));
+    process.chdir(dir);
+  });
+  afterEach(async () => {
+    process.chdir(cwd);
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  const base = (recorded: unknown[]): string =>
+    JSON.stringify({
+      schemaVersion: 2,
+      stackName: STACK,
+      region: REGION,
+      accountId: ACCOUNT,
+      capturedAt: '',
+      templateHash: '',
+      recorded,
+    });
+
+  it('two entries with the same identity but different values are rejected, naming the identity', async () => {
+    await expect(
+      loadRaw(
+        base([
+          { logicalId: 'L', resourceType: 'AWS::X::Y', path: 'P', value: 1 },
+          { logicalId: 'L', resourceType: 'AWS::X::Y', path: 'P', value: 2 },
+        ])
+      )
+    ).rejects.toThrow(
+      /baseline file .*`recorded`\[1\] is a duplicate of an earlier entry with the same identity \(logicalId="L", path="P", resourceType="AWS::X::Y"\)/
+    );
+  });
+
+  it('two entries with the same identity and IDENTICAL values are still rejected (still ambiguous / corrupt)', async () => {
+    await expect(
+      loadRaw(
+        base([
+          { logicalId: 'L', resourceType: 'AWS::X::Y', path: 'P', value: 1 },
+          { logicalId: 'L', resourceType: 'AWS::X::Y', path: 'P', value: 1 },
+        ])
+      )
+    ).rejects.toThrow(/`recorded`\[1\] is a duplicate of an earlier entry/);
+  });
+
+  it('same logicalId+resourceType but DIFFERENT path still loads (distinct identities)', async () => {
+    const loaded = await loadRaw(
+      base([
+        { logicalId: 'L', resourceType: 'AWS::X::Y', path: 'P1', value: 1 },
+        { logicalId: 'L', resourceType: 'AWS::X::Y', path: 'P2', value: 2 },
+      ])
+    );
+    expect(loaded?.recorded).toHaveLength(2);
+  });
+
+  it('same logicalId+path but DIFFERENT resourceType still loads (id recycled across a refactor, #793)', async () => {
+    const loaded = await loadRaw(
+      base([
+        { logicalId: 'L', resourceType: 'AWS::SQS::Queue', path: 'P', value: 1 },
+        { logicalId: 'L', resourceType: 'AWS::SNS::Topic', path: 'P', value: 2 },
+      ])
+    );
+    expect(loaded?.recorded).toHaveLength(2);
+  });
+
+  it('two `added` entries (empty path) for DIFFERENT child logicalIds still load', async () => {
+    const loaded = await loadRaw(
+      base([
+        { logicalId: 'ChildA', resourceType: 'AWS::ApiGateway::Stage', path: '', value: {} },
+        { logicalId: 'ChildB', resourceType: 'AWS::ApiGateway::Stage', path: '', value: {} },
+      ])
+    );
+    expect(loaded?.recorded).toHaveLength(2);
+  });
+});
