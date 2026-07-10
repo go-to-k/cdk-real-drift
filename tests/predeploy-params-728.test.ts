@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { buildResolverContext } from '../src/desired/template-adapter.js';
+import { buildResolverContext, unpreviewableParamInfo } from '../src/desired/template-adapter.js';
 
 // #728: under --pre-deploy the declared source is the LOCAL synth template, so a param's
 // LOCAL Default is authoritative. DescribeStacks returns an effective value for ALL params
@@ -95,5 +95,95 @@ describe('#728 — buildResolverContext --pre-deploy param resolution', () => {
     // The placeholder/key Default was NOT used; the deployed value filled it instead.
     expect(pre.params.Secret).toBe('liveSecret');
     expect(pre.params.Ssm).toBe('ami-0abc');
+  });
+});
+
+// #728 case 1 / #1194: a new/renamed local param with no Default AND absent from the deployed
+// stack has no value anywhere → every Ref to it resolves UNRESOLVED and the referencing
+// declared property is silently "not compared". unpreviewableParamInfo surfaces that LOUDLY.
+describe('#1215 — unpreviewableParamInfo (--pre-deploy no-value params)', () => {
+  // The canonical trigger: a legacy-synth AssetParameters<newhash> param after an asset change.
+  const assetTemplate = {
+    Parameters: {
+      AssetParametersDEADBEEFS3Bucket: { Type: 'String' },
+      AssetParametersDEADBEEFS3VersionKey: { Type: 'String' },
+    },
+    Resources: {
+      Fn: {
+        Type: 'AWS::Lambda::Function',
+        Properties: {
+          Code: {
+            S3Bucket: { Ref: 'AssetParametersDEADBEEFS3Bucket' },
+            S3Key: { Ref: 'AssetParametersDEADBEEFS3VersionKey' },
+          },
+        },
+      },
+    },
+  };
+
+  it('emits a loud note naming a new referenced param with no Default and no deployed value', () => {
+    const note = unpreviewableParamInfo(assetTemplate, {}, 'MyStack');
+    expect(note).not.toBeNull();
+    expect(note).toContain('MyStack');
+    expect(note).toContain('cannot preview');
+    expect(note).toContain('AssetParametersDEADBEEFS3Bucket');
+    expect(note).toContain('AssetParametersDEADBEEFS3VersionKey');
+    expect(note?.startsWith('warning:')).toBe(true);
+  });
+
+  it('is null when the param carries a local Default (resolvable — not a coverage gap)', () => {
+    const template = {
+      Parameters: { Foo: { Type: 'String', Default: 'x' } },
+      Resources: { R: { Type: 'AWS::SNS::Topic', Properties: { TopicName: { Ref: 'Foo' } } } },
+    };
+    expect(unpreviewableParamInfo(template, {}, 'S')).toBeNull();
+  });
+
+  it('is null when the deployed stack supplies the value (fill step resolves it)', () => {
+    const template = {
+      Parameters: { Foo: { Type: 'String' } },
+      Resources: { R: { Type: 'AWS::SNS::Topic', Properties: { TopicName: { Ref: 'Foo' } } } },
+    };
+    expect(unpreviewableParamInfo(template, { Foo: 'deployed' }, 'S')).toBeNull();
+  });
+
+  it('excludes NoEcho and SSM ::Parameter::Value< params (their own documented treatment)', () => {
+    const template = {
+      Parameters: {
+        Secret: { Type: 'String', NoEcho: true },
+        Ssm: { Type: 'AWS::SSM::Parameter::Value<String>' },
+      },
+      Resources: {
+        R: {
+          Type: 'AWS::SNS::Topic',
+          Properties: { A: { Ref: 'Secret' }, B: { Ref: 'Ssm' } },
+        },
+      },
+    };
+    expect(unpreviewableParamInfo(template, {}, 'S')).toBeNull();
+  });
+
+  it('is null when the no-value param is not referenced by any declared property', () => {
+    const template = {
+      Parameters: { Unused: { Type: 'String' } },
+      Resources: { R: { Type: 'AWS::SNS::Topic', Properties: { TopicName: 'literal' } } },
+    };
+    expect(unpreviewableParamInfo(template, {}, 'S')).toBeNull();
+  });
+
+  it('counts an Fn::Sub ${Param} reference (and ignores the ${!Literal} escape)', () => {
+    const template = {
+      Parameters: { Env: { Type: 'String' }, Escaped: { Type: 'String' } },
+      Resources: {
+        R: {
+          Type: 'AWS::SNS::Topic',
+          // Env is a real reference; ${!Escaped} is a Sub-escaped literal, not a reference.
+          Properties: { TopicName: { 'Fn::Sub': 'app-${Env}-${!Escaped}' } },
+        },
+      },
+    };
+    const note = unpreviewableParamInfo(template, {}, 'S');
+    expect(note).toContain('Env');
+    expect(note).not.toContain('Escaped');
   });
 });
