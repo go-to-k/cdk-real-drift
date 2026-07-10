@@ -494,6 +494,10 @@ export async function runCheck(args: string[]): Promise<number> {
         } else {
           preDeployCode = report(preDeployReconciled, preDeployHeader, {
             verbose: a.verbose,
+            // #883: under --pre-deploy, render a not-yet-deployed (no-physical-id) skip as its
+            // own "pending creation" footer group instead of "coverage incomplete" — matching
+            // the #727 stderr note and the JSON coverageWarning, which already get preDeploy.
+            preDeploy: true,
           });
         }
         if (preDeployCode === 1) anyDrift = true;
