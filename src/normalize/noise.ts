@@ -3315,6 +3315,26 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
     'SecurityGroupIds',
     'SubnetIds',
   ]),
+  //   AWS::CloudFormation::Stack (the parent-side resource of every CDK `NestedStack`) is
+  //   CC-read and returns the child stack's FULL live model, but the template's Stack resource
+  //   declares only `TemplateURL` (an S3 asset URL) + `Parameters` + `Tags` — so three live
+  //   props are always UNDECLARED and surface on a clean first check:
+  //     * `TemplateBody` — the ENTIRE resolved child template as one string. It is never in the
+  //       parent template (which carries `TemplateURL`), it changes on every legitimate child
+  //       redeploy, and reverting it would issue a CC UpdateResource against the live child stack
+  //       (cdkrd triggering a child-stack update to a stale template — a real hazard). Undeclared,
+  //       unpinnable, moves per deploy → value-independent (a user who wants to compare the child
+  //       compares the child stack itself; the parent never declares its body).
+  //     * `RoleARN` — the CloudFormation service role (the `cdk-hnb659fds-cfn-exec-role-…` CDK
+  //       bootstrap role) AWS/CDK attaches; undeclared on the Stack resource, per-account/region
+  //       AWS-assigned, not user intent when undeclared.
+  //     * `Capabilities` — the capability set AWS records for the child (e.g.
+  //       `["CAPABILITY_IAM","CAPABILITY_AUTO_EXPAND"]`); undeclared, AWS-assigned, and a plain
+  //       reflection of what the child needs, not intent on the parent Stack resource.
+  //   All three are undeclared → whatever AWS assigned is its default, never user intent; a real
+  //   drift in the child's own resources surfaces when that child stack is checked directly.
+  //   First-run FP on every nested-stack deploy (#723, live-repro'd on tests/integration/nested).
+  'AWS::CloudFormation::Stack': new Set(['TemplateBody', 'RoleARN', 'Capabilities']),
 };
 
 // R142: true when `value` equals a `|`/`:`/`/`-separated SEGMENT of the physical id.
