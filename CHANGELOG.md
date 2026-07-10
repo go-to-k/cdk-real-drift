@@ -1,3 +1,10 @@
+## [0.4.12](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.11...v0.4.12) (2026-07-10)
+
+
+### Bug Fixes
+
+* **baseline:** baselineValueMatches reflexivity for free-form JSON/policy string values ([#807](https://github.com/go-to-k/cdk-real-drift/issues/807)) ([#1020](https://github.com/go-to-k/cdk-real-drift/issues/1020)) ([ae427fd](https://github.com/go-to-k/cdk-real-drift/commit/ae427fd43382764c57b9848c12eec8fe5f83d54f))
+
 ## [0.4.11](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.10...v0.4.11) (2026-07-09)
 
 
