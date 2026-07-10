@@ -31,6 +31,8 @@ import {
   ignoreRuleFor,
 } from '../config/config-file.js';
 import { withinStackPath } from '../construct-path.js';
+import { sanitizeForTerminal } from '../report/report.js';
+import { redactValue } from '../report/redact.js';
 import { style } from '../report/style.js';
 import { bulkMultiselect } from './bulk-multiselect.js';
 import { CLIENT_TIMEOUTS } from '../read/client-config.js';
@@ -207,15 +209,30 @@ export function recordDropMessage(stackName: string, region: string): string {
  * so a `changed since record` row can show `recorded → live` and the user can see WHAT they
  * are blessing (instead of a bare `Res.Path`). JSON-encoded (scalars stay bare-ish), then
  * truncated to keep the multiselect row on one line. Pure + exported for unit tests.
+ *
+ * #1302: this row prints straight to an interactive terminal (the clack multiselect), so it
+ * needs the two hardening layers the report path applies to displayed VALUES:
+ *   (a) REDACTION — a secret-bearing path (Lambda/CodeBuild env var, the #798/#1234 masked
+ *       set) must not print its recorded/rotated plaintext into the terminal; mask it via the
+ *       same `redactValue(resourceType, path, v)` the text + --json renderers use, BEFORE
+ *       truncation.
+ *   (b) TERMINAL SANITIZING — a live string is charset-permissive and could carry `\r` / ESC
+ *       sequences (the #829 injection class); report.ts values are C0-safe only because they
+ *       route through `JSON.stringify`. Here a string was returned verbatim, so route EVERY
+ *       displayed form (string AND JSON-encoded) through `sanitizeForTerminal`.
+ * DISPLAY-ONLY — the recorded value itself is unchanged; only what the picker prints is masked
+ * and sanitized.
  */
-export function previewValue(v: unknown, max = 40): string {
+export function previewValue(resourceType: string, path: string, v: unknown, max = 40): string {
+  const masked = redactValue(resourceType, path, v);
   let s: string;
   try {
-    s = typeof v === 'string' ? v : JSON.stringify(v);
+    s = typeof masked === 'string' ? masked : JSON.stringify(masked);
   } catch {
-    s = String(v);
+    s = String(masked);
   }
-  if (s === undefined) s = String(v); // JSON.stringify(undefined) === undefined
+  if (s === undefined) s = String(masked); // JSON.stringify(undefined) === undefined
+  s = sanitizeForTerminal(s);
   return s.length > max ? `${s.slice(0, max - 1)}…` : s;
 }
 
@@ -227,14 +244,18 @@ export function previewValue(v: unknown, max = 40): string {
  * value under a bare label. Pure + exported for unit tests.
  */
 export function changedRecordLabel(
-  entry: { logicalId: string; path: string; value: unknown },
+  entry: { logicalId: string; path: string; value: unknown; resourceType: string },
   recordedValue: { hasRecorded: boolean; recordedValue: unknown }
 ): string {
   const id = entry.path
     ? `${entry.logicalId}.${entry.path}`
     : `${entry.logicalId} (added resource)`;
   if (!recordedValue.hasRecorded) return id; // genuinely NEW path — plain row
-  return `${id} (changed since record: ${previewValue(recordedValue.recordedValue)} → ${previewValue(entry.value)})`;
+  // #1302: thread the finding's resourceType + path so the preview can redact a secret-bearing
+  // path and sanitize control chars — both the recorded and live sides.
+  const recorded = previewValue(entry.resourceType, entry.path, recordedValue.recordedValue);
+  const live = previewValue(entry.resourceType, entry.path, entry.value);
+  return `${id} (changed since record: ${recorded} → ${live})`;
 }
 
 /**
