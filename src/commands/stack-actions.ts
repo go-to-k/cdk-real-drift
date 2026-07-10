@@ -9,6 +9,7 @@ import {
   recordedKey,
   applyBaseline,
   type BaselineFile,
+  baselineOnlyEntries,
   buildRecorded,
   carryForwardUnreadable,
   checkBaselineAccount,
@@ -16,6 +17,8 @@ import {
   declaredKeysByLogical,
   loadBaseline,
   physicalIdsByLogical,
+  type RecordedEntry,
+  recordedValueForChanged,
   selectRecorded,
   splitRecordedByBaseline,
   writeBaseline,
@@ -171,6 +174,65 @@ export function recordSelectMessage(stackName: string, region: string, foldedCou
       ? `; +${foldedCount} folded sub-key(s) ALWAYS recorded too (--verbose to itemize)`
       : '';
   return `${stackLabel(stackName, region)}: select undeclared value(s) to record (unselected stay reported)${fold}`;
+}
+
+/**
+ * #790: header for the record DROP multiselect — the baseline-only entries (a recorded value
+ * reverted to its AWS default, or removed out of band). Selecting a row DROPS the recorded
+ * watch (accept the drift); leaving it UNSELECTED preserves the entry (it keeps reporting as
+ * drift). Default-unselected, so one Enter here changes nothing. Pure + exported for unit tests.
+ */
+export function recordDropMessage(stackName: string, region: string): string {
+  return `${stackLabel(stackName, region)}: recorded value(s) reverted-to-default / removed since record — select to DROP from the baseline (unselected stay watched & reported)`;
+}
+
+/**
+ * #758: a compact single-line preview of a recorded/live VALUE for a record-picker label —
+ * so a `changed since record` row can show `recorded → live` and the user can see WHAT they
+ * are blessing (instead of a bare `Res.Path`). JSON-encoded (scalars stay bare-ish), then
+ * truncated to keep the multiselect row on one line. Pure + exported for unit tests.
+ */
+export function previewValue(v: unknown, max = 40): string {
+  let s: string;
+  try {
+    s = typeof v === 'string' ? v : JSON.stringify(v);
+  } catch {
+    s = String(v);
+  }
+  if (s === undefined) s = String(v); // JSON.stringify(undefined) === undefined
+  return s.length > max ? `${s.slice(0, max - 1)}…` : s;
+}
+
+/**
+ * #758: the record multiselect label for a `changed` entry — a path already in the baseline
+ * whose live value differs this run (a recorded value CHANGED out of band). Distinct from a
+ * plain new-path row: it shows `recorded → live` (or a `(changed since record)` marker when the
+ * old value could not be paired) so the user does not silently bless a possibly-attacker-changed
+ * value under a bare label. Pure + exported for unit tests.
+ */
+export function changedRecordLabel(
+  entry: { logicalId: string; path: string; value: unknown },
+  recordedValue: { hasRecorded: boolean; recordedValue: unknown }
+): string {
+  const id = entry.path
+    ? `${entry.logicalId}.${entry.path}`
+    : `${entry.logicalId} (added resource)`;
+  if (!recordedValue.hasRecorded) return id; // genuinely NEW path — plain row
+  return `${id} (changed since record: ${previewValue(recordedValue.recordedValue)} → ${previewValue(entry.value)})`;
+}
+
+/**
+ * #790: the record multiselect label for a `baseline-only` drop-candidate — a recorded value
+ * that reverted to its AWS default (now folded away) or was REMOVED out of band, so it has no
+ * current undeclared finding. Selecting the row DROPS the recorded watch (an accept-drift
+ * action, so the row is default UNSELECTED); leaving it keeps the entry in the baseline. Pure +
+ * exported for unit tests.
+ */
+export function dropRecordLabel(entry: { logicalId: string; path: string }): string {
+  const id = entry.path
+    ? `${entry.logicalId}.${entry.path}`
+    : `${entry.logicalId} (added resource)`;
+  return `${id} (reverted-to-default / removed since record — drop from baseline?)`;
 }
 
 /**
@@ -362,8 +424,40 @@ export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
   // entries for resources this run could NOT read (skipped / model-read-failed) so a
   // re-record never silently shrinks the committed baseline (writeBaseline full-replaces).
   let recorded = carryForwardUnreadable(buildRecorded(findings), existing, findings);
+  // #790: baseline entries with NO current undeclared finding for a resource read cleanly —
+  // a recorded value reverted to its AWS default (folded away) or removed out of band. A naive
+  // full-replace re-record would silently DROP these (accepting drift `check` force-surfaces).
+  // Compute them up front so they can be PRESERVED by default under every path (--yes and
+  // interactive), and surfaced as an explicit "drop?" row in the interactive picker.
+  const dropCandidates: RecordedEntry[] = baselineOnlyEntries(recorded, existing, findings, {
+    declaredByLogical: declaredKeysByLogical(desired.resources),
+    allLogicalIds: desired.resources.map((r) => r.logicalId),
+  });
+  // #790: the baseline-only entries the user chose to DROP (interactive picker only). Empty by
+  // default so an entry is always PRESERVED unless explicitly selected — a re-record must not
+  // silently accept a reverted-to-default / removed value that `check` force-surfaces as drift.
+  const droppedKeys = new Set<string>();
+  // #758: a `record --yes` (scripts/CI) accepts every current value with no prompt. Echo a
+  // summary of what it BLESSED — recorded values CHANGED out of band (a possibly attacker-
+  // changed value) and baseline-only entries PRESERVED — so the acceptance is not silent.
+  if (yes && existing) {
+    const { changed } = splitRecordedByBaseline(recorded, existing);
+    const changedExisting = changed.filter((e) => recordedValueForChanged(e, existing).hasRecorded);
+    if (changedExisting.length > 0)
+      console.error(
+        `note: ${stackName}: --yes accepted ${changedExisting.length} recorded value(s) CHANGED out of band since record (review the baseline diff): ` +
+          changedExisting.map((e) => `${e.logicalId}.${e.path}`).join(', ')
+      );
+    if (dropCandidates.length > 0)
+      console.error(
+        `note: ${stackName}: --yes PRESERVED ${dropCandidates.length} recorded watch(es) whose value reverted-to-default / was removed since record (they still report as drift; re-run interactively to drop them)`
+      );
+  }
   let refreshedOnly = false; // true when only unchanged values remained (no delta to decide)
-  if (!yes && recorded.length > 0) {
+  // #790: a decision is also required when there are baseline-only drop candidates but zero
+  // current undeclared values (the exact reverted-to-default case) — else the interactive
+  // block is skipped and the drop rows are never shown.
+  if (!yes && (recorded.length > 0 || dropCandidates.length > 0)) {
     // A decision is required (which undeclared values to record). Non-interactively
     // we refuse rather than implicitly record ALL of them (R38).
     if (!interactive) {
@@ -382,8 +476,10 @@ export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
       );
     if (changed.length === 0) {
       // Nothing new to decide — just refresh the baseline (re-snapshot the unchanged set).
+      // #790: dropCandidates still get their own picker below, so this is a refresh only when
+      // there is also nothing to drop.
       recorded = unchanged;
-      refreshedOnly = true;
+      refreshedOnly = dropCandidates.length === 0;
     } else {
       // Per-finding path: the action picker already chose the keys, so take them
       // directly (no second prompt). Otherwise show the record multiselect.
@@ -415,14 +511,18 @@ export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
         } else {
           const fromPrompt = await bulkMultiselect(
             recordSelectMessage(stackName, region, folded.length),
-            // default = all selected (→/← bulk-toggle from there)
-            standout.map((e) => ({
-              value: recordedKey(e),
-              // an `added`-resource entry (PR4) has an empty path — the whole resource is
-              // the value — so omit the trailing dot and tag it as a resource snapshot.
-              label: e.path ? `${e.logicalId}.${e.path}` : `${e.logicalId} (added resource)`,
-              selected: true,
-            }))
+            standout.map((e) => {
+              // #758: a `changed` standout that has a MATCHING baseline entry is a recorded
+              // value CHANGED out of band — show `recorded → live` and default it UNSELECTED
+              // so the (possibly attacker-changed) value is not blessed by one Enter. A
+              // genuinely NEW path stays default-selected (today's behavior).
+              const rec = recordedValueForChanged(e, existing);
+              return {
+                value: recordedKey(e),
+                label: changedRecordLabel(e, rec),
+                selected: !rec.hasRecorded,
+              };
+            })
           );
           if (fromPrompt === undefined) {
             console.error(`note: ${stackName}: record cancelled — baseline unchanged`);
@@ -434,24 +534,56 @@ export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
       }
       const selectedChanged = selectRecorded(findings, new Set(picked));
       recorded = [...unchanged, ...selectedChanged]; // auto-kept unchanged + the user's picks
-      // The FINAL written set being empty (no unchanged + nothing picked) writes an EMPTY
-      // baseline. Since R62 that no longer arms revert removal (unrecorded values stay
-      // guarded per entry) — it just records "I decided nothing", so the values keep
-      // being reported as unrecorded. Still confirm: writing a file that changes nothing
-      // is more likely a mis-keyed multiselect than an intent (R19, defanged by R62).
-      // Skipped on the per-finding path: the picker is the decision, no extra confirm.
-      if (recorded.length === 0 && !preselectedKeys) {
-        const proceed = await confirm({
-          message: `${stackLabel(stackName, region)}: record nothing? This writes an EMPTY baseline — every undeclared value stays reported as unrecorded.`,
-          initialValue: false,
-        });
-        if (isCancel(proceed) || !proceed) {
-          console.error(`note: ${stackName}: record cancelled — baseline unchanged`);
-          return { wrote: false, refused: false };
-        }
+    }
+    // #790: offer the baseline-only entries (reverted-to-default / removed since record) as an
+    // explicit DROP multiselect — default UNSELECTED, so leaving the prompt PRESERVES the watch
+    // (unselected = keep). Dropping a recorded watch is an accept-drift action, so it is opt-in.
+    // Skipped on the per-finding path (the action picker owns the decision; unrelated entries
+    // must not be dropped by it).
+    if (dropCandidates.length > 0 && !preselectedKeys) {
+      const dropPrompt = await bulkMultiselect(
+        recordDropMessage(stackName, region),
+        dropCandidates.map((e) => ({
+          value: recordedKey(e),
+          label: dropRecordLabel(e),
+          selected: false, // default keep — dropping is an explicit accept-drift opt-in
+        }))
+      );
+      if (dropPrompt === undefined) {
+        console.error(`note: ${stackName}: record cancelled — baseline unchanged`);
+        return { wrote: false, refused: false };
+      }
+      for (const key of dropPrompt) droppedKeys.add(key);
+      refreshedOnly = false;
+    }
+    // #790: re-append the baseline-only entries the user did NOT drop, so a re-record preserves
+    // watched values that reverted-to-default / were removed (they keep reporting as drift).
+    recorded = [...recorded, ...dropCandidates.filter((e) => !droppedKeys.has(recordedKey(e)))];
+    // The FINAL written set being empty (no unchanged + nothing picked) writes an EMPTY
+    // baseline. Since R62 that no longer arms revert removal (unrecorded values stay
+    // guarded per entry) — it just records "I decided nothing", so the values keep
+    // being reported as unrecorded. Still confirm: writing a file that changes nothing
+    // is more likely a mis-keyed multiselect than an intent (R19, defanged by R62).
+    // Skipped on the per-finding path: the picker is the decision, no extra confirm.
+    if (recorded.length === 0 && !preselectedKeys) {
+      const proceed = await confirm({
+        message: `${stackLabel(stackName, region)}: record nothing? This writes an EMPTY baseline — every undeclared value stays reported as unrecorded.`,
+        initialValue: false,
+      });
+      if (isCancel(proceed) || !proceed) {
+        console.error(`note: ${stackName}: record cancelled — baseline unchanged`);
+        return { wrote: false, refused: false };
       }
     }
   }
+  // #790: ensure every baseline-only entry the user did NOT explicitly drop is in the written
+  // set — under --yes / the per-finding path the interactive drop picker never ran, so append
+  // them here (deduped by key, so a re-append after the interactive merge is a no-op). Without
+  // this, `writeBaseline`'s full-replace would silently drop a reverted-to-default / removed
+  // recorded value that `check` force-surfaces as drift.
+  const presentKeys = new Set(recorded.map(recordedKey));
+  for (const e of dropCandidates)
+    if (!droppedKeys.has(recordedKey(e)) && !presentKeys.has(recordedKey(e))) recorded.push(e);
   const { path, count } = await writeBaseline(
     stackName,
     region,

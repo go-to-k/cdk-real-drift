@@ -418,9 +418,16 @@ Nothing` (see [The model](#the-model-one-verb-you-run-three-it-offers)). Each
   each write. REMOVE ops (deleting a live value not in your template) are labeled
   `(REMOVE)`. **space** toggles · **→** selects all · **←** clears all · **enter**
   confirms. `--yes` applies the full plan.
-- **`record`** shows a multiselect of only the **delta** from the existing baseline
-  (new + changed values, pre-selected); already-recorded unchanged values are
-  auto-kept. Deselect a suspicious one and it stays reported by `check`. Nested
+- **`record`** shows a multiselect of only the **delta** from the existing
+  baseline; already-recorded unchanged values are auto-kept. **New** undeclared
+  values are pre-selected; a value that **changed since record** (a recorded value
+  altered out of band) is shown as `recorded → live` and default **UNSELECTED**,
+  so one Enter never silently blesses a changed value. A recorded value that
+  **reverted to its AWS default or was removed** since record is offered as a
+  separate default-unselected "drop from baseline?" row — leaving it keeps the
+  watch (it stays reported by `check`); a `--yes` record preserves it and echoes
+  what it accepted. Deselect a suspicious one and it stays reported by `check`.
+  Nested
   undeclared sub-keys (a value inside an object you _did_ declare) are listed in
   full alongside the top-level ones — a non-default one is a real out-of-band
   setting, so it is surfaced, not hidden. `record` writes only undeclared + added
