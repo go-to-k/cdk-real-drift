@@ -116,10 +116,36 @@ function canonicalizeStatement(s: unknown): unknown {
 // logging v2, VPC flow logs, etc.) — Sid `AWSLogDeliveryWrite`/`AWSLogDeliveryAclCheck`.
 // It is AWS-managed and never in the template, so it fires a false declared drift on the
 // bucket policy's Statement array (an extra live-only statement). Recognized by the
-// `AWSLogDelivery` Sid prefix AND the delivery-logs service principal (both required, so a
-// user statement is never dropped), it is subtracted before compare — same philosophy as
+// `AWSLogDelivery` Sid prefix AND the delivery-logs service principal AND a KNOWN-SAFE
+// content shape (see below), it is subtracted before compare — same philosophy as
 // stripping AWS-managed fields / aws:* tags. Symmetric: a user who declared the identical
 // statement still compares equal (both sides drop it).
+//
+// #715 (security-relevant FALSE NEGATIVE): matching on ONLY the Sid prefix + principal is
+// content-blind. A rogue statement that carries the `AWSLogDelivery*` Sid + delivery-logs
+// principal but ARBITRARY grants (e.g. `Action: s3:*` to a foreign account) was silently
+// subtracted on BOTH sides → the policy widening read CLEAN (invisible). So the subtraction
+// is now equality-gated to the DOCUMENTED safe shape: `Effect` must be `Allow`, and every
+// `Action` must be in the vended allow-set — the exact actions AWS grants the delivery-logs
+// principal per DESTINATION type (S3: `s3:PutObject`/`s3:GetBucketAcl`; CloudWatch Logs:
+// `logs:CreateLogStream`/`logs:PutLogEvents`; Firehose: `firehose:PutRecord`/`PutRecordBatch`).
+// Anything broader — a wildcard or foreign Action (`s3:*`, `s3:DeleteObject`, `logs:*`, …) —
+// is NOT subtracted, so it SURFACES as drift. Conservative by design: only the exact known-safe
+// Action shapes are dropped; a deviation keeps the statement (no false negative). Genuine AWS
+// statements (S3 bucket policy, Logs LogGroup resource policy, Firehose) still fold (no false
+// positive). We deliberately do NOT additionally gate on Resource/Condition equality — the
+// destination ARN / owning account vary per deployment and are not knowable here, and Action
+// is the axis that actually widens access; the Action gate alone closes the reported hole
+// (an `s3:*` / `logs:*` grant no longer folds) without risking a false positive on the legit
+// shape. Actions per https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/AWS-logs-and-resource-policy.html
+const AWS_LOG_DELIVERY_ALLOWED_ACTIONS = new Set([
+  's3:PutObject',
+  's3:GetBucketAcl',
+  'logs:CreateLogStream',
+  'logs:PutLogEvents',
+  'firehose:PutRecord',
+  'firehose:PutRecordBatch',
+]);
 function isAwsManagedLogDeliveryStatement(s: unknown): boolean {
   if (!isObj(s)) return false;
   const sid = s.Sid;
@@ -128,7 +154,14 @@ function isAwsManagedLogDeliveryStatement(s: unknown): boolean {
   if (!isObj(principal)) return false;
   const svc = principal.Service;
   const services = Array.isArray(svc) ? svc : [svc];
-  return services.includes('delivery.logs.amazonaws.com');
+  if (!services.includes('delivery.logs.amazonaws.com')) return false;
+  // Content gate: only fold the DOCUMENTED safe shape. `Effect` must be `Allow` and every
+  // `Action` must be in the vended allow-set — a broader/foreign grant surfaces (#715).
+  if (s.Effect !== 'Allow') return false;
+  const actionRaw = s.Action;
+  const actions = Array.isArray(actionRaw) ? actionRaw : [actionRaw];
+  if (actions.length === 0) return false;
+  return actions.every((a) => typeof a === 'string' && AWS_LOG_DELIVERY_ALLOWED_ACTIONS.has(a));
 }
 function canonicalizePrincipal(v: unknown): unknown {
   if (isObj(v)) {
