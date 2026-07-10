@@ -775,6 +775,87 @@ export function splitRecordedByBaseline(
   return { unchanged, changed };
 }
 
+/**
+ * #758: for a `changed` recorded entry (a path already in the baseline whose value differs
+ * this run), return the OLD recorded value so the record picker can show a `recorded → live`
+ * diff and the user can see WHAT they are blessing. Matches on the same three identity axes as
+ * `splitRecordedByBaseline` (#793). Returns `undefined` for a genuinely NEW path (no baseline
+ * entry) — the caller then renders a plain "new" row. A sentinel `{ hasRecorded: boolean }` is
+ * used rather than a bare `undefined` return so an intentional recorded value of `undefined`/
+ * `null` is still distinguishable from "no baseline entry".
+ */
+export function recordedValueForChanged(
+  entry: RecordedEntry,
+  baseline: BaselineFile | undefined
+): { hasRecorded: boolean; recordedValue: unknown } {
+  const baselineEntry = baseline?.recorded.find(
+    (a) =>
+      a.logicalId === entry.logicalId &&
+      a.path === entry.path &&
+      a.resourceType === entry.resourceType
+  );
+  return baselineEntry
+    ? { hasRecorded: true, recordedValue: baselineEntry.value }
+    : { hasRecorded: false, recordedValue: undefined };
+}
+
+/**
+ * #790: baseline entries that have NO counterpart in the freshly-built recorded set for a
+ * resource that was READ CLEANLY this run — i.e. a recorded value reverted to its AWS default
+ * (now classified `atDefault`/`generated`, so absent from `buildRecorded`) or a recorded
+ * property REMOVED out of band. `check`'s `applyBaseline` force-surfaces these as drift, but a
+ * naive re-`record` full-replaces the baseline with only the newly-built set, silently DROPPING
+ * these entries — accepting exactly that drift with zero output. They must instead surface in
+ * the record flow as explicit "drop this recorded watch?" rows (default UNSELECTED).
+ *
+ * An entry is a drop-candidate ONLY when its resource was genuinely OBSERVED and the value is
+ * genuinely gone — every "the recorded value is stale for a benign reason" case is EXCLUDED so
+ * it is never offered for a (misleading) drop:
+ *  - resource `skipped`/`modelReadFailed` this run → unread, not gone (carryForwardUnreadable
+ *    already preserves these; excluding them here keeps them silently preserved, not offered);
+ *  - resource `deleted`, or absent from the current template (`allLogicalIds`) → the resource
+ *    itself is gone (#675), a different story than a value reverting;
+ *  - path since PROMOTED into the template (declared) → the "clean up your baseline" nudge
+ *    (#749/#1079), not an accepted drift;
+ *  - the entry is an `added`-resource snapshot (empty path) → reconciled resource-wise, not a
+ *    property revert.
+ * The remaining entries are true "recorded value reverted-to-default / removed since record".
+ * Mirrors the exclusion set `applyBaseline`'s removed-since-record loop already applies.
+ */
+export function baselineOnlyEntries(
+  recorded: RecordedEntry[],
+  baseline: BaselineFile | undefined,
+  findings: Finding[],
+  opts: {
+    declaredByLogical?: Map<string, Record<string, unknown>> | undefined;
+    allLogicalIds?: Set<string> | string[] | undefined;
+  } = {}
+): RecordedEntry[] {
+  if (!baseline || baseline.recorded.length === 0) return [];
+  const present = new Set(recorded.map(recordedKey));
+  const skippedOrUnread = new Set(
+    findings.filter((f) => f.tier === 'skipped' || f.modelReadFailed).map((f) => f.logicalId)
+  );
+  const deletedLogical = new Set(
+    findings.filter((f) => f.tier === 'deleted').map((f) => f.logicalId)
+  );
+  const currentLogicalIds =
+    opts.allLogicalIds === undefined
+      ? undefined
+      : Array.isArray(opts.allLogicalIds)
+        ? new Set(opts.allLogicalIds)
+        : opts.allLogicalIds;
+  return baseline.recorded.filter((e) => {
+    if (e.path === '') return false; // `added`-resource snapshot, not a property revert
+    if (present.has(recordedKey(e))) return false; // still recorded this run (unchanged/changed)
+    if (skippedOrUnread.has(e.logicalId)) return false; // unread this run -> not gone
+    if (deletedLogical.has(e.logicalId)) return false; // resource deleted -> #675 story
+    if (currentLogicalIds !== undefined && !currentLogicalIds.has(e.logicalId)) return false; // #675
+    if (declaredPathIsPromoted(opts.declaredByLogical?.get(e.logicalId), e.path)) return false; // promoted
+    return true;
+  });
+}
+
 /** Selective record: build the recorded set from only the findings whose key is in
  *  `selectedKeys`. Empty set -> []; all keys -> equals buildRecorded(findings). */
 export function selectRecorded(findings: Finding[], selectedKeys: Set<string>): RecordedEntry[] {
@@ -1017,8 +1098,17 @@ export function applyBaseline(
       // drift. For an identity-keyed object array (IAM inline Policies, …) attach the
       // element-level delta so the report shows WHICH element changed (R128, display-only;
       // the finding still names the whole-array path, so record/revert are unaffected).
+      // #758: carry the RECORDED value on `desired` (mirroring the `added` tier at :976), so
+      // the recorded→live diff is available to the report / --json / a re-record picker — the
+      // user must see WHAT the out-of-band change was, not just the (possibly attacker-set)
+      // live value under a bare label.
       const delta = identityArrayDelta(canonicalizeForCompare(entry.value), f.actual);
-      kept.push({ ...f, tier: 'undeclared', ...(delta && { arrayDelta: delta }) });
+      kept.push({
+        ...f,
+        tier: 'undeclared',
+        desired: canonicalizeForCompare(entry.value),
+        ...(delta && { arrayDelta: delta }),
+      });
       continue;
     }
     if (f.tier === 'atDefault' || f.tier === 'generated') {
