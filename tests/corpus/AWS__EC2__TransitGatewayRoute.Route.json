@@ -46,7 +46,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "Route",
       "resourceType": "AWS::EC2::TransitGatewayRoute",
       "path": "Id",

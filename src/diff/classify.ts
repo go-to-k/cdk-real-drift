@@ -1946,6 +1946,61 @@ export function classifyResource(
       knownDef = { ...knownDef, StorageType: storageDefault };
     }
   }
+  // #975: a CE AnomalySubscription declaring the LEGACY numeric `Threshold` reads back an
+  // undeclared `ThresholdExpression` — the service DERIVES a JSON-string expression from it
+  // (`{"Dimensions":{"Key":"ANOMALY_TOTAL_IMPACT_ABSOLUTE","MatchOptions":["GREATER_THAN_OR_EQUAL"],
+  // "Values":["<Threshold>"]}}`, the Threshold echoed as a decimal string, `5` -> `"5.0"`).
+  // Derive the expression from the declared Threshold and equality-gate it (fold tier 2): an
+  // out-of-band edit of the expression still surfaces. A subscription that declares
+  // ThresholdExpression directly carries it and is compared in the declared loop.
+  if (resourceType === 'AWS::CE::AnomalySubscription') {
+    const threshold = declared['Threshold'];
+    if (typeof threshold === 'number' && Number.isFinite(threshold)) {
+      const decimal = Number.isInteger(threshold) ? `${threshold}.0` : String(threshold);
+      // The live value is a JSON-STRING prop the normalize pipeline canonicalizes to compact +
+      // ALPHABETICALLY-sorted keys, so the object literal below is written in alphabetical key
+      // order (Key < MatchOptions < Values) to serialize to the identical string it compares against.
+      knownDef = {
+        ...knownDef,
+        ThresholdExpression: JSON.stringify({
+          Dimensions: {
+            Key: 'ANOMALY_TOTAL_IMPACT_ABSOLUTE',
+            MatchOptions: ['GREATER_THAN_OR_EQUAL'],
+            Values: [decimal],
+          },
+        }),
+      };
+    }
+  }
+  // #975: an ElastiCache ReplicationGroup with in-transit encryption enabled at creation
+  // (`TransitEncryptionEnabled: true`) but no explicit `TransitEncryptionMode` reads back the
+  // documented default `"required"` (`"preferred"` is an explicit opt-in). Derive it from the
+  // declared flag and equality-gate it (fold tier 2): a group that pins `preferred` declares it
+  // and is compared, and an out-of-band flip to `preferred` still surfaces.
+  if (
+    resourceType === 'AWS::ElastiCache::ReplicationGroup' &&
+    declared['TransitEncryptionEnabled'] === true
+  ) {
+    knownDef = { ...knownDef, TransitEncryptionMode: 'required' };
+  }
+  // #975: a TransitGatewayRoute / TransitGatewayRouteTableAssociation registry schema ships an
+  // EMPTY `readOnly` list, so the schema-strip never removes the primaryIdentifier echo — the
+  // undeclared `Id` is an EXACT underscore-join of two DECLARED properties. Derive it and
+  // equality-gate it (fold tier 2): the value is a deterministic function of the declared inputs.
+  if (resourceType === 'AWS::EC2::TransitGatewayRoute') {
+    const rtb = declared['TransitGatewayRouteTableId'];
+    const cidr = declared['DestinationCidrBlock'];
+    if (typeof rtb === 'string' && typeof cidr === 'string') {
+      knownDef = { ...knownDef, Id: `${rtb}_${cidr}` };
+    }
+  }
+  if (resourceType === 'AWS::EC2::TransitGatewayRouteTableAssociation') {
+    const attach = declared['TransitGatewayAttachmentId'];
+    const rtb = declared['TransitGatewayRouteTableId'];
+    if (typeof attach === 'string' && typeof rtb === 'string') {
+      knownDef = { ...knownDef, Id: `${attach}_${rtb}` };
+    }
+  }
   // #701: an EventSourceMapping's default BatchSize depends on the source service — 10 for
   // SQS, 100 for Kinesis / DynamoDB streams / MSK / Kafka. Derive the expected default from
   // the declared EventSourceArn's service segment (arn:<p>:<service>:...) and equality-gate
@@ -3195,6 +3250,25 @@ export function classifyResource(
     if (namePattern !== undefined && typeof v === 'string' && namePattern.test(v)) {
       findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
       continue;
+    }
+    // #975: ElastiCache picks a member cluster `<ReplicationGroupId>-NNN` as the default
+    // snapshotting cluster (which member is a per-deploy AWS choice, but the name always has
+    // this deterministic shape). Fold the undeclared `SnapshottingClusterId` when it matches
+    // `^<ReplicationGroupId>-\d{3}$` (the declared id, falling back to the physical id). An
+    // out-of-band re-point to an UNRELATED cluster does not match the prefix and surfaces.
+    if (
+      resourceType === 'AWS::ElastiCache::ReplicationGroup' &&
+      k === 'SnapshottingClusterId' &&
+      typeof v === 'string'
+    ) {
+      const rgId = declared['ReplicationGroupId'] ?? physicalId;
+      if (
+        typeof rgId === 'string' &&
+        new RegExp(`^${rgId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-\\d{3}$`).test(v)
+      ) {
+        findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
+        continue;
+      }
     }
     // A live value EQUAL to the AWS/CDK-generated value for this resource (its minted
     // physical name, a default-named log group) is the `generated` tier: folded

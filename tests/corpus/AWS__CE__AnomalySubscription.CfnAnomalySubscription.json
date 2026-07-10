@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "RECORDED LIVE (dogfood): the service DERIVES ThresholdExpression (a JSON string) from the declared legacy Threshold — surfaces as the one undeclared value (accept-once material, locked as-is); the live Subscribers entry gains a Status field the declared side never set (nested live-extra, ignored).",
+  "description": "RECORDED LIVE (dogfood): the service DERIVES ThresholdExpression (a JSON string) from the declared legacy Threshold — folds atDefault via the #975 derived equality gate (an out-of-band expression edit still surfaces); the live Subscribers entry gains a Status field the declared side never set (nested live-extra, ignored).",
   "resource": {
     "logicalId": "CfnAnomalySubscription",
     "resourceType": "AWS::CE::AnomalySubscription",
@@ -69,7 +69,7 @@
   },
   "expected": [
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "CfnAnomalySubscription",
       "resourceType": "AWS::CE::AnomalySubscription",
       "path": "ThresholdExpression",
