@@ -3602,6 +3602,28 @@ export const ORDER_SIGNIFICANT_ARRAY_KEYS: Record<string, ReadonlySet<string>> =
   // addresses the RAW live model, so `revert` failed with `noSuchPath //TransformerConfig/0/...`.
   // Pinning it order-significant keeps both compare sides in raw order so the index aligns.
   'AWS::Logs::Transformer': new Set(['TransformerConfig']),
+  // SSMContacts escalation Plan: `Stages` engage IN ARRAY ORDER (stage 1 pages first,
+  // stage 2 after its duration, ...), and its items carry no identity key, so a live
+  // reorder (`update-contact`) that swaps who is paged first must SURFACE, not fold. The
+  // schema marks it insertionOrder:false (a lie); pin it here so the top-level object-array
+  // wiring (canonicalizeTagLists + sortUnorderedSetProps + the declared object-array loop)
+  // keeps it in raw order and a reorder differs positionally (#880).
+  'AWS::SSMContacts::Plan': new Set(['Stages']),
+};
+// Dotted paths (NESTED object arrays and NESTED scalar sets) whose ORDER is semantically
+// significant even though the registry schema marks the array insertionOrder:false — a
+// reorder IS real drift and must surface, not fold. The single-property-name
+// ORDER_SIGNIFICANT_ARRAY_KEYS twin above handles TOP-LEVEL object arrays; this table
+// handles NESTED object arrays AND NESTED scalar sets, keyed by resourceType -> the set of
+// full DOTTED paths whose array must stay in raw order (#880):
+//   - Scheduler::Schedule `Target.EcsParameters.PlacementStrategy` — ECS placement strategies
+//     are EVALUATED IN ORDER (spread-then-binpack != binpack-then-spread); nested object array,
+//     items `{Type, Field}` with no identity key. Mutable out of band via UpdateSchedule.
+//   - AppSync::Resolver `PipelineConfig.Functions` — pipeline functions EXECUTE IN ARRAY ORDER;
+//     a nested SCALAR array (list of function-id strings). Mutable out of band via UpdateResolver.
+export const ORDER_SIGNIFICANT_PATHS: Record<string, ReadonlySet<string>> = {
+  'AWS::Scheduler::Schedule': new Set(['Target.EcsParameters.PlacementStrategy']),
+  'AWS::AppSync::Resolver': new Set(['PipelineConfig.Functions']),
 };
 export function canonicalizeTagListsDeep(v: unknown, orderSig?: ReadonlySet<string>): unknown {
   return canonicalizeTagLists(v, orderSig, undefined);

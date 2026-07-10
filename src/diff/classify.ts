@@ -76,6 +76,7 @@ import {
   KNOWN_DEFAULT_PATHS,
   KNOWN_DEFAULTS,
   ORDER_SIGNIFICANT_ARRAY_KEYS,
+  ORDER_SIGNIFICANT_PATHS,
   READGAP_COLLECTION_PATHS,
   SCALAR_RETURNED_WHEN_SET,
   READ_NORMALIZED_DECLARED_PATHS,
@@ -1505,7 +1506,13 @@ function sortUnorderedSetProps(
   // reorder at compare time — an asymmetry that false-flagged a nested set AWS re-ordered as
   // "changed since record". Sorting nested paths here too makes the live normalizer's output
   // symmetric with the declared-compare tolerance.
+  // A SCALAR path whose ORDER is semantically significant (AppSync Resolver
+  // `PipelineConfig.Functions` — pipeline functions execute in array order) must NOT be
+  // sorted even when the schema marks it insertionOrder:false: sorting the live side would
+  // fold an out-of-band execution-order change to equality, hiding real drift (#880).
+  const orderSigPaths = ORDER_SIGNIFICANT_PATHS[resourceType];
   for (const path of [...(UNORDERED_ARRAY_PROPS[resourceType] ?? []), ...schemaScalarPaths]) {
+    if (orderSigPaths?.has(path)) continue;
     if (path.includes('.')) sortScalarSetAtNestedPath(model, path.split('.'));
     // Guard on presence — assigning `model[path]` for an absent top-level key would
     // MATERIALIZE it as `undefined`, injecting a phantom key into the live model that
@@ -2926,10 +2933,16 @@ export function classifyResource(
     // ContentPolicyConfig.FiltersConfig etc.): sort the reordered set on both sides so
     // a positional diff doesn't false-flag it.
     const nestedUnordered = UNORDERED_NESTED_OBJECT_ARRAY_PATHS[resourceType];
+    // A NESTED object-array path whose ORDER is semantically significant (Scheduler::Schedule
+    // `Target.EcsParameters.PlacementStrategy` — strategies are evaluated in order) must NOT be
+    // sorted even when the schema marks it insertionOrder:false: sortNestedObjectArrays would
+    // fold an out-of-band reorder to equality, hiding real drift. Compare the FULL path
+    // (`${k}.${subPath}`) since nestedSubPaths are stored RELATIVE to the top-level key k (#880).
+    const orderSigPathsForType = ORDER_SIGNIFICANT_PATHS[resourceType];
     const nestedSubPaths = [
       ...new Set(
         [...(nestedUnordered ?? []), ...(schema.unorderedObjectArrayPaths ?? [])]
-          .filter((p) => p.startsWith(`${k}.`))
+          .filter((p) => p.startsWith(`${k}.`) && !orderSigPathsForType?.has(p))
           .map((p) => p.slice(k.length + 1))
       ),
     ];
@@ -3314,6 +3327,11 @@ export function classifyResource(
           // `Triggers.0.GitConfiguration.Push.0.Branches.Includes` -> `Triggers.*.…Push.*.…`).
           UNORDERED_ARRAY_PROPS[resourceType]?.has(d.path.replace(/\.\d+(?=\.|$)/g, '.*')) ||
           schema.unorderedScalarPaths?.includes(d.path)) &&
+        // An ORDER-significant scalar path (AppSync Resolver `PipelineConfig.Functions` —
+        // functions execute in array order) must NOT fold a reorder to equality: exclude it so
+        // an out-of-band execution-order change surfaces even though the schema lies with
+        // insertionOrder:false (#880).
+        !ORDER_SIGNIFICANT_PATHS[resourceType]?.has(d.path) &&
         isEqualUnorderedScalarSet(d.stateValue, d.awsValue)
       )
         continue;
