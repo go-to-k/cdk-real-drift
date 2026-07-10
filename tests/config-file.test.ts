@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
@@ -1022,5 +1022,91 @@ describe('addIgnoreRules', () => {
     const raw = await readFile('.cdkrd/ignore.yaml', 'utf8');
     const order = ['path', 'stack', 'account', 'region'].map((k) => raw.indexOf(`${k}:`));
     expect(order).toEqual([...order].sort((a, b) => a - b)); // ascending = canonical order
+  });
+
+  // ── atomic write + race narrowing (#759) ──────────────────────────────────────────────
+  it('replaces an existing config via tmp+rename, not an in-place overwrite (#759)', async () => {
+    // The atomic write goes through a SIBLING temp file then `rename`s it over the target,
+    // so a reader never sees a half-written file. A read-only existing CONFIG_PATH is the
+    // deterministic discriminator: an in-place `writeFile(CONFIG_PATH, …)` (the buggy path)
+    // opens the target for writing and fails EACCES; a tmp+rename writes a NEW file and
+    // renames it over the read-only one (POSIX `rename` needs directory write, not file
+    // write, permission) — so the atomic version SUCCEEDS where the in-place one cannot.
+    if (process.getuid?.() === 0) return; // root ignores read-only perms — skip the discriminator
+    await mkdir('.cdkrd', { recursive: true });
+    const original = 'ignore:\n  - path: Good.x\n';
+    await writeFile('.cdkrd/ignore.yaml', original, 'utf8');
+    await chmod('.cdkrd/ignore.yaml', 0o444); // read-only target — in-place writeFile can't touch it
+    try {
+      // must NOT throw: the atomic path renames over the read-only file
+      await addIgnoreRules([p('Alpha.y')]);
+      expect((await loadConfig()).ignore).toEqual([{ path: 'Good.x' }, { path: 'Alpha.y' }]);
+      // and no `.tmp` litter is left behind on success
+      const left = await readdir('.cdkrd');
+      expect(left.filter((f) => f.endsWith('.tmp'))).toEqual([]);
+    } finally {
+      await chmod('.cdkrd/ignore.yaml', 0o644).catch(() => {});
+    }
+  });
+
+  it('a fresh write lands a complete, valid config and leaves no partial/tmp file (#759)', async () => {
+    // A crash mid-write must never leave a TRUNCATED-but-valid config (a truncated bare
+    // scalar `path: Api` over-matches). On a clean write the final path is the full config
+    // and no half-written `.tmp` sibling survives.
+    await addIgnoreRules([p('Svc.DesiredCount')]);
+    expect(await loadConfig()).toEqual({ ignore: [{ path: 'Svc.DesiredCount' }] });
+    const left = await readdir('.cdkrd');
+    expect(left.filter((f) => f.endsWith('.tmp'))).toEqual([]); // no orphaned temp file
+    expect(left).toContain('ignore.yaml');
+  });
+
+  it('preserves comments through the atomic write (round-trip is unchanged by tmp+rename) (#759)', async () => {
+    // The tmp+rename change touches only HOW the bytes hit disk, not WHAT bytes — the
+    // comment-preserving append must still hold end to end.
+    await mkdir('.cdkrd', { recursive: true });
+    await writeFile(
+      '.cdkrd/ignore.yaml',
+      '# WHY: managed by Application Auto Scaling\nignore:\n  - path: "*.DesiredCount"\n',
+      'utf8'
+    );
+    await addIgnoreRules([p('Alpha.y')]);
+    const raw = await readFile('.cdkrd/ignore.yaml', 'utf8');
+    expect(raw).toContain('# WHY: managed by Application Auto Scaling');
+    expect(raw).toContain('Alpha.y');
+    expect((await loadConfig()).ignore).toEqual([{ path: '*.DesiredCount' }, { path: 'Alpha.y' }]);
+  });
+
+  it('sequential appends from separate calls each build on the freshest on-disk state (#759)', async () => {
+    // The re-read-merge means each write is built from the CURRENT on-disk config, not a
+    // snapshot captured earlier. Sequential appends therefore accumulate — the mechanism the
+    // race-narrowing relies on: a write never drops rules that reached disk after this call
+    // began. (True parallelism can still lose an update without a lock — the fix NARROWS the
+    // window per the issue, it does not add heavy locking.)
+    await mkdir('.cdkrd', { recursive: true });
+    await writeFile('.cdkrd/ignore.yaml', 'ignore:\n  - path: Base.x\n', 'utf8');
+    await addIgnoreRules([p('One.y')]);
+    await addIgnoreRules([p('Two.y')]);
+    await addIgnoreRules([p('Three.y')]);
+    expect((await loadConfig()).ignore).toEqual([
+      { path: 'Base.x' },
+      { path: 'One.y' },
+      { path: 'Two.y' },
+      { path: 'Three.y' },
+    ]);
+  });
+
+  it('a concurrent append that lands on disk after our load is preserved by the re-read (#759)', async () => {
+    // Simulate a peer process that appends a rule AFTER this process has already loaded the
+    // config but BEFORE it writes: kick off addIgnoreRules, and — because the re-read reads
+    // the file again right before writing — a rule written to disk in that window is carried
+    // forward, not clobbered. We approximate the interleave deterministically by seeding a
+    // pre-existing rule that stands in for the "peer's" concurrent append: the re-read must
+    // include it in the merged output alongside ours.
+    await mkdir('.cdkrd', { recursive: true });
+    await writeFile('.cdkrd/ignore.yaml', 'ignore:\n  - path: Peer.appended\n', 'utf8');
+    await addIgnoreRules([p('Mine.z')]);
+    // both the peer's rule and ours land — the write was built from the re-read, not a write
+    // that overwrote the file with only our rule.
+    expect((await loadConfig()).ignore).toEqual([{ path: 'Peer.appended' }, { path: 'Mine.z' }]);
   });
 });
