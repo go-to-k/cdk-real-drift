@@ -6878,6 +6878,152 @@ describe('normalizeLiveModel (PR4 — the shared live-model normalizer used for 
     normalizeLiveModel(input, schema);
     expect(input).toEqual({ AuthorizationType: 'NONE', MethodId: 'x' });
   });
+
+  // #808: the live normalizer must sort NESTED (dotted) unordered scalar-set paths, not
+  // only top-level keys — otherwise a recorded baseline stores a nested set RAW while the
+  // declared-compare loop tolerates its reorder, so a re-read in AWS's canonical order
+  // false-flags as "changed since record". Sorting nested paths here makes the recorded-vs-
+  // live compare reflexive.
+  describe('#808 nested unordered scalar-set paths (symmetry with declared-compare)', () => {
+    const emptySchema: SchemaInfo = {
+      readOnly: new Set(),
+      writeOnly: new Set(),
+      createOnly: new Set(),
+      readOnlyPaths: [],
+      writeOnlyPaths: [],
+      createOnlyPaths: [],
+      defaults: {},
+      defaultPaths: {},
+    };
+
+    it('sorts a nested UNORDERED_ARRAY_PROPS path (CloudFront GeoRestriction.Locations)', () => {
+      // recorded order vs AWS-reordered live — both must normalize IDENTICALLY.
+      const recorded = normalizeLiveModel(
+        {
+          DistributionConfig: {
+            Restrictions: {
+              GeoRestriction: { RestrictionType: 'whitelist', Locations: ['CA', 'GB', 'US'] },
+            },
+          },
+        },
+        emptySchema,
+        { resourceType: 'AWS::CloudFront::Distribution' }
+      );
+      const live = normalizeLiveModel(
+        {
+          DistributionConfig: {
+            Restrictions: {
+              GeoRestriction: { RestrictionType: 'whitelist', Locations: ['US', 'GB', 'CA'] },
+            },
+          },
+        },
+        emptySchema,
+        { resourceType: 'AWS::CloudFront::Distribution' }
+      );
+      const locs = (m: Record<string, unknown>): unknown =>
+        (
+          (
+            (m.DistributionConfig as Record<string, unknown>).Restrictions as Record<
+              string,
+              unknown
+            >
+          ).GeoRestriction as Record<string, unknown>
+        ).Locations;
+      expect(locs(live)).toEqual(['CA', 'GB', 'US']);
+      // reflexive: recorded and reordered-live are now byte-identical.
+      expect(live).toEqual(recorded);
+    });
+
+    it('sorts a nested CodeDeploy AutoRollbackConfiguration.Events set', () => {
+      const out = normalizeLiveModel(
+        {
+          AutoRollbackConfiguration: {
+            Enabled: true,
+            Events: ['DEPLOYMENT_STOP_ON_ALARM', 'DEPLOYMENT_FAILURE'],
+          },
+        },
+        emptySchema,
+        { resourceType: 'AWS::CodeDeploy::DeploymentGroup' }
+      );
+      expect((out.AutoRollbackConfiguration as Record<string, unknown>).Events).toEqual([
+        'DEPLOYMENT_FAILURE',
+        'DEPLOYMENT_STOP_ON_ALARM',
+      ]);
+    });
+
+    it('sorts a WILDCARD nested path across array indices (CodePipeline Triggers)', () => {
+      const out = normalizeLiveModel(
+        {
+          Triggers: [
+            {
+              GitConfiguration: {
+                Push: [{ Branches: { Includes: ['release/*', 'main', 'develop'] } }],
+              },
+            },
+          ],
+        },
+        emptySchema,
+        { resourceType: 'AWS::CodePipeline::Pipeline' }
+      );
+      const includes = (
+        (
+          ((out.Triggers as unknown[])[0] as Record<string, unknown>).GitConfiguration as Record<
+            string,
+            unknown
+          >
+        ).Push as unknown[]
+      )[0] as Record<string, unknown>;
+      expect((includes.Branches as Record<string, unknown>).Includes).toEqual([
+        'develop',
+        'main',
+        'release/*',
+      ]);
+    });
+
+    it('still sorts a TOP-LEVEL unordered prop (regression)', () => {
+      const out = normalizeLiveModel(
+        { AllowedOAuthFlows: ['implicit', 'code', 'client_credentials'] },
+        emptySchema,
+        { resourceType: 'AWS::Cognito::UserPoolClient' }
+      );
+      expect(out.AllowedOAuthFlows).toEqual(['client_credentials', 'code', 'implicit']);
+    });
+
+    it('sorts a schema-driven NESTED unorderedScalarPaths entry', () => {
+      const schemaWithNested: SchemaInfo = {
+        ...emptySchema,
+        unorderedScalarPaths: ['Config.Regions'],
+      };
+      const out = normalizeLiveModel(
+        { Config: { Regions: ['us-west-2', 'eu-west-1', 'ap-south-1'] } },
+        schemaWithNested,
+        { resourceType: 'AWS::Some::Type' }
+      );
+      expect((out.Config as Record<string, unknown>).Regions).toEqual([
+        'ap-south-1',
+        'eu-west-1',
+        'us-west-2',
+      ]);
+    });
+
+    it('does NOT reorder an ORDERED nested path (only listed unordered-set paths sort)', () => {
+      // GeoRestriction.Locations is the ONLY nested CloudFront set folded — a sibling
+      // ordered field must be left in place.
+      const out = normalizeLiveModel(
+        {
+          DistributionConfig: {
+            CacheBehaviors: [{ PathPattern: '/b' }, { PathPattern: '/a' }],
+          },
+        },
+        emptySchema,
+        { resourceType: 'AWS::CloudFront::Distribution' }
+      );
+      expect((out.DistributionConfig as Record<string, unknown>).CacheBehaviors).toEqual([
+        { PathPattern: '/b' },
+        { PathPattern: '/a' },
+      ]);
+    });
+  });
 });
 
 // A live-only sub-key ADDED to a declared IAM policy STATEMENT out of band (e.g. a

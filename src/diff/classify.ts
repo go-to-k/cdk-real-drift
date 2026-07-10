@@ -1069,10 +1069,50 @@ const PATH_UNSAFE_KEY = /[.[\]]/;
 // Cognito OAuth list, re-read by AWS in a different order, false-flagged as "changed since
 // record" (baselineValueMatches re-canonicalizes without this step). Sorting them here, in
 // the shared live-model normalizer, makes every downstream consumer see one stable order.
+// Sort a scalar array (string/number/boolean multiset) into a stable canonical order.
+// Non-scalar / non-array values are returned untouched, so a caller can apply this
+// blindly to whatever it finds at a path. Order matches the DECLARED loop's
+// `isEqualUnorderedScalarSet` comparison intent: same multiset, canonical order.
+function sortScalarSet(v: unknown): unknown {
+  if (
+    Array.isArray(v) &&
+    v.every((e) => typeof e === 'string' || typeof e === 'number' || typeof e === 'boolean')
+  )
+    return [...v].sort((a, b) =>
+      `${typeof a}:${String(a)}` < `${typeof b}:${String(b)}` ? -1 : 1
+    );
+  return v;
+}
+
+// Walk `model` along a dotted path TEMPLATE (segments separated by `.`) and apply
+// `sort` to the array found at each matching leaf, IN PLACE. A `*` segment matches
+// EVERY element of an array OR every value of a plain object at that position — the
+// same wildcard the DECLARED loop normalizes numeric drift-path segments to before its
+// `UNORDERED_ARRAY_PROPS` lookup (`Triggers.0.…Push.0.…Includes` → `Triggers.*.…Push.*.…`).
+// A concrete segment descends into that object key. Anything that doesn't match the
+// shape (a missing key, a scalar where an object/array is expected) is skipped, so an
+// absent nested config is a no-op. Used for the nested/dotted UNORDERED_ARRAY_PROPS +
+// schema `unorderedScalarPaths` entries the top-level loop cannot reach.
+function sortScalarSetAtNestedPath(model: unknown, segs: readonly string[]): void {
+  if (segs.length === 0 || model === null || typeof model !== 'object') return;
+  const [head, ...rest] = segs;
+  if (head === '*') {
+    const children = Array.isArray(model) ? model : Object.values(model);
+    for (const child of children) sortScalarSetAtNestedPath(child, rest);
+    return;
+  }
+  if (Array.isArray(model)) return; // a concrete key can't index an array
+  const obj = model as Record<string, unknown>;
+  if (!(head! in obj)) return;
+  if (rest.length === 0) obj[head!] = sortScalarSet(obj[head!]);
+  else sortScalarSetAtNestedPath(obj[head!], rest);
+}
+
 function sortUnorderedSetProps(
   model: Record<string, unknown>,
   resourceType: string,
-  schemaObjectArrayKeys: readonly string[] = []
+  schemaObjectArrayKeys: readonly string[] = [],
+  schemaScalarPaths: readonly string[] = []
 ): void {
   const objKeys = new Set([
     ...(UNORDERED_OBJECT_ARRAY_PROPS[resourceType] ?? []),
@@ -1084,15 +1124,20 @@ function sortUnorderedSetProps(
   const orderSig = ORDER_SIGNIFICANT_ARRAY_KEYS[resourceType];
   for (const k of objKeys)
     if (!orderSig?.has(k) && Array.isArray(model[k])) model[k] = sortUnorderedObjectArray(model[k]);
-  for (const k of UNORDERED_ARRAY_PROPS[resourceType] ?? []) {
-    const v = model[k];
-    if (
-      Array.isArray(v) &&
-      v.every((e) => typeof e === 'string' || typeof e === 'number' || typeof e === 'boolean')
-    )
-      model[k] = [...v].sort((a, b) =>
-        `${typeof a}:${String(a)}` < `${typeof b}:${String(b)}` ? -1 : 1
-      );
+  // Scalar unordered-set paths from BOTH sources (per-type table + schema insertionOrder:false).
+  // A TOP-LEVEL path is a plain key; a NESTED/dotted path (`DistributionConfig.Restrictions.
+  // GeoRestriction.Locations`, CodeDeploy `AutoRollbackConfiguration.Events`, CodePipeline
+  // `Triggers.*.…Includes`) is walked into. Before #808 only top-level keys were sorted here,
+  // so a recorded baseline stored a nested set RAW while the DECLARED loop tolerated its
+  // reorder at compare time — an asymmetry that false-flagged a nested set AWS re-ordered as
+  // "changed since record". Sorting nested paths here too makes the live normalizer's output
+  // symmetric with the declared-compare tolerance.
+  for (const path of [...(UNORDERED_ARRAY_PROPS[resourceType] ?? []), ...schemaScalarPaths]) {
+    if (path.includes('.')) sortScalarSetAtNestedPath(model, path.split('.'));
+    // Guard on presence — assigning `model[path]` for an absent top-level key would
+    // MATERIALIZE it as `undefined`, injecting a phantom key into the live model that
+    // reads as a false undeclared finding.
+    else if (path in model) model[path] = sortScalarSet(model[path]);
   }
 }
 
@@ -1112,9 +1157,13 @@ export function normalizeLiveModel(
     sortUnorderedSetProps(
       live,
       opts.resourceType,
-      // top-level keys only — nested (dotted) schema paths are handled per-key in the
-      // declared loop, and the undeclared loop's nested inventory is emitted per-path.
-      (schema.unorderedObjectArrayPaths ?? []).filter((p) => !p.includes('.'))
+      // OBJECT arrays: top-level keys only — nested (dotted) object-array paths are handled
+      // per-key in the declared compare loop (identity alignment + per-element sort), which
+      // the shared normalizer cannot replicate; the undeclared loop emits nested inventory
+      // per-path. SCALAR sets, however, ARE nested-walked below so the baseline/live compare
+      // is symmetric with the declared-loop reorder tolerance (#808).
+      (schema.unorderedObjectArrayPaths ?? []).filter((p) => !p.includes('.')),
+      schema.unorderedScalarPaths ?? []
     );
   return live;
 }
