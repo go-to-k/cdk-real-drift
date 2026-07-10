@@ -107,6 +107,11 @@ import {
   DescribeReplicationTasksCommand,
 } from '@aws-sdk/client-database-migration-service';
 import {
+  DescribeResourceCommand,
+  EntityNotFoundException,
+  LakeFormationClient,
+} from '@aws-sdk/client-lakeformation';
+import {
   GetJobTemplateCommand,
   GetQueueCommand,
   MediaConvertClient,
@@ -872,6 +877,38 @@ const readDmsReplicationTask: OverrideReader = async ({ physicalId, region }) =>
   if (str(t.CdcStartPosition)) model.CdcStartPosition = t.CdcStartPosition;
   if (str(t.CdcStopPosition)) model.CdcStopPosition = t.CdcStopPosition;
   if (str(t.TaskData)) model.TaskData = t.TaskData;
+  return model;
+};
+
+// AWS::LakeFormation::Resource — Cloud Control's GetResource returns UnsupportedActionException
+// for this type (a CC read gap; issue #930), so a registered S3 data location was a silent
+// `skipped` read gap: an out-of-band re-registration under a different role, or a toggle of the
+// federation / hybrid-access flags, was invisible. Read via LakeFormation DescribeResource — the
+// CFn physical id (Ref) IS the registered location's ResourceArn. Project the CFn-declarable
+// props (ResourceArn / RoleArn / WithFederation / HybridAccessEnabled); LastModified is a
+// read-only AWS timestamp the CFn registry does NOT model, so it is dropped (projecting it would
+// be permanent first-run noise). Read-ONLY. A deregistered/absent location surfaces as
+// EntityNotFoundException (or an empty ResourceInfo) → ResourceGoneError, which the router maps
+// to `deleted`.
+const readLakeFormationResource: OverrideReader = async ({ physicalId, region }) => {
+  const arn = str(physicalId);
+  if (!arn) return undefined;
+  const c = new LakeFormationClient({ region, ...READ_RETRY });
+  let info;
+  try {
+    info = (await c.send(new DescribeResourceCommand({ ResourceArn: arn }))).ResourceInfo;
+  } catch (e) {
+    if (e instanceof EntityNotFoundException)
+      throw new ResourceGoneError(`LakeFormation Resource ${arn} absent`);
+    throw e;
+  }
+  if (!info) throw new ResourceGoneError(`LakeFormation Resource ${arn} absent`);
+  const model: Record<string, unknown> = {};
+  if (str(info.ResourceArn)) model.ResourceArn = info.ResourceArn;
+  if (str(info.RoleArn)) model.RoleArn = info.RoleArn;
+  if (typeof info.WithFederation === 'boolean') model.WithFederation = info.WithFederation;
+  if (typeof info.HybridAccessEnabled === 'boolean')
+    model.HybridAccessEnabled = info.HybridAccessEnabled;
   return model;
 };
 
@@ -2555,6 +2592,7 @@ export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::DMS::ReplicationSubnetGroup': readDmsReplicationSubnetGroup,
   'AWS::DMS::ReplicationInstance': readDmsReplicationInstance,
   'AWS::DMS::ReplicationTask': readDmsReplicationTask,
+  'AWS::LakeFormation::Resource': readLakeFormationResource,
   'AWS::MediaConvert::Queue': readMediaConvertQueue,
   'AWS::MediaConvert::JobTemplate': readMediaConvertJobTemplate,
   'AWS::Route53::RecordSet': readRoute53RecordSet,
