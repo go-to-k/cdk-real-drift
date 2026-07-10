@@ -1,3 +1,10 @@
+## [0.4.36](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.35...v0.4.36) (2026-07-10)
+
+
+### Bug Fixes
+
+* **noise:** fold default SLR / AWS-managed KMS ARNs via CONTEXT_ARN_DEFAULTS ([#846](https://github.com/go-to-k/cdk-real-drift/issues/846)) ([#1153](https://github.com/go-to-k/cdk-real-drift/issues/1153)) ([42bd8f7](https://github.com/go-to-k/cdk-real-drift/commit/42bd8f702133772e4f78c169719e32cac8f4cd87))
+
 ## [0.4.35](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.34...v0.4.35) (2026-07-10)
 
 
