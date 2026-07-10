@@ -2291,6 +2291,15 @@ export const CONTEXT_ARN_DEFAULTS: Record<string, Record<string, string | string
   // account id; equality-gated, so a Tag pointed at another account's catalog still surfaces.
   // Live-confirmed (#914).
   'AWS::LakeFormation::Tag': { CatalogId: '{accountId}' },
+  // A LakeFormation PrincipalPermissions that declares no `Catalog` reads back the deploying
+  // account id — the same own-account Data Catalog default as the Tag echo above (its optional
+  // top-level `Catalog` property defaults to the account id per the registry schema, and CC's
+  // read handler echoes it). `Catalog` is createOnly (IMMUTABLE type — no update handler), so it
+  // cannot drift out of band; equality-gated `{accountId}`, so a grant pointed at another
+  // account's catalog still surfaces. #930 (part 1 — the Tag-sibling family; DataCellsFilter's
+  // TableCatalogId is REQUIRED so always declared, and TagAssociation carries CatalogId only in
+  // nested sub-refs — both out of scope here).
+  'AWS::LakeFormation::PrincipalPermissions': { Catalog: '{accountId}' },
   // An S3 Access Point that declares no BucketAccountId reads back the deploying account id —
   // the default bucket-owner account. The bare `{accountId}` placeholder substitutes to the
   // account id; equality-gated, so an AccessPoint pointed at a cross-account bucket owner still

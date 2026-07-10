@@ -110,3 +110,34 @@ describe('#914 LakeFormation Tag undeclared CatalogId=<account>', () => {
     expect(pathsByTier(f, 'undeclared')).toContain('CatalogId');
   });
 });
+
+describe('#930 LakeFormation PrincipalPermissions undeclared Catalog=<account>', () => {
+  const res: DesiredResource = {
+    logicalId: 'LfPerm',
+    resourceType: 'AWS::LakeFormation::PrincipalPermissions',
+    physicalId: 'perm',
+    declared: {
+      Principal: { DataLakePrincipalIdentifier: 'arn:aws:iam::111122223333:role/analyst' },
+      Resource: { Database: { CatalogId: '111122223333', Name: 'sales' } },
+      Permissions: ['DESCRIBE'],
+      PermissionsWithGrantOption: [],
+    },
+  };
+  const opts = { accountId: '111122223333', region: 'us-east-1' };
+  it('folds Catalog equal to the deploying account id to atDefault', () => {
+    const f = classifyResource(res, { Catalog: '111122223333' }, emptySchema, opts);
+    expect(pathsByTier(f, 'atDefault')).toContain('Catalog');
+    expect(pathsByTier(f, 'undeclared')).not.toContain('Catalog');
+  });
+  it('surfaces a Catalog pointed at another account as undeclared', () => {
+    const f = classifyResource(res, { Catalog: '999988887777' }, emptySchema, opts);
+    expect(pathsByTier(f, 'undeclared')).toContain('Catalog');
+  });
+  it('leaves Catalog undeclared (recordable) when the account is unresolved', () => {
+    const f = classifyResource(res, { Catalog: '111122223333' }, emptySchema, {
+      region: 'us-east-1',
+    });
+    expect(pathsByTier(f, 'atDefault')).not.toContain('Catalog');
+    expect(pathsByTier(f, 'undeclared')).toContain('Catalog');
+  });
+});
