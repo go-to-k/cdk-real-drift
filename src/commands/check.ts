@@ -260,6 +260,35 @@ export function hasBaselineForStack(stackName: string, region: string): boolean 
   });
 }
 
+// #1060 — the top-level `--json` emit runs AFTER the per-stack loop, OUTSIDE any
+// try/catch, so a non-serializable finding value (a BigInt, a circular reference)
+// that survived the per-stack try detonates `JSON.stringify` and crashes the whole
+// run with partial/empty stdout — violating the #943/#1000/#1063 contract that every
+// `--json` exit path leaves stdout a single JSON.parse-able value. This wraps the
+// stringify so the user still gets their real data (BigInt→string, circular refs
+// replaced by a marker), falling back to `[]` only if even the guarded pass throws.
+export function safeStringifyJson(value: unknown): string {
+  const seen = new WeakSet<object>();
+  const replacer = (_key: string, v: unknown): unknown => {
+    if (typeof v === 'bigint') return v.toString();
+    if (typeof v === 'object' && v !== null) {
+      if (seen.has(v)) return '[Circular]';
+      seen.add(v);
+    }
+    return v;
+  };
+  try {
+    return JSON.stringify(value, replacer, 2);
+  } catch (e) {
+    // Even the guarded replacer failed (e.g. a throwing toJSON, a non-coerced type).
+    // Keep the contract: emit a valid-JSON fallback and route the diagnostic to stderr.
+    console.error(
+      `error: could not serialize --json output: ${(e as Error).message} — emitting [] instead`
+    );
+    return '[]';
+  }
+}
+
 export async function runCheck(args: string[]): Promise<number> {
   const a = parseCommonArgs(args, 'check');
   if (a.profile) process.env.AWS_PROFILE = a.profile; // honored by SDK clients + synth subprocess
@@ -695,7 +724,7 @@ export async function runCheck(args: string[]): Promise<number> {
   // value. Printed once here, after the loop, on stdout (the machine channel; all notes /
   // warnings above go to stderr). Even a single-stack run is an array of one, kept uniform
   // so a consumer's JSON.parse always yields an array.
-  if (a.json) console.log(JSON.stringify(jsonReports, null, 2));
+  if (a.json) console.log(safeStringifyJson(jsonReports));
   // Report-only mode found drift: say so, and say how to make it fail — a script
   // author piping this must discover --fail from the output, not from a surprise
   // green pipeline (R53). Suppressed under --json (machine consumers read stdout).
