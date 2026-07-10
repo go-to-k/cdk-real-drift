@@ -258,6 +258,19 @@ export function finalCheckExit(code: number, fail: boolean): number {
  * who can make the decision. It is gated OUT of every machine/automation mode:
  *   - --json / --show-all / --pre-deploy — machine output or baseline-untouched contracts,
  *   - --fail — the CI drift-exit path,
+ *   - #779: --declared-only / --undeclared-only — a SCOPE filter is active, so `findings`
+ *     has been reduced to one tier (declared-only drops the whole undeclared/added/atDefault
+ *     tier; undeclared-only drops declared plus its readGap/unresolved byproducts). The
+ *     interactive menu's Record path feeds THAT filtered set into writeBaseline, and
+ *     computeCompleteResources — which only blocks snapshot-completeness on the tiers that
+ *     were just filtered out (skipped/deleted/readGap/unrecorded-undeclared) — then stamps
+ *     every readable resource snapshot-complete with an INCOMPLETE `recorded` list. A later
+ *     plain `check` reads the genuinely-undeclared values on those "complete" resources as
+ *     "appeared since record" -> a false confirmed-drift storm (exit 1 under --fail). Under
+ *     --declared-only the HELP/in-run note also PROMISES the baseline is untouched, which the
+ *     Record offer would violate. A filtered finding set must never become a snapshot-complete
+ *     baseline, so no interactive Record/Revert is offered under either scope flag; the
+ *     standalone `record` verb (unfiltered) remains the way to establish one.
  *   - #1054: --yes — `--yes` has NO documented `check` contract (HELP scopes it to record /
  *     ignore / revert; check's automation flag is --fail / non-TTY). In the menu the USER is
  *     the decision-maker, but `--yes` means "no decision needed" in the record/ignore/revert
@@ -267,7 +280,10 @@ export function finalCheckExit(code: number, fail: boolean): number {
  * Pure + exported for tests.
  */
 export function shouldOfferInteractiveResolve(
-  a: Pick<CommonArgs, 'json' | 'showAll' | 'preDeploy' | 'fail' | 'yes'>,
+  a: Pick<
+    CommonArgs,
+    'json' | 'showAll' | 'preDeploy' | 'fail' | 'yes' | 'declaredOnly' | 'undeclaredOnly'
+  >,
   ctx: { code: number; hasUnrecorded: boolean; hasBaseline: boolean; interactive: boolean }
 ): boolean {
   return (
@@ -277,6 +293,8 @@ export function shouldOfferInteractiveResolve(
     !a.preDeploy &&
     !a.fail &&
     !a.yes &&
+    !a.declaredOnly &&
+    !a.undeclaredOnly &&
     ctx.interactive
   );
 }
