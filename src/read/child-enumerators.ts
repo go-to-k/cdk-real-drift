@@ -72,11 +72,14 @@ import {
   type UserPoolClientDescription,
 } from '@aws-sdk/client-cognito-identity-provider';
 import {
+  DescribeNetworkAclsCommand,
   DescribeRouteTablesCommand,
   DescribeSubnetsCommand,
   DescribeVpcEndpointsCommand,
   EC2Client,
+  type NetworkAcl as Ec2NetworkAcl,
   type Route as Ec2Route,
+  type RouteTable as Ec2RouteTable,
   type Subnet as Ec2Subnet,
   type VpcEndpoint as Ec2VpcEndpoint,
 } from '@aws-sdk/client-ec2';
@@ -2325,18 +2328,24 @@ async function enumerateListenerChildren(ctx: EnumeratorContext): Promise<AddedC
 }
 
 // ── EC2 (VPC) ──────────────────────────────────────────────────────────────────
-// An `AWS::EC2::VPC` owns Subnets AND VPCEndpoints, each a separate CloudFormation
-// resource. A console / CLI `create-subnet` / `create-vpc-endpoint` (someone carves a new
-// subnet into a VPC, or wires a rogue interface/gateway endpoint — an out-of-band data
-// path to S3/DynamoDB or an attacker's endpoint service) is invisible to cdk drift / CFn
-// drift detection (they only compare template-declared resources). The VPC's own live
-// model does NOT reflect its subnets or endpoints inline, so there is no double-report to
-// suppress. The CC primaryIdentifier for AWS::EC2::Subnet is the bare SubnetId, and for
-// AWS::EC2::VPCEndpoint the bare Id (the VpcEndpointId) — both consumed directly by CC
-// GetResource / DeleteResource. Unlike a VPC's default route table / NACL / SG, a VPC
-// auto-creates NO default endpoints, so every live endpoint not in the template is a real
-// out-of-band addition (no built-in-default class to filter). (NetworkAcl / RouteTable —
-// which DO have AWS-auto-created defaults needing a filter — are a separate follow-up; #1045.)
+// An `AWS::EC2::VPC` owns Subnets, VPCEndpoints, RouteTables and NetworkAcls, each a
+// separate CloudFormation resource. A console / CLI `create-subnet` / `create-vpc-endpoint`
+// / `create-route-table` / `create-network-acl` (someone carves a new subnet into a VPC,
+// wires a rogue interface/gateway endpoint — an out-of-band data path to S3/DynamoDB or an
+// attacker's endpoint service — adds an extra route table, or attaches a quiet
+// subnet-level firewall) is invisible to cdk drift / CFn drift detection (they only compare
+// template-declared resources). The VPC's own live model does NOT reflect these children
+// inline, so there is no double-report to suppress. The CC primaryIdentifier is the bare
+// SubnetId (Subnet), the bare Id (VPCEndpoint = VpcEndpointId, NetworkAcl = NetworkAclId),
+// and the bare RouteTableId (RouteTable) — all consumed directly by CC GetResource /
+// DeleteResource.
+//
+// FP-safety — a VPC auto-creates built-in defaults that are NOT template resources and must
+// never surface as `added`: exactly one MAIN route table (its association `Main: true`) and
+// one DEFAULT NetworkAcl (`IsDefault: true`). Those are filtered out here (the `IsDefault` /
+// `Main` twin of the ELBv2 default-rule / auto-created-child pattern). VPCEndpoints have NO
+// such default class, so no filter is needed for them. (Every non-default, non-declared
+// route table / NACL IS a real out-of-band addition.)
 
 // Pure diff: declared subnet ids + live inventory -> the added subnets.
 export interface VpcChildInput {
@@ -2380,6 +2389,50 @@ export function diffVpcEndpointChildren(input: VpcEndpointChildInput): AddedChil
   return added;
 }
 
+// Pure diff: declared route-table ids + live inventory (the MAIN table already filtered
+// out upstream) -> the added route tables.
+export interface VpcRouteTableChildInput {
+  declaredRouteTableIds: string[]; // physical ids (RouteTableIds) of AWS::EC2::RouteTable on this VPC
+  liveRouteTables: { id: string; label?: string | undefined }[];
+}
+
+export function diffVpcRouteTableChildren(input: VpcRouteTableChildInput): AddedChild[] {
+  const declared = new Set(input.declaredRouteTableIds);
+  const added: AddedChild[] = [];
+  for (const rt of input.liveRouteTables) {
+    if (declared.has(rt.id)) continue;
+    added.push({
+      resourceType: 'AWS::EC2::RouteTable',
+      identifier: rt.id, // RouteTableId IS the CC primaryIdentifier
+      label: rt.label ?? rt.id,
+      live: { RouteTableId: rt.id },
+    });
+  }
+  return added;
+}
+
+// Pure diff: declared NACL ids + live inventory (the DEFAULT NACL already filtered out
+// upstream) -> the added network ACLs.
+export interface VpcNaclChildInput {
+  declaredNaclIds: string[]; // physical ids (NetworkAclIds) of AWS::EC2::NetworkAcl on this VPC
+  liveNacls: { id: string; label?: string | undefined }[];
+}
+
+export function diffVpcNaclChildren(input: VpcNaclChildInput): AddedChild[] {
+  const declared = new Set(input.declaredNaclIds);
+  const added: AddedChild[] = [];
+  for (const n of input.liveNacls) {
+    if (declared.has(n.id)) continue;
+    added.push({
+      resourceType: 'AWS::EC2::NetworkAcl',
+      identifier: n.id, // Id (the NetworkAclId) IS the CC primaryIdentifier
+      label: n.label ?? n.id,
+      live: { Id: n.id },
+    });
+  }
+  return added;
+}
+
 async function pageSubnets(client: EC2Client, vpcId: string): Promise<Ec2Subnet[]> {
   const out: Ec2Subnet[] = [];
   let next: string | undefined;
@@ -2412,22 +2465,60 @@ async function pageVpcEndpoints(client: EC2Client, vpcId: string): Promise<Ec2Vp
   return out;
 }
 
+async function pageVpcRouteTables(client: EC2Client, vpcId: string): Promise<Ec2RouteTable[]> {
+  const out: Ec2RouteTable[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(
+      new DescribeRouteTablesCommand({
+        Filters: [{ Name: 'vpc-id', Values: [vpcId] }],
+        NextToken: next,
+      })
+    );
+    out.push(...(res.RouteTables ?? []));
+    next = res.NextToken;
+  } while (next);
+  return out;
+}
+
+async function pageNetworkAcls(client: EC2Client, vpcId: string): Promise<Ec2NetworkAcl[]> {
+  const out: Ec2NetworkAcl[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(
+      new DescribeNetworkAclsCommand({
+        Filters: [{ Name: 'vpc-id', Values: [vpcId] }],
+        NextToken: next,
+      })
+    );
+    out.push(...(res.NetworkAcls ?? []));
+    next = res.NextToken;
+  } while (next);
+  return out;
+}
+
 async function enumerateVpcChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
   const { parent, desired, region } = ctx;
   const vpcId = parent.physicalId; // a VPC's physical id IS its VpcId
   if (!vpcId) return [];
 
-  // Declared subnets + VPC endpoints of THIS VPC (Ref/GetAtt VpcId already resolved to the
-  // physical id by gather). A subnet's physical id IS its SubnetId; an endpoint's IS its
-  // VpcEndpointId.
+  // Declared subnets + VPC endpoints + route tables + NACLs of THIS VPC (Ref/GetAtt VpcId
+  // already resolved to the physical id by gather). Each child's physical id IS its bare
+  // resource id (SubnetId / VpcEndpointId / RouteTableId / NetworkAclId).
   const declaredSubnetIds: string[] = [];
   const declaredEndpointIds: string[] = [];
+  const declaredRouteTableIds: string[] = [];
+  const declaredNaclIds: string[] = [];
   for (const r of desired.resources) {
     if (!parentRefMatches(r.declared.VpcId, vpcId) || !r.physicalId) continue;
     if (r.resourceType === 'AWS::EC2::Subnet') {
       declaredSubnetIds.push(r.physicalId);
     } else if (r.resourceType === 'AWS::EC2::VPCEndpoint') {
       declaredEndpointIds.push(r.physicalId);
+    } else if (r.resourceType === 'AWS::EC2::RouteTable') {
+      declaredRouteTableIds.push(r.physicalId);
+    } else if (r.resourceType === 'AWS::EC2::NetworkAcl') {
+      declaredNaclIds.push(r.physicalId);
     }
   }
 
@@ -2444,9 +2535,31 @@ async function enumerateVpcChildren(ctx: EnumeratorContext): Promise<AddedChild[
     )
     .map((e) => ({ id: e.VpcEndpointId, label: e.ServiceName ?? e.VpcEndpointId }));
 
+  // Drop the MAIN route table (AWS auto-creates one per VPC; its association carries
+  // `Main: true`) — a built-in default, never an out-of-band addition.
+  const routeTables = await pageVpcRouteTables(client, vpcId);
+  const liveRouteTables = routeTables
+    .filter(
+      (rt): rt is Ec2RouteTable & { RouteTableId: string } => typeof rt.RouteTableId === 'string'
+    )
+    .filter((rt) => !(rt.Associations ?? []).some((a) => a.Main === true))
+    .map((rt) => ({ id: rt.RouteTableId, label: rt.RouteTableId }));
+
+  // Drop the DEFAULT NACL (AWS auto-creates one per VPC, `IsDefault: true`) — a built-in
+  // default, never an out-of-band addition.
+  const nacls = await pageNetworkAcls(client, vpcId);
+  const liveNacls = nacls
+    .filter(
+      (n): n is Ec2NetworkAcl & { NetworkAclId: string } => typeof n.NetworkAclId === 'string'
+    )
+    .filter((n) => n.IsDefault !== true)
+    .map((n) => ({ id: n.NetworkAclId, label: n.NetworkAclId }));
+
   return [
     ...diffVpcChildren({ declaredSubnetIds, liveSubnets }),
     ...diffVpcEndpointChildren({ declaredEndpointIds, liveEndpoints }),
+    ...diffVpcRouteTableChildren({ declaredRouteTableIds, liveRouteTables }),
+    ...diffVpcNaclChildren({ declaredNaclIds, liveNacls }),
   ];
 }
 
