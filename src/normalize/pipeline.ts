@@ -31,5 +31,7 @@ export function canonicalizeForCompare(v: unknown, resourceType?: string): unkno
   );
   // A WAFv2 WebACL's ByteMatchStatement search patterns read back base64-encoded; fold both
   // sides to the plain SearchString the template declares so a clean rule is not false drift.
-  return resourceType === 'AWS::WAFv2::WebACL' ? normalizeWafByteMatchDeep(base) : base;
+  return resourceType === 'AWS::WAFv2::WebACL' || resourceType === 'AWS::WAFv2::RuleGroup'
+    ? normalizeWafByteMatchDeep(base)
+    : base;
 }

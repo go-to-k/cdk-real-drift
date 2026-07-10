@@ -3821,14 +3821,47 @@ function deepEqualValue(a: unknown, b: unknown): boolean {
 // binary pattern, or a mismatched twin, is left untouched and still surfaces. The declared
 // side (plain `SearchString`, no base64) is a no-op; the live side is folded to match, so a
 // clean rule is not drift while an out-of-band pattern change (both live keys change in
-// lockstep) still surfaces via the `SearchString` compare. Applied (via
-// canonicalizeForCompare) only for AWS::WAFv2::WebACL. Pure.
+// lockstep) still surfaces via the `SearchString` compare.
+//
+// It ALSO canonicalizes the WAFv2 `FieldToMatch.SingleHeader` / `SingleQueryArgument` shape
+// on BOTH compare sides so a clean header-matching rule is not double-flagged (#876). Two
+// divergences hit at once on a fresh WebACL:
+//   1. KEY case — the template's free-form `FieldToMatch` carries a LOWERCASE `name` key
+//      (the documented CDK/CFn form: WAFv2 types `FieldToMatch` as raw JSON passed to the
+//      WAF API, whose JSON key is `name`), but the CC read echoes the schema-canonical
+//      PascalCase `Name`. A case-sensitive diff then reports `name` as template-only AND
+//      `Name` as live-only — a false `[CFn-Declared Drift]`.
+//   2. VALUE case — WAF lowercases the header/argument NAME (`User-Agent` -> `user-agent`;
+//      header names are case-insensitive per RFC 9110, same as the already-folded
+//      LoggingConfiguration RedactedFields SingleHeader.Name), so the leaf ALSO surfaces as
+//      a duplicate `[Potential Drift]` on `SingleHeader.Name`.
+// Folding the inner object to a single `{ Name: <lowercased> }` on both sides collapses BOTH
+// findings. The canonicalization is equality-gated by the resulting value: two header names
+// that differ beyond case (a genuine `user-agent` -> `referer` change) still differ after
+// lowercasing and still surface as real drift. Scoped to the `SingleHeader` /
+// `SingleQueryArgument` member objects only — no unrelated key/value is touched.
+//
+// Applied (via canonicalizeForCompare) only for AWS::WAFv2::WebACL. Pure.
 export function normalizeWafByteMatchDeep(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(normalizeWafByteMatchDeep);
   if (value === null || typeof value !== 'object') return value;
   const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(value as Record<string, unknown>))
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    // Canonicalize the FieldToMatch header/argument selector: fold the `name`/`Name` key case
+    // to `Name` and lowercase the header/argument NAME value (WAF stores it lowercased). Only
+    // the SingleHeader / SingleQueryArgument member (a `{ name|Name: <string> }` object) is
+    // rewritten; every other key recurses unchanged.
+    if (
+      (k === 'SingleHeader' || k === 'SingleQueryArgument') &&
+      v !== null &&
+      typeof v === 'object' &&
+      !Array.isArray(v)
+    ) {
+      out[k] = canonicalizeWafFieldNameSelector(v as Record<string, unknown>);
+      continue;
+    }
     out[k] = normalizeWafByteMatchDeep(v);
+  }
   const b64 = out.SearchStringBase64;
   if (typeof b64 === 'string') {
     const plain = out.SearchString;
@@ -3842,6 +3875,23 @@ export function normalizeWafByteMatchDeep(value: unknown): unknown {
         delete out.SearchStringBase64;
         out.SearchString = decoded;
       }
+    }
+  }
+  return out;
+}
+
+// Canonicalize a WAFv2 `FieldToMatch.SingleHeader` / `SingleQueryArgument` selector object
+// (`{ name|Name: <headerName> }`) to a single representation: the key is folded to PascalCase
+// `Name` and its string value is lowercased (WAF stores header/argument names lowercased). A
+// non-string / absent name, or any extra sibling key, is preserved verbatim so an unexpected
+// shape is never silently dropped. Pure; used only by normalizeWafByteMatchDeep.
+function canonicalizeWafFieldNameSelector(obj: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (k === 'name' || k === 'Name') {
+      out.Name = typeof v === 'string' ? v.toLowerCase() : v;
+    } else {
+      out[k] = normalizeWafByteMatchDeep(v);
     }
   }
   return out;
