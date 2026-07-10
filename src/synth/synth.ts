@@ -3,7 +3,7 @@
 // pre-synthesized cloud-assembly DIRECTORY (`cdk.out`). Drift detection itself
 // does not need this — it is used for stack auto-discovery (and later clobber).
 import { existsSync, readFileSync, rmSync, statSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import type { StackSelector } from '@aws-cdk/toolkit-lib';
 import {
   BaseCredentials,
@@ -160,6 +160,51 @@ function cleanupEmptyContextFile(file: string, existedBefore: boolean): void {
   }
 }
 
+// Filesystem-mtime slack for the freshness check (#1323). A genuine synth rewrites
+// manifest.json during `toolkit.synth`, so its mtime is >= the pre-synth timestamp. We
+// subtract this tolerance before comparing so coarse mtime granularity (some filesystems
+// round to whole seconds) or a clock that ticks backward a hair never falsely flags a real,
+// fast rewrite as stale. A no-op app that never wrote the manifest leaves an mtime from a
+// PRIOR run — seconds-to-minutes older — so 2s of slack cannot mask that genuine staleness.
+export const ASSEMBLY_FRESHNESS_TOLERANCE_MS = 2000;
+
+/**
+ * Verify the cloud assembly's manifest.json was (re)written by THIS synth run (#1323).
+ *
+ * Only meaningful on the `--app` COMMAND path (`isDir === false`): toolkit-lib runs the app
+ * subprocess, resolves the outdir to `<cwd>/cdk.out`, then reads whatever manifest.json is
+ * there — it never checks the subprocess actually WROTE one. An app that exits 0 without
+ * synthesizing (a no-op wrapper, a script that swallows a synth failure, a dropped
+ * `app.synth()`) makes cdkrd silently consume the STALE assembly a PRIOR run left behind.
+ * That stale template becomes the DESIRED state, so `check` reports false declared drift and
+ * `revert --yes` writes stale values back to AWS. Fail LOUDLY instead.
+ *
+ * The DIRECTORY path (`isDir === true`, `fromAssemblyDirectory`) is INTENTIONAL stale
+ * consumption (the user points at a pre-synth assembly), so this is a no-op there.
+ *
+ * `synthStart` is a `Date.now()` captured just BEFORE `toolkit.synth`. Staleness =
+ * `mtimeMs < synthStart - ASSEMBLY_FRESHNESS_TOLERANCE_MS`. A missing manifest is also treated
+ * as failure (toolkit-lib normally throws ENOENT first, but the defensive check keeps the
+ * loud, actionable message). Pure + exported so the freshness logic is unit-testable against a
+ * real temp file whose mtime we control, without driving a real assembly.
+ */
+export function assertAssemblyFresh(
+  manifestPath: string,
+  synthStart: number,
+  isDir: boolean
+): void {
+  if (isDir) return; // pre-synth directory path: stale consumption is intentional — no-op.
+  const stale = () => {
+    throw new Error(
+      `the --app command exited 0 but did not produce a cloud assembly (${manifestPath} was not ` +
+        'written by this run) — the app must synthesize a cloud assembly (did app.synth()/the ' +
+        'CDK app run?)'
+    );
+  };
+  if (!existsSync(manifestPath)) stale();
+  if (statSync(manifestPath).mtimeMs < synthStart - ASSEMBLY_FRESHNESS_TOLERANCE_MS) stale();
+}
+
 export async function synthApp(app: string, opts: SynthOptions = {}): Promise<SynthStack[]> {
   const { region, profile, context = {} } = opts;
   // #905: scope synth's metadata validation to the TARGET stacks, so a failing context
@@ -211,12 +256,20 @@ export async function synthApp(app: string, opts: SynthOptions = {}): Promise<Sy
 
   // Pass the selector only when scoped: an omitted `stacks` defaults to ALL_STACKS in
   // toolkit-lib, so no-scope discovery / --all keeps the exact pre-#905 call shape.
+  // #1323: timestamp captured just BEFORE synth so we can prove synth (re)wrote the manifest.
+  const synthStart = Date.now();
   const cached = await toolkit.synth(source, stackSelector ? { stacks: stackSelector } : undefined);
   // Best-effort: if synth just created an EMPTY cdk.context.json (every lookup failed → `{}`),
   // remove it so a read-only `check` does not dirty the user's git tree with a useless file.
   // Guarded to never touch a pre-existing or non-empty file (#906). Skipped on the dir path.
   if (!isDir) cleanupEmptyContextFile(contextFile, contextFileExistedBefore);
   try {
+    // #1323: on the COMMAND path only, verify the app subprocess actually WROTE a fresh
+    // manifest.json this run — else an app that exited 0 without synthesizing silently feeds us
+    // a PRIOR run's stale assembly as the desired state (false declared drift; a revert writes
+    // stale values back to AWS). Inside the try so `cached.dispose()` still releases the lock /
+    // temp dir when we throw. The dir path (fromAssemblyDirectory) is intentional stale reuse.
+    assertAssemblyFresh(join(cached.cloudAssembly.directory, 'manifest.json'), synthStart, isDir);
     // A CDK app whose context lookups are unresolved still synthesizes — CDK fills every
     // gap with a well-known DUMMY value (`vpc-12345`, ...) and records the gap in the
     // manifest's `missing` array. Surface that loudly (#907): a template carrying those
