@@ -19,7 +19,7 @@ import {
 import { type AddedChild, CHILD_ENUMERATORS } from '../read/child-enumerators.js';
 import { SDK_OVERRIDES } from '../read/overrides.js';
 import { CC_IDENTIFIER_ADAPTERS, readLive, type ReadResult } from '../read/router.js';
-import { getSchemaInfo } from '../schema/schema-strip.js';
+import { getSchemaInfoResult } from '../schema/schema-strip.js';
 import type { DesiredResource, Finding, SchemaInfo } from '../types.js';
 
 export interface GatherResult {
@@ -129,8 +129,18 @@ async function readAddedModel(
       new GetResourceCommand({ TypeName: c.resourceType, Identifier: c.identifier })
     );
     const raw = JSON.parse(g.ResourceDescription?.Properties ?? '{}') as Record<string, unknown>;
-    const schema = schemas.get(c.resourceType) ?? (await getSchemaInfo(cfn, c.resourceType));
-    schemas.set(c.resourceType, schema);
+    // Reuse the per-run cache, else fetch. Only re-cache a SUCCESSFUL fetch: a DescribeType
+    // failure returns an EMPTY schema (#751 — schema-strip itself does not cache it), and
+    // caching that EMPTY in the per-run map would poison every later resource of this type
+    // (writeOnly reinclude drops declared write-only props, createOnly bars lost) even after
+    // the throttle clears — so leave the map unset on failure to let the next occurrence
+    // re-fetch (#1067). The EMPTY still drives THIS resource's normalize (degraded, no strip).
+    let schema = schemas.get(c.resourceType);
+    if (!schema) {
+      const res = await getSchemaInfoResult(cfn, c.resourceType);
+      schema = res.info;
+      if (!res.failed) schemas.set(c.resourceType, schema);
+    }
     return {
       model: normalizeLiveModel(raw, schema, { oaiCanonicalIds, resourceType: c.resourceType }),
       ok: true,
@@ -412,8 +422,19 @@ async function classifyRead(
       },
     ];
   }
-  const schema = schemas.get(r.resourceType) ?? (await getSchemaInfo(cfn, r.resourceType));
-  schemas.set(r.resourceType, schema);
+  // Reuse the per-run cache, else fetch. A DescribeType FAILURE returns an EMPTY schema
+  // (#751) that must NOT be re-cached in the per-run map — caching it would keep every later
+  // resource of this type on the degraded EMPTY (no readOnly strip → first-run noise; no
+  // writeOnly readGap → false declared drift; and it poisons revert: writeOnlyReincludeOps
+  // drops declared write-only props, createOnly bars lost) even after the throttle clears
+  // (#1067). Leave the map unset on failure so the next resource of the type re-fetches; the
+  // EMPTY still classifies THIS resource (degraded, no strip — unchanged behavior).
+  let schema = schemas.get(r.resourceType);
+  if (!schema) {
+    const res = await getSchemaInfoResult(cfn, r.resourceType);
+    schema = res.info;
+    if (!res.failed) schemas.set(r.resourceType, schema);
+  }
   return classifyResource(r, read.live, schema, classifyOpts);
 }
 
