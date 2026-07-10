@@ -20,6 +20,7 @@
 // sections (below result, as a footer). 0-count tiers are never printed. The
 // "surfaced, never silently dropped" invariant is preserved by the counts.
 import { withinStackPath } from '../construct-path.js';
+import { GETTEMPLATE_MASK_NOTE } from '../diff/classify.js';
 import { deepEqual } from '../diff/drift-calculator.js';
 import { annotateHints } from '../diff/hints.js';
 import { UNRESOLVED } from '../normalize/intrinsic-resolver.js';
@@ -316,6 +317,7 @@ function reasonKey(f: Finding): string {
   const n = f.note ?? '';
   if (f.tier === 'ignored') return n.replace(/^ignored by config rule /, '') || 'ignored';
   if (f.tier === 'unresolved') return 'intrinsic unresolved';
+  if (n === GETTEMPLATE_MASK_NOTE) return 'non-ASCII masked by GetTemplate';
   if (n.includes('write-only')) return 'write-only';
   if (n.startsWith('custom resource')) return 'custom resource';
   if (n.includes('target not resolvable')) return 'override target unresolved';
@@ -600,12 +602,17 @@ export function report(rawFindings: Finding[], header: string, opts: ReportOptio
     // the cause (write-only props are never readable by design vs simply not returned).
     if (t === 'readGap') {
       const writeOnly = items.filter((f) => (f.note ?? '').includes('write-only')).length;
-      const notReturned = items.length - writeOnly;
+      // GetTemplate-masked values ARE returned on read — it is the DECLARED side that is
+      // unreadable (GetTemplate corrupts non-ASCII to "?") — so break them out instead of
+      // miscounting them under "not returned by AWS".
+      const masked = items.filter((f) => f.note === GETTEMPLATE_MASK_NOTE).length;
+      const notReturned = items.length - writeOnly - masked;
       const parts = [
         ...(notReturned > 0 ? [`${notReturned} not returned by AWS`] : []),
         ...(writeOnly > 0 ? [`${writeOnly} write-only`] : []),
+        ...(masked > 0 ? [`${masked} non-ASCII masked by GetTemplate`] : []),
       ];
-      return `readGap=${items.length} (declared but unverifiable — AWS doesn't return them on read, not drift: ${parts.join(', ')})`;
+      return `readGap=${items.length} (declared but unverifiable — not drift: ${parts.join(', ')})`;
     }
     // unresolved is jargon too: these are declared values whose CloudFormation intrinsic
     // cdkrd could not resolve to a concrete value, so there is nothing concrete to compare

@@ -576,7 +576,7 @@ that folds everything informational.
 result: 1 drift(s) (declared=1)
 ───────────────────────────────
 info:
-  - readGap=1 (declared but unverifiable — AWS doesn't return them on read, not drift: 1 write-only)
+  - readGap=1 (declared but unverifiable — not drift: 1 write-only)
   - skipped=2 (custom resource 2)
   run with --verbose for the list
 ```
