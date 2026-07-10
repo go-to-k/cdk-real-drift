@@ -630,6 +630,14 @@ builds printed one pretty-printed `{...}` per stack back-to-back, which was neit
 valid JSON value nor JSONL; multi-stack `--json` was unparseable — issue #755.) All
 `note` / `warning` / progress lines go to **stderr**, so stdout stays pure JSON.
 
+**Secret redaction.** Values on known secret-bearing properties — Lambda
+`Environment.Variables`, CodeBuild `Environment.EnvironmentVariables[].Value`,
+Elastic Beanstalk env-namespace `OptionSettings`, EC2 LaunchTemplate `UserData` —
+are masked as `<redacted:NN chars>` in both text and `--json` output, so a rotated
+secret surfacing as drift does not leak its plaintext into CI logs. The finding
+still surfaces (detection is preserved) and the property/key name stays visible —
+only the value is hidden (#798).
+
 A **stack that errored or was skipped** before it could be checked still appears as an
 element so a consumer sees which stacks ran: it carries `"error": "<reason>"` alongside
 `"drifted": 0` and an empty `"findings": []`. (`error` is absent on a
