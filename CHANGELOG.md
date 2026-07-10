@@ -1,3 +1,11 @@
+## [0.7.6](https://github.com/go-to-k/cdk-real-drift/compare/v0.7.5...v0.7.6) (2026-07-10)
+
+
+### Bug Fixes
+
+* **diff:** subtract sibling IAM attachments from Role.ManagedPolicyArns / User.Groups reflections ([#698](https://github.com/go-to-k/cdk-real-drift/issues/698)) ([#1198](https://github.com/go-to-k/cdk-real-drift/issues/1198)) ([a82bb53](https://github.com/go-to-k/cdk-real-drift/commit/a82bb53301c9c9ca89e095ce11edfa80a0fe2cb5))
+* **revert:** extend the silent-no-op detector to add-shaped set-default writes ([#763](https://github.com/go-to-k/cdk-real-drift/issues/763)) ([#1199](https://github.com/go-to-k/cdk-real-drift/issues/1199)) ([aba5589](https://github.com/go-to-k/cdk-real-drift/commit/aba5589c6aba344366040bc224f81d2a9bc5203f))
+
 ## [0.7.5](https://github.com/go-to-k/cdk-real-drift/compare/v0.7.4...v0.7.5) (2026-07-10)
 
 
