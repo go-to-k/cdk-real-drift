@@ -148,6 +148,32 @@ too_young() {
   [ $(( NOW_EPOCH - created )) -lt $(( MIN_AGE_HOURS * 3600 )) ]
 }
 
+# resource_gone <arn> -> 0 (true) ONLY when the tagged resource PROVABLY no longer
+# exists (a definitive not-found from a type-specific describe). The Resource Groups
+# Tagging API index LAGS deletion: a resource deleted minutes/hours ago can still be
+# returned under a tag filter (observed live 2026-07-10 — a Cognito user pool deleted
+# by another session lingered in the index >45min AND could not be untagged
+# [ResourceNotFoundException], blocking an unrelated agent's gate release). Skipping
+# such a phantom is SAFE because the resource is already gone. Every other outcome
+# (exists, ambiguous/permission error, unknown type) returns 1 so the ORPHAN stays RED
+# — this never hides a REAL orphan (fail-safe, same posture as too_young()).
+resource_gone() {
+  local arn="$1" svc id err
+  svc="$(printf '%s' "$arn" | cut -d: -f3)"
+  case "$svc" in
+    cognito-idp)
+      # arn:aws:cognito-idp:<region>:<acct>:userpool/<poolId>
+      id="${arn##*/}"
+      [ -n "$id" ] || return 1
+      err="$(aws cognito-idp describe-user-pool --user-pool-id "$id" --region "$REGION" 2>&1 >/dev/null)" && return 1
+      printf '%s' "$err" | grep -q 'ResourceNotFoundException' && return 0
+      return 1
+      ;;
+    *)
+      return 1 ;;
+  esac
+}
+
 # delete <kind> <name> <delete-cmd...>
 sweep_one() {
   local kind="$1" name="$2"; shift 2
@@ -301,6 +327,10 @@ for arn in $(aws resourcegroupstaggingapi get-resources --region "$REGION" \
   # active-stack guard + a existence-agnostic report is fine (verify re-runs later).
   if is_backed "$arn" || is_backed_global "$arn"; then
     note "  SKIP (active-stack member): $arn"
+    continue
+  fi
+  if resource_gone "$arn"; then
+    note "  SKIP (tagged mapping for an already-deleted resource — RGT tag-index lag): $arn"
     continue
   fi
   hit
