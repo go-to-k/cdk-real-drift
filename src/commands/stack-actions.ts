@@ -64,6 +64,13 @@ const driftCount = (findings: Finding[]): number => findings.filter(isDrift).len
 const unrecordedCount = (findings: Finding[]): number =>
   findings.filter((f) => f.unrecorded === true).length;
 
+// #756: identity of a single reconciled finding, used to restrict a per-finding revert's
+// plan to exactly the findings the user picked. MUST match interactive-resolve.ts's
+// exported keyOf (same logicalId + path + attributeKey shape) — that is the format the
+// caller passes in `selectedFindingKeys`.
+const findingKeyOf = (f: Finding): string =>
+  `${f.logicalId}::${f.path}${f.attributeKey !== undefined ? `[${f.attributeKey}]` : ''}`;
+
 const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 /**
@@ -952,6 +959,16 @@ export interface RevertStackParams {
   // and reverts every op of the plan — but STILL shows the AWS-write confirm. Off by
   // default, so the standalone `revert` keeps its per-op multiselect.
   autoSelectAll?: boolean;
+  // #756: check's "Decide per finding" path assigns `revert` to a SUBSET of findings.
+  // The reconciliation against the baseline (applyBaseline: currentPaths / skippedLogical
+  // / deletedLogical / underDeclaredDrift) MUST see the FULL finding set — else every
+  // recorded entry whose healthy, matching live finding was filtered out looks "removed
+  // since record" and synthesizes a phantom restore op the user never chose. So the caller
+  // passes the UNFILTERED findings in `gathered.findings` AND the chosen finding identities
+  // here; the plan is then restricted to ops for exactly these findings. Key format is
+  // `${logicalId}::${path}` (+ `[attributeKey]` when present) — identical to interactive
+  // -resolve.ts's keyOf. Undefined = revert every planned finding (standalone `revert`).
+  selectedFindingKeys?: Set<string>;
   // Delay before the single convergence re-read retry (SDK-writer paths can lag
   // behind their API response — eventual consistency). Overridable so unit tests
   // don't sleep for real.
@@ -1104,6 +1121,7 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     verbose,
     interactive,
     autoSelectAll,
+    selectedFindingKeys,
     waitMs,
     waitNow,
     waitSleep,
@@ -1138,11 +1156,21 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     constructPathByLogical,
     allLogicalIds,
   };
-  const drifted = applyIgnores(
+  const reconciled = applyIgnores(
     applyBaseline(gathered.findings, baseline, { ...baselineOpts, warn: console.error }),
     { stackName, accountId: gathered.desired.accountId, region },
     config
   );
+  // #756: when the per-finding flow chose a SUBSET to revert, applyBaseline above ran over
+  // the UNFILTERED findings (so its removal-synthesis reconciliation saw reality — no
+  // phantom "removed since record" restore ops for entries whose healthy live finding the
+  // user simply did not pick). Now narrow the plan input to EXACTLY the chosen findings, so
+  // the AWS writes correspond to reverting only those — never a skipped / ignored / unpicked
+  // recorded entry, and no same-value churn. Undefined = standalone `revert`: plan them all.
+  const drifted =
+    selectedFindingKeys === undefined
+      ? reconciled
+      : reconciled.filter((f) => selectedFindingKeys.has(findingKeyOf(f)));
   // Resolve the declared model per logical id — needed both by writeOnlyReincludeOps (to
   // re-include declared write-only values) and by the apply loop (writer `declared` arg).
   const resByLogical = new Map(gathered.desired.resources.map((res) => [res.logicalId, res]));

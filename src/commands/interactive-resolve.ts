@@ -587,11 +587,23 @@ async function perFinding(p: ResolveParams, decidable: Finding[]): Promise<SubRe
       region: p.region,
       gathered: {
         desired: p.desired,
-        findings: p.findings.filter((f) => revertKeys.has(keyOf(f))),
+        // #756: pass the UNFILTERED findings so revertStack's applyBaseline reconciliation
+        // (currentPaths / skippedLogical / deletedLogical / underDeclaredDrift) sees the
+        // full live reality — a recorded entry whose healthy, matching live finding the user
+        // simply did NOT pick must NOT look "removed since record" and synthesize a phantom
+        // restore op. The chosen subset is instead threaded via selectedFindingKeys below,
+        // which narrows the PLAN to exactly these findings. (Was
+        // `p.findings.filter(revertKeys)` here, which starved applyBaseline and made every
+        // unpicked/skipped/ignored recorded entry synthesize an unintended AWS write.)
+        findings: p.findings,
         schemas: p.schemas,
         liveByLogical: p.liveByLogical,
       },
       baseline: p.baseline,
+      // #756: restrict the plan to the findings the action picker assigned `revert` — the
+      // AWS writes then correspond EXACTLY to reverting those, with no restore op for a
+      // skipped/ignored/unpicked recorded entry and no same-value churn.
+      selectedFindingKeys: revertKeys,
       config: p.config,
       dryRun: false,
       // NEVER inherit --yes (see revertAll): the read-only `check` verb must still
