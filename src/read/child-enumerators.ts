@@ -74,9 +74,11 @@ import {
 import {
   DescribeRouteTablesCommand,
   DescribeSubnetsCommand,
+  DescribeVpcEndpointsCommand,
   EC2Client,
   type Route as Ec2Route,
   type Subnet as Ec2Subnet,
+  type VpcEndpoint as Ec2VpcEndpoint,
 } from '@aws-sdk/client-ec2';
 import { ECSClient, ListServicesCommand } from '@aws-sdk/client-ecs';
 import {
@@ -2232,12 +2234,18 @@ async function enumerateListenerChildren(ctx: EnumeratorContext): Promise<AddedC
 }
 
 // ── EC2 (VPC) ──────────────────────────────────────────────────────────────────
-// An `AWS::EC2::VPC` owns Subnets, each a separate CloudFormation resource. A console
-// / CLI `create-subnet` (someone carves a new subnet into a VPC out of band) is
-// invisible to cdk drift / CFn drift detection (they only compare template-declared
-// resources). The VPC's own live model does NOT reflect its subnets inline, so there is
-// no double-report to suppress. The CC primaryIdentifier for AWS::EC2::Subnet is the
-// bare SubnetId, which CC GetResource / DeleteResource consume.
+// An `AWS::EC2::VPC` owns Subnets AND VPCEndpoints, each a separate CloudFormation
+// resource. A console / CLI `create-subnet` / `create-vpc-endpoint` (someone carves a new
+// subnet into a VPC, or wires a rogue interface/gateway endpoint — an out-of-band data
+// path to S3/DynamoDB or an attacker's endpoint service) is invisible to cdk drift / CFn
+// drift detection (they only compare template-declared resources). The VPC's own live
+// model does NOT reflect its subnets or endpoints inline, so there is no double-report to
+// suppress. The CC primaryIdentifier for AWS::EC2::Subnet is the bare SubnetId, and for
+// AWS::EC2::VPCEndpoint the bare Id (the VpcEndpointId) — both consumed directly by CC
+// GetResource / DeleteResource. Unlike a VPC's default route table / NACL / SG, a VPC
+// auto-creates NO default endpoints, so every live endpoint not in the template is a real
+// out-of-band addition (no built-in-default class to filter). (NetworkAcl / RouteTable —
+// which DO have AWS-auto-created defaults needing a filter — are a separate follow-up; #1045.)
 
 // Pure diff: declared subnet ids + live inventory -> the added subnets.
 export interface VpcChildInput {
@@ -2260,6 +2268,27 @@ export function diffVpcChildren(input: VpcChildInput): AddedChild[] {
   return added;
 }
 
+// Pure diff: declared VPC-endpoint ids + live inventory -> the added endpoints.
+export interface VpcEndpointChildInput {
+  declaredEndpointIds: string[]; // physical ids (VpcEndpointIds) of AWS::EC2::VPCEndpoint on this VPC
+  liveEndpoints: { id: string; label?: string | undefined }[];
+}
+
+export function diffVpcEndpointChildren(input: VpcEndpointChildInput): AddedChild[] {
+  const declared = new Set(input.declaredEndpointIds);
+  const added: AddedChild[] = [];
+  for (const e of input.liveEndpoints) {
+    if (declared.has(e.id)) continue;
+    added.push({
+      resourceType: 'AWS::EC2::VPCEndpoint',
+      identifier: e.id, // Id (the VpcEndpointId) IS the CC primaryIdentifier
+      label: e.label ?? e.id,
+      live: { Id: e.id },
+    });
+  }
+  return added;
+}
+
 async function pageSubnets(client: EC2Client, vpcId: string): Promise<Ec2Subnet[]> {
   const out: Ec2Subnet[] = [];
   let next: string | undefined;
@@ -2276,21 +2305,38 @@ async function pageSubnets(client: EC2Client, vpcId: string): Promise<Ec2Subnet[
   return out;
 }
 
+async function pageVpcEndpoints(client: EC2Client, vpcId: string): Promise<Ec2VpcEndpoint[]> {
+  const out: Ec2VpcEndpoint[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(
+      new DescribeVpcEndpointsCommand({
+        Filters: [{ Name: 'vpc-id', Values: [vpcId] }],
+        NextToken: next,
+      })
+    );
+    out.push(...(res.VpcEndpoints ?? []));
+    next = res.NextToken;
+  } while (next);
+  return out;
+}
+
 async function enumerateVpcChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
   const { parent, desired, region } = ctx;
   const vpcId = parent.physicalId; // a VPC's physical id IS its VpcId
   if (!vpcId) return [];
 
-  // Declared subnets of THIS VPC (Ref/GetAtt VpcId already resolved to the physical id by
-  // gather). A subnet's physical id IS its SubnetId.
+  // Declared subnets + VPC endpoints of THIS VPC (Ref/GetAtt VpcId already resolved to the
+  // physical id by gather). A subnet's physical id IS its SubnetId; an endpoint's IS its
+  // VpcEndpointId.
   const declaredSubnetIds: string[] = [];
+  const declaredEndpointIds: string[] = [];
   for (const r of desired.resources) {
-    if (
-      r.resourceType === 'AWS::EC2::Subnet' &&
-      parentRefMatches(r.declared.VpcId, vpcId) &&
-      r.physicalId
-    ) {
+    if (!parentRefMatches(r.declared.VpcId, vpcId) || !r.physicalId) continue;
+    if (r.resourceType === 'AWS::EC2::Subnet') {
       declaredSubnetIds.push(r.physicalId);
+    } else if (r.resourceType === 'AWS::EC2::VPCEndpoint') {
+      declaredEndpointIds.push(r.physicalId);
     }
   }
 
@@ -2300,7 +2346,17 @@ async function enumerateVpcChildren(ctx: EnumeratorContext): Promise<AddedChild[
     .filter((s): s is Ec2Subnet & { SubnetId: string } => typeof s.SubnetId === 'string')
     .map((s) => ({ id: s.SubnetId, label: s.CidrBlock ? `${s.CidrBlock}` : s.SubnetId }));
 
-  return diffVpcChildren({ declaredSubnetIds, liveSubnets });
+  const endpoints = await pageVpcEndpoints(client, vpcId);
+  const liveEndpoints = endpoints
+    .filter(
+      (e): e is Ec2VpcEndpoint & { VpcEndpointId: string } => typeof e.VpcEndpointId === 'string'
+    )
+    .map((e) => ({ id: e.VpcEndpointId, label: e.ServiceName ?? e.VpcEndpointId }));
+
+  return [
+    ...diffVpcChildren({ declaredSubnetIds, liveSubnets }),
+    ...diffVpcEndpointChildren({ declaredEndpointIds, liveEndpoints }),
+  ];
 }
 
 // ── EC2 (RouteTable) ────────────────────────────────────────────────────────────

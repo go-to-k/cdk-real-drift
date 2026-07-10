@@ -55,6 +55,7 @@ import {
   diffUserPoolGroups,
   diffUserPoolResourceServers,
   diffVpcChildren,
+  diffVpcEndpointChildren,
   isBodyDefinedRestApi,
   isEnumerableRoute,
   routeDestination,
@@ -1454,6 +1455,49 @@ describe('diffVpcChildren (EC2 VPC subnets)', () => {
         liveSubnets: [
           { id: SN('a'), label: '10.0.0.0/24' },
           { id: SN('b'), label: '10.0.1.0/24' },
+        ],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffVpcEndpointChildren (EC2 VPC endpoints) — #1045', () => {
+  const EP = (id: string) => `vpce-${id}`;
+
+  it('flags a rogue out-of-band VPC endpoint (not in the template)', () => {
+    const added = diffVpcEndpointChildren({
+      declaredEndpointIds: [EP('declared')],
+      liveEndpoints: [
+        { id: EP('declared'), label: 'com.amazonaws.us-east-1.s3' },
+        { id: EP('rogue'), label: 'com.amazonaws.us-east-1.dynamodb' },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::EC2::VPCEndpoint',
+        identifier: EP('rogue'),
+        label: 'com.amazonaws.us-east-1.dynamodb',
+        live: { Id: EP('rogue') },
+      },
+    ]);
+  });
+
+  it('identifier + live.Id are the bare VpcEndpointId (CC primaryIdentifier /properties/Id)', () => {
+    const added = diffVpcEndpointChildren({
+      declaredEndpointIds: [],
+      liveEndpoints: [{ id: EP('x'), label: 'com.amazonaws.us-east-1.s3' }],
+    });
+    expect(added[0]!.identifier).toBe(EP('x'));
+    expect(added[0]!.live).toEqual({ Id: EP('x') });
+  });
+
+  it('no drift when every live endpoint is declared (a clean VPC has no auto-created endpoint)', () => {
+    expect(
+      diffVpcEndpointChildren({
+        declaredEndpointIds: [EP('a'), EP('b')],
+        liveEndpoints: [
+          { id: EP('a'), label: 'com.amazonaws.us-east-1.s3' },
+          { id: EP('b'), label: 'com.amazonaws.us-east-1.ssm' },
         ],
       })
     ).toEqual([]);
