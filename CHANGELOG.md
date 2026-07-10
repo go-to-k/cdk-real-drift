@@ -1,3 +1,10 @@
+## [0.4.16](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.15...v0.4.16) (2026-07-10)
+
+
+### Bug Fixes
+
+* **schema:** honor registry propertyTransform (JSONata) to close declared-echo FP class ([#881](https://github.com/go-to-k/cdk-real-drift/issues/881)) ([#1107](https://github.com/go-to-k/cdk-real-drift/issues/1107)) ([8e62961](https://github.com/go-to-k/cdk-real-drift/commit/8e62961d418175f2f99d20f0a6cd8a9c071e6bc3))
+
 ## [0.4.15](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.14...v0.4.15) (2026-07-10)
 
 
