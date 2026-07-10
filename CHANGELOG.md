@@ -1,3 +1,10 @@
+## [0.4.17](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.16...v0.4.17) (2026-07-10)
+
+
+### Bug Fixes
+
+* **synth:** decode cdk.json BOM/UTF-16 and surface a parse error instead of the misleading 'no CDK app' ([#1076](https://github.com/go-to-k/cdk-real-drift/issues/1076)) ([#1108](https://github.com/go-to-k/cdk-real-drift/issues/1108)) ([a5bf71f](https://github.com/go-to-k/cdk-real-drift/commit/a5bf71f515db7c1175cf39731dedc3e94538a15b))
+
 ## [0.4.16](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.15...v0.4.16) (2026-07-10)
 
 
