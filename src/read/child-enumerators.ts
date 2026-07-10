@@ -387,7 +387,7 @@ async function getAllResources(client: APIGatewayClient, apiId: string): Promise
   return out;
 }
 
-async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+export async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
   const { parent, desired, region } = ctx;
   const apiId = parent.physicalId;
   if (!apiId) return [];
@@ -400,12 +400,13 @@ async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<AddedCh
     typeof restApiLive.RootResourceId === 'string' ? restApiLive.RootResourceId : undefined;
 
   // Body-defined (OpenAPI / SpecRestApi) RestApi: CloudFormation materializes its
-  // resources/methods FROM the declared `Body` / `BodyS3Location`, with no sibling
-  // AWS::ApiGateway::Resource / Method template resources to diff against. Skip enumerating
-  // (and flagging) them as `added` — otherwise every Body-materialized path/method is a
-  // first-run false positive on a clean deploy (issue #714). Authorizers / Models /
-  // RequestValidators / GatewayResponses that ARE declared as separate template resources
-  // still enumerate below.
+  // resources/methods AND its Authorizers / Models / RequestValidators / GatewayResponses FROM
+  // the declared `Body` / `BodyS3Location`, with no sibling AWS::ApiGateway::* template resources
+  // to diff against. Skip enumerating (and flagging) them all as `added` — otherwise every
+  // Body-materialized child is a first-run false positive on a clean deploy (Resources/Methods =
+  // #714; Authorizers/Models/RequestValidators/GatewayResponses = #1324, the v1 twin of #960).
+  // Stages are NOT spec-materialized (a REST Body import creates no stages), so stage diffing
+  // stays fully on below (#1044).
   const bodyDefined = isBodyDefinedRestApi(parent.declared);
 
   // Declared children of THIS api (Ref/GetAtt already resolved to physical ids by gather).
@@ -506,7 +507,16 @@ async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<AddedCh
     bodyDefined,
   });
 
-  const authorizers = await getAllAuthorizers(client, apiId);
+  // Body-defined (OpenAPI / SpecRestApi) RestApi: its Authorizers / Models / RequestValidators /
+  // GatewayResponses are all materialized by CloudFormation FROM the spec (components.securitySchemes
+  // + x-amazon-apigateway-authorizer → Authorizers; components.schemas / definitions → Models;
+  // x-amazon-apigateway-request-validators → RequestValidators; x-amazon-apigateway-gateway-responses
+  // → GatewayResponses), with no sibling template resources to diff against. Skip enumerating (and
+  // flagging) them — otherwise every spec-materialized child is a first-run false positive on a clean
+  // deploy, each offering a DeleteResource that would strip the spec's auth / schemas (issue #1324,
+  // the v1 twin of #714's Resource/Method gate and #960's V2 gate). The `bodyDefined` flag is also
+  // threaded into each diff below as a fail-safe short-circuit.
+  const authorizers = bodyDefined ? [] : await getAllAuthorizers(client, apiId);
   const liveAuthorizers = authorizers
     .filter((a): a is ApiGwAuthorizer & { id: string } => typeof a.id === 'string')
     .map((a) => ({ id: a.id, label: a.name ?? a.id }));
@@ -514,15 +524,16 @@ async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<AddedCh
     apiId,
     declaredAuthorizerIds,
     liveAuthorizers,
+    bodyDefined,
   });
 
-  const models = await getAllModels(client, apiId);
+  const models = bodyDefined ? [] : await getAllModels(client, apiId);
   const liveModels = models
     .filter((m): m is ApiGwModel & { name: string } => typeof m.name === 'string')
     .map((m) => ({ name: m.name, label: m.name }));
-  const modelAdded = diffApiGatewayModels({ apiId, declaredModelNames, liveModels });
+  const modelAdded = diffApiGatewayModels({ apiId, declaredModelNames, liveModels, bodyDefined });
 
-  const validators = await getAllRequestValidators(client, apiId);
+  const validators = bodyDefined ? [] : await getAllRequestValidators(client, apiId);
   const liveValidators = validators
     .filter((v): v is ApiGwRequestValidator & { id: string } => typeof v.id === 'string')
     .map((v) => ({ id: v.id, label: v.name ?? v.id }));
@@ -530,9 +541,10 @@ async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<AddedCh
     apiId,
     declaredValidatorIds,
     liveValidators,
+    bodyDefined,
   });
 
-  const gatewayResponses = await getAllGatewayResponses(client, apiId);
+  const gatewayResponses = bodyDefined ? [] : await getAllGatewayResponses(client, apiId);
   const liveResponseTypes = gatewayResponses
     .filter(
       (g): g is ApiGwGatewayResponse & { responseType: string } =>
@@ -544,6 +556,7 @@ async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<AddedCh
     declaredResponseTypes,
     liveResponseTypes,
     hasUnresolvedDeclaredResponseType: gatewayResponseTypeUnresolved,
+    bodyDefined,
   });
 
   // Stages — the V2 enumerator (enumerateHttpApiChildren) already sweeps + diffs Stages; the
@@ -605,10 +618,21 @@ export interface ApiGatewayAuthorizerInput {
   apiId: string;
   declaredAuthorizerIds: string[]; // physical ids (AuthorizerIds) of AWS::ApiGateway::Authorizer
   liveAuthorizers: { id: string; label?: string | undefined }[];
+  // The RestApi is Body-defined (OpenAPI / SpecRestApi): CloudFormation materializes its
+  // authorizers from the spec's `components.securitySchemes` + `x-amazon-apigateway-authorizer`
+  // entries, not from sibling AWS::ApiGateway::Authorizer template resources. There is therefore
+  // no per-child template declaration to diff against, so every spec-materialized authorizer
+  // would otherwise flag as an out-of-band `added` on a clean deploy — each offering a
+  // DeleteResource that would disable the API's auth. When set, authorizer diffing is skipped
+  // entirely (returns []) — the v1 twin of #960's `diffApiGatewayV2Authorizers` gate (issue #1324).
+  bodyDefined?: boolean | undefined;
 }
 
 export function diffApiGatewayAuthorizers(input: ApiGatewayAuthorizerInput): AddedChild[] {
-  const { apiId, declaredAuthorizerIds, liveAuthorizers } = input;
+  const { apiId, declaredAuthorizerIds, liveAuthorizers, bodyDefined } = input;
+  // Body-defined (OpenAPI / SpecRestApi) RestApi: authorizers come from the spec, not from
+  // sibling template resources, so there is nothing to diff them against (issue #1324).
+  if (bodyDefined) return [];
   const declared = new Set(declaredAuthorizerIds);
   const added: AddedChild[] = [];
   for (const a of liveAuthorizers) {
@@ -664,10 +688,19 @@ export interface ApiGatewayModelInput {
   apiId: string;
   declaredModelNames: string[]; // Names of AWS::ApiGateway::Model declared on this api
   liveModels: { name: string; label?: string | undefined }[];
+  // The RestApi is Body-defined (OpenAPI / SpecRestApi): CloudFormation materializes its models
+  // from the spec's `components.schemas` / `definitions`, not from sibling AWS::ApiGateway::Model
+  // template resources. There is therefore no per-child template declaration to diff against, so
+  // every spec-materialized model would otherwise flag as an out-of-band `added` on a clean deploy.
+  // When set, model diffing is skipped entirely (returns []) — the v1 twin of #960 (issue #1324).
+  bodyDefined?: boolean | undefined;
 }
 
 export function diffApiGatewayModels(input: ApiGatewayModelInput): AddedChild[] {
-  const { apiId, declaredModelNames, liveModels } = input;
+  const { apiId, declaredModelNames, liveModels, bodyDefined } = input;
+  // Body-defined (OpenAPI / SpecRestApi) RestApi: models come from the spec, not from sibling
+  // template resources, so there is nothing to diff them against (issue #1324).
+  if (bodyDefined) return [];
   const declared = new Set(declaredModelNames);
   const added: AddedChild[] = [];
   for (const m of liveModels) {
@@ -704,12 +737,22 @@ export interface ApiGatewayRequestValidatorInput {
   apiId: string;
   declaredValidatorIds: string[]; // physical ids (RequestValidatorIds) of AWS::ApiGateway::RequestValidator
   liveValidators: { id: string; label?: string | undefined }[];
+  // The RestApi is Body-defined (OpenAPI / SpecRestApi): CloudFormation materializes its request
+  // validators from the spec's `x-amazon-apigateway-request-validators`, not from sibling
+  // AWS::ApiGateway::RequestValidator template resources. There is therefore no per-child template
+  // declaration to diff against, so every spec-materialized validator would otherwise flag as an
+  // out-of-band `added` on a clean deploy. When set, validator diffing is skipped entirely
+  // (returns []) — the v1 twin of #960 (issue #1324).
+  bodyDefined?: boolean | undefined;
 }
 
 export function diffApiGatewayRequestValidators(
   input: ApiGatewayRequestValidatorInput
 ): AddedChild[] {
-  const { apiId, declaredValidatorIds, liveValidators } = input;
+  const { apiId, declaredValidatorIds, liveValidators, bodyDefined } = input;
+  // Body-defined (OpenAPI / SpecRestApi) RestApi: request validators come from the spec, not from
+  // sibling template resources, so there is nothing to diff them against (issue #1324).
+  if (bodyDefined) return [];
   const declared = new Set(declaredValidatorIds);
   const added: AddedChild[] = [];
   for (const v of liveValidators) {
@@ -764,11 +807,21 @@ export interface ApiGatewayGatewayResponseInput {
   // Fail-safe (#1089): a declared GatewayResponse's identity (ResponseType) was UNRESOLVED, so it
   // could not be matched against the live responses — suppress ALL added for this api.
   hasUnresolvedDeclaredResponseType?: boolean;
+  // The RestApi is Body-defined (OpenAPI / SpecRestApi): CloudFormation materializes its gateway
+  // responses from the spec's `x-amazon-apigateway-gateway-responses`, not from sibling
+  // AWS::ApiGateway::GatewayResponse template resources. There is therefore no per-child template
+  // declaration to diff against, so every spec-materialized gateway response would otherwise flag
+  // as an out-of-band `added` on a clean deploy. When set, gateway-response diffing is skipped
+  // entirely (returns []) — the v1 twin of #960 (issue #1324).
+  bodyDefined?: boolean | undefined;
 }
 
 export function diffApiGatewayGatewayResponses(
   input: ApiGatewayGatewayResponseInput
 ): AddedChild[] {
+  // Body-defined (OpenAPI / SpecRestApi) RestApi: gateway responses come from the spec, not from
+  // sibling template resources, so there is nothing to diff them against (issue #1324).
+  if (input.bodyDefined) return [];
   if (input.hasUnresolvedDeclaredResponseType) return [];
   const { apiId, declaredResponseTypes, liveResponseTypes } = input;
   const declared = new Set(declaredResponseTypes);
