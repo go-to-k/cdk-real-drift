@@ -1,3 +1,10 @@
+## [0.4.40](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.39...v0.4.40) (2026-07-10)
+
+
+### Bug Fixes
+
+* **revert:** gate revert on a mid-operation stack + surface stackStatusWarning in record/ignore/revert ([#786](https://github.com/go-to-k/cdk-real-drift/issues/786)) ([#1170](https://github.com/go-to-k/cdk-real-drift/issues/1170)) ([a7cddb7](https://github.com/go-to-k/cdk-real-drift/commit/a7cddb7555070f53edbc6fa5fea23fbf6c8cd794))
+
 ## [0.4.39](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.38...v0.4.39) (2026-07-10)
 
 
