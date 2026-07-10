@@ -128,7 +128,14 @@ export function buildResolverContext(
   region: string,
   accountId: string,
   stackName: string,
-  stackId: string
+  stackId: string,
+  // #728: whether this is a --pre-deploy run (templateOverride set in loadDesired). It
+  // flips the deployed-value overlay below: under --pre-deploy the declared source is the
+  // LOCAL template, so a local param Default is authoritative and the deployed DescribeStacks
+  // value only FILLS params that have no local Default (rather than overriding it). Defaults
+  // to false — the deployed-path behaviour (deployed wins) — so existing non-pre-deploy
+  // callers are unchanged.
+  preDeploy = false
 ): ResolverContext {
   // CommaDelimitedList / List<> params must resolve to ARRAYS so Fn::Join /
   // Fn::Select / conditions over them evaluate correctly (a string would break
@@ -180,7 +187,23 @@ export function buildResolverContext(
     if ((def?.Type ?? '').includes('::Parameter::Value<')) continue;
     if (def && 'Default' in def) params[k] = toParam(k, String(def.Default));
   }
-  for (const [k, v] of Object.entries(stackParams)) params[k] = toParam(k, v); // deployed values win
+  if (preDeploy) {
+    // #728: under --pre-deploy the declared source is the LOCAL template, so its param
+    // Defaults are the values the next `cdk deploy` will apply. A DescribeStacks value is the
+    // OLD deployed value (DescribeStacks returns an effective value for ALL params, including
+    // default-materialized ones) — letting it override a CHANGED local Default masks exactly
+    // the drift --pre-deploy exists to preview (the run reports CLEAN). So the local Default
+    // wins; the deployed value only fills params with NO local Default (a required param set
+    // at deploy time — we still need a value to resolve its Refs). NoEcho / SSM
+    // `::Parameter::Value<` params were intentionally NOT seeded above, so they are absent
+    // from `params` and still pick up their deployed value here (the fill step), preserving
+    // their existing safe treatment.
+    for (const [k, v] of Object.entries(stackParams)) {
+      if (!(k in params)) params[k] = toParam(k, v);
+    }
+  } else {
+    for (const [k, v] of Object.entries(stackParams)) params[k] = toParam(k, v); // deployed values win
+  }
   // logicalId -> type and -> raw declared Properties, for resolveGetAtt's
   // declared-property-mirroring attributes (GETATT_DECLARED_PROPERTY).
   const templateResources = (template.Resources ?? {}) as Record<
@@ -372,7 +395,10 @@ export async function loadDesired(
     region,
     accountId,
     stackName,
-    stackId
+    stackId,
+    // #728: templateOverride set == --pre-deploy run. Pass it so a changed LOCAL param Default
+    // wins over the OLD deployed value instead of being masked by it.
+    !!templateOverride
   );
 
   // AWS::NotificationARNs is a LIST-valued pseudo-parameter that DescribeStacks already
