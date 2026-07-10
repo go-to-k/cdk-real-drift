@@ -1,3 +1,11 @@
+## [0.4.27](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.26...v0.4.27) (2026-07-10)
+
+
+### Bug Fixes
+
+* **read:** fail safe on an UNRESOLVED child-identity prop in three enumerators ([#1089](https://github.com/go-to-k/cdk-real-drift/issues/1089)) ([#1135](https://github.com/go-to-k/cdk-real-drift/issues/1135)) ([b2803d2](https://github.com/go-to-k/cdk-real-drift/commit/b2803d20efe2a92058112b3cc7bf24e5104e01a6))
+* **revert:** pair REVERT_SET_DEFAULT_PATHS entries with grown KNOWN_DEFAULTS folds so omit-ignored props converge ([#1128](https://github.com/go-to-k/cdk-real-drift/issues/1128)) ([cff3011](https://github.com/go-to-k/cdk-real-drift/commit/cff301111246440656a8953e38ff98ddd732b181))
+
 ## [0.4.26](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.25...v0.4.26) (2026-07-10)
 
 
