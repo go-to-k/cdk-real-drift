@@ -1712,6 +1712,53 @@ describe('SDK overrides', () => {
       expect(out.Visibility).toBe('PRIVATE');
     });
 
+    it('projects Tags so a declared-tags project is not a false declared drift (#1056)', async () => {
+      // A CDK app almost always stamps app/stack-level tags onto every Project; the reader
+      // omitted `tags`, so a declared `Tags` read back `undefined` → a declared-tier FP that
+      // survived record. Mirror the ReportGroup mapping ({key,value} -> {Key,Value}).
+      codebuild.on(BatchGetProjectsCommand).resolves({
+        projects: [
+          {
+            name: 'p',
+            source: { type: 'NO_SOURCE' },
+            artifacts: { type: 'NO_ARTIFACTS' },
+            projectVisibility: 'PRIVATE',
+            tags: [
+              { key: 'cdkrd:ephemeral', value: '1' },
+              { key: 'team', value: 'platform' },
+            ],
+          },
+        ],
+      });
+      const out = (await SDK_OVERRIDES['AWS::CodeBuild::Project'](ctx({}, 'p'))) as Record<
+        string,
+        unknown
+      >;
+      expect(out.Tags).toEqual([
+        { Key: 'cdkrd:ephemeral', Value: '1' },
+        { Key: 'team', Value: 'platform' },
+      ]);
+    });
+
+    it('omits Tags for an untagged project (no empty Tags noise)', async () => {
+      codebuild.on(BatchGetProjectsCommand).resolves({
+        projects: [
+          {
+            name: 'p',
+            source: { type: 'NO_SOURCE' },
+            artifacts: { type: 'NO_ARTIFACTS' },
+            projectVisibility: 'PRIVATE',
+            tags: [],
+          },
+        ],
+      });
+      const out = (await SDK_OVERRIDES['AWS::CodeBuild::Project'](ctx({}, 'p'))) as Record<
+        string,
+        unknown
+      >;
+      expect(out.Tags).toBeUndefined();
+    });
+
     it('projects LogsConfig + BadgeEnabled — an out-of-band logging/badge change is no longer invisible', async () => {
       codebuild.on(BatchGetProjectsCommand).resolves({
         projects: [
