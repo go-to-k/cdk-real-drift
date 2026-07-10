@@ -1,3 +1,10 @@
+## [0.12.6](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.5...v0.12.6) (2026-07-10)
+
+
+### Bug Fixes
+
+* **diff:** gate TargetGroup Targets on a dynamic-registrar sibling instead of value-independent ([#891](https://github.com/go-to-k/cdk-real-drift/issues/891)) ([#1253](https://github.com/go-to-k/cdk-real-drift/issues/1253)) ([8bdc1c5](https://github.com/go-to-k/cdk-real-drift/commit/8bdc1c5746cde7430e74a69bcc9e2e4c08c51d3e))
+
 ## [0.12.5](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.4...v0.12.5) (2026-07-10)
 
 
