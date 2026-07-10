@@ -1,3 +1,10 @@
+# [0.6.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.5.4...v0.6.0) (2026-07-10)
+
+
+### Features
+
+* **report:** show recorded → live for a changed undeclared value ([#758](https://github.com/go-to-k/cdk-real-drift/issues/758) follow-up) ([#1179](https://github.com/go-to-k/cdk-real-drift/issues/1179)) ([09f73b7](https://github.com/go-to-k/cdk-real-drift/commit/09f73b73e41f279ce2fee9f43292826ca33506ba))
+
 ## [0.5.4](https://github.com/go-to-k/cdk-real-drift/compare/v0.5.3...v0.5.4) (2026-07-10)
 
 
