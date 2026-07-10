@@ -1509,13 +1509,17 @@ describe('DocDB DBCluster writer (CC read+write gap)', () => {
     });
   });
 
-  it('does NOT send EngineVersion (off the safe-modify allowlist -> no accidental upgrade)', async () => {
+  it('does NOT send EngineVersion (off the safe-modify allowlist) AND reports it not-reverted (#804)', async () => {
     stubClusterRead({ EngineVersion: '4.0.0' });
     docdb.on(ModifyDBClusterCommand).resolves({});
-    // a hypothetical EngineVersion revert op must be ignored (no modifiable param emitted)
-    await SDK_WRITERS['AWS::DocDB::DBCluster'](ctx({ physicalId: CLID }), [
-      { op: 'add', path: '/EngineVersion', value: '5.0.0', human: 'x' },
-    ]);
+    // EngineVersion is off the safe-modify allowlist (a version write can trigger an upgrade),
+    // so no ModifyDBCluster is sent — but before #804 the writer also printed a false
+    // `reverted:`. It now throws so the finding stays surfaced as not-reverted.
+    await expect(
+      SDK_WRITERS['AWS::DocDB::DBCluster'](ctx({ physicalId: CLID }), [
+        { op: 'add', path: '/EngineVersion', value: '5.0.0', human: 'x' },
+      ])
+    ).rejects.toThrow(/EngineVersion/);
     expect(docdb.commandCalls(ModifyDBClusterCommand)).toHaveLength(0);
   });
 
@@ -1584,14 +1588,18 @@ describe('DocDB DBInstance writer (CC read+write gap; mirror of the cluster writ
     });
   });
 
-  it('ignores an op off the safe-modify allowlist (AutoMinorVersionUpgrade is cluster-managed)', async () => {
+  it('reports an op off the safe-modify allowlist as NOT reverted, not a silent success (#804)', async () => {
     stubInstanceRead({ AutoMinorVersionUpgrade: true });
     docdb.on(ModifyDBInstanceCommand).resolves({});
-    // AutoMinorVersionUpgrade is a DocDB CLUSTER setting — ModifyDBInstance rejects it, so
-    // it is OFF the instance allowlist and an op on it must be ignored (no Modify call).
-    await SDK_WRITERS['AWS::DocDB::DBInstance'](ctx({ physicalId: IID }), [
-      { op: 'add', path: '/AutoMinorVersionUpgrade', value: false, human: 'x' },
-    ]);
+    // AutoMinorVersionUpgrade is OFF the instance allowlist (a cluster-managed setting
+    // ModifyDBInstance rejects). Before #804 the writer dropped it silently and the run
+    // printed a false `reverted:`; now it throws so the finding stays surfaced as not-reverted.
+    await expect(
+      SDK_WRITERS['AWS::DocDB::DBInstance'](ctx({ physicalId: IID }), [
+        { op: 'add', path: '/AutoMinorVersionUpgrade', value: false, human: 'x' },
+      ])
+    ).rejects.toThrow(/AutoMinorVersionUpgrade/);
+    // No convergeable op was present, so no Modify call was sent.
     expect(docdb.commandCalls(ModifyDBInstanceCommand)).toHaveLength(0);
   });
 
@@ -1685,12 +1693,17 @@ describe('ElasticBeanstalk Application/Environment writers (CC UpdateResource Se
     expect(calls[0]!.args[0].input).toEqual({ EnvironmentName: 'my-env', Description: 'declared' });
   });
 
-  it('an off-allowlist prop (create-only Tier) sends NO update — never accidentally mutated', async () => {
+  it('an off-allowlist prop (create-only Tier) sends NO update AND is reported not-reverted (#804)', async () => {
     eb.on(UpdateEnvironmentCommand).resolves({});
-    await SDK_WRITERS['AWS::ElasticBeanstalk::Environment'](
-      ctx({ physicalId: 'my-env', declared: { EnvironmentName: 'my-env' } }),
-      [{ op: 'add', path: '/Tier', value: { Name: 'Worker' }, human: 'x' }]
-    );
+    // Tier is off the allowlist (create-only) — no UpdateEnvironment is sent (never accidentally
+    // mutated) — but before #804 the writer printed a false `reverted:`. It now throws so the
+    // finding stays surfaced as not-reverted.
+    await expect(
+      SDK_WRITERS['AWS::ElasticBeanstalk::Environment'](
+        ctx({ physicalId: 'my-env', declared: { EnvironmentName: 'my-env' } }),
+        [{ op: 'add', path: '/Tier', value: { Name: 'Worker' }, human: 'x' }]
+      )
+    ).rejects.toThrow(/Tier/);
     expect(eb.commandCalls(UpdateEnvironmentCommand)).toHaveLength(0);
   });
 
