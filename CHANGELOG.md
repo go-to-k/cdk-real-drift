@@ -1,3 +1,10 @@
+## [0.12.25](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.24...v0.12.25) (2026-07-10)
+
+
+### Bug Fixes
+
+* **diff:** fold EventBusPolicy Statement Sid == declared StatementId ([#1314](https://github.com/go-to-k/cdk-real-drift/issues/1314)) ([#1364](https://github.com/go-to-k/cdk-real-drift/issues/1364)) ([ab2116f](https://github.com/go-to-k/cdk-real-drift/commit/ab2116f8614ced1fc60b2ab14f8fe63debf22d14))
+
 ## [0.12.24](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.23...v0.12.24) (2026-07-10)
 
 
