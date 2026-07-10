@@ -732,6 +732,46 @@ describe('loadConfig', () => {
     await write('ignore: []\nconcurency: 4\n');
     await expect(loadConfig()).rejects.toThrow(/unknown key\(s\) "concurency"/);
   });
+
+  // #1291 — a Windows-authored UTF-16 ignore.yaml (PowerShell 5.1 `Out-File` / `> file`
+  // default) read as 'utf8' becomes NUL-interleaved mojibake the YAML parser reads as a
+  // single scalar, so a valid mapping was mis-diagnosed as "must be a YAML mapping". The
+  // BOM/UTF-16 sniff (mirroring resolveApp #1076) now decodes these correctly.
+  const YAML = 'ignore:\n  - path: Res.Prop\n';
+  const EXPECTED = { ignore: [{ path: 'Res.Prop' }] };
+  // write a raw Buffer (bypasses the utf8 `write` helper) at .cdkrd/ignore.yaml
+  const writeBytes = async (buf: Buffer) => {
+    await mkdir('.cdkrd', { recursive: true });
+    await writeFile('.cdkrd/ignore.yaml', buf);
+  };
+  const toUtf16be = (le: Buffer): Buffer => {
+    const be = Buffer.alloc(le.length);
+    for (let i = 0; i < le.length; i += 2) {
+      be[i] = le[i + 1]!;
+      be[i + 1] = le[i]!;
+    }
+    return be;
+  };
+
+  it('reads a UTF-16 LE ignore.yaml with a BOM (PowerShell 5.1 `Out-File` default)', async () => {
+    await writeBytes(Buffer.from(`﻿${YAML}`, 'utf16le'));
+    expect(await loadConfig()).toEqual(EXPECTED);
+  });
+
+  it('reads a UTF-16 LE ignore.yaml without a BOM', async () => {
+    await writeBytes(Buffer.from(YAML, 'utf16le'));
+    expect(await loadConfig()).toEqual(EXPECTED);
+  });
+
+  it('reads a UTF-16 BE ignore.yaml (with a BOM)', async () => {
+    await writeBytes(toUtf16be(Buffer.from(`﻿${YAML}`, 'utf16le')));
+    expect(await loadConfig()).toEqual(EXPECTED);
+  });
+
+  it('reads a UTF-8 BOM ignore.yaml (BOM stripped, uniform with cdk.json)', async () => {
+    await writeBytes(Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from(YAML, 'utf8')]));
+    expect(await loadConfig()).toEqual(EXPECTED);
+  });
 });
 
 describe('ignoreRuleFor', () => {
@@ -1108,5 +1148,15 @@ describe('addIgnoreRules', () => {
     // both the peer's rule and ours land — the write was built from the re-read, not a write
     // that overwrote the file with only our rule.
     expect((await loadConfig()).ignore).toEqual([{ path: 'Peer.appended' }, { path: 'Mine.z' }]);
+  });
+
+  it('appends to a UTF-16 LE existing file without mojibaking its prior rules (#1291 re-read)', async () => {
+    // The pre-write re-read (existingRaw) must decode with the same BOM/UTF-16 sniff as
+    // loadConfig, else a Windows-authored UTF-16 ignore.yaml would parse to mojibake here
+    // and its existing rules would be dropped on append.
+    await mkdir('.cdkrd', { recursive: true });
+    await writeFile('.cdkrd/ignore.yaml', Buffer.from('﻿ignore:\n  - path: Prior.x\n', 'utf16le'));
+    await addIgnoreRules([p('Mine.z')]);
+    expect((await loadConfig()).ignore).toEqual([{ path: 'Prior.x' }, { path: 'Mine.z' }]);
   });
 });
