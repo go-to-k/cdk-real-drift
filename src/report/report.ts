@@ -733,9 +733,29 @@ function stringifySymbolSafe(v: unknown): string | undefined {
   return JSON.stringify(v, symbolReplacer);
 }
 
+// #1307: JSON.stringify escapes only C0 controls / quote / backslash / lone surrogates —
+// it emits the Unicode bidi/format controls (U+202A-U+202E, U+2066-U+2069) and the
+// zero-width set (U+200B-U+200F, U+FEFF) RAW inside the quoted string. A drift VALUE is
+// live-controlled, so a stringified value still carries the spoof onto the terminal (an RLO
+// visually reorders the `actual =` line; a zero-width char makes two different values render
+// identically). Post-process the already-stringified value with the SAME visible `\u{XXXX}`
+// escape the KEY path uses (sanitizeForTerminal / isBidiOrZeroWidth). TEXT path only — the
+// `--json` payload is built structurally in buildStackJson and never routes through j()/jPair(),
+// so its bytes stay faithful for parsers. Pure; the C0 range is already escaped by
+// JSON.stringify, so this only needs the bidi/zero-width tier.
+function escapeBidiZeroWidth(s: string): string {
+  let out = '';
+  for (const ch of s) {
+    const code = ch.charCodeAt(0);
+    out += isBidiOrZeroWidth(code) ? `\\u{${code.toString(16).toUpperCase()}}` : ch;
+  }
+  return out;
+}
+
 function j(v: unknown): string {
   const s = stringifySymbolSafe(v);
-  return s && s.length > VALUE_CAP ? safeSlice(s, 0, VALUE_CAP) + '…' : (s ?? String(v));
+  const raw = s && s.length > VALUE_CAP ? safeSlice(s, 0, VALUE_CAP) + '…' : (s ?? String(v));
+  return escapeBidiZeroWidth(raw);
 }
 
 // #829: drift VALUES are JSON.stringify-escaped (via j()/jPair()), but several live-derived
@@ -793,7 +813,10 @@ function isBidiOrZeroWidth(code: number): boolean {
 export function jPair(a: unknown, b: unknown): { a: string; b: string } {
   const as = stringifySymbolSafe(a) ?? String(a);
   const bs = stringifySymbolSafe(b) ?? String(b);
-  if (as.length <= VALUE_CAP && bs.length <= VALUE_CAP) return { a: as, b: bs };
+  // #1307: escape bidi/zero-width controls JSON.stringify left raw in the VALUE (TEXT path
+  // only) — the same visible `\u{XXXX}` form the key path uses. Applied at both return sites.
+  if (as.length <= VALUE_CAP && bs.length <= VALUE_CAP)
+    return { a: escapeBidiZeroWidth(as), b: escapeBidiZeroWidth(bs) };
   let i = 0;
   const min = Math.min(as.length, bs.length);
   while (i < min && as[i] === bs[i]) i++; // first index at which they differ
@@ -803,7 +826,7 @@ export function jPair(a: unknown, b: unknown): { a: string; b: string } {
     let out = safeSlice(s, start, start + VALUE_CAP);
     if (start > 0) out = `…${out}`;
     if (start + VALUE_CAP < s.length) out = `${out}…`;
-    return out;
+    return escapeBidiZeroWidth(out);
   };
   return { a: window(as), b: window(bs) };
 }
