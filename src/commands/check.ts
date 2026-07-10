@@ -24,7 +24,7 @@ import {
   warnBaselineSchemaV1,
   warnTemplateHashDrift,
 } from '../baseline/baseline-file.js';
-import { isInteractive, parseCommonArgs } from '../cli-args.js';
+import { type CommonArgs, isInteractive, parseCommonArgs } from '../cli-args.js';
 import { applyIgnores, loadConfig } from '../config/config-file.js';
 import { withinStackPath } from '../construct-path.js';
 import {
@@ -226,6 +226,36 @@ export function strictCoverageExit(
  */
 export function finalCheckExit(code: number, fail: boolean): number {
   return fail || code !== 1 ? code : 0;
+}
+
+/**
+ * Whether `check` should open its interactive after-report resolve menu (Record / Revert /
+ * Ignore / Decide-per-finding). It fires only when there is something to act on (drift,
+ * unrecorded values, or no baseline yet — R141's day-1 establish) AND the run is a TTY human
+ * who can make the decision. It is gated OUT of every machine/automation mode:
+ *   - --json / --show-all / --pre-deploy — machine output or baseline-untouched contracts,
+ *   - --fail — the CI drift-exit path,
+ *   - #1054: --yes — `--yes` has NO documented `check` contract (HELP scopes it to record /
+ *     ignore / revert; check's automation flag is --fail / non-TTY). In the menu the USER is
+ *     the decision-maker, but `--yes` means "no decision needed" in the record/ignore/revert
+ *     sub-actions it threads into — so a `check --yes` in a TTY silently overrode explicit
+ *     per-finding choices (recorded / ignored / reverted values the user declined, including
+ *     folded values never shown in the report). Under --yes, check just reports.
+ * Pure + exported for tests.
+ */
+export function shouldOfferInteractiveResolve(
+  a: Pick<CommonArgs, 'json' | 'showAll' | 'preDeploy' | 'fail' | 'yes'>,
+  ctx: { code: number; hasUnrecorded: boolean; hasBaseline: boolean; interactive: boolean }
+): boolean {
+  return (
+    (ctx.code === 1 || ctx.hasUnrecorded || !ctx.hasBaseline) &&
+    !a.json &&
+    !a.showAll &&
+    !a.preDeploy &&
+    !a.fail &&
+    !a.yes &&
+    ctx.interactive
+  );
 }
 
 /**
@@ -692,12 +722,12 @@ export async function runCheck(args: string[]): Promise<number> {
       // through `check`'s own flow (pick Record) rather than a separate `cdkrd record`.
       // The whole resolution flow lives in interactive-resolve.ts; it returns the exit code.
       if (
-        (code === 1 || hasUnrecorded || !baseline) &&
-        !a.json &&
-        !a.showAll &&
-        !a.preDeploy &&
-        !a.fail &&
-        isInteractive()
+        shouldOfferInteractiveResolve(a, {
+          code,
+          hasUnrecorded,
+          hasBaseline: baseline !== undefined,
+          interactive: isInteractive(),
+        })
       ) {
         code = await resolveInteractively({
           stackName,
