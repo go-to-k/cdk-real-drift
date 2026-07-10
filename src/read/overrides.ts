@@ -2125,11 +2125,29 @@ const readAcmCertificate: OverrideReader = async ({ physicalId, declared, region
   if (str(cert.KeyAlgorithm)) model.KeyAlgorithm = cert.KeyAlgorithm;
   // SANs only when declared — AWS always folds DomainName in as an implied SAN, so an
   // undeclared live list would false-flag every single-domain cert (see note above).
-  const declaresSans =
-    Array.isArray(declared.SubjectAlternativeNames) && declared.SubjectAlternativeNames.length > 0;
-  const sans = (cert.SubjectAlternativeNames ?? []).filter(
-    (s): s is string => str(s) !== undefined
-  );
+  const declaredSans = Array.isArray(declared.SubjectAlternativeNames)
+    ? declared.SubjectAlternativeNames.filter((s): s is string => str(s) !== undefined)
+    : [];
+  const declaresSans = declaredSans.length > 0;
+  let sans = (cert.SubjectAlternativeNames ?? []).filter((s): s is string => str(s) !== undefined);
+  // DescribeCertificate ALWAYS includes the canonical apex DomainName as the first SAN, but
+  // CFn users declare only the ADDITIONAL names. When the declared list does NOT itself
+  // contain the DomainName, subtract that single implied apex element from the live list
+  // before compare so a clean multi-SAN cert folds to zero drift. Equality-gated: this
+  // removes ONLY the DomainName-matching element, so any OTHER extra/missing SAN still
+  // surfaces (#1090). If the user DID declare the DomainName as a SAN, keep the live list
+  // verbatim (they intend it, so it is a faithful compare).
+  const apex = str(cert.DomainName);
+  if (declaresSans && apex !== undefined && !declaredSans.includes(apex)) {
+    let dropped = false;
+    sans = sans.filter((s) => {
+      if (!dropped && s === apex) {
+        dropped = true;
+        return false;
+      }
+      return true;
+    });
+  }
   if (declaresSans && sans.length > 0) model.SubjectAlternativeNames = sans;
   // CertificateTransparencyLoggingPreference: project only when declared OR moved away from
   // the ENABLED default, so a clean undeclared cert folds to nothing (zero first-run drift)
