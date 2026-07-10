@@ -48,6 +48,7 @@ vi.mock('../src/cli-args.js', () => ({
 const ignoreStack = vi.fn();
 vi.mock('../src/commands/stack-actions.js', () => ({
   ignoreStack: (...a: unknown[]) => ignoreStack(...a),
+  warnStackStatus: () => {}, // #786: ignore.ts imports this; no-op in these footer tests
 }));
 
 import { runIgnore } from '../src/commands/ignore.js';

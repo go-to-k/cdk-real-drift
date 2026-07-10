@@ -39,6 +39,7 @@ vi.mock('../src/cli-args.js', () => ({
 const recordStack = vi.fn();
 vi.mock('../src/commands/stack-actions.js', () => ({
   recordStack: (...a: unknown[]) => recordStack(...a),
+  warnStackStatus: () => {}, // #786: record.ts imports this; no-op in these footer tests
 }));
 
 import { runRecord } from '../src/commands/record.js';

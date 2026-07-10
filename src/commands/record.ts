@@ -8,7 +8,7 @@ import { applyIgnores, loadConfig } from '../config/config-file.js';
 import { resolveStacks } from './resolve-stacks.js';
 import { gatherFindings } from './gather.js';
 import { gatherWithProgress, progressLabel } from './progress.js';
-import { recordStack } from './stack-actions.js';
+import { recordStack, warnStackStatus } from './stack-actions.js';
 import { emitJsonArray, type RecordJson, stackLabel } from './verb-json.js';
 
 export async function runRecord(args: string[]): Promise<number> {
@@ -68,6 +68,10 @@ export async function runRecord(args: string[]): Promise<number> {
         progressLabel(idx, stacks.length, stackName, region),
         () => gatherFindings(stackName, region, undefined, template)
       );
+      // #786: warn loudly when the stack is mid-operation / failed — recording now would
+      // snapshot TRANSIENT live values into the git-committed baseline. Same wording/stderr
+      // routing check uses; a --yes run still records (just warned), matching check's behavior.
+      warnStackStatus(stackName, desired.stackStatusWarning);
       // ignore rules re-tag matching undeclared findings out of the record set, so an
       // externally-managed property is never recorded (and never re-detected).
       const result = await recordStack({

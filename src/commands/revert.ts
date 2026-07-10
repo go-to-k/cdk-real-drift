@@ -16,7 +16,7 @@ import { loadConfig } from '../config/config-file.js';
 import { gatherFindings } from './gather.js';
 import { gatherWithProgress, progressLabel } from './progress.js';
 import { resolveStacks } from './resolve-stacks.js';
-import { revertStack } from './stack-actions.js';
+import { revertStack, warnStackStatus } from './stack-actions.js';
 import { emitJsonArray, type RevertJson, stackLabel } from './verb-json.js';
 
 export async function runRevert(args: string[]): Promise<number> {
@@ -85,6 +85,10 @@ export async function runRevert(args: string[]): Promise<number> {
         region
       );
       if (baseline) checkBaselineAccount(baseline, gathered.desired.accountId, stackName);
+      // #786: surface the mid-operation / failed-state warning the same way check does —
+      // a revert on an in-flux stack is risky (revertStack additionally re-reads the state
+      // right before the write and refuses on a mid-operation stack).
+      warnStackStatus(stackName, gathered.desired.stackStatusWarning);
       // standalone revert: an aborted confirm means nothing changed → exit 0 (the
       // outcome's `exit` already encodes that; `aborted` is only consulted by check).
       const outcome = await revertStack({

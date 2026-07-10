@@ -17,7 +17,7 @@ import { applyIgnores, loadConfig } from '../config/config-file.js';
 import { resolveStacks } from './resolve-stacks.js';
 import { gatherFindings } from './gather.js';
 import { gatherWithProgress, progressLabel } from './progress.js';
-import { ignoreStack } from './stack-actions.js';
+import { ignoreStack, warnStackStatus } from './stack-actions.js';
 import { emitJsonArray, type IgnoreJson, stackLabel } from './verb-json.js';
 
 export async function runIgnore(args: string[]): Promise<number> {
@@ -67,6 +67,10 @@ export async function runIgnore(args: string[]): Promise<number> {
         progressLabel(idx, stacks.length, stackName, region),
         () => gatherFindings(stackName, region, undefined, template)
       );
+      // #786: surface the mid-operation / failed-state warning the same way check does —
+      // an in-flux stack's drift may be transient, so ignoring it could bake in a rule for
+      // a value that settles on its own once the deploy completes.
+      warnStackStatus(stackName, desired.stackStatusWarning);
       // Reconcile exactly as check does so the offered drift matches what the user saw:
       // suppress already-recorded baseline entries, then re-tag config-ignored findings
       // out (they are already `ignored`, so ignoreStack never re-offers them).
