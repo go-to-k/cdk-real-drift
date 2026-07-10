@@ -2018,9 +2018,13 @@ describe('SDK overrides', () => {
       expect(KNOWN_DEFAULTS['AWS::CodeBuild::Project'].Cache).toEqual({ Type: 'NO_CACHE' });
     });
 
-    it('undefined when the project is absent (-> stays skipped)', async () => {
-      codebuild.on(BatchGetProjectsCommand).resolves({ projects: [] });
-      expect(await SDK_OVERRIDES['AWS::CodeBuild::Project'](ctx({}, 'missing'))).toBeUndefined();
+    it('#1083: a deleted project (empty projects, name in projectsNotFound) throws ResourceGoneError → router maps to deleted (not skipped)', async () => {
+      codebuild
+        .on(BatchGetProjectsCommand)
+        .resolves({ projects: [], projectsNotFound: ['missing'] });
+      await expect(
+        SDK_OVERRIDES['AWS::CodeBuild::Project'](ctx({}, 'missing'))
+      ).rejects.toBeInstanceOf(ResourceGoneError);
     });
 
     it('undefined when no name is resolvable', async () => {
