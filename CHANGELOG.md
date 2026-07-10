@@ -1,3 +1,10 @@
+## [0.12.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.2...v0.12.3) (2026-07-10)
+
+
+### Bug Fixes
+
+* **diff:** stop false potential drift on declared dot-key maps and legacy S3 transition default ([#1249](https://github.com/go-to-k/cdk-real-drift/issues/1249)) ([c86ad6e](https://github.com/go-to-k/cdk-real-drift/commit/c86ad6e1a9869e4a18ccc1cbdc3a2ff0640aaf03))
+
 ## [0.12.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.1...v0.12.2) (2026-07-10)
 
 
