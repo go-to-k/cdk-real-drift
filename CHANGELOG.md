@@ -1,3 +1,13 @@
+## [0.9.7](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.6...v0.9.7) (2026-07-10)
+
+
+### Bug Fixes
+
+* **added:** fail safe when the sibling-stack check cannot verify a cross-account/region child ([#959](https://github.com/go-to-k/cdk-real-drift/issues/959)) ([#1220](https://github.com/go-to-k/cdk-real-drift/issues/1220)) ([f846e6f](https://github.com/go-to-k/cdk-real-drift/commit/f846e6f7643900353ba3acbf676590f2046f58d2))
+* **noise:** fold AWS-assigned placement/key/version defaults surfacing as first-run undeclared FPs ([#976](https://github.com/go-to-k/cdk-real-drift/issues/976)) ([#1216](https://github.com/go-to-k/cdk-real-drift/issues/1216)) ([f6fa5c1](https://github.com/go-to-k/cdk-real-drift/commit/f6fa5c10afc2222c78223170e5e6d1f2b19c521c))
+* **read:** suppress spec-materialized children of Body-defined / quick-create ApiGatewayV2 HTTP APIs ([#960](https://github.com/go-to-k/cdk-real-drift/issues/960)) ([#1218](https://github.com/go-to-k/cdk-real-drift/issues/1218)) ([b9041bd](https://github.com/go-to-k/cdk-real-drift/commit/b9041bdd134dc8628ab25f479daa1c9b428bc67a))
+* **sweep:** honor aws:cloudformation:stack-name in the generic tag net so a peer's live resource is never flagged an orphan ([#1217](https://github.com/go-to-k/cdk-real-drift/issues/1217)) ([6d9b9c8](https://github.com/go-to-k/cdk-real-drift/commit/6d9b9c84dc5d4aad7f02b23ad16dc95f41954259))
+
 ## [0.9.6](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.5...v0.9.6) (2026-07-10)
 
 
