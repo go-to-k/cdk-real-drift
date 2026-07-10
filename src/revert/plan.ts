@@ -599,6 +599,29 @@ export function buildRevertPlan(
         });
         continue;
       }
+      // #764: a RECORDED (endorsed) `added` resource that later CHANGED stays tier
+      // `added` with `unrecorded` UNSET — applyBaseline keeps it with the recorded baseline
+      // model on `desired` + a "changed since record" note (the ONLY way an added finding
+      // carries a `desired`). Reverting it still has only ONE lever — DeleteResource of the
+      // WHOLE resource — so `revert --yes` would DELETE an endorsed out-of-band
+      // DBInstance/ECS Service with no delete-specific gate (the interactive multiselect's
+      // unselected-by-default `(DELETE)` rows are the real gate, skipped under --yes). That
+      // is the destructive mirror of the undeclared asymmetry: a recorded VALUE that
+      // changed is RESTORED to the baseline, but a recorded RESOURCE that changed was being
+      // DELETED. Extend the same `--remove-unrecorded` opt-in the unrecorded branch above
+      // uses: a recorded-added delete is a DESTRUCTIVE op, so it must not be auto-applied
+      // under --yes without the explicit opt-in. (A recorded-added that did NOT change is
+      // suppressed in applyBaseline and never reaches here.)
+      if (f.desired !== undefined && !opts.removeUnrecorded) {
+        notRevertable.push({
+          displayId,
+          resourceType: f.resourceType,
+          path: f.path,
+          reason:
+            'recorded added resource changed since record — reverting DELETES the whole resource; re-record if the change is right, or --remove-unrecorded to delete it',
+        });
+        continue;
+      }
       // an out-of-band resource (not in the template) is reverted by DELETING it via
       // Cloud Control DeleteResource. f.physicalId is the CC identifier (the composite
       // `RestApiId|ResourceId[|HttpMethod]`). Modeled as a `delete`-kind item carrying a

@@ -132,13 +132,19 @@ export function revertConfirmMessage(
   stackName: string,
   region: string,
   opCount: number,
-  notRevertableCount: number
+  notRevertableCount: number,
+  deleteCount = 0
 ): string {
   const scope =
     notRevertableCount > 0
       ? ` Only the ${opCount} selected op(s) are written — the ${notRevertableCount} NOT-revertable finding(s) are untouched.`
       : '';
-  return `Apply ${opCount} revert op(s) to ${stackLabel(stackName, region)}? This WRITES to AWS.${scope}`;
+  // #764: a `delete`-kind op DELETES a whole out-of-band resource (not a property
+  // patch), so the confirm must name how many resources will be DELETED — otherwise a
+  // user reading "revert op(s)" under --yes has no signal that a resource is destroyed.
+  const del =
+    deleteCount > 0 ? ` ${deleteCount} of these DELETE(S) a whole out-of-band resource.` : '';
+  return `Apply ${opCount} revert op(s) to ${stackLabel(stackName, region)}? This WRITES to AWS.${del}${scope}`;
 }
 
 /**
@@ -1087,8 +1093,15 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
       }
     }
     const opCount = plan.items.reduce((n, i) => n + i.ops.length, 0);
+    const deleteCount = plan.items.filter((i) => i.kind === 'delete').length;
     const ok = await confirm({
-      message: revertConfirmMessage(stackName, region, opCount, plan.notRevertable.length),
+      message: revertConfirmMessage(
+        stackName,
+        region,
+        opCount,
+        plan.notRevertable.length,
+        deleteCount
+      ),
       // A destructive AWS write must NOT default to Yes — Enter/default is No (#1055),
       // matching record's empty-baseline confirm (initialValue: false above).
       initialValue: false,
