@@ -1,3 +1,12 @@
+## [0.12.36](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.35...v0.12.36) (2026-07-10)
+
+
+### Bug Fixes
+
+* **baseline:** fold name-stripped recorded paths into the stale-baseline nudge, not synthetic removed-since-record drift ([#1274](https://github.com/go-to-k/cdk-real-drift/issues/1274)) ([#1389](https://github.com/go-to-k/cdk-real-drift/issues/1389)) ([95d1d30](https://github.com/go-to-k/cdk-real-drift/commit/95d1d302d32b7a64104934e811340ed1ea2222c4))
+* **record:** redact + terminal-sanitize the record picker changed-value preview ([#1302](https://github.com/go-to-k/cdk-real-drift/issues/1302)) ([#1388](https://github.com/go-to-k/cdk-real-drift/issues/1388)) ([970a6b8](https://github.com/go-to-k/cdk-real-drift/commit/970a6b85d521829e3e5541e1604f38b5c9f34121))
+* **schema:** top-level variant-wrapped default folds via defaultPaths in classify ([#1328](https://github.com/go-to-k/cdk-real-drift/issues/1328)) ([#1387](https://github.com/go-to-k/cdk-real-drift/issues/1387)) ([38c9616](https://github.com/go-to-k/cdk-real-drift/commit/38c9616f7e451d772da2bb367f5bac08168a7f18))
+
 ## [0.12.35](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.34...v0.12.35) (2026-07-10)
 
 
