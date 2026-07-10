@@ -1,4 +1,13 @@
 import {
+  APIGatewayClient,
+  GetAuthorizersCommand,
+  GetGatewayResponsesCommand,
+  GetModelsCommand,
+  GetRequestValidatorsCommand,
+  GetResourcesCommand,
+  GetStagesCommand as GetRestStagesCommand,
+} from '@aws-sdk/client-api-gateway';
+import {
   LambdaClient,
   ListAliasesCommand,
   ListEventSourceMappingsCommand,
@@ -19,6 +28,7 @@ import type { EnumeratorContext } from '../src/read/child-enumerators.js';
 import {
   enumerateLambdaFunctionChildren,
   enumerateRdsClusterChildren,
+  enumerateRestApiChildren,
   enumerateRoute53HostedZoneChildren,
   enumerateSnsTopicChildren,
   diffApiGatewayAuthorizers,
@@ -442,6 +452,124 @@ describe('diffApiGatewayGatewayResponses (REST API gateway responses)', () => {
       hasUnresolvedDeclaredResponseType: false,
     });
     expect(added.map((a) => a.identifier)).toEqual([`${API}:DEFAULT_5XX`]);
+  });
+});
+
+// #1324: a Body-defined (OpenAPI / SpecRestApi) RestApi materializes its Authorizers / Models /
+// RequestValidators / GatewayResponses FROM the spec (components.securitySchemes +
+// x-amazon-apigateway-authorizer → Authorizers; components.schemas / definitions → Models;
+// x-amazon-apigateway-request-validators → RequestValidators; x-amazon-apigateway-gateway-responses
+// → GatewayResponses), with no sibling AWS::ApiGateway::* template resources to diff against. Before
+// the fix, `bodyDefined` was passed ONLY to the Resources/Method diff (#714), leaving these four
+// diffs ungated — so every SpecRestApi with security schemes / schemas / validators / gateway-response
+// customizations surfaced first-run `[Added]` FPs, each offering a CC DeleteResource. This mirrors
+// the V2 gate (#960): thread `bodyDefined` into each diff and return [] when set.
+describe('Body-defined RestApi suppresses spec-materialized children (#1324)', () => {
+  it('diffApiGatewayAuthorizers returns [] when bodyDefined (spec-materialized authorizers)', () => {
+    const added = diffApiGatewayAuthorizers({
+      apiId: API,
+      declaredAuthorizerIds: [], // no sibling AWS::ApiGateway::Authorizer template resource
+      liveAuthorizers: [{ id: 'specAuth0', label: 'CognitoAuth' }],
+      bodyDefined: true,
+    });
+    expect(added).toEqual([]);
+  });
+
+  it('diffApiGatewayModels returns [] when bodyDefined (spec-materialized models)', () => {
+    const added = diffApiGatewayModels({
+      apiId: API,
+      declaredModelNames: [],
+      liveModels: [{ name: 'PetSchema' }, { name: 'ErrorSchema' }],
+      bodyDefined: true,
+    });
+    expect(added).toEqual([]);
+  });
+
+  it('diffApiGatewayRequestValidators returns [] when bodyDefined (spec-materialized validators)', () => {
+    const added = diffApiGatewayRequestValidators({
+      apiId: API,
+      declaredValidatorIds: [],
+      liveValidators: [{ id: 'specVal0', label: 'body-only' }],
+      bodyDefined: true,
+    });
+    expect(added).toEqual([]);
+  });
+
+  it('diffApiGatewayGatewayResponses returns [] when bodyDefined (spec-materialized responses)', () => {
+    const added = diffApiGatewayGatewayResponses({
+      apiId: API,
+      declaredResponseTypes: [],
+      liveResponseTypes: [{ type: 'UNAUTHORIZED' }, { type: 'ACCESS_DENIED' }],
+      bodyDefined: true,
+    });
+    expect(added).toEqual([]);
+  });
+
+  // End-to-end: a Body-defined RestApi with no sibling declared children, whose LIVE inventory
+  // holds one spec-materialized child of EACH kind (Authorizer, Model, RequestValidator,
+  // GatewayResponse). All four must be suppressed → `added` is EMPTY on a clean first check.
+  it('enumerateRestApiChildren suppresses ALL four spec-materialized child kinds on a Body-defined api', async () => {
+    const apigw = mockClient(APIGatewayClient);
+    apigw
+      // Body-defined: getAllResources is skipped by the enumerator, but stay realistic.
+      .on(GetResourcesCommand)
+      .resolves({ items: [{ id: 'root0', path: '/' }] })
+      .on(GetRestStagesCommand)
+      .resolves({ item: [] })
+      .on(GetAuthorizersCommand)
+      .resolves({ items: [{ id: 'specAuth0', name: 'CognitoAuth' }] })
+      .on(GetModelsCommand)
+      .resolves({ items: [{ name: 'Empty' }, { name: 'Error' }, { name: 'PetSchema' }] })
+      .on(GetRequestValidatorsCommand)
+      .resolves({ items: [{ id: 'specVal0', name: 'body-only' }] })
+      .on(GetGatewayResponsesCommand)
+      .resolves({ items: [{ responseType: 'UNAUTHORIZED', defaultResponse: false }] });
+    const ctx = {
+      parent: {
+        logicalId: 'SpecApi',
+        physicalId: 'specapi01',
+        declared: { Body: { openapi: '3.0.1', paths: {}, components: {} } },
+      },
+      desired: { resources: [], ctx: { liveAttrs: { SpecApi: { RootResourceId: 'root0' } } } },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    const added = await enumerateRestApiChildren(ctx);
+    expect(added).toEqual([]);
+    apigw.restore();
+  });
+
+  // Control: a NON-body RestApi (bodyDefined false) with genuine out-of-band live children still
+  // surfaces them — the gate is scoped to Body-defined apis, detection is preserved elsewhere.
+  it('a NON-body RestApi still surfaces a genuinely out-of-band Authorizer and Model', async () => {
+    const apigw = mockClient(APIGatewayClient);
+    apigw
+      .on(GetResourcesCommand)
+      .resolves({ items: [{ id: 'root0', path: '/' }] })
+      .on(GetRestStagesCommand)
+      .resolves({ item: [] })
+      .on(GetAuthorizersCommand)
+      .resolves({ items: [{ id: 'oobAuth1', name: 'oob-authorizer' }] })
+      .on(GetModelsCommand)
+      .resolves({ items: [{ name: 'Empty' }, { name: 'Error' }, { name: 'oobModel' }] })
+      .on(GetRequestValidatorsCommand)
+      .resolves({ items: [] })
+      .on(GetGatewayResponsesCommand)
+      .resolves({ items: [] });
+    const ctx = {
+      parent: {
+        logicalId: 'PlainApi',
+        physicalId: 'plainapi1',
+        declared: { Name: 'my-plain-api' }, // no Body / BodyS3Location
+      },
+      desired: { resources: [], ctx: { liveAttrs: { PlainApi: { RootResourceId: 'root0' } } } },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    const added = await enumerateRestApiChildren(ctx);
+    expect(added.map((a) => a.identifier).sort()).toEqual([
+      'plainapi1|oobAuth1',
+      'plainapi1|oobModel',
+    ]);
+    apigw.restore();
   });
 });
 
