@@ -142,6 +142,20 @@ export async function loadConfig(): Promise<CdkrdConfig> {
     if ((e as NodeJS.ErrnoException).code === 'ENOENT') return { ignore: [] };
     throw e;
   }
+  return parseConfigRaw(raw);
+}
+
+/**
+ * Validate-and-parse the decoded `.cdkrd/ignore.yaml` text into a `CdkrdConfig`. This is
+ * loadConfig's body AFTER the read+decode, factored out so a caller that ALREADY holds the
+ * raw bytes (addIgnoreRules' pre-write `existingRaw`) can derive the same validated config
+ * from the SAME snapshot — without a second `readFile`. Sharing one snapshot between the
+ * write basis and the dedupe basis is the #1290 fix: a peer rule that landed on disk between
+ * two separate reads would otherwise be in the dedupe basis but not the write basis, and get
+ * clobbered. Applies every guard loadConfig applied on read (syntax errors, alias/anchor,
+ * non-mapping, unknown top-level key, `ignore` typed as an array, per-entry validation).
+ */
+export function parseConfigRaw(raw: string): CdkrdConfig {
   let parsed: unknown;
   // parseDocument collects syntax problems in `doc.errors` (it does NOT throw), so check
   // them explicitly to fail fast. YAML is a JSON superset, so this also reads a legacy
@@ -431,6 +445,10 @@ async function atomicWrite(dest: string, content: string): Promise<void> {
  * a concurrent `cdkrd` process, the on-disk config is RE-READ immediately before the write
  * and the incoming rules merged against THAT fresh state — so a rule another process
  * appended between our initial `loadConfig` and our write is preserved, not clobbered.
+ * The re-read is a SINGLE snapshot: both the write basis (`existingRaw`, re-emitted with its
+ * comments) and the dedupe basis (`parseConfigRaw(existingRaw)`) come from those same bytes,
+ * so a peer rule on disk is BOTH carried forward AND deduped against — never in one but not
+ * the other (#1290).
  */
 export async function addIgnoreRules(
   newRules: IgnoreRuleObject[]
@@ -456,8 +474,7 @@ export async function addIgnoreRules(
   // merge the requested rules against THAT fresh on-disk state. If a concurrent process
   // appended rules between our initial `loadConfig` and here, its rules are in `existingRaw`
   // and are carried forward (we append to them) instead of being clobbered by a write built
-  // from the stale first read. Re-run the dedupe against the fresh existing rules so a rule
-  // the other process ALSO just added is not written twice.
+  // from the stale first read.
   let existingRaw: string | undefined;
   try {
     // Same BOM/UTF-16 decode as loadConfig (#1291): this raw text is re-parsed by
@@ -467,8 +484,16 @@ export async function addIgnoreRules(
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code !== 'ENOENT') throw e;
   }
+  // Derive the dedupe basis from the SAME `existingRaw` bytes the write is built from —
+  // `parseConfigRaw(existingRaw)`, NOT a second `loadConfig()` read (#1290). A separate
+  // re-read could observe a peer's just-appended rule that `existingRaw` did not: the peer
+  // rule would then be in the dedupe basis but absent from the write basis, so our rules
+  // still count as new and we'd write `existingRaw + ours`, silently clobbering the peer's
+  // rule that WAS on disk. One snapshot for both bases keeps the carried-forward claim true.
   const existingRules =
-    existingRaw !== undefined && existingRaw.trim() !== '' ? (await loadConfig()).ignore : [];
+    existingRaw !== undefined && existingRaw.trim() !== ''
+      ? parseConfigRaw(existingRaw).ignore
+      : [];
   const { added, alreadyPresent } = mergeIgnoreRules(existingRules, newRules);
   if (added.length === 0) {
     // A concurrent writer already added every rule we wanted between our two reads — report
