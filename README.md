@@ -803,9 +803,14 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   `dlm:GetLifecyclePolicy` (reads an `AWS::DLM::LifecyclePolicy` — a Data
   Lifecycle Manager EBS-snapshot / AMI backup-schedule policy, NON_PROVISIONABLE
   with no Cloud Control handlers; the physical id IS the policy id),
-  `dms:DescribeEndpoints` + `dms:DescribeReplicationSubnetGroups` (read an
-  `AWS::DMS::Endpoint` / `AWS::DMS::ReplicationSubnetGroup` — the classic DMS
-  migration/CDC family, NON_PROVISIONABLE with no Cloud Control handlers),
+  `dms:DescribeEndpoints` + `dms:DescribeReplicationSubnetGroups` +
+  `dms:DescribeReplicationInstances` + `dms:DescribeReplicationTasks` +
+  `dms:ListTagsForResource` (read an `AWS::DMS::Endpoint` /
+  `AWS::DMS::ReplicationSubnetGroup` / `AWS::DMS::ReplicationInstance` /
+  `AWS::DMS::ReplicationTask` — the classic DMS migration/CDC family,
+  NON_PROVISIONABLE with no Cloud Control handlers; `ListTagsForResource` reads
+  each resource's tags, which the `Describe*` responses omit — without it a
+  declared `Tags` false-flagged as drift on every tagged DMS resource),
   `lakeformation:DescribeResource` (reads an `AWS::LakeFormation::Resource` — a
   registered S3 data location whose Cloud Control `GetResource` returns
   `UnsupportedActionException`; the physical id IS the location `ResourceArn`, and
@@ -855,9 +860,16 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   `HttpNamespace` / `PrivateDnsNamespace` / `PublicDnsNamespace` — incl. the Arn an
   ECS Service Connect namespace `Fn::GetAtt` resolves against — and a Cloud Map
   `Service`),
-  `docdb:DescribeDBClusters` + `docdb:DescribeDBInstances` (read an
-  `AWS::DocDB::DBCluster` / `AWS::DocDB::DBInstance` — the whole DocumentDB family is
-  a Cloud Control read gap),
+  `docdb:DescribeDBClusters` + `docdb:DescribeDBInstances` +
+  `rds:ListTagsForResource` (read an `AWS::DocDB::DBCluster` /
+  `AWS::DocDB::DBInstance` — the whole DocumentDB family is a Cloud Control read
+  gap; DocumentDB tag reads use the shared RDS `rds:ListTagsForResource` action,
+  which the `Describe*` responses omit — without it a declared `Tags`
+  false-flagged as drift on every tagged DocDB resource),
+  `sagemaker:DescribeEndpointConfig` + `sagemaker:ListTags` (read an
+  `AWS::SageMaker::EndpointConfig` — its production-variant model wiring, plus the
+  tags a separate `ListTags` call supplies since `DescribeEndpointConfig` omits
+  them),
   `codebuild:BatchGetProjects` (reads an `AWS::CodeBuild::Project`) +
   `codebuild:BatchGetReportGroups` (reads an `AWS::CodeBuild::ReportGroup`),
   `dax:DescribeClusters` + `dax:DescribeParameterGroups` + `dax:DescribeParameters` +
