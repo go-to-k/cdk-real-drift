@@ -1,3 +1,11 @@
+## [0.4.23](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.22...v0.4.23) (2026-07-10)
+
+
+### Bug Fixes
+
+* **config:** surface YAML parse diagnostics instead of a bare 'not valid YAML' ([#1123](https://github.com/go-to-k/cdk-real-drift/issues/1123)) ([0460b4c](https://github.com/go-to-k/cdk-real-drift/commit/0460b4c113b1834e795cd8caff3fcba1914bfc08))
+* **desired:** restrict YAML 1.1 int/float tags so octal/hex/sexagesimal/float-special scalars stay strings ([#1125](https://github.com/go-to-k/cdk-real-drift/issues/1125)) ([c5378e0](https://github.com/go-to-k/cdk-real-drift/commit/c5378e0cd3239bee7b74dbd8184feafbca4aad3e))
+
 ## [0.4.22](https://github.com/go-to-k/cdk-real-drift/compare/v0.4.21...v0.4.22) (2026-07-10)
 
 
