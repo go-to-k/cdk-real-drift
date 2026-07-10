@@ -21,9 +21,11 @@ import {
   GetModelsCommand,
   GetRequestValidatorsCommand,
   GetResourcesCommand,
+  GetStagesCommand as GetRestStagesCommand,
   type Model as ApiGwModel,
   type RequestValidator as ApiGwRequestValidator,
   type Resource as ApiGwResource,
+  type Stage as ApiGwRestStage,
 } from '@aws-sdk/client-api-gateway';
 import {
   AppConfigClient,
@@ -360,6 +362,8 @@ async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<AddedCh
   const declaredValidatorIds: string[] = [];
   // Declared gateway responses of THIS api, matched by ResponseType.
   const declaredResponseTypes: string[] = [];
+  // Declared stages of THIS api. An AWS::ApiGateway::Stage's Ref/physical id IS its StageName.
+  const declaredStageNames: string[] = [];
   for (const r of desired.resources) {
     if (
       r.resourceType === 'AWS::ApiGateway::Authorizer' &&
@@ -385,6 +389,12 @@ async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<AddedCh
       typeof r.declared.ResponseType === 'string'
     ) {
       declaredResponseTypes.push(r.declared.ResponseType);
+    } else if (
+      r.resourceType === 'AWS::ApiGateway::Stage' &&
+      parentRefMatches(r.declared.RestApiId, apiId)
+    ) {
+      const name = typeof r.declared.StageName === 'string' ? r.declared.StageName : r.physicalId;
+      if (name) declaredStageNames.push(name);
     }
   }
 
@@ -456,13 +466,57 @@ async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<AddedCh
     liveResponseTypes,
   });
 
+  // Stages — the V2 enumerator (enumerateHttpApiChildren) already sweeps + diffs Stages; the
+  // V1 enumerator never did, so an out-of-band create-stage (a new public endpoint, or one
+  // with access logging / throttling off) read CLEAN and survived record (#1044). FP-safe:
+  // AWS does not auto-create REST stages, so no built-in filter is needed (unlike the V2
+  // quick-create `$default` stage, #960) — a live stage not matching a declared
+  // AWS::ApiGateway::Stage is genuinely out of band.
+  const stages = await getAllStages(client, apiId);
+  const liveStages = stages
+    .filter((s): s is ApiGwRestStage & { stageName: string } => typeof s.stageName === 'string')
+    .map((s) => ({ name: s.stageName, label: s.stageName }));
+  const stageAdded = diffApiGatewayStages({ apiId, declaredStageNames, liveStages });
+
   return [
     ...resourceAndMethodAdded,
     ...authorizerAdded,
     ...modelAdded,
     ...validatorAdded,
     ...gatewayResponseAdded,
+    ...stageAdded,
   ];
+}
+
+// Pure diff: declared stage names + live inventory -> the added (out-of-band) stages. A live
+// stage whose name matches no declared AWS::ApiGateway::Stage is out of band. Identifier is
+// the CC composite `RestApiId|StageName` (verified via describe-type), so the `added` finding
+// and its CC DeleteResource revert work cleanly. Separated from the SDK call for offline tests.
+export function diffApiGatewayStages(input: {
+  apiId: string;
+  declaredStageNames: string[];
+  liveStages: { name: string; label?: string | undefined }[];
+}): AddedChild[] {
+  const { apiId, declaredStageNames, liveStages } = input;
+  const declared = new Set(declaredStageNames);
+  const added: AddedChild[] = [];
+  for (const s of liveStages) {
+    if (declared.has(s.name)) continue;
+    added.push({
+      resourceType: 'AWS::ApiGateway::Stage',
+      identifier: `${apiId}|${s.name}`, // CC composite RestApiId|StageName
+      label: s.label ?? s.name,
+      live: { StageName: s.name, RestApiId: apiId },
+    });
+  }
+  return added;
+}
+
+// v1 GetStages returns ALL of a REST API's stages in one call (not paginated — a REST API
+// has only a handful of stages).
+async function getAllStages(client: APIGatewayClient, apiId: string): Promise<ApiGwRestStage[]> {
+  const res = await client.send(new GetRestStagesCommand({ restApiId: apiId }));
+  return res.item ?? [];
 }
 
 // Pure diff: declared authorizer ids + live inventory -> the added authorizers.

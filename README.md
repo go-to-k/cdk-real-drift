@@ -274,7 +274,7 @@ snapshots its full live model and watches it, `ignore` accepts it, or `revert`
 <summary>Covered parent types (the <code>CHILD_ENUMERATORS</code> registry, growing per type)</summary>
 
 - **API Gateway REST**: resources, methods, authorizers, models, request
-  validators, gateway responses
+  validators, gateway responses, stages
 - **API Gateway V2** (HTTP / WebSocket): routes, integrations, authorizers, stages
 - **SNS**: topic subscriptions
 - **Lambda**: event source mappings, function URLs, aliases, versions
