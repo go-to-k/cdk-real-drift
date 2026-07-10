@@ -53,6 +53,7 @@ import {
   diffSnsTopicChildren,
   diffUserPoolChildren,
   diffUserPoolGroups,
+  diffUserPoolIdentityProviders,
   diffUserPoolResourceServers,
   diffVpcChildren,
   diffVpcEndpointChildren,
@@ -1159,6 +1160,7 @@ describe('diffUserPoolGroups (Cognito user pool groups)', () => {
     const added = diffUserPoolGroups({
       userPoolId: POOL,
       declaredGroupNames: ['declared-group'],
+      declaredProviderNames: [],
       liveGroups: [
         { name: 'declared-group', label: 'declared-group' },
         { name: 'cdkrd-integ-oob', label: 'cdkrd-integ-oob' },
@@ -1178,6 +1180,7 @@ describe('diffUserPoolGroups (Cognito user pool groups)', () => {
     const added = diffUserPoolGroups({
       userPoolId: POOL,
       declaredGroupNames: [],
+      declaredProviderNames: [],
       liveGroups: [{ name: 'group-x' }],
     });
     expect(added[0]!.identifier).toBe(`${POOL}|group-x`);
@@ -1188,9 +1191,116 @@ describe('diffUserPoolGroups (Cognito user pool groups)', () => {
       diffUserPoolGroups({
         userPoolId: POOL,
         declaredGroupNames: ['a', 'b'],
+        declaredProviderNames: [],
         liveGroups: [{ name: 'a' }, { name: 'b' }],
       })
     ).toEqual([]);
+  });
+
+  // #961: Cognito auto-creates a `<userPoolId>_<ProviderName>` group when a federated
+  // user first signs in. Skip it ONLY when the pool declares an IdP with that provider
+  // name — otherwise a genuinely-undeclared federation group stays surfaced.
+  it('skips the auto-created <poolId>_Google group when Google is a declared provider', () => {
+    const added = diffUserPoolGroups({
+      userPoolId: POOL,
+      declaredGroupNames: [],
+      declaredProviderNames: ['Google'],
+      liveGroups: [{ name: `${POOL}_Google`, label: `${POOL}_Google` }],
+    });
+    expect(added).toEqual([]);
+  });
+
+  it('still flags a genuinely-undeclared group even when a federated auto-group is skipped', () => {
+    const added = diffUserPoolGroups({
+      userPoolId: POOL,
+      declaredGroupNames: ['declared-group'],
+      declaredProviderNames: ['Google', 'MySAML'],
+      liveGroups: [
+        { name: 'declared-group' },
+        { name: `${POOL}_Google` }, // auto-created, declared IdP -> skipped
+        { name: `${POOL}_MySAML` }, // auto-created, declared IdP -> skipped
+        { name: 'cdkrd-integ-oob' }, // genuinely out of band -> flagged
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::Cognito::UserPoolGroup',
+        identifier: `${POOL}|cdkrd-integ-oob`,
+        label: 'cdkrd-integ-oob',
+        live: { GroupName: 'cdkrd-integ-oob', UserPoolId: POOL },
+      },
+    ]);
+  });
+
+  it('does NOT skip a <poolId>_Google group when the pool declares NO Google IdP', () => {
+    const added = diffUserPoolGroups({
+      userPoolId: POOL,
+      declaredGroupNames: [],
+      declaredProviderNames: [], // no declared IdP at all -> suspicious, keep surfaced
+      liveGroups: [{ name: `${POOL}_Google` }],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::Cognito::UserPoolGroup',
+        identifier: `${POOL}|${POOL}_Google`,
+        label: `${POOL}_Google`,
+        live: { GroupName: `${POOL}_Google`, UserPoolId: POOL },
+      },
+    ]);
+  });
+});
+
+describe('diffUserPoolIdentityProviders (Cognito user pool IdPs)', () => {
+  const POOL = 'us-east-1_AbCdEf123';
+
+  // #1043: a rogue out-of-band SAML/OIDC/social IdP wired onto the pool is invisible to
+  // cdk drift / CFn drift detection (an auth backdoor). Flag any live provider not declared.
+  it('flags a rogue out-of-band IdP not in the declared set', () => {
+    const added = diffUserPoolIdentityProviders({
+      userPoolId: POOL,
+      declaredProviderNames: ['MyDeclaredSAML'],
+      liveProviders: [
+        { providerName: 'MyDeclaredSAML', label: 'MyDeclaredSAML' },
+        { providerName: 'RogueOIDC', label: 'RogueOIDC' },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::Cognito::UserPoolIdentityProvider',
+        identifier: `${POOL}|RogueOIDC`,
+        label: 'RogueOIDC',
+        live: { ProviderName: 'RogueOIDC', UserPoolId: POOL },
+      },
+    ]);
+  });
+
+  it('does NOT flag a declared IdP', () => {
+    expect(
+      diffUserPoolIdentityProviders({
+        userPoolId: POOL,
+        declaredProviderNames: ['Google', 'MySAML'],
+        liveProviders: [{ providerName: 'Google' }, { providerName: 'MySAML' }],
+      })
+    ).toEqual([]);
+  });
+
+  it('filters out the built-in Cognito native-users provider', () => {
+    expect(
+      diffUserPoolIdentityProviders({
+        userPoolId: POOL,
+        declaredProviderNames: [],
+        liveProviders: [{ providerName: 'Cognito', label: 'Cognito' }],
+      })
+    ).toEqual([]);
+  });
+
+  it('identifier is the CC composite UserPoolId|ProviderName', () => {
+    const added = diffUserPoolIdentityProviders({
+      userPoolId: POOL,
+      declaredProviderNames: [],
+      liveProviders: [{ providerName: 'RogueSAML' }],
+    });
+    expect(added[0]!.identifier).toBe(`${POOL}|RogueSAML`);
   });
 });
 
