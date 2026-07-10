@@ -35,6 +35,7 @@ import {
   diffEcsClusterChildren,
   diffEfsFileSystemChildren,
   diffEventBusChildren,
+  diffGraphQLApiApiKeys,
   diffGraphQLApiChildren,
   diffGraphQLApiFunctions,
   diffGraphQLApiResolvers,
@@ -1677,6 +1678,70 @@ describe('diffGraphQLApiFunctions (AppSync functions)', () => {
         liveFunctions: [{ arn: FN('a') }, { arn: FN('b') }],
       })
     ).toEqual([]);
+  });
+});
+
+// #1367: an `appsync create-api-key` mints a durable, undeclared API_KEY auth credential
+// invisible to the `added` tier (#965 covered only the DELETE direction). A live key not
+// matching a declared AWS::AppSync::ApiKey is out of band; matched by its bare ApiKeyId (the
+// CC primaryIdentifier `/properties/ApiKeyId`), which equals ListApiKeys' `id`.
+describe('diffGraphQLApiApiKeys (AppSync api keys)', () => {
+  it('flags an out-of-band api key added via the console (not in the template)', () => {
+    const added = diffGraphQLApiApiKeys({
+      declaredApiKeyIds: ['da2-declared'],
+      liveApiKeys: [
+        { id: 'da2-declared', label: 'da2-declared' },
+        { id: 'da2-console', label: 'da2-console (backdoor)' },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::AppSync::ApiKey',
+        identifier: 'da2-console',
+        label: 'da2-console (backdoor)',
+        live: { ApiKeyId: 'da2-console' },
+      },
+    ]);
+  });
+
+  it('identifier is the bare ApiKeyId (CC primaryIdentifier)', () => {
+    const added = diffGraphQLApiApiKeys({
+      declaredApiKeyIds: [],
+      liveApiKeys: [{ id: 'da2-x' }],
+    });
+    expect(added[0]!.identifier).toBe('da2-x');
+  });
+
+  it('no drift when every live api key is declared', () => {
+    expect(
+      diffGraphQLApiApiKeys({
+        declaredApiKeyIds: ['da2-a', 'da2-b'],
+        liveApiKeys: [{ id: 'da2-a' }, { id: 'da2-b' }],
+      })
+    ).toEqual([]);
+  });
+
+  // #1089: a declared ApiKey is matched ONLY by its bare ApiKeyId. When that identity is
+  // UNRESOLVED (its physical-id ARN could not be resolved) the enumerator raises
+  // hasUnresolvedDeclaredApiKey — the diff must FAIL SAFE (no live key flagged added, since a
+  // `revert --remove-unrecorded` would DeleteResource a declared api key).
+  it('fails safe: an UNRESOLVED declared ApiKeyId suppresses ALL added for this api (#1089)', () => {
+    expect(
+      diffGraphQLApiApiKeys({
+        declaredApiKeyIds: [], // the UNRESOLVED key never reached the list
+        liveApiKeys: [{ id: 'da2-console' }],
+        hasUnresolvedDeclaredApiKey: true,
+      })
+    ).toEqual([]);
+  });
+
+  it('with no UNRESOLVED declared api key, a genuine out-of-band key is STILL added (#1089)', () => {
+    const added = diffGraphQLApiApiKeys({
+      declaredApiKeyIds: ['da2-declared'],
+      liveApiKeys: [{ id: 'da2-declared' }, { id: 'da2-console' }],
+      hasUnresolvedDeclaredApiKey: false,
+    });
+    expect(added.map((a) => a.identifier)).toEqual(['da2-console']);
   });
 });
 
