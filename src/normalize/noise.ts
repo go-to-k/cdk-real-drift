@@ -2232,6 +2232,30 @@ export const CONTEXT_ARN_DEFAULTS: Record<string, Record<string, string | string
     ServiceLinkedRoleARN:
       'arn:{partition}:iam::{accountId}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling',
   },
+  // A Batch ComputeEnvironment that declares no ServiceRole reads back the account's
+  // AWS-managed Batch service-linked role ARN — f(partition, accountId) (IAM ARNs carry no
+  // region). Verbatim twin of the ASG ServiceLinkedRoleARN SLR fold: a user who passes a
+  // CUSTOM service role declares it and it is compared in the declared loop (detection
+  // preserved). Corpus baked FP (#846).
+  'AWS::Batch::ComputeEnvironment': {
+    ServiceRole:
+      'arn:{partition}:iam::{accountId}:role/aws-service-role/batch.amazonaws.com/AWSServiceRoleForBatch',
+  },
+  // A CodeBuild Project that declares no EncryptionKey reads back the AWS-managed
+  // `alias/aws/s3` KMS key ARN — the documented CodeBuild default CMK, f(partition, region,
+  // accountId). Same shape as the KinesisVideo `alias/aws/kinesisvideo` entry; equality-gated,
+  // so a project switched to a customer CMK still surfaces. Corpus baked FP (#846).
+  'AWS::CodeBuild::Project': {
+    EncryptionKey: 'arn:{partition}:kms:{region}:{accountId}:alias/aws/s3',
+  },
+  // An SSM MaintenanceWindowTask that declares no ServiceRoleArn reads back the account's
+  // AWS-managed SSM service-linked role ARN — f(partition, accountId). Twin of the ASG / Batch
+  // SLR folds; equality-gated, so a task pointed at a custom role still surfaces. Live-confirmed
+  // (hunt-v, us-east-1, #846).
+  'AWS::SSM::MaintenanceWindowTask': {
+    ServiceRoleArn:
+      'arn:{partition}:iam::{accountId}:role/aws-service-role/ssm.amazonaws.com/AWSServiceRoleForAmazonSSM',
+  },
   // A LakeFormation Tag that declares no CatalogId reads back the deploying account id — the
   // default (own-account) Data Catalog. The bare `{accountId}` placeholder substitutes to the
   // account id; equality-gated, so a Tag pointed at another account's catalog still surfaces.
