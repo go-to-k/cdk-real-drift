@@ -22,6 +22,7 @@ import {
   KafkaClient,
 } from '@aws-sdk/client-kafka';
 import { GetWorkgroupCommand, RedshiftServerlessClient } from '@aws-sdk/client-redshift-serverless';
+import { GetFunctionCommand, LambdaClient } from '@aws-sdk/client-lambda';
 import { mockClient } from 'aws-sdk-client-mock';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { readLive } from '../src/read/router.js';
@@ -36,6 +37,7 @@ const memorydb = mockClient(MemoryDBClient);
 const redshiftServerless = mockClient(RedshiftServerlessClient);
 const kafka = mockClient(KafkaClient);
 const elbv2 = mockClient(ElasticLoadBalancingV2Client);
+const lambda = mockClient(LambdaClient);
 
 const named = (name: string): Error => Object.assign(new Error(name), { name });
 
@@ -57,6 +59,7 @@ beforeEach(() => {
   redshiftServerless.reset();
   kafka.reset();
   elbv2.reset();
+  lambda.reset();
 });
 
 describe('readLive (CC API path)', () => {
@@ -1822,5 +1825,36 @@ describe('readLive (SDK supplement path — ELBv2 TrustStore CA bundle content h
     );
     const r = await readLive(cc as unknown as CloudControlClient, ts(), 'us-east-1', '1');
     expect(r.live).toEqual({ TrustStoreArn: arn, Name: 'cdkrd-ts' });
+  });
+});
+
+describe('readLive (SDK supplement path — Lambda::Function code hash, #646)', () => {
+  const fn = (): DesiredResource =>
+    res({
+      resourceType: 'AWS::Lambda::Function',
+      physicalId: 'my-fn',
+      declared: { FunctionName: 'my-fn', Runtime: 'nodejs20.x' },
+    });
+  const SHA = `${'a'.repeat(43)}=`;
+
+  it('supplements CodeSha256 from lambda:GetFunction (the writeOnly Code has no CC value)', async () => {
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: { Properties: '{"FunctionName":"my-fn","Runtime":"nodejs20.x"}' },
+    });
+    lambda.on(GetFunctionCommand).resolves({ Configuration: { CodeSha256: SHA } });
+    const r = await readLive(cc as unknown as CloudControlClient, fn(), 'us-east-1', '1');
+    expect(r.live?.CodeSha256).toBe(SHA);
+    expect(lambda.commandCalls(GetFunctionCommand)[0]?.args[0].input).toEqual({
+      FunctionName: 'my-fn',
+    });
+  });
+
+  it('degrades non-fatally when lambda:GetFunction is denied (no false "removed" hash)', async () => {
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: { Properties: '{"FunctionName":"my-fn","Runtime":"nodejs20.x"}' },
+    });
+    lambda.on(GetFunctionCommand).rejects(named('AccessDeniedException'));
+    const r = await readLive(cc as unknown as CloudControlClient, fn(), 'us-east-1', '1');
+    expect(r.live).toEqual({ FunctionName: 'my-fn', Runtime: 'nodejs20.x' });
   });
 });

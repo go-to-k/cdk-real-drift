@@ -77,7 +77,11 @@ import {
   ListAccessKeysCommand,
   ListEntitiesForPolicyCommand,
 } from '@aws-sdk/client-iam';
-import { LambdaClient, GetPolicyCommand as LambdaGetPolicyCommand } from '@aws-sdk/client-lambda';
+import {
+  LambdaClient,
+  GetPolicyCommand as LambdaGetPolicyCommand,
+  GetFunctionCommand,
+} from '@aws-sdk/client-lambda';
 import { GetBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
 import {
   DescribeCacheClustersCommand,
@@ -2984,6 +2988,32 @@ const supplementTrustStore: SupplementReader = async ({ physicalId, region }) =>
   return hash !== undefined ? { CaCertificatesBundleSha256: hash } : undefined;
 };
 
+// AWS::Lambda::Function — the function `Code` is writeOnly (Cloud Control returns a
+// pointer, never the bytes), so an out-of-band code swap (`aws lambda
+// update-function-code`, a console "Deploy", a SAM/hotswap sync outside CFn) was a
+// TOTAL false negative on the single most common resource + mutation: `check` stayed
+// CLEAN before and after record, and a later `cdk deploy` does not heal it (the
+// template asset hash is unchanged, so CFn sees no diff) — #646. The change-tracking
+// digest AWS DOES return, `CodeSha256`, is not a CFn property, so it surfaces as an
+// undeclared value — the SAME shape as the ELBv2 TrustStore CA-bundle digest above
+// (a #505 pointer-to-content integrity signal). It folds `generated` first-run (a
+// per-deploy AWS-assigned value, GENERATED_TOPLEVEL_PATHS — zero first-run noise on a
+// ubiquitous type), `record` snapshots it (RECORDABLE_GENERATED_PATHS in
+// baseline-file), and an out-of-band swap then re-surfaces it as "changed since
+// record" undeclared drift. Not revertable (SYNTHETIC_READ_SIGNAL_PATHS in plan.ts):
+// the original bytes are gone, so the hint is "redeploy with a forced code update".
+// A GetFunction failure (a missing lambda:GetFunction permission, a throttle)
+// PROPAGATES to the router's supplement-failure degrade rather than being swallowed,
+// so a transient read gap never mis-reads as a code swap.
+const supplementLambdaFunction: SupplementReader = async ({ physicalId, region }) => {
+  const name = str(physicalId);
+  if (!name) return undefined;
+  const c = new LambdaClient({ region, ...READ_RETRY });
+  const r = await c.send(new GetFunctionCommand({ FunctionName: name }));
+  const sha = str(r.Configuration?.CodeSha256);
+  return sha !== undefined ? { CodeSha256: sha } : undefined;
+};
+
 // AWS::Lex::Bot — `BotLocales` (the ENTIRE conversational model: every locale, its
 // intents, sample utterances, slots, slot types, and prompts) is writeOnly in the
 // registry schema, so Cloud Control echoes only the bot's top-level props (Name /
@@ -3282,6 +3312,7 @@ export const SDK_SUPPLEMENTS: Record<string, SupplementReader> = {
   'AWS::Lex::Bot': supplementLexBot,
   'AWS::MSK::Configuration': supplementMskConfiguration,
   'AWS::ElasticLoadBalancingV2::TrustStore': supplementTrustStore,
+  'AWS::Lambda::Function': supplementLambdaFunction,
   'AWS::SSM::Parameter': supplementSsmParameter,
   'AWS::ElastiCache::ReplicationGroup': supplementElastiCacheReplicationGroup,
   'AWS::ECS::Service': supplementEcsService,

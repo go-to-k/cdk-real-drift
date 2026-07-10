@@ -10816,6 +10816,42 @@ describe('ELBv2 TrustStore CA bundle content-hash integrity signal (#505)', () =
   });
 });
 
+describe('Lambda::Function CodeSha256 out-of-band code-swap detection (#646)', () => {
+  const schema: SchemaInfo = {
+    readOnly: new Set(['Arn']),
+    writeOnly: new Set(['Code', 'ZipFile']),
+    createOnly: new Set([]),
+    readOnlyPaths: ['Arn'],
+    writeOnlyPaths: ['Code', 'ZipFile'],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const res: DesiredResource = {
+    logicalId: 'Fn',
+    resourceType: 'AWS::Lambda::Function',
+    physicalId: 'my-fn',
+    declared: { FunctionName: 'my-fn', Runtime: 'nodejs20.x', Handler: 'index.handler' },
+  };
+  const live = {
+    FunctionName: 'my-fn',
+    Runtime: 'nodejs20.x',
+    Handler: 'index.handler',
+    CodeSha256: 'a'.repeat(43) + '=', // base64 digest supplemented from lambda:GetFunction
+  };
+
+  it('folds the supplemented CodeSha256 as generated first-run (ZERO first-run drift on a clean deploy)', () => {
+    // Lambda is the single most common resource type — a first-run [Potential Drift] line
+    // on every function would be exactly the noise the zero-first-run invariant forbids. It
+    // is a per-deploy AWS-assigned digest (value-independent GENERATED_TOPLEVEL_PATHS), so it
+    // folds `generated`, NOT `undeclared`. Watching is armed by `record` (see baseline-file).
+    const findings = classifyResource(res, live, schema);
+    const codeSha = findings.find((f) => f.path === 'CodeSha256');
+    expect(codeSha?.tier).toBe('generated');
+    expect(findings.some((f) => f.tier === 'undeclared' && f.path === 'CodeSha256')).toBe(false);
+  });
+});
+
 describe('MSK Configuration ServerProperties properties-file compare (#508)', () => {
   const emptySchema: SchemaInfo = {
     readOnly: new Set(),

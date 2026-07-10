@@ -566,15 +566,36 @@ export function checkBaselineAccount(
   }
 }
 
+// A `generated`-tier path that must nonetheless be SNAPSHOT by `record` and watched —
+// the exception to "generated is never recorded". A synthetic content-integrity signal
+// (a code/content hash) folds `generated` first-run so a clean deploy stays quiet, but
+// its underlying content IS mutable out of band, so the ONLY way to detect a later swap
+// is to record the hash and compare (applyBaseline promotes a recorded-value-CHANGED
+// generated finding to undeclared drift). Lambda::Function CodeSha256 (#646): the
+// function code is writeOnly, so an out-of-band `update-function-code` was invisible.
+// Mirror the classify GENERATED_TOPLEVEL_PATHS + revert SYNTHETIC_READ_SIGNAL_PATHS
+// entries. (The Lambda::Version CodeSha256 sibling is IMMUTABLE, so it is NOT here — a
+// version's hash can never change out of band, nothing to watch.)
+const RECORDABLE_GENERATED_PATHS: Record<string, ReadonlySet<string>> = {
+  'AWS::Lambda::Function': new Set(['CodeSha256']),
+};
+function isRecordableGenerated(f: Finding): boolean {
+  return (
+    f.tier === 'generated' && (RECORDABLE_GENERATED_PATHS[f.resourceType]?.has(f.path) ?? false)
+  );
+}
+
 /** Build the recorded set from a check run's findings: undeclared PROPERTIES plus
  *  out-of-band `added` RESOURCES (PR4 — `added` is the resource-granularity sibling of
  *  undeclared, so `record` snapshots its full live model and a later change to it
  *  surfaces as drift). An `added` entry has the synthesized child logicalId and an
- *  empty `path` (the whole resource is the value); `recordedKey` keeps it unique. */
+ *  empty `path` (the whole resource is the value); `recordedKey` keeps it unique.
+ *  Plus RECORDABLE_GENERATED_PATHS: a `generated` content-hash signal (Lambda
+ *  CodeSha256, #646) that folds first-run yet must be recorded so a later swap is seen. */
 export function buildRecorded(findings: Finding[]): RecordedEntry[] {
   return (
     findings
-      .filter((f) => f.tier === 'undeclared' || f.tier === 'added')
+      .filter((f) => f.tier === 'undeclared' || f.tier === 'added' || isRecordableGenerated(f))
       // PR4: never snapshot an `added` resource whose full model could not be read this
       // run (`modelReadFailed`) — its `actual` is only the identity snippet, and recording
       // that would false-flag "changed since record" on the next clean (full-model) read.

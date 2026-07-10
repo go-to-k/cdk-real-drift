@@ -2479,6 +2479,18 @@ export const GENERATED_TOPLEVEL_PATHS: Record<string, ReadonlySet<string>> = {
   // `currentVersion` in a stack flooding the first run — observed across a 7-function
   // stack. The version resource is immutable, so the hash can never be an out-of-band edit.
   'AWS::Lambda::Version': new Set(['CodeSha256']),
+  // AWS::Lambda::Function.CodeSha256 — supplemented from lambda:GetFunction (#646). The
+  // function `Code` is writeOnly, so an out-of-band code swap was a TOTAL false negative;
+  // the digest re-surfaces it. Folded `generated` first-run (a per-deploy AWS-assigned
+  // value — zero first-run noise on this ubiquitous type). UNLIKE the immutable
+  // Version sibling above, a Function's code IS mutable, so this path is RECORDABLE
+  // (RECORDABLE_GENERATED_PATHS in baseline-file): `record` snapshots the hash and a later
+  // change re-surfaces as "changed since record" undeclared drift (applyBaseline promotes a
+  // recorded-value-CHANGED generated finding to undeclared). Value-independent here is safe
+  // only because the value is UNDECLARED and RECORDED — the equality is against the
+  // recorded baseline, not a constant. Not revertable (SYNTHETIC_READ_SIGNAL_PATHS): the
+  // old bytes are gone.
+  'AWS::Lambda::Function': new Set(['CodeSha256']),
   // An EFS AccessPoint's ClientToken is the idempotency token CloudFormation mints at
   // create time as `<logicalId>-<random>` (e.g. "AccessPointE936DE82-b6xKi37R0Uio"). It
   // is createOnly (immutable) and the CDK L2 never declares it, so it floods the first
