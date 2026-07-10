@@ -339,9 +339,16 @@ CI (with `--yes`).
 - **`--fail`** (the `cdk diff --fail` / `cdk drift --fail` convention) exits `1` on
   drift and suppresses all prompts. It's the one flag for scripts and CI.
 - **`--strict`** is the orthogonal **coverage** axis: it exits `1` when a run was
-  incomplete (any resource skipped, or a nested stack not recursed into). The gap
-  is always surfaced regardless (as the `skipped=N` footer line or a loud
-  `warning:`); `--strict` only decides whether it fails the build.
+  incomplete (a resource skipped for an ACTIONABLE reason — a CC-unsupported type
+  with no override, a read error / throttle / AccessDenied — or a nested stack not
+  recursed into). A **custom resource** (`Custom::*` /
+  `AWS::CloudFormation::CustomResource`, e.g. `Custom::S3AutoDeleteObjects` /
+  `Custom::LogRetention`) has no cloud-side model to read, so it is a
+  permanent-by-nature gap that no `record` / `ignore` could clear — it is
+  **informational** and does NOT fail `--strict` (otherwise the flag would exit `1`
+  forever on nearly every real CDK app). The gap is always surfaced regardless (as
+  the `skipped=N` footer line or a loud `warning:`); `--strict` only decides whether
+  an actionable gap fails the build.
 - Errors always exit `2`; `revert` exits `1` when drift remains after it.
 - Interrupting a run with **Ctrl-C** (or **ESC** / SIGINT) during the gather/read
   phase exits `130` (128 + SIGINT) for every verb, and a **SIGTERM** (CI
