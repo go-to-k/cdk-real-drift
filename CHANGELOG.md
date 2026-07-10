@@ -1,3 +1,17 @@
+## [0.5.4](https://github.com/go-to-k/cdk-real-drift/compare/v0.5.3...v0.5.4) (2026-07-10)
+
+
+### Bug Fixes
+
+* **desired:** honor --pre-deploy contract (type-change REPLACE, stack-state gate, SSM-typed new param) ([#882](https://github.com/go-to-k/cdk-real-drift/issues/882)) ([#1157](https://github.com/go-to-k/cdk-real-drift/issues/1157)) ([87be069](https://github.com/go-to-k/cdk-real-drift/commit/87be069ef0635cea93424b820df6fe4e718e028a))
+* **diff:** skip execute-api Policy expansion when declared Policy is UNRESOLVED ([#839](https://github.com/go-to-k/cdk-real-drift/issues/839)) ([#1156](https://github.com/go-to-k/cdk-real-drift/issues/1156)) ([e6e4647](https://github.com/go-to-k/cdk-real-drift/commit/e6e464769e14f3c24dfe04a461c4aade8cedf301))
+* **noise:** canonicalize WAFv2 FieldToMatch.SingleHeader key+value case ([#876](https://github.com/go-to-k/cdk-real-drift/issues/876)) ([#1161](https://github.com/go-to-k/cdk-real-drift/issues/1161)) ([a61a031](https://github.com/go-to-k/cdk-real-drift/commit/a61a0311819e91ca0018e2bee0145b2992d378c1))
+* **read:** surface a counted readGap for scalar exempted props on supplement-read failure ([#849](https://github.com/go-to-k/cdk-real-drift/issues/849)) ([#1162](https://github.com/go-to-k/cdk-real-drift/issues/1162)) ([749cdcb](https://github.com/go-to-k/cdk-real-drift/commit/749cdcb0456c34baf590d4350a4a67dc46a21797))
+* **revert:** assert RFC6902 test precondition against the RAW live model ([#853](https://github.com/go-to-k/cdk-real-drift/issues/853)) ([#1155](https://github.com/go-to-k/cdk-real-drift/issues/1155)) ([f6fa536](https://github.com/go-to-k/cdk-real-drift/commit/f6fa5362fad6aa2f8afb853f6598d6be44ad36d4))
+* **revert:** dependency-violation deletes fail fast to the pass loop, not the retry budget ([#969](https://github.com/go-to-k/cdk-real-drift/issues/969)) ([#1164](https://github.com/go-to-k/cdk-real-drift/issues/1164)) ([a16e135](https://github.com/go-to-k/cdk-real-drift/commit/a16e1355286ca05c36588b158a922ba4c732dd13))
+* **revert:** poll ProgressEvent to completion in writeCloudControlIndexNested ([#1065](https://github.com/go-to-k/cdk-real-drift/issues/1065)) ([#1163](https://github.com/go-to-k/cdk-real-drift/issues/1163)) ([6e45cb9](https://github.com/go-to-k/cdk-real-drift/commit/6e45cb9e65e75fae70455bc1c175da032599eecf))
+* **synth:** align raw-SDK client credential precedence with toolkit-lib ([#954](https://github.com/go-to-k/cdk-real-drift/issues/954)) ([#1160](https://github.com/go-to-k/cdk-real-drift/issues/1160)) ([06bac1e](https://github.com/go-to-k/cdk-real-drift/commit/06bac1ed645143147f1b95dd3bcf8525b0c825ef))
+
 ## [0.5.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.5.2...v0.5.3) (2026-07-10)
 
 
