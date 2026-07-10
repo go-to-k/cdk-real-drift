@@ -1,3 +1,12 @@
+## [0.9.5](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.4...v0.9.5) (2026-07-10)
+
+
+### Bug Fixes
+
+* **diff:** reconcile StepFunctions writeOnly Definition / DefinitionSubstitutions with live DefinitionString ([#712](https://github.com/go-to-k/cdk-real-drift/issues/712)) ([#1209](https://github.com/go-to-k/cdk-real-drift/issues/1209)) ([f83362e](https://github.com/go-to-k/cdk-real-drift/commit/f83362e6962636d24ab61b7ced3895199468a30c))
+* **noise:** fold EC2 Instance create-only CpuOptions + SubnetId first-run undeclared FPs ([#640](https://github.com/go-to-k/cdk-real-drift/issues/640)) ([#1211](https://github.com/go-to-k/cdk-real-drift/issues/1211)) ([e66ca06](https://github.com/go-to-k/cdk-real-drift/commit/e66ca06c154bde22cf39ba77a56c4d5136657c44))
+* **record:** keep the ignore->record->un-ignore lifecycle correct — no false 'appeared since record' ([#1078](https://github.com/go-to-k/cdk-real-drift/issues/1078)) ([#1210](https://github.com/go-to-k/cdk-real-drift/issues/1210)) ([32219af](https://github.com/go-to-k/cdk-real-drift/commit/32219af9de2dacd242649e0af3c7e9987cb7c9e1))
+
 ## [0.9.4](https://github.com/go-to-k/cdk-real-drift/compare/v0.9.3...v0.9.4) (2026-07-10)
 
 
