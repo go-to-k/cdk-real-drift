@@ -160,6 +160,22 @@ describe('#781 deleted-out-of-band stack surfaces as drift, not a skip', () => {
       await writeBaseline(STACK, SHARED, 'eu-west-1');
       expect(hasBaselineForStack(STACK, REGION, SHARED)).toBe(false); // right account, wrong region
     });
+
+    // #1148: #1077 sanitizes a Windows reserved DOS device stack name in the on-disk filename
+    // (`nul` -> `nul_.<acct>.<region>.json`). The existence probe must apply the SAME sanitization
+    // to its prefix scan, else a recorded reserved-name stack deleted out of band is MISSED (the
+    // raw `nul.` prefix never matches the `nul_.` file that `record`/`baselinePath` actually wrote).
+    it('finds a recorded reserved-name (`nul`) stack — prefix scan mirrors #1077 sanitization (#1148)', async () => {
+      await writeBaseline('nul', ACCOUNT, REGION); // baselinePath writes `nul_.<acct>.<region>.json`
+      expect(hasBaselineForStack('nul', REGION)).toBe(true);
+      expect(hasBaselineForStack('nul', REGION, ACCOUNT)).toBe(true); // account-pinned path too
+    });
+
+    it('a reserved-name miss is still region-bounded (#1148)', async () => {
+      await writeBaseline('con', ACCOUNT, 'eu-west-1');
+      expect(hasBaselineForStack('con', REGION)).toBe(false); // wrong region → no match
+      expect(hasBaselineForStack('con', 'eu-west-1')).toBe(true); // right region → match
+    });
   });
 
   describe('exit-code contract of the not-deployed catch (#781)', () => {
