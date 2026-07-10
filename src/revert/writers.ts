@@ -214,7 +214,7 @@ import {
   type OverrideCtx,
   SDK_OVERRIDES,
 } from '../read/overrides.js';
-import { applyOps } from './apply-ops.js';
+import { applyOps, assertPriorUnchanged } from './apply-ops.js';
 import type { PatchOp } from './plan.js';
 import { classifyTransient, errorText } from './transient.js';
 
@@ -278,6 +278,11 @@ async function desiredModel(
     current.PolicyDocument === undefined
       ? current
       : { ...current, PolicyDocument: canonicalizeForCompare(current.PolicyDocument) };
+  // #805: the op indices were computed against the check-time model; abort if the
+  // freshly re-read (aligned) model no longer holds each op's `prior` at its path
+  // (a statement added/removed at the confirm prompt would land the whole-document
+  // PUT on an innocent statement).
+  assertPriorUnchanged(aligned, ops);
   return applyOps(aligned, ops);
 }
 const policyJson = (m: Record<string, unknown>): string | undefined =>
@@ -770,13 +775,14 @@ const writeWafv2WebAcl: SdkWriter = async (ctx, ops) => {
   // misalignment class, here on the SDK-writer path). Canonicalize the current model the
   // same way so an indexed op hits the SAME rule; Rule order is not significant to WAFv2
   // (Priority governs evaluation), so re-sending the sorted array changes no behavior.
-  const m = applyOps(
-    canonicalizeForCompare(cur.WebACL as unknown as Record<string, unknown>) as Record<
-      string,
-      unknown
-    >,
-    ops
-  );
+  const alignedWebAcl = canonicalizeForCompare(
+    cur.WebACL as unknown as Record<string, unknown>
+  ) as Record<string, unknown>;
+  // #805: same stale-index guard as desiredModel — a Rule added/removed while the
+  // user sat on the confirm prompt would put a different rule at the op's sorted
+  // index; abort rather than UpdateWebACL an innocent (security-relevant) rule.
+  assertPriorUnchanged(alignedWebAcl, ops);
+  const m = applyOps(alignedWebAcl, ops);
   const desc = m.Description;
   await c.send(
     new UpdateWebACLCommand({
