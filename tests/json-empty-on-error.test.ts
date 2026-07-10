@@ -86,4 +86,39 @@ describe('--json emits [] (never empty stdout) on a whole-run failure (#943/#988
       expect(stdout).toBe('');
     });
   });
+
+  // #1063 — an unknown/mistyped COMMAND (and flag-first `cdkrd --json` with no verb) hits
+  // main()'s switch default: branch and returns 2 BEFORE any verb parses --json, so the
+  // central .catch never runs. The default branch must mirror the catch guard's [] emit.
+  describe('an unknown command under --json still yields stdout "[]" and exit 2 (#1063)', () => {
+    it('a mistyped command (chek) --json', () => {
+      const { status, stdout, stderr } = run(['chek', '--json']);
+      expect(status).toBe(2);
+      expect(JSON.parse(stdout)).toEqual([]);
+      expect(stdout.trim()).toBe('[]');
+      expect(stderr).toContain('unknown command'); // reason still on stderr
+    });
+
+    it('--json before the command (chek --json order-independent)', () => {
+      const { status, stdout } = run(['--json', 'chek']);
+      // `--json` as the first arg is itself an unknown command → default branch
+      expect(status).toBe(2);
+      expect(JSON.parse(stdout)).toEqual([]);
+      expect(stdout.trim()).toBe('[]');
+    });
+
+    it('flag-first `cdkrd --json` with no verb', () => {
+      const { status, stdout } = run(['--json']);
+      expect(status).toBe(2);
+      expect(JSON.parse(stdout)).toEqual([]);
+      expect(stdout.trim()).toBe('[]');
+    });
+
+    it('text mode leaves stdout empty on an unknown command', () => {
+      const { status, stdout, stderr } = run(['chek']);
+      expect(status).toBe(2);
+      expect(stdout).toBe(''); // no stray stdout without --json
+      expect(stderr).toContain('unknown command');
+    });
+  });
 });
