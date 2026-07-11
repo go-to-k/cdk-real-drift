@@ -6,7 +6,7 @@ import { isResourceNotFoundError } from '../aws-errors.js';
 import { partitionForRegion } from '../desired/template-adapter.js';
 import { OVERRIDE_READABLE_WRITEONLY } from '../schema/schema-strip.js';
 import type { DesiredResource } from '../types.js';
-import { SDK_OVERRIDES, SDK_SUPPLEMENTS } from './overrides.js';
+import { isOverrideReadResult, SDK_OVERRIDES, SDK_SUPPLEMENTS } from './overrides.js';
 
 export interface ReadResult {
   live?: Record<string, unknown>; // un-stripped property model
@@ -551,10 +551,16 @@ export async function readLive(
   const override = SDK_OVERRIDES[resourceType];
   if (override) {
     try {
-      const live = await override({ physicalId: physicalId ?? '', declared, region, accountId });
-      return live
-        ? { live }
-        : { skippedReason: 'SDK override: target not resolvable from template' };
+      const result = await override({ physicalId: physicalId ?? '', declared, region, accountId });
+      if (result === undefined)
+        return { skippedReason: 'SDK override: target not resolvable from template' };
+      // An override that read the base model but hit a partial read-gap (an enrichment call it
+      // depends on failed) returns a branded { model, readGapPaths } so those paths surface as
+      // counted readGap findings — the same ReadResult.readGapPaths channel the SDK_SUPPLEMENTS
+      // path uses (#1326, e.g. Cognito IdentityPool CognitoEvents on a GetCognitoEvents denial).
+      if (isOverrideReadResult(result))
+        return { live: result.model, readGapPaths: result.readGapPaths };
+      return { live: result };
     } catch (e) {
       if (isResourceNotFoundError(e)) return { deleted: true };
       return { skippedReason: `SDK override (${resourceType}): ${(e as Error).name}` };

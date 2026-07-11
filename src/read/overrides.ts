@@ -202,6 +202,37 @@ export interface OverrideCtx {
   // UpdateResource ValidationException. Falls back to `physicalId` when no adapter applies.
   identifier?: string;
 }
+// An override that COULD read the base model but hit a partial read-gap (an enrichment call it
+// depends on failed) reports the affected paths so the router can surface them as counted
+// `readGap` findings — exactly like the SDK_SUPPLEMENTS path (collectSupplementReadGaps →
+// ReadResult.readGapPaths → classifyResource, #849). Branded with a Symbol so the router can
+// tell it apart from a bare live model that might coincidentally carry a `model` key (#1326).
+const OVERRIDE_READ_GAP = Symbol.for('cdkrd.overrideReadGap');
+// A `type` (not `interface`) so it carries an implicit index signature and stays assignable to
+// Record<string, unknown> — that is what lets OverrideReader keep its narrow bare-model return
+// type while a reader can still hand back this branded variant.
+export type OverrideReadResult = {
+  [OVERRIDE_READ_GAP]: true;
+  model: Record<string, unknown>;
+  readGapPaths: string[];
+};
+export function overrideReadGap(
+  model: Record<string, unknown>,
+  readGapPaths: string[]
+): OverrideReadResult {
+  return { [OVERRIDE_READ_GAP]: true, model, readGapPaths };
+}
+export function isOverrideReadResult(
+  x: Record<string, unknown> | undefined
+): x is OverrideReadResult {
+  return (
+    typeof x === 'object' && x !== null && (x as OverrideReadResult)[OVERRIDE_READ_GAP] === true
+  );
+}
+// An OverrideReadResult is structurally a Record<string, unknown> (a symbol brand key plus the
+// `model` / `readGapPaths` string keys), so the reader return type stays narrow — the revert path
+// and every other override caller keep seeing a bare model, and only the router (via
+// isOverrideReadResult) unwraps the read-gap variant.
 export type OverrideReader = (ctx: OverrideCtx) => Promise<Record<string, unknown> | undefined>;
 
 const str = (v: unknown): string | undefined =>
@@ -2809,23 +2840,31 @@ const readCognitoIdentityPool: OverrideReader = async ({ physicalId, declared, r
     // which must stay absent (declared) so a clean pool never reports false drift.
     if (ev.Events && Object.keys(ev.Events).length > 0) model.CognitoEvents = ev.Events;
   } catch (e) {
-    // Re-fold a DECLARED CognitoEvents to a readGap (mirror declared -> live) so it never
-    // false-flags as declared drift against the (now unread) live value. An UNDECLARED
-    // CognitoEvents has nothing to compare, so nothing is mirrored — a clean pool stays clean.
-    if ('CognitoEvents' in declared && !('CognitoEvents' in model))
-      model.CognitoEvents = declared.CognitoEvents;
-    // Only a genuine region-unavailability is silent; a permission/throttle/other transient
-    // failure is a fixable coverage gap and warns LOUDLY on stderr.
-    if (!isCognitoSyncRegionUnavailable(e)) {
-      const call = (e as Error)?.name || 'unknown error';
-      const gap =
-        'CognitoEvents' in declared
-          ? ' — treating CognitoEvents as an unverifiable read-gap (declared value assumed unchanged; grant cognito-sync:GetCognitoEvents to detect out-of-band drift on it)'
-          : '';
-      process.stderr.write(
-        `[cdkrd] warning: cognito-sync:GetCognitoEvents for ${id} failed (${call})${gap}\n`
-      );
+    // A genuine region-unavailability of the (deprecated) cognito-sync service is SILENT: the
+    // service cannot exist here, so there is no coverage gap to report. Mirror a DECLARED value
+    // (declared == live → no false drift); an undeclared one has nothing to compare, so a clean
+    // pool stays clean. No readGap, no warning.
+    if (isCognitoSyncRegionUnavailable(e)) {
+      if ('CognitoEvents' in declared && !('CognitoEvents' in model))
+        model.CognitoEvents = declared.CognitoEvents;
+      return model;
     }
+    // A permission/throttle/other transient failure IS a fixable coverage gap. Report
+    // CognitoEvents as a COUNTED readGap (footer + snapshot-completeness-blocking, #849/#1182)
+    // rather than mirroring the declared value: mirroring (pre-#1326) silenced BOTH cases —
+    // a DECLARED value read as verified when it was never read, and an UNDECLARED out-of-band
+    // Sync trigger behind the denial (the #482-class event this reader exists to catch) stayed
+    // fully invisible. A readGap covers both: no false declared-tier drift (#752 preserved) AND
+    // the undeclared path is surfaced as unread. classifyResource handles declared + undeclared
+    // readGap paths uniformly, so the model keeps CognitoEvents ABSENT and the router translates
+    // the reported path into ReadResult.readGapPaths.
+    const call = (e as Error)?.name || 'unknown error';
+    process.stderr.write(
+      `[cdkrd] warning: cognito-sync:GetCognitoEvents for ${id} failed (${call}) — treating ` +
+        `CognitoEvents as an unverifiable read-gap (grant cognito-sync:GetCognitoEvents to ` +
+        `detect out-of-band drift on it)\n`
+    );
+    return overrideReadGap(model, ['CognitoEvents']);
   }
   return model;
 };
