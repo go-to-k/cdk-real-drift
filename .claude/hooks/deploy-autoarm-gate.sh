@@ -51,19 +51,63 @@ AUTOARM_OWNER="autoarm-${sid_key:-shared}"
 
 # Resolve this checkout's bughunt-track.sh (sibling skills dir) and arm the token under
 # the per-session owner. Never let an arming failure block the deploy.
-HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd 2>/dev/null || true)"
+#
+# ROBUST resolution (#1423): the earlier version resolved TRACK purely from
+# ${BASH_SOURCE[0]}/../skills/... and then SILENTLY no-op'd when that path was not
+# executable — so a deploy ran UNARMED with zero signal (the exact #1423 symptom:
+# a real `aws cloudformation deploy` left no autoarm token and printed nothing). Two
+# swallowed-failure surfaces caused it: (A) [ -x "$TRACK" ] false → whole arm block
+# skipped in silence; (B) `add … || true` swallowing a tracker error while the
+# "ARMED" message still printed (false assurance). Both are now made OBSERVABLE:
+# the failure is always reported to stderr, and the "ARMED" message prints only when
+# the arm actually SUCCEEDED. The hook still exits 0 unconditionally — it must never
+# block the deploy — but it can no longer fail silently.
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || true)"
 # CDKRD_AUTOARM_TRACK lets the self-test point at a stub instead of arming the real
-# sentinel; defaults to the sibling bughunt-track.sh.
-TRACK="${CDKRD_AUTOARM_TRACK:-${HOOK_DIR}/../skills/hunt-bugs/bughunt-track.sh}"
-if [ -x "$TRACK" ]; then
-  CDKRD_BUGHUNT_OWNER="$AUTOARM_OWNER" "$TRACK" add "AUTODEPLOY-pending-verify" >/dev/null 2>&1 || true
+# sentinel; otherwise resolve the sibling bughunt-track.sh. Try the BASH_SOURCE-derived
+# location first, then a git-toplevel fallback (covers a relative-path invocation from
+# an unexpected cwd where BASH_SOURCE alone would not resolve to the checkout).
+TRACK="${CDKRD_AUTOARM_TRACK:-}"
+if [ -z "$TRACK" ]; then
+  for cand in \
+    "${HOOK_DIR}/../skills/hunt-bugs/bughunt-track.sh" \
+    "$(git rev-parse --show-toplevel 2>/dev/null)/.claude/skills/hunt-bugs/bughunt-track.sh"; do
+    if [ -n "$cand" ] && [ -x "$cand" ]; then
+      TRACK="$cand"
+      break
+    fi
+  done
+fi
+
+if [ -n "$TRACK" ] && [ -x "$TRACK" ]; then
+  if CDKRD_BUGHUNT_OWNER="$AUTOARM_OWNER" "$TRACK" add "AUTODEPLOY-pending-verify" >/dev/null 2>&1; then
+    {
+      echo "[deploy-autoarm] A deploy-shaped command was detected — the bughunt-clean"
+      echo "gate is now ARMED for THIS session (owner: ${AUTOARM_OWNER}). Before you can"
+      echo "commit / open a PR, prove the account is clean and release it:"
+      echo "  /sweep-resources          # or, manually:"
+      echo "  CDKRD_BUGHUNT_OWNER=${AUTOARM_OWNER} ${TRACK} verify --region <region>"
+      echo "  CDKRD_BUGHUNT_OWNER=${AUTOARM_OWNER} ${TRACK} clear"
+    } >&2
+  else
+    # The tracker was found+executable but `add` FAILED (surface B). Do NOT claim
+    # ARMED — the gate is NOT holding. Make it loud so the operator arms it manually.
+    {
+      echo "[deploy-autoarm] WARNING: a deploy-shaped command was detected but arming the"
+      echo "bughunt-clean gate FAILED (tracker '${TRACK}' add exited non-zero). The gate is"
+      echo "NOT holding — you MUST clean up manually after this deploy. Arm it by hand:"
+      echo "  CDKRD_BUGHUNT_OWNER=${AUTOARM_OWNER} ${TRACK} add <StackName>"
+    } >&2
+  fi
+else
+  # The tracker could not be located/executed (surface A). Previously SILENT — now
+  # reported so an unarmed deploy is never invisible.
   {
-    echo "[deploy-autoarm] A deploy-shaped command was detected — the bughunt-clean"
-    echo "gate is now ARMED for THIS session (owner: ${AUTOARM_OWNER}). Before you can"
-    echo "commit / open a PR, prove the account is clean and release it:"
-    echo "  /sweep-resources          # or, manually:"
-    echo "  CDKRD_BUGHUNT_OWNER=${AUTOARM_OWNER} ${TRACK} verify --region <region>"
-    echo "  CDKRD_BUGHUNT_OWNER=${AUTOARM_OWNER} ${TRACK} clear"
+    echo "[deploy-autoarm] WARNING: a deploy-shaped command was detected but the bughunt"
+    echo "tracker could not be found or is not executable (looked for CDKRD_AUTOARM_TRACK"
+    echo "or .claude/skills/hunt-bugs/bughunt-track.sh; HOOK_DIR='${HOOK_DIR}'). The"
+    echo "bughunt-clean gate is NOT armed for this deploy — remember to clean up and"
+    echo "run /sweep-resources manually after it."
   } >&2
 fi
 

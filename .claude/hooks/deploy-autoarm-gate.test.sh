@@ -92,6 +92,90 @@ owner_check "session id from payload fallback"   ""             "pay-xyz"  "auto
 owner_check "env wins over payload"              "envid"        "payid"    "autoarm-envid"
 owner_check "no session id -> shared fallback"   ""             ""         "autoarm-shared"
 
+# --- #1423: arming failures must be OBSERVABLE, never silent -----------------------
+# A deploy-shaped command whose tracker cannot be armed used to no-op in total silence
+# (deploy ran UNARMED, no token, no diagnostic). The hook must now (a) always exit 0
+# (never block), (b) emit a WARNING to stderr, and (c) NOT falsely claim "ARMED".
+#
+# obs_check <name> <track-mode:missing|failing|ok> <expect_warn:0|1> <expect_armed_msg:0|1>
+obs_check() {
+  local name="$1" mode="$2" expect_warn="$3" expect_armed_msg="$4"
+  local tmp track stderrf exit_code
+  tmp=$(mktemp -d); stderrf="$tmp/stderr"
+
+  case "$mode" in
+    missing) track="$tmp/nope/bughunt-track.sh" ;;                # non-existent path
+    failing) track="$tmp/track.sh"
+             printf '#!/usr/bin/env bash\nexit 1\n' > "$track"; chmod +x "$track" ;;
+    ok)      track="$tmp/track.sh"
+             printf '#!/usr/bin/env bash\nexit 0\n' > "$track"; chmod +x "$track" ;;
+  esac
+
+  local payload
+  payload="{\"tool_input\":{\"command\":$(printf '%s' "aws cloudformation deploy --stack-name Foo" | jq -Rs .)},\"session_id\":\"obs\"}"
+  set +e
+  printf '%s' "$payload" | CDKRD_AUTOARM_TRACK="$track" bash "$HOOK" >/dev/null 2>"$stderrf"
+  exit_code=$?
+  set -e
+
+  local warned=0 armed_msg=0
+  grep -qi "WARNING" "$stderrf" 2>/dev/null && warned=1
+  grep -q "gate is now ARMED" "$stderrf" 2>/dev/null && armed_msg=1
+
+  local ok=1
+  [ "$exit_code" -eq 0 ] || ok=0                     # must NEVER block the deploy
+  [ "$warned" -eq "$expect_warn" ] || ok=0
+  [ "$armed_msg" -eq "$expect_armed_msg" ] || ok=0
+
+  if [ "$ok" -eq 1 ]; then
+    PASS=$((PASS + 1)); echo "ok   - $name (exit=$exit_code warn=$warned armed_msg=$armed_msg)"
+  else
+    FAIL=$((FAIL + 1))
+    echo "FAIL - $name (exit=$exit_code warn=$warned armed_msg=$armed_msg, want warn=$expect_warn armed_msg=$expect_armed_msg)"
+  fi
+  rm -rf "$tmp"
+}
+
+obs_check "tracker missing -> warn, no false ARMED"   missing 1 0
+obs_check "tracker add fails -> warn, no false ARMED"  failing 1 0
+obs_check "tracker ok -> ARMED, no warning"            ok      0 1
+
+# The default (no CDKRD_AUTOARM_TRACK) must resolve the REAL sibling tracker via the
+# git-toplevel fallback and actually arm — proving the resolver hardening works even
+# when BASH_SOURCE alone would not point at the checkout. Use a scratch owner so we
+# do not pollute a real bughunt sentinel, and clean it up.
+default_resolve_check() {
+  local tmp stderrf exit_code pending owner_file
+  tmp=$(mktemp -d); stderrf="$tmp/stderr"
+  local owner="autoarm-selftest-1423-$$"
+  local payload
+  payload="{\"tool_input\":{\"command\":$(printf '%s' "aws cloudformation deploy --stack-name Foo" | jq -Rs .)},\"session_id\":\"deft\"}"
+  set +e
+  printf '%s' "$payload" | CLAUDE_CODE_SESSION_ID="" CDKRD_BUGHUNT_OWNER="$owner" \
+    bash "$HOOK" >/dev/null 2>"$stderrf"
+  exit_code=$?
+  set -e
+  # Locate the shared pending dir the real tracker writes to, then check + clean up.
+  local root
+  root="$(git rev-parse --show-toplevel 2>/dev/null)/.claude/skills/hunt-bugs/bughunt-track.sh"
+  local ok=1
+  [ "$exit_code" -eq 0 ] || ok=0
+  # A successful default resolution prints the ARMED message (not the WARNING).
+  grep -q "gate is now ARMED" "$stderrf" 2>/dev/null || ok=0
+  grep -qi "WARNING" "$stderrf" 2>/dev/null && ok=0
+  if [ "$ok" -eq 1 ]; then
+    PASS=$((PASS + 1)); echo "ok   - default resolves real tracker via git-toplevel fallback"
+  else
+    FAIL=$((FAIL + 1)); echo "FAIL - default resolves real tracker via git-toplevel fallback (exit=$exit_code); stderr:"; cat "$stderrf"
+  fi
+  # Clean up the scratch sentinel we just armed so the test is side-effect free.
+  if [ -x "$root" ]; then
+    CDKRD_BUGHUNT_OWNER="$owner" CDKRD_BUGHUNT_FORCE_CLEAR=1 "$root" clear >/dev/null 2>&1 || true
+  fi
+  rm -rf "$tmp"
+}
+default_resolve_check
+
 echo "----"
 echo "deploy-autoarm-gate: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]
