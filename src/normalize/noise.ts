@@ -291,7 +291,7 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // deploy.
   // Enabled: an ESM (e.g. CDK's SqsEventSource) is created enabled; the construct omits
   // Enabled when it leaves the default true, so the live read reports an undeclared
-  // Enabled=true on every first run — observed live on a dev LineLink stack with no
+  // Enabled=true on every first run — observed live on a real app's dev stack with no
   // out-of-band edit. (The off state Enabled=false is dropped upstream as trivially-empty
   // before this fold, mirroring the KMS Key Enabled case.) Merged into the single
   // EventSourceMapping entry — a duplicate object-literal key silently drops the earlier
@@ -620,8 +620,8 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   },
   // A PAY_PER_REQUEST (on-demand) DynamoDB table reads back a baseline WarmThroughput
   // that AWS assigns to every fresh table (12000 read / 4000 write units) even though the
-  // template never declares it — observed live on a dev LineLink stack (GlobalTable /
-  // TableV2) and a dev reco-MailQueues stack (classic AWS::DynamoDB::Table), neither with
+  // template never declares it — observed live on two real apps' dev stacks (GlobalTable /
+  // TableV2 on one, classic AWS::DynamoDB::Table on the other), neither with
   // an out-of-band edit. The service default is identical for both CFn types, so both fold.
   // Equality-gated: a table that has WARMED UP to a higher value under traffic no longer
   // matches and surfaces as a real undeclared value (the warm throughput auto-ratchets and
@@ -3108,8 +3108,8 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   never be declared, any value AWS returns is a pure reflection of the declared Type,
   //   not user intent — and a real change to Type surfaces in the declared loop on `Type`
   //   itself. Fold value-independent so both derived forms (and any future enum) fold
-  //   without enumerating each. Both observed live first-run (LineLink cognito, my-app
-  //   AimAssociation TOKEN "custom") with no out-of-band edit.
+  //   without enumerating each. Both observed live first-run (one real app's cognito
+  //   authorizer, another's TOKEN "custom" one) with no out-of-band edit.
   'AWS::ApiGateway::Authorizer': new Set(['AuthType']),
   //   AWS::GuardDuty::Detector.Features is NO LONGER value-independent (#1092): folding any
   //   Status hid an out-of-band disable of a Features-only protection (RUNTIME_MONITORING,
