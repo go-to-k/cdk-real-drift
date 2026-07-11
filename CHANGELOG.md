@@ -1,3 +1,10 @@
+## [0.12.62](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.61...v0.12.62) (2026-07-11)
+
+
+### Bug Fixes
+
+* **revert:** EC2 EIP is revertable via CC UpdateResource addressed by the PublicIp|AllocationId composite ([#1317](https://github.com/go-to-k/cdk-real-drift/issues/1317)) ([#1430](https://github.com/go-to-k/cdk-real-drift/issues/1430)) ([09a9351](https://github.com/go-to-k/cdk-real-drift/commit/09a93516f2614b2d2e1f19f26f23d11494e48c44))
+
 ## [0.12.61](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.60...v0.12.61) (2026-07-11)
 
 
