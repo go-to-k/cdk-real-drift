@@ -414,6 +414,10 @@ interface ClassifyOpts {
   siblingEipAssociations: Set<string>;
   siblingTargetGroupRegistrars: Set<string>;
   bucketNotificationManaged: Set<string>;
+  // #1283: per managed-bucket physical id, the CR's DECLARED NotificationConfiguration (S3 API
+  // shape) — classify translates it into the live CFn shape and equality-gates. Carried
+  // alongside bucketNotificationManaged (the id set); a bucket in the set always has an entry.
+  bucketNotificationConfigs: Record<string, Record<string, unknown>>;
   clusterEchoModel: Record<string, Record<string, unknown>>;
   rdsOptionSettingDefaults: Record<string, Record<string, Record<string, string | null>>>;
 }
@@ -504,33 +508,63 @@ export function buildSiblingEventBusPolicies(desired: Desired): Record<string, u
 }
 
 // Bucket physical ids (== bucket names) whose S3 notifications are managed by a
-// Custom::S3BucketNotifications custom resource. CDK renders `bucket.addEventNotification()`
-// / `enableEventBridgeNotification()` as this CR (which cdkrd cannot read/verify, so it is
-// `skipped`), NOT as the bucket's own NotificationConfiguration property — so the live
-// bucket REFLECTS the CR-applied config while its template resource declares nothing,
-// surfacing the whole NotificationConfiguration as false undeclared drift on every such
-// bucket. The config is IaC-managed (by the CR), not out of band; classify drops the
-// reflected property for these buckets (see classifyResource). Fail-open: a CR whose
-// BucketName did not resolve to a concrete name is skipped (the bucket keeps the reflected
-// config -> a one-time visible FP, never a hidden change).
+// Custom::S3BucketNotifications custom resource, MAPPED to the CR's DECLARED
+// `NotificationConfiguration` (the intended config, in the S3 API property shape). CDK renders
+// `bucket.addEventNotification()` / `enableEventBridgeNotification()` as this CR (which cdkrd
+// cannot read/verify, so it is `skipped`), NOT as the bucket's own NotificationConfiguration
+// property — so the live bucket REFLECTS the CR-applied config while its template resource
+// declares nothing, surfacing the whole NotificationConfiguration as false undeclared drift on
+// every such bucket. The config is IaC-managed (by the CR), not out of band; classify translates
+// this declared config into the live CFn resource shape and EQUALITY-GATES it against the live
+// value — folding a matching (clean-deploy) config while SURFACING an out-of-band `put-bucket-
+// notification-configuration` that adds / swaps / removes a target (#1283). Fail-open: a CR whose
+// BucketName did not resolve to a concrete name is skipped (the bucket keeps the reflected config
+// -> a one-time visible FP, never a hidden change); a CR with no `NotificationConfiguration`
+// object maps to `{}` (an empty config that folds only an empty live config).
 const S3_NOTIFICATIONS_CR_TYPE = 'Custom::S3BucketNotifications';
-export function buildBucketNotificationManaged(desired: Desired): Set<string> {
+// Resolve each Custom::S3BucketNotifications CR's target bucket physical id (from its declared
+// `BucketName`, a concrete name or a `Ref` to a declared bucket) paired with the CR's declared
+// `NotificationConfiguration` (S3 API shape, or `{}` when absent). Shared by the two builders
+// below so the id set and the config map are always derived identically.
+function resolveBucketNotificationCrs(
+  desired: Desired
+): Array<[physicalId: string, config: Record<string, unknown>]> {
   const byLogicalId = new Map<string, string>();
   for (const r of desired.resources) if (r.physicalId) byLogicalId.set(r.logicalId, r.physicalId);
-  const managed = new Set<string>();
+  const out: Array<[string, Record<string, unknown>]> = [];
   for (const r of desired.resources) {
     if (r.resourceType !== S3_NOTIFICATIONS_CR_TYPE) continue;
     const decl = r.declared;
     if (!decl || typeof decl !== 'object') continue;
-    const bucketName = (decl as Record<string, unknown>).BucketName;
+    const d = decl as Record<string, unknown>;
+    const bucketName = d.BucketName;
+    const rawConfig = d.NotificationConfiguration;
+    const config =
+      rawConfig && typeof rawConfig === 'object' && !Array.isArray(rawConfig)
+        ? (rawConfig as Record<string, unknown>)
+        : {};
     if (typeof bucketName === 'string' && bucketName) {
-      managed.add(bucketName); // already resolved to the concrete bucket name (== physical id)
+      out.push([bucketName, config]); // already resolved to the concrete bucket name (== physical id)
     } else if (bucketName && typeof bucketName === 'object' && 'Ref' in bucketName) {
       const phys = byLogicalId.get((bucketName as { Ref: string }).Ref);
-      if (phys) managed.add(phys);
+      if (phys) out.push([phys, config]);
     }
   }
-  return managed;
+  return out;
+}
+export function buildBucketNotificationManaged(desired: Desired): Set<string> {
+  return new Set(resolveBucketNotificationCrs(desired).map(([phys]) => phys));
+}
+// #1283: per managed-bucket physical id, the CR's DECLARED NotificationConfiguration (S3 API
+// shape). classify translates it into the live CFn resource shape and equality-gates against the
+// live value — folding a clean-deploy match while SURFACING an out-of-band change. Same physical-id
+// resolution as buildBucketNotificationManaged, so every id in that set has a config entry here.
+export function buildBucketNotificationConfigs(
+  desired: Desired
+): Record<string, Record<string, unknown>> {
+  const out: Record<string, Record<string, unknown>> = {};
+  for (const [phys, config] of resolveBucketNotificationCrs(desired)) out[phys] = config;
+  return out;
 }
 
 // A sibling AWS::IAM::ManagedPolicy declaring `Roles:[thisRole]` (/`Users`/`Groups`) attaches
@@ -1249,6 +1283,7 @@ export async function gatherFindings(
     siblingEipAssociations: buildSiblingEipAssociations(desired),
     siblingTargetGroupRegistrars: buildSiblingTargetGroupRegistrars(desired),
     bucketNotificationManaged: buildBucketNotificationManaged(desired),
+    bucketNotificationConfigs: buildBucketNotificationConfigs(desired),
     clusterEchoModel: buildClusterEchoModels(desired),
     rdsOptionSettingDefaults: await buildRdsOptionSettingDefaults(desired, region),
   };
@@ -1353,6 +1388,7 @@ export async function regatherTouched(
     siblingEipAssociations: buildSiblingEipAssociations(desired),
     siblingTargetGroupRegistrars: buildSiblingTargetGroupRegistrars(desired),
     bucketNotificationManaged: buildBucketNotificationManaged(desired),
+    bucketNotificationConfigs: buildBucketNotificationConfigs(desired),
     clusterEchoModel: buildClusterEchoModels(desired),
     rdsOptionSettingDefaults: await buildRdsOptionSettingDefaults(desired, region),
   };

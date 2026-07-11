@@ -15,6 +15,7 @@ import {
 import { mockClient } from 'aws-sdk-client-mock';
 import { describe, expect, it } from 'vite-plus/test';
 import {
+  buildBucketNotificationConfigs,
   buildBucketNotificationManaged,
   buildClusterEchoModels,
   buildSiblingEventBusPolicies,
@@ -1077,6 +1078,87 @@ describe('buildBucketNotificationManaged', () => {
       ])
     );
     expect(managed.size).toBe(0);
+  });
+});
+
+describe('buildBucketNotificationConfigs (#1283)', () => {
+  const desiredWith = (resources: DesiredResource[]): Desired =>
+    ({
+      stackName: 's',
+      region: 'r',
+      accountId: '111122223333',
+      resources,
+      rawTemplate: '',
+      ctx: {} as ResolverContext,
+    }) as Desired;
+
+  it('maps each managed bucket to the CR-declared NotificationConfiguration (resolved + Ref)', () => {
+    const cfg1 = { EventBridgeConfiguration: {} };
+    const cfg2 = {
+      LambdaFunctionConfigurations: [
+        { LambdaFunctionArn: 'arn:aws:lambda:r:1:function:f', Events: ['s3:ObjectCreated:*'] },
+      ],
+    };
+    const configs = buildBucketNotificationConfigs(
+      desiredWith([
+        {
+          logicalId: 'Bucket',
+          resourceType: 'AWS::S3::Bucket',
+          physicalId: 'my-bucket-phys',
+          declared: {},
+        },
+        {
+          logicalId: 'NotifResolved',
+          resourceType: 'Custom::S3BucketNotifications',
+          physicalId: 'cr1',
+          declared: { BucketName: 'already-resolved-bucket', NotificationConfiguration: cfg1 },
+        },
+        {
+          logicalId: 'NotifRef',
+          resourceType: 'Custom::S3BucketNotifications',
+          physicalId: 'cr2',
+          declared: { BucketName: { Ref: 'Bucket' }, NotificationConfiguration: cfg2 },
+        },
+      ])
+    );
+    expect(configs).toEqual({
+      'already-resolved-bucket': cfg1,
+      'my-bucket-phys': cfg2,
+    });
+  });
+
+  it('maps a CR with no NotificationConfiguration to an empty config (folds only an empty live config)', () => {
+    const configs = buildBucketNotificationConfigs(
+      desiredWith([
+        {
+          logicalId: 'Notif',
+          resourceType: 'Custom::S3BucketNotifications',
+          physicalId: 'cr',
+          declared: { BucketName: 'b' },
+        },
+      ])
+    );
+    expect(configs).toEqual({ b: {} });
+  });
+
+  it('is keyed identically to buildBucketNotificationManaged (every managed id has a config)', () => {
+    const desired = desiredWith([
+      {
+        logicalId: 'Bucket',
+        resourceType: 'AWS::S3::Bucket',
+        physicalId: 'my-bucket-phys',
+        declared: {},
+      },
+      {
+        logicalId: 'Notif',
+        resourceType: 'Custom::S3BucketNotifications',
+        physicalId: 'cr',
+        declared: { BucketName: { Ref: 'Bucket' }, NotificationConfiguration: {} },
+      },
+    ]);
+    const managed = buildBucketNotificationManaged(desired);
+    const configs = buildBucketNotificationConfigs(desired);
+    for (const id of managed) expect(id in configs).toBe(true);
   });
 });
 
