@@ -1,3 +1,12 @@
+## [0.12.48](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.47...v0.12.48) (2026-07-11)
+
+
+### Bug Fixes
+
+* **added:** SNS subscription foreign Owner/Endpoint gates the sibling-stack ValidationError to unverified ([#1322](https://github.com/go-to-k/cdk-real-drift/issues/1322)) ([#1414](https://github.com/go-to-k/cdk-real-drift/issues/1414)) ([6ad4fc6](https://github.com/go-to-k/cdk-real-drift/commit/6ad4fc65203e9c20196110c95534dc921886b1ea))
+* **diff:** applyDefinitionSubstitutions resolves in a single pass ([#1305](https://github.com/go-to-k/cdk-real-drift/issues/1305)) ([#1412](https://github.com/go-to-k/cdk-real-drift/issues/1412)) ([91ad923](https://github.com/go-to-k/cdk-real-drift/commit/91ad9230e3e86c2cd003c4015fc0368e9affbda7))
+* **normalize:** canonicalize bare IPv6 addresses, not only CIDRs ([#1273](https://github.com/go-to-k/cdk-real-drift/issues/1273)) ([#1413](https://github.com/go-to-k/cdk-real-drift/issues/1413)) ([7c77b5d](https://github.com/go-to-k/cdk-real-drift/commit/7c77b5de051bf1c1d6d34cb159241a6de37e2205))
+
 ## [0.12.47](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.46...v0.12.47) (2026-07-11)
 
 
