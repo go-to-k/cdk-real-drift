@@ -1,3 +1,10 @@
+## [0.12.90](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.89...v0.12.90) (2026-07-11)
+
+
+### Bug Fixes
+
+* **diff:** fold Application Auto Scaling-governed declared props within their band ([#688](https://github.com/go-to-k/cdk-real-drift/issues/688)) ([#1481](https://github.com/go-to-k/cdk-real-drift/issues/1481)) ([4cb1e68](https://github.com/go-to-k/cdk-real-drift/commit/4cb1e68605d86be83c7d1493f50ee8f7c10503a1))
+
 ## [0.12.89](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.88...v0.12.89) (2026-07-11)
 
 
