@@ -10,10 +10,16 @@ import {
   DescribeSecurityGroupsCommand,
   DescribeSubnetsCommand,
   EC2Client,
+  GetDefaultCreditSpecificationCommand,
   GetEbsEncryptionByDefaultCommand,
+  type UnlimitedSupportedInstanceFamily,
 } from '@aws-sdk/client-ec2';
 import { ECSClient, ListAccountSettingsCommand } from '@aws-sdk/client-ecs';
-import { DescribeOptionGroupOptionsCommand, RDSClient } from '@aws-sdk/client-rds';
+import {
+  DescribeCertificatesCommand,
+  DescribeOptionGroupOptionsCommand,
+  RDSClient,
+} from '@aws-sdk/client-rds';
 import { GetServiceSettingCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { buildCorpusCase, CORPUS_DIR_ENV, recordCorpusCase } from '../corpus/record.js';
 import { type Desired, loadDesired } from '../desired/template-adapter.js';
@@ -199,6 +205,52 @@ async function fetchEbsEncryptionByDefault(region: string): Promise<boolean | un
     const r = await c.send(new GetEbsEncryptionByDefaultCommand({}));
     const value = r.EbsEncryptionByDefault;
     ebsEncryptionByDefaultCache.set(region, value);
+    return value;
+  } catch {
+    return undefined;
+  }
+}
+
+// #1070 item 4: ec2:GetDefaultCreditSpecification per burstable family — the account-effective
+// default CpuCredits ('standard'|'unlimited') an EC2::Instance of that family reads back when it
+// declares no CreditSpecification. Cached per (region, family), fail-open (undefined, not cached).
+const ec2CreditDefaultCache = new Map<string, string | undefined>();
+async function fetchEc2FamilyCreditDefault(
+  region: string,
+  family: string
+): Promise<string | undefined> {
+  const cacheKey = `${region}|${family}`;
+  if (ec2CreditDefaultCache.has(cacheKey)) return ec2CreditDefaultCache.get(cacheKey);
+  try {
+    const c = new EC2Client({ region, ...READ_RETRY });
+    // `family` is regex-gated to a `t<digit>` burstable prefix; an unsupported value simply throws
+    // at the API and is caught below (fail-open). The SDK types InstanceFamily as a closed union.
+    const r = await c.send(
+      new GetDefaultCreditSpecificationCommand({
+        InstanceFamily: family as UnlimitedSupportedInstanceFamily,
+      })
+    );
+    const value = r.InstanceFamilyCreditSpecification?.CpuCredits;
+    ec2CreditDefaultCache.set(cacheKey, value);
+    return value;
+  } catch {
+    return undefined;
+  }
+}
+
+// #1070 item 5: rds:DescribeCertificates — the account's CUSTOMER-OVERRIDE default CA identifier
+// (the cert with `CustomerOverride=true`), which every new RDS/DocDB DBInstance that declares no
+// CACertificateIdentifier reads back. Undefined when no override is set (the account uses AWS's
+// system default) → classify falls back to the KNOWN_DEFAULTS constant. Cached per region, fail-open.
+const rdsDefaultCaCache = new Map<string, string | undefined>();
+async function fetchRdsDefaultCaIdentifier(region: string): Promise<string | undefined> {
+  if (rdsDefaultCaCache.has(region)) return rdsDefaultCaCache.get(region);
+  try {
+    const c = new RDSClient({ region, ...READ_RETRY });
+    const r = await c.send(new DescribeCertificatesCommand({}));
+    const override = (r.Certificates ?? []).find((cert) => cert.CustomerOverride === true);
+    const value = override?.CertificateIdentifier;
+    rdsDefaultCaCache.set(region, value);
     return value;
   } catch {
     return undefined;
@@ -1434,6 +1486,36 @@ export async function gatherFindings(
   if (desired.resources.some((r) => r.resourceType === 'AWS::EC2::Volume')) {
     const v = await fetchEbsEncryptionByDefault(region);
     if (v !== undefined) accountDefaults.ebsEncryptionByDefault = v;
+  }
+  // #1070 item 4: prefetch the account-effective default credit spec for each BURSTABLE family
+  // declared by an EC2::Instance (t2/t3/t3a/t4g). Only burstable families have a credit spec, so
+  // gate on the `t<digit>` prefix; a per-family lookup that fails (unsupported family / denied)
+  // is simply omitted → classify falls back to the AWS factory default for that family.
+  const burstableFamilies = new Set<string>();
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::EC2::Instance') continue;
+    const it = r.declared?.InstanceType;
+    const fam = typeof it === 'string' ? it.split('.')[0] : undefined;
+    if (fam !== undefined && /^t\d/.test(fam)) burstableFamilies.add(fam);
+  }
+  if (burstableFamilies.size > 0) {
+    const map: Record<string, string> = {};
+    for (const fam of burstableFamilies) {
+      const v = await fetchEc2FamilyCreditDefault(region, fam);
+      if (v !== undefined) map[fam] = v;
+    }
+    if (Object.keys(map).length > 0) accountDefaults.ec2FamilyCreditDefaults = map;
+  }
+  // #1070 item 5: prefetch the account's customer-override default CA identifier when the stack
+  // declares an RDS or DocDB DBInstance. Undefined (no override) → classify keeps the constant.
+  if (
+    desired.resources.some(
+      (r) =>
+        r.resourceType === 'AWS::RDS::DBInstance' || r.resourceType === 'AWS::DocDB::DBInstance'
+    )
+  ) {
+    const v = await fetchRdsDefaultCaIdentifier(region);
+    if (v !== undefined) accountDefaults.rdsDefaultCaIdentifier = v;
   }
   const classifyOpts = {
     accountId: desired.accountId,

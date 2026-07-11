@@ -350,6 +350,15 @@ export interface AccountDefaults {
   ssmParameterTier?: string;
   // ec2:GetEbsEncryptionByDefault — whether a new volume that declares no `Encrypted` reads true.
   ebsEncryptionByDefault?: boolean;
+  // ec2:GetDefaultCreditSpecification per burstable family (t2/t3/t3a/t4g) — the account-effective
+  // default `CpuCredits` ('standard' | 'unlimited') for an EC2::Instance that declares no
+  // CreditSpecification. Keyed by instance-family. A family absent here falls back to the AWS
+  // factory default (t2 standard, t3/t3a/t4g unlimited).
+  ec2FamilyCreditDefaults?: Record<string, string>;
+  // rds:DescribeCertificates — the account's customer-override default CA identifier (the cert with
+  // `CustomerOverride=true`), for an RDS/DocDB DBInstance that declares no CACertificateIdentifier.
+  // Undefined when no override is set → fall back to the KNOWN_DEFAULTS system-default constant.
+  rdsDefaultCaIdentifier?: string;
 }
 
 // #1070: for a handful of undeclared properties the value AWS assigns at creation is a function of
@@ -385,6 +394,18 @@ function accountDerivedDefault(
     ad.ebsEncryptionByDefault !== undefined
   ) {
     return { value: ad.ebsEncryptionByDefault };
+  }
+  // #1070 item 5: an RDS/DocDB DBInstance that declares no CACertificateIdentifier reads back the
+  // ACCOUNT default CA. `rds:modify-certificates` lets the owner override that default for all new
+  // instances; when a customer-override cert is set, gather.ts resolves its identifier here and this
+  // branch is authoritative (folding the overridden CA, surfacing any other). No override → undefined
+  // → falls through to the KNOWN_DEFAULTS system-default constant (rds-ca-rsa2048-g1) — today's behavior.
+  if (
+    (resourceType === 'AWS::RDS::DBInstance' || resourceType === 'AWS::DocDB::DBInstance') &&
+    key === 'CACertificateIdentifier' &&
+    ad.rdsDefaultCaIdentifier !== undefined
+  ) {
+    return { value: ad.rdsDefaultCaIdentifier };
   }
   return undefined;
 }
@@ -2958,12 +2979,21 @@ export function classifyResource(
   if (resourceType === 'AWS::EC2::Instance') {
     const instanceType = declared['InstanceType'];
     const family = typeof instanceType === 'string' ? instanceType.split('.')[0] : undefined;
-    const creditDefault =
+    // #1070 item 4: the per-family default CpuCredits is an ACCOUNT/REGION setting the owner can
+    // flip (`ec2:modify-default-credit-specification --instance-family t3 --cpu-credits standard`),
+    // so the hardcoded factory default FPs on every fresh T-family launch in an account that changed
+    // it. Prefer gather.ts's prefetched account-effective default for the declared family; fall back
+    // to the AWS factory default (t2 standard, t3/t3a/t4g unlimited) when the lookup was
+    // denied/unavailable. Equality-gated below → an out-of-band credit-mode change still surfaces.
+    const factoryDefault =
       family === 't2'
         ? 'standard'
         : family === 't3' || family === 't3a' || family === 't4g'
           ? 'unlimited'
           : undefined;
+    const acctDefault =
+      family !== undefined ? opts.accountDefaults?.ec2FamilyCreditDefaults?.[family] : undefined;
+    const creditDefault = acctDefault ?? factoryDefault;
     if (creditDefault !== undefined) {
       knownDef = { ...knownDef, CreditSpecification: { CPUCredits: creditDefault } };
     }
