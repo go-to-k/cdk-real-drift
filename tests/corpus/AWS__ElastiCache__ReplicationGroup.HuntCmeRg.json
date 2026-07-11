@@ -250,7 +250,7 @@
       "constructPath": "CdkRealDriftIntegElastiCacheCmeMin/HuntCmeRg"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "HuntCmeRg",
       "resourceType": "AWS::ElastiCache::ReplicationGroup",
       "path": "AutomaticFailoverEnabled",
@@ -259,7 +259,7 @@
       "constructPath": "CdkRealDriftIntegElastiCacheCmeMin/HuntCmeRg"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "HuntCmeRg",
       "resourceType": "AWS::ElastiCache::ReplicationGroup",
       "path": "ClusterMode",
@@ -268,7 +268,7 @@
       "constructPath": "CdkRealDriftIntegElastiCacheCmeMin/HuntCmeRg"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "HuntCmeRg",
       "resourceType": "AWS::ElastiCache::ReplicationGroup",
       "path": "NumCacheClusters",

@@ -132,6 +132,64 @@ describe('#1500 ElastiCache::ReplicationGroup cluster-mode-enabled derived trio'
   });
 });
 
+// #1500 (reopened): the cluster-mode-shape inputs NumNodeGroups / NodeGroupConfiguration are
+// WRITE-ONLY in the real schema, so classify strips them from `declared` before the derived-default
+// helper runs, AND the barest shape reads NumNodeGroups back only as a readGap (write-only, unreadable)
+// — so the derivation cannot recover the shape from either side. The fix snapshots the declared
+// cluster-mode inputs BEFORE the writeOnly strip. This describe mirrors the live HuntCmeRg corpus
+// case (write-only NumNodeGroups, live never echoes it) — it FAILS without the pre-strip snapshot.
+describe('#1500 cluster-mode inputs are write-only (barest-shape corpus repro)', () => {
+  const writeOnlySchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(['NumNodeGroups', 'NodeGroupConfiguration']),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: ['NumNodeGroups', 'NodeGroupConfiguration'],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const res: DesiredResource = {
+    logicalId: 'HuntCmeRg',
+    resourceType: 'AWS::ElastiCache::ReplicationGroup',
+    physicalId: 'huntcmerg',
+    declared: {
+      ReplicationGroupDescription: 'hunt cme rg',
+      Engine: 'redis',
+      CacheNodeType: 'cache.t4g.micro',
+      NumNodeGroups: 2,
+      ReplicasPerNodeGroup: 0,
+    },
+  };
+  // Live never echoes NumNodeGroups (write-only → readGap), so the trio can only be derived from
+  // the DECLARED shape snapshotted before the strip.
+  const cleanLive = {
+    ReplicationGroupDescription: 'hunt cme rg',
+    Engine: 'redis',
+    CacheNodeType: 'cache.t4g.micro',
+    ReplicasPerNodeGroup: 0,
+    ClusterMode: 'enabled',
+    AutomaticFailoverEnabled: true,
+    NumCacheClusters: 2,
+  };
+
+  it('folds the derived trio even when NumNodeGroups is write-only-stripped from declared', () => {
+    const f = classifyResource(res, cleanLive, writeOnlySchema);
+    const atDefault = pathsByTier(f, 'atDefault');
+    for (const p of ['ClusterMode', 'AutomaticFailoverEnabled', 'NumCacheClusters']) {
+      expect(atDefault).toContain(p);
+      expect(pathsByTier(f, 'undeclared')).not.toContain(p);
+    }
+  });
+
+  it('still surfaces an out-of-band shard scale when the shape inputs are write-only', () => {
+    const scaled = { ...cleanLive, NumCacheClusters: 4 };
+    const f = classifyResource(res, scaled, writeOnlySchema);
+    expect(pathsByTier(f, 'undeclared')).toContain('NumCacheClusters');
+    expect(pathsByTier(f, 'atDefault')).not.toContain('NumCacheClusters');
+  });
+});
+
 describe('#1500 ElastiCache::ReplicationGroup non-cluster + valkey engine axes', () => {
   it('a valkey RG folds AutomaticFailoverEnabled=true even without a cluster-mode shape', () => {
     const res: DesiredResource = {

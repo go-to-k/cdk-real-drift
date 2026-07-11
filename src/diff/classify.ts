@@ -2790,6 +2790,23 @@ export function classifyResource(
     isNestedObject(declared['DefinitionSubstitutions'])
       ? declared['DefinitionSubstitutions']
       : undefined;
+  // #1500: the ElastiCache ReplicationGroup cluster-mode-shape inputs (`NumNodeGroups`,
+  // `NodeGroupConfiguration`) are writeOnly, so the strip below removes them from `declared`
+  // before the derived-default helper can key on them. The BAREST cluster-mode shape reads
+  // `NumNodeGroups` back only as a readGap (write-only, unreadable), so the derivation cannot
+  // recover the shape from `live` either. Snapshot the declared cluster-mode inputs HERE, before
+  // the strip, so `elastiCacheReplicationGroupDerivedDefault` can still derive the ClusterMode /
+  // AutomaticFailoverEnabled / NumCacheClusters defaults from the DECLARED shard/replica shape.
+  const elastiCacheRgDeclaredShape =
+    resourceType === 'AWS::ElastiCache::ReplicationGroup'
+      ? {
+          NumNodeGroups: declared['NumNodeGroups'],
+          NodeGroupConfiguration: declared['NodeGroupConfiguration'],
+          ReplicasPerNodeGroup: declared['ReplicasPerNodeGroup'],
+          ClusterMode: declared['ClusterMode'],
+          Engine: declared['Engine'],
+        }
+      : undefined;
   // writeOnly cannot be read back: strip it from the DECLARED side too so it is never
   // compared (the LIVE side was already stripped by normalizeLiveModel above).
   deepStripPaths(declared, schema.writeOnlyPaths);
@@ -4560,7 +4577,12 @@ export function classifyResource(
     // migration / failover flip / shard-replica scale still surfaces). Authoritative like acctDefault
     // above: undefined (non-cluster / non-derivable) falls through to the KNOWN_DEFAULTS constant.
     if (resourceType === 'AWS::ElastiCache::ReplicationGroup') {
-      const rgDerived = elastiCacheReplicationGroupDerivedDefault(k, declared);
+      // Key on the PRE-strip declared shape (writeOnly NumNodeGroups / NodeGroupConfiguration
+      // were removed from `declared` above), falling back to `declared` defensively.
+      const rgDerived = elastiCacheReplicationGroupDerivedDefault(
+        k,
+        elastiCacheRgDeclaredShape ?? declared
+      );
       if (rgDerived !== undefined) {
         findings.push({
           tier: matchesKnownDefault(v, rgDerived.value) ? 'atDefault' : 'undeclared',
