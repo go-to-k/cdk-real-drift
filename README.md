@@ -279,7 +279,8 @@ needs `--remove-unrecorded`).
   validators, gateway responses, stages
 - **API Gateway V2** (HTTP / WebSocket): routes, integrations, authorizers, stages
 - **SNS**: topic subscriptions
-- **Lambda**: event source mappings, function URLs, aliases, versions
+- **Lambda**: event source mappings, function URLs, aliases, versions,
+  resource-policy statements (an out-of-band `add-permission`)
 - **EventBridge**: bus rules
 - **Cognito**: user pool clients, groups, resource servers
 - **AppSync**: data sources, resolvers, functions
