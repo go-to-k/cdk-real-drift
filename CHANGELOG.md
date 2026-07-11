@@ -1,3 +1,10 @@
+## [0.12.45](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.44...v0.12.45) (2026-07-11)
+
+
+### Bug Fixes
+
+* **noise:** RDS GlobalCluster EngineLifecycleSupport folds value-independent ([#1406](https://github.com/go-to-k/cdk-real-drift/issues/1406)) ([#1408](https://github.com/go-to-k/cdk-real-drift/issues/1408)) ([0aac32b](https://github.com/go-to-k/cdk-real-drift/commit/0aac32bb866073b10f6ace6df9655718194540c5))
+
 ## [0.12.44](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.43...v0.12.44) (2026-07-11)
 
 
