@@ -12,6 +12,7 @@ import {
   GetPolicyCommand as LambdaGetPolicyCommand,
   ListEventSourceMappingsCommand,
 } from '@aws-sdk/client-lambda';
+import { GetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { mockClient } from 'aws-sdk-client-mock';
 import { describe, expect, it } from 'vite-plus/test';
 import {
@@ -70,6 +71,12 @@ describe('gatherFindings pass-1 worker pool', () => {
       ],
     });
     cfn.on(DescribeTypeCommand).resolves({ Schema: '{}' });
+
+    // The AWS::SQS::Queue child enumerator (#835) reads GetQueueAttributes(Policy) for every
+    // declared queue in pass-1.6; a clean queue has no policy attribute → no `added` finding.
+    // Without this stub the unmocked SQS call would error into a spurious `skipped` finding.
+    const sqs = mockClient(SQSClient);
+    sqs.on(GetQueueAttributesCommand).resolves({ Attributes: {} });
 
     const cc = mockClient(CloudControlClient);
     const completionOrder: string[] = [];

@@ -116,9 +116,11 @@ short of a fix the user wanted.
      create-only/immutable ones (Subnet AZ, NAT AllocationId) can't drift.
 3. **Check coverage first.** Before building anything, `grep` the existing fixtures
    so you hunt in genuinely-uncovered territory:
+
    ```bash
    grep -rln "Kinesis\|Dashboard\|Secret\|intelligentTiering\|FunctionUrl" tests/integration/*/app.ts
    ```
+
    Empty hits = untested = good hunting ground. But a NON-empty hit does **NOT** mean
    the type's undeclared-default scenario is covered: an existing fixture/corpus case
    that **DECLARES** the suspect property never exercises the undeclared-default fold,
@@ -149,6 +151,7 @@ short of a fix the user wanted.
    memcached; ECS EC2 vs Fargate; a create-only vs mutable form), enumerate the axis and
    deploy the MINIMAL form of each branch — the corpus being green on ONE variant proves
    nothing about the others.
+
 4. **Probe CC support BEFORE an expensive deploy — skip the CC-gap tail.** For a
    high-cost or slow stateful/niche type (RDS-family, OpenSearch, MSK, Neptune,
    DocumentDB, Cloud Map, …), first check whether Cloud Control can even READ it —
