@@ -267,8 +267,10 @@ of an undeclared property, and is reconciled the same way against your baseline:
 `cdk drift` / CFn drift detection compare only template-declared resources, so an
 out-of-band addition is invisible to them. Decide it like any finding: `record`
 snapshots its full live model and watches it, `ignore` accepts it, or `revert`
-**deletes** it (Cloud Control `DeleteResource`, behind the usual confirm /
-`--dry-run` / picker; an unrecorded one needs `--remove-unrecorded`).
+**deletes** it (Cloud Control `DeleteResource` — or a type-specific SDK delete
+where Cloud Control does not support the type's DELETE action, e.g. an AppSync
+api key — behind the usual confirm / `--dry-run` / picker; an unrecorded one
+needs `--remove-unrecorded`).
 
 <details>
 <summary>Covered parent types (the <code>CHILD_ENUMERATORS</code> registry, growing per type)</summary>
@@ -964,7 +966,7 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
     `cognito-idp:ListGroups`, `cognito-idp:ListResourceServers`,
     `cognito-idp:ListIdentityProviders`
   - `AWS::AppSync::GraphQLApi`: `appsync:ListDataSources`, `appsync:ListResolvers`,
-    `appsync:ListFunctions`, `appsync:ListTypes`
+    `appsync:ListFunctions`, `appsync:ListTypes`, `appsync:ListApiKeys`
   - `AWS::Logs::LogGroup`: `logs:DescribeSubscriptionFilters` (plus
     `logs:DescribeMetricFilters`, already listed above)
   - `AWS::ElasticLoadBalancingV2::LoadBalancer` + `::Listener`:
@@ -998,7 +1000,9 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
 
 `cloudcontrol:UpdateResource` (which resolves to each type's own update
 permissions), `cloudcontrol:DeleteResource` (to delete an out-of-band `added`
-resource), and `cloudcontrol:GetResourceRequestStatus` (to poll the async Cloud
+resource; a type Cloud Control cannot delete goes through its own SDK action
+instead — `appsync:DeleteApiKey` for an out-of-band `AWS::AppSync::ApiKey`), and
+`cloudcontrol:GetResourceRequestStatus` (to poll the async Cloud
 Control request to completion). Plus, for the SDK-written types:
 `s3:PutBucketPolicy` /
 `s3:DeleteBucketPolicy`, `sns:SetTopicAttributes`, `sqs:SetQueueAttributes`,

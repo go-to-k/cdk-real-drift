@@ -36,6 +36,7 @@ import {
   type RouteSettings,
   UpdateStageCommand as UpdateApiGatewayV2StageCommand,
 } from '@aws-sdk/client-apigatewayv2';
+import { AppSyncClient, DeleteApiKeyCommand } from '@aws-sdk/client-appsync';
 import { CloudWatchClient, PutAnomalyDetectorCommand } from '@aws-sdk/client-cloudwatch';
 import {
   DLMClient,
@@ -2996,3 +2997,47 @@ export function resolveSdkWriter(resourceType: string, ops: PatchOp[]): SdkWrite
   if (nested && ops[0] && nested.match(pointerToDotted(ops[0].path))) return nested.writer;
   return undefined;
 }
+
+// ── SDK deleters (#1386) ─────────────────────────────────────────────────────
+// Type-specific SDK DELETE for an `added` (out-of-band) resource whose type Cloud
+// Control cannot delete: CC DeleteResource throws UnsupportedActionException for it
+// even though the child enumerator can detect it. The delete analog of SDK_WRITERS —
+// first entry AWS::AppSync::ApiKey (#1386); the same seam covers any future
+// enumerated child type without a CC DELETE handler (the #1312 Route53 class
+// precedent for type-specific SDK routing).
+
+// What a deleter gets. `physicalId` is the finding's CC primaryIdentifier (the same
+// identifier the CC path would have deleted — for an AppSync ApiKey the BARE ApiKeyId
+// the enumerator emitted). `parentPhysicalId` is the ENUMERATING PARENT resource's CFn
+// physical id, recovered by the caller from the added finding's synthesized logicalId
+// (`${parentLogicalId}/${identifier}`, gather.ts) — an API-scoped delete (DeleteApiKey
+// needs `apiId`) derives its container id from it.
+export interface SdkDeleteCtx {
+  physicalId: string;
+  parentPhysicalId?: string | undefined;
+  region: string;
+}
+
+export type SdkDeleter = (ctx: SdkDeleteCtx) => Promise<void>;
+
+// AWS::AppSync::ApiKey: CC has no DELETE handler (UnsupportedActionException), so an
+// added key found by the GraphQLApi child enumerator (#1367) is deleted via the
+// service's own DeleteApiKey, which addresses the key as { apiId, id }. `id` is the
+// bare ApiKeyId the finding carries; `apiId` comes from the parent GraphQLApi's CFn
+// physical id — its ARN `arn:...:apis/<apiId>` — by taking the trailing segment
+// (mirrors the unexported bareApiId transform in read/child-enumerators.ts; a bare
+// id without '/' already IS the ApiId).
+const deleteAppSyncApiKey: SdkDeleter = async (ctx) => {
+  const parent = ctx.parentPhysicalId;
+  if (!parent) {
+    throw new Error('cannot resolve the parent GraphQLApi id for the AppSync ApiKey delete');
+  }
+  const apiId = parent.includes('/') ? parent.slice(parent.lastIndexOf('/') + 1) : parent;
+  await new AppSyncClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
+    new DeleteApiKeyCommand({ apiId, id: ctx.physicalId })
+  );
+};
+
+export const SDK_DELETERS: Record<string, SdkDeleter> = {
+  'AWS::AppSync::ApiKey': deleteAppSyncApiKey,
+};
