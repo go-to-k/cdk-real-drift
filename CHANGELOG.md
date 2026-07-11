@@ -1,3 +1,10 @@
+## [0.12.52](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.51...v0.12.52) (2026-07-11)
+
+
+### Bug Fixes
+
+* **tooling:** sweep-orphans probes expunged EC2 instances lingering in the RGT tag index ([#1422](https://github.com/go-to-k/cdk-real-drift/issues/1422)) ([3553d98](https://github.com/go-to-k/cdk-real-drift/commit/3553d9856c726cc7240cae73772ae6ca8b8ce2bd))
+
 ## [0.12.51](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.50...v0.12.51) (2026-07-11)
 
 
