@@ -1,3 +1,10 @@
+## [0.12.77](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.76...v0.12.77) (2026-07-11)
+
+
+### Bug Fixes
+
+* **diff:** surface out-of-band ESM disable + lambda-TG health-check toggle via MEANINGFUL_WHEN_OFF + derived pin ([#660](https://github.com/go-to-k/cdk-real-drift/issues/660)) ([#1461](https://github.com/go-to-k/cdk-real-drift/issues/1461)) ([96856d8](https://github.com/go-to-k/cdk-real-drift/commit/96856d824dbc3f4163dbb87f50003eb1e984afaf))
+
 ## [0.12.76](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.75...v0.12.76) (2026-07-11)
 
 
