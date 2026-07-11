@@ -319,6 +319,63 @@ export interface ApiGatewayChildInput {
   // method would otherwise flag as an out-of-band `added` on a clean deploy (issue #714).
   // When set, resource/method diffing is skipped entirely (returns []).
   bodyDefined?: boolean | undefined;
+  // #1270: per-child reconcile for a Body-defined RestApi. The blanket `if (bodyDefined) return []`
+  // (issue #714) is safe against false positives but ALSO blind to a GENUINE out-of-band child —
+  // a console-added `GET /admin-backdoor` route/method on a SpecRestApi read CLEAN (a false
+  // negative). When the declared `Body` is parseable, `specChildren` carries the set of paths and
+  // `path|VERB` method keys the spec DECLARES; a live resource/method NOT in it is surfaced, one
+  // in it is suppressed. When `body` is unparseable (or a `BodyS3Location` we cannot read), the
+  // enumerator passes `specChildren = null` and we FAIL OPEN to the #714 blanket-skip — a missed
+  // rogue is acceptable, a spec child flagged on a clean deploy is NOT (the core invariant).
+  specChildren?: { paths: Set<string>; methods: Set<string> } | null | undefined;
+}
+
+// #1270: normalize an OpenAPI path — ensure a leading '/', drop a trailing '/' (except root '/').
+function normalizeApiPath(p: string): string {
+  let out = p.startsWith('/') ? p : `/${p}`;
+  if (out.length > 1 && out.endsWith('/')) out = out.slice(0, -1);
+  return out;
+}
+
+const OPENAPI_HTTP_VERBS = new Set(['get', 'post', 'put', 'delete', 'patch', 'head', 'options']);
+
+// #1270: derive the paths + `path|VERB` method keys a Body-defined RestApi's spec DECLARES, so a
+// live child can be reconciled per-child instead of blanket-skipped (issue #714). Returns `null`
+// UNLESS `body` is a plain object with a plain-object `paths` — i.e. a `BodyS3Location` (external,
+// unreadable here) or any unparseable Body → the caller FAILS OPEN to the blanket-skip. For a
+// spec path like `/items/{id}` every ancestor segment (`/`, `/items`, `/items/{id}`) is added,
+// because API Gateway materializes the intermediate resources too. HTTP-verb operation keys →
+// `${path}|${VERB_UPPER}`; the `x-amazon-apigateway-any-method` extension → `${path}|ANY`.
+export function deriveSpecRestApiPaths(
+  body: unknown
+): { paths: Set<string>; methods: Set<string> } | null {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) return null;
+  const rawPaths = (body as Record<string, unknown>).paths;
+  if (typeof rawPaths !== 'object' || rawPaths === null || Array.isArray(rawPaths)) return null;
+  const paths = new Set<string>();
+  const methods = new Set<string>();
+  for (const [rawKey, ops] of Object.entries(rawPaths as Record<string, unknown>)) {
+    const norm = normalizeApiPath(rawKey);
+    // Add the path AND every ancestor segment (API Gateway creates the intermediate resources).
+    const segs = norm.split('/').filter((s) => s.length > 0);
+    paths.add('/');
+    let acc = '';
+    for (const s of segs) {
+      acc = `${acc}/${s}`;
+      paths.add(acc);
+    }
+    if (typeof ops === 'object' && ops !== null && !Array.isArray(ops)) {
+      for (const opKey of Object.keys(ops as Record<string, unknown>)) {
+        const lower = opKey.toLowerCase();
+        if (OPENAPI_HTTP_VERBS.has(lower)) {
+          methods.add(`${norm}|${lower.toUpperCase()}`);
+        } else if (lower === 'x-amazon-apigateway-any-method') {
+          methods.add(`${norm}|ANY`);
+        }
+      }
+    }
+  }
+  return { paths, methods };
 }
 
 // A Body-defined (OpenAPI / SpecRestApi) RestApi declares its paths/methods inline via the
@@ -338,11 +395,17 @@ export function diffApiGatewayChildren(input: ApiGatewayChildInput): AddedChild[
     liveResources,
     liveMethodsByResource,
     bodyDefined,
+    specChildren,
   } = input;
-  // Body-defined (OpenAPI / SpecRestApi) RestApi: paths/methods come from the `Body`, not
-  // from sibling template resources, so there is nothing to diff them against. Suppress the
-  // `added` classification for every Body-materialized resource/method (issue #714).
-  if (bodyDefined) return [];
+  // Body-defined (OpenAPI / SpecRestApi) RestApi.
+  //   - Unparseable Body / BodyS3Location (specChildren == null): there is no spec to reconcile
+  //     against, so FAIL OPEN to the #714 blanket-skip. A missed rogue is acceptable; a spec
+  //     child flagged on a clean deploy is NOT (the core invariant).
+  //   - Parseable Body (specChildren != null, #1270): reconcile PER-CHILD against the spec's
+  //     declared paths / methods below, instead of blanket-skipping. This restores detection of a
+  //     genuine out-of-band `GET /admin-backdoor` while keeping every spec-materialized child
+  //     suppressed. Falls through into the shared matching loop with `specChildren` populated.
+  if (bodyDefined && !specChildren) return [];
   // Declared = template resources + the implicit root. The root `/` resource is ALWAYS
   // created with the RestApi and is never an "added" out-of-band resource. Identify it
   // by its LIVE path '/' (authoritative) IN ADDITION to rootResourceId — the latter
@@ -364,6 +427,13 @@ export function diffApiGatewayChildren(input: ApiGatewayChildInput): AddedChild[
   const addedResourceIds = new Set<string>();
   for (const r of liveResources) {
     if (declaredResources.has(r.id)) continue;
+    // #1270: Body-defined reconcile — a live resource whose normalized path IS in the spec's
+    // declared paths (incl. every ancestor segment) is spec-materialized → suppress. The root
+    // `/` is already declared above (liveRootId / rootResourceId), so it never reaches here.
+    if (specChildren) {
+      const normPath = r.path != null ? normalizeApiPath(r.path) : undefined;
+      if (normPath != null && specChildren.paths.has(normPath)) continue;
+    }
     addedResourceIds.add(r.id);
     added.push({
       resourceType: 'AWS::ApiGateway::Resource',
@@ -384,7 +454,21 @@ export function diffApiGatewayChildren(input: ApiGatewayChildInput): AddedChild[
     // the live root to avoid falsely flagging a declared root method as added.
     if (!rootResourceId && resourceId === liveRootId) continue;
     for (const m of methods) {
-      if (declaredMethods.has(`${resourceId}|${m.httpMethod}`)) continue;
+      if (specChildren) {
+        // #1270: Body-defined reconcile — a live method whose `${path}|VERB` IS in the spec's
+        // declared methods is spec-materialized → suppress.
+        //   - OPTIONS is ALWAYS suppressed: API Gateway CORS materializes an OPTIONS method
+        //     beyond the literal spec, so surfacing it would be a false positive.
+        //   - If the resource's live path is unknown, FAIL OPEN (suppress) — we cannot form a
+        //     reliable spec key, and a false positive is worse than a missed rogue.
+        if (m.httpMethod === 'OPTIONS') continue;
+        const resPath = pathOf.get(resourceId);
+        if (resPath === undefined) continue;
+        const normResPath = normalizeApiPath(resPath);
+        if (specChildren.methods.has(`${normResPath}|${m.httpMethod}`)) continue;
+      } else if (declaredMethods.has(`${resourceId}|${m.httpMethod}`)) {
+        continue;
+      }
       added.push({
         resourceType: 'AWS::ApiGateway::Method',
         identifier: `${apiId}|${resourceId}|${m.httpMethod}`,
@@ -502,10 +586,18 @@ export async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<
     }
   }
 
+  // #1270: for a Body-defined RestApi, derive the spec's declared paths/methods so live
+  // resources/methods can be reconciled PER-CHILD (restoring detection of a genuine
+  // out-of-band `GET /admin-backdoor`) instead of blanket-skipped. When the Body is
+  // unparseable (or a `BodyS3Location` we cannot read here), `specChildren` is null → keep
+  // the #714 blanket-skip (fail open: sweep nothing, diff nothing).
+  const specChildren = bodyDefined ? deriveSpecRestApiPaths(parent.declared.Body) : null;
+
   const client = new APIGatewayClient({ region, ...READ_RETRY });
-  // Skip the GetResources sweep entirely for a Body-defined api — every live resource/method
-  // it returns is spec-materialized (not template-declared), so diffing would be pure noise.
-  const items = bodyDefined ? [] : await getAllResources(client, apiId);
+  // Run the GetResources sweep when NOT Body-defined, OR when Body-defined AND parseable
+  // (specChildren != null) so we have live children to reconcile. When Body-defined but
+  // unparseable, keep items = [] (blanket-skip, issue #714).
+  const items = bodyDefined && !specChildren ? [] : await getAllResources(client, apiId);
   const liveResources = items
     .filter((i): i is ApiGwResource & { id: string } => typeof i.id === 'string')
     .map((i) => ({ id: i.id, path: i.path, live: { Path: i.path, PathPart: i.pathPart } }));
@@ -529,6 +621,7 @@ export async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<
     liveResources,
     liveMethodsByResource,
     bodyDefined,
+    specChildren,
   });
 
   // Body-defined (OpenAPI / SpecRestApi) RestApi: its Authorizers / Models / RequestValidators /
@@ -931,6 +1024,51 @@ export interface ApiGatewayV2ChildInput {
   // skipped entirely (returns []) — otherwise every materialized route/integration is a
   // first-run false positive on a clean deploy (issue #960, the V2 twin of #714).
   specMaterialized?: boolean | undefined;
+  // #1270: per-child ROUTE reconcile for a spec-materialized HTTP API — restores detection of a
+  // genuine out-of-band route (e.g. a console-added `GET /admin-backdoor`) that the blanket
+  // `if (specMaterialized) return []` (issue #960) rendered invisible.
+  //   - Body-defined: `specRouteKeys` is the set of route keys the spec DECLARES (`VERB /path`,
+  //     `ANY /path`, `$default`); a live route NOT in it is surfaced. `null` = unparseable Body →
+  //     FAIL OPEN to the blanket-skip (the core invariant: never a false positive on a clean
+  //     deploy).
+  //   - Quick-create: `quickCreate` is set; suppress ONLY the `$default` catch-all route, surface
+  //     any other live route (there should be none on a clean deploy).
+  // INTEGRATIONS are DELIBERATELY left blanket-suppressed whenever `specMaterialized` (both
+  // modes): a spec/quick-create integration's identity is NOT reliably derivable from the declared
+  // Body / Target, so reconciling it risks a false positive. Conservative scope by design — a
+  // missed out-of-band integration is the accepted trade (fail toward zero FP, #1270).
+  specRouteKeys?: Set<string> | null | undefined;
+  quickCreate?: boolean | undefined;
+}
+
+// #1270: derive the ROUTE KEYS a Body-defined HTTP API's spec DECLARES, so a live route can be
+// reconciled per-child instead of blanket-skipped (issue #960). Returns `null` UNLESS `body` is a
+// plain object with a plain-object `paths` (unparseable Body / BodyS3Location → caller fails open).
+// Each HTTP-verb operation → `${VERB_UPPER} ${normalizedPath}`; `x-amazon-apigateway-any-method`
+// → `ANY ${normalizedPath}`; a `$default` path key → the `$default` route key.
+export function deriveSpecHttpApiRouteKeys(body: unknown): Set<string> | null {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) return null;
+  const rawPaths = (body as Record<string, unknown>).paths;
+  if (typeof rawPaths !== 'object' || rawPaths === null || Array.isArray(rawPaths)) return null;
+  const keys = new Set<string>();
+  for (const [rawKey, ops] of Object.entries(rawPaths as Record<string, unknown>)) {
+    if (rawKey === '$default') {
+      keys.add('$default');
+      continue;
+    }
+    const norm = normalizeApiPath(rawKey);
+    if (typeof ops === 'object' && ops !== null && !Array.isArray(ops)) {
+      for (const opKey of Object.keys(ops as Record<string, unknown>)) {
+        const lower = opKey.toLowerCase();
+        if (OPENAPI_HTTP_VERBS.has(lower)) {
+          keys.add(`${lower.toUpperCase()} ${norm}`);
+        } else if (lower === 'x-amazon-apigateway-any-method') {
+          keys.add(`ANY ${norm}`);
+        }
+      }
+    }
+  }
+  return keys;
 }
 
 export function diffApiGatewayV2Children(input: ApiGatewayV2ChildInput): AddedChild[] {
@@ -941,11 +1079,38 @@ export function diffApiGatewayV2Children(input: ApiGatewayV2ChildInput): AddedCh
     liveRoutes,
     liveIntegrations,
     specMaterialized,
+    specRouteKeys,
+    quickCreate,
   } = input;
-  // Body-defined (OpenAPI) / quick-create (Target) Api: routes/integrations come from the spec /
-  // target, not from sibling template resources, so there is nothing to diff them against.
-  // Suppress the `added` classification for every materialized route/integration (issue #960).
-  if (specMaterialized) return [];
+  // Body-defined (OpenAPI) / quick-create (Target) Api. Reconcile ROUTES per-child (#1270);
+  // INTEGRATIONS stay blanket-suppressed for both modes (identity not reliably derivable — a
+  // reconcile there risks a false positive, so we keep the #960 blanket-skip for them).
+  if (specMaterialized) {
+    // Body-defined but unparseable Body (specRouteKeys == null) and NOT quick-create: nothing to
+    // reconcile against → FAIL OPEN to the #960 blanket-skip (never a false positive).
+    if (!quickCreate && !specRouteKeys) return [];
+    const added: AddedChild[] = [];
+    for (const r of liveRoutes) {
+      if (quickCreate) {
+        // Quick-create owns the `$default` catch-all route; suppress ONLY it, surface any other.
+        if (r.key === '$default') continue;
+      } else {
+        // Body-defined: suppress a route whose key IS in the spec's declared route keys.
+        const key = r.key != null ? normalizeV2RouteKey(r.key) : undefined;
+        if (key != null && specRouteKeys?.has(key)) continue;
+        // A live route with no key we can compare: FAIL OPEN (suppress) — a false positive on a
+        // clean deploy is worse than a missed rogue (#1270 / the core invariant).
+        if (key == null) continue;
+      }
+      added.push({
+        resourceType: 'AWS::ApiGatewayV2::Route',
+        identifier: `${apiId}|${r.id}`,
+        label: r.key ?? r.id, // RouteKey is the human form, e.g. 'GET /items' / '$default'
+        live: { RouteId: r.id, RouteKey: r.key },
+      });
+    }
+    return added;
+  }
   const declaredRoutes = new Set(declaredRouteIds);
   const declaredIntegrations = new Set(declaredIntegrationIds);
   const added: AddedChild[] = [];
@@ -968,6 +1133,18 @@ export function diffApiGatewayV2Children(input: ApiGatewayV2ChildInput): AddedCh
     });
   }
   return added;
+}
+
+// #1270: normalize a live HTTP-API RouteKey (`VERB /path`, `ANY /path`, `$default`) to the same
+// form `deriveSpecHttpApiRouteKeys` emits, so a live route reconciles against the spec keys. The
+// verb is upper-cased and the path segment normalized (leading '/', no trailing '/').
+function normalizeV2RouteKey(key: string): string {
+  if (key === '$default') return '$default';
+  const sp = key.indexOf(' ');
+  if (sp < 0) return key; // unexpected shape — leave as-is (won't match; handled by fail-open)
+  const verb = key.slice(0, sp).toUpperCase();
+  const path = normalizeApiPath(key.slice(sp + 1).trim());
+  return `${verb} ${path}`;
 }
 
 // A readable label for an out-of-band Integration (no RouteKey-style human key): the
@@ -1110,6 +1287,15 @@ async function enumerateHttpApiChildren(ctx: EnumeratorContext): Promise<AddedCh
   const bodyDefined = isBodyDefinedHttpApi(parent.declared);
   const quickCreate = isQuickCreateHttpApi(parent.declared);
   const specMaterialized = bodyDefined || quickCreate;
+  // #1270: for a Body-defined HTTP API, derive the spec's declared route keys so live routes
+  // can be reconciled PER-CHILD (restoring detection of a genuine out-of-band route) instead of
+  // blanket-skipped. Unparseable Body → null → fail open to the #960 blanket-skip. Quick-create
+  // needs no derived set (its only spec route is the `$default` catch-all, suppressed by key).
+  const specRouteKeys = bodyDefined ? deriveSpecHttpApiRouteKeys(parent.declared.Body) : null;
+  // Sweep routes when reconcilable: quick-create (always) OR Body-defined-and-parseable, OR a
+  // plain (non-spec) api. Skip the routes sweep only for a Body-defined-but-unparseable api
+  // (blanket-skip, #960). Integrations/authorizers/stages retain their existing sweep behavior.
+  const skipRoutesSweep = bodyDefined && !quickCreate && !specRouteKeys;
 
   // Declared children of THIS api (Ref/GetAtt ApiId already resolved to the physical id
   // by gather). Route/Integration physical ids ARE the RouteId/IntegrationId.
@@ -1135,7 +1321,7 @@ async function enumerateHttpApiChildren(ctx: EnumeratorContext): Promise<AddedCh
 
   const client = new ApiGatewayV2Client({ region, ...READ_RETRY });
   const [routes, integrations, authorizers, stages] = await Promise.all([
-    pageRoutes(client, apiId),
+    skipRoutesSweep ? Promise.resolve([]) : pageRoutes(client, apiId),
     pageIntegrations(client, apiId),
     pageV2Authorizers(client, apiId),
     pageV2Stages(client, apiId),
@@ -1165,6 +1351,8 @@ async function enumerateHttpApiChildren(ctx: EnumeratorContext): Promise<AddedCh
     liveRoutes,
     liveIntegrations,
     specMaterialized,
+    specRouteKeys,
+    quickCreate,
   });
   const authorizerAdded = diffApiGatewayV2Authorizers({
     apiId,
@@ -1962,7 +2150,10 @@ async function pageUserPoolIdentityProviders(
 // any error (AccessDenied for a caller lacking `es:` read perms, throttling, etc.) returns
 // TRUE so a legitimate service-created Dashboards client is never falsely surfaced as
 // `added`. Returns FALSE only on an AFFIRMATIVE read that no domain targets the pool.
-async function openSearchDomainTargetsPool(region: string, userPoolId: string): Promise<boolean> {
+export async function openSearchDomainTargetsPool(
+  region: string,
+  userPoolId: string
+): Promise<boolean> {
   try {
     const os = new OpenSearchClient({ region, ...READ_RETRY });
     const list = await os.send(new ListDomainNamesCommand({}));
@@ -1970,10 +2161,20 @@ async function openSearchDomainTargetsPool(region: string, userPoolId: string): 
       .map((d) => d.DomainName)
       .filter((n): n is string => typeof n === 'string');
     if (domainNames.length === 0) return false;
-    const desc = await os.send(new DescribeDomainsCommand({ DomainNames: domainNames }));
-    return (desc.DomainStatusList ?? []).some(
-      (d) => d.CognitoOptions?.Enabled === true && d.CognitoOptions.UserPoolId === userPoolId
-    );
+    // #1265: the OpenSearch `DescribeDomains` API accepts AT MOST 5 domain names per call, so an
+    // account with >5 domains would throw ValidationException → the outer catch returns TRUE
+    // (fail-safe skip) and rogue detection silently degrades for the WHOLE account. Chunk the
+    // names into batches of ≤5 and return TRUE as soon as ANY batch has a domain that targets
+    // THIS pool; return FALSE only after every batch comes back with no match.
+    for (let i = 0; i < domainNames.length; i += 5) {
+      const batch = domainNames.slice(i, i + 5);
+      const desc = await os.send(new DescribeDomainsCommand({ DomainNames: batch }));
+      const match = (desc.DomainStatusList ?? []).some(
+        (d) => d.CognitoOptions?.Enabled === true && d.CognitoOptions.UserPoolId === userPoolId
+      );
+      if (match) return true;
+    }
+    return false;
   } catch {
     // Fail-safe: treat as corroborated (keep skipping) — never a false `added`.
     return true;
