@@ -1,3 +1,10 @@
+## [0.12.50](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.49...v0.12.50) (2026-07-11)
+
+
+### Bug Fixes
+
+* **synth:** resolve staged-stack positionals by hierarchicalId + abort on a selected stack's addError ([#1316](https://github.com/go-to-k/cdk-real-drift/issues/1316)) ([#1416](https://github.com/go-to-k/cdk-real-drift/issues/1416)) ([0651dc5](https://github.com/go-to-k/cdk-real-drift/commit/0651dc5269c8ae468206136e921017b7dc92ff5e))
+
 ## [0.12.49](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.48...v0.12.49) (2026-07-11)
 
 
