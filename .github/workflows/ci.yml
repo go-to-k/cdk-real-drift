@@ -18,7 +18,18 @@ jobs:
           run-install: false
 
       - run: vp install --frozen-lockfile
-      - run: vp run check
+      # Run lint/format via `vp check` and REDIRECT its output to a file, printing it only
+      # on failure. `vp check` (the Rust oxc tool) PANICS while writing its large warning
+      # output to CI's non-blocking stdout pipe:
+      #   Vite+ panicked … failed printing to stdout: Resource temporarily unavailable (os error 11)
+      # Once main's lint output grew to ~109 warnings this turned main + every PR red (as
+      # `vp run check` exit 134 / bare `vp check` exit 1) even though the check itself finds
+      # 0 ERRORS — warnings are advisory, not failures. Writing to a regular FILE is blocking
+      # I/O, so the EAGAIN that triggers the panic never happens; the warnings are captured
+      # but only surfaced when the check actually fails. `vp check` still exits non-zero on a
+      # real lint/format ERROR, which we propagate. (Upstream Vite+ stdout-panic bug — the
+      # tool itself prints "This is a bug in Vite+, not your code".)
+      - run: vp check >vpcheck.log 2>&1 || { cat vpcheck.log; exit 1; }
       # Build BEFORE test: tests/json-empty-on-error.test.ts (#943/#988/#989) spawns the
       # built `dist/cli.js` end to end, so `dist/` must exist when `vp run test` runs. The
       # old order (test before build) left dist absent/stale and the spawned CLI exited 1
