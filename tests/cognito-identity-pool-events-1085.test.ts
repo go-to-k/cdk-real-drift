@@ -2,7 +2,11 @@ import { CloudControlClient, GetResourceCommand } from '@aws-sdk/client-cloudcon
 import { CognitoSyncClient, GetCognitoEventsCommand } from '@aws-sdk/client-cognito-sync';
 import { mockClient } from 'aws-sdk-client-mock';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
-import { SDK_OVERRIDES } from '../src/read/overrides.js';
+import {
+  isOverrideReadResult,
+  type OverrideReadResult,
+  SDK_OVERRIDES,
+} from '../src/read/overrides.js';
 
 const cc = mockClient(CloudControlClient);
 const sync = mockClient(CognitoSyncClient);
@@ -18,6 +22,13 @@ const ctx = (
 ) => ({ physicalId, declared, region, accountId });
 
 const read = (c: ReturnType<typeof ctx>) => SDK_OVERRIDES['AWS::Cognito::IdentityPool'](c);
+
+// Assert-and-cast: the reader's loud-failure return is a branded readGap result. Casting after
+// the assertion keeps each expect at the top level (avoids vitest/no-conditional-expect).
+const gapOf = (out: Awaited<ReturnType<typeof read>>): OverrideReadResult => {
+  expect(isOverrideReadResult(out)).toBe(true);
+  return out as unknown as OverrideReadResult;
+};
 
 // The CC base-model GetResource that always succeeds (a live pool). CognitoEvents is a
 // writeOnly prop that Cloud Control never echoes, so it is absent from the CC model.
@@ -58,11 +69,12 @@ describe('AWS::Cognito::IdentityPool GetCognitoEvents failure handling (#1085)',
     expect(out).not.toHaveProperty('CognitoEvents');
   });
 
-  // The core #1085 regression: an AccessDenied (missing cognito-sync:GetCognitoEvents)
-  // must NOT silently drop a DECLARED CognitoEvents. Before the fix, the reader returned a
-  // model with CognitoEvents omitted -> the exempted-from-writeOnly-strip prop compared
-  // against absent live -> a FALSE declared-tier "removed out of band" finding.
-  it('does NOT drop a DECLARED CognitoEvents on AccessDenied — mirrors it to a readGap + warns', async () => {
+  // The core #1085 regression: an AccessDenied (missing cognito-sync:GetCognitoEvents) must NOT
+  // silently drop a DECLARED CognitoEvents. #1326 upgrades the #1085 mirror to a real COUNTED
+  // readGap: the reader now returns a branded { model, readGapPaths } with CognitoEvents ABSENT
+  // from the model, so classify emits a readGap finding (footer + completeness) instead of a
+  // silent mirror — and NO false declared-tier "removed out of band" drift.
+  it('reports a DECLARED CognitoEvents as a readGap on AccessDenied (no mirror) + warns', async () => {
     okBaseModel();
     const warn = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
     sync
@@ -70,8 +82,11 @@ describe('AWS::Cognito::IdentityPool GetCognitoEvents failure handling (#1085)',
       .rejects(Object.assign(new Error('denied'), { name: 'AccessDeniedException' }));
 
     const out = await read(ctx(POOL_ID, { CognitoEvents: DECLARED_EVENTS }));
-    // The declared value is mirrored into live (declared == live -> no false drift).
-    expect(out).toMatchObject({ CognitoEvents: DECLARED_EVENTS });
+    // A branded readGap result: CognitoEvents is NOT mirrored into the model (so it is not read
+    // as verified), and the path is reported so classify counts it as a readGap.
+    const gap = gapOf(out);
+    expect(gap.model).not.toHaveProperty('CognitoEvents');
+    expect(gap.readGapPaths).toContain('CognitoEvents');
     // AND it warns LOUDLY on stderr — a fixable coverage gap, not a silent drop.
     expect(warn).toHaveBeenCalled();
     const msg = warn.mock.calls.map((c) => String(c[0])).join('');
@@ -79,7 +94,7 @@ describe('AWS::Cognito::IdentityPool GetCognitoEvents failure handling (#1085)',
     expect(msg).toContain('AccessDeniedException');
   });
 
-  it('does NOT drop a DECLARED CognitoEvents on throttling — mirrors it to a readGap + warns', async () => {
+  it('reports a DECLARED CognitoEvents as a readGap on throttling (no mirror) + warns', async () => {
     okBaseModel();
     const warn = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
     sync
@@ -87,12 +102,12 @@ describe('AWS::Cognito::IdentityPool GetCognitoEvents failure handling (#1085)',
       .rejects(Object.assign(new Error('rate exceeded'), { name: 'ThrottlingException' }));
 
     const out = await read(ctx(POOL_ID, { CognitoEvents: DECLARED_EVENTS }));
-    expect(out).toMatchObject({ CognitoEvents: DECLARED_EVENTS });
+    expect(gapOf(out).readGapPaths).toContain('CognitoEvents');
     expect(warn).toHaveBeenCalled();
     expect(warn.mock.calls.map((c) => String(c[0])).join('')).toContain('ThrottlingException');
   });
 
-  it('an UNDECLARED CognitoEvents stays absent on AccessDenied (nothing to false-flag) but still warns', async () => {
+  it('reports an UNDECLARED CognitoEvents as a readGap on AccessDenied (OOB Sync trigger no longer silent) + warns', async () => {
     okBaseModel();
     const warn = vi.spyOn(process.stderr, 'write').mockReturnValue(true);
     sync
@@ -100,8 +115,11 @@ describe('AWS::Cognito::IdentityPool GetCognitoEvents failure handling (#1085)',
       .rejects(Object.assign(new Error('denied'), { name: 'AccessDeniedException' }));
 
     const out = await read(ctx(POOL_ID, {}));
-    // No declared CognitoEvents -> nothing to mirror -> stays absent (a clean pool).
-    expect(out).not.toHaveProperty('CognitoEvents');
+    // Pre-#1326 an undeclared CognitoEvents stayed absent + uncounted, so an out-of-band Sync
+    // trigger behind the denial was fully invisible. Now the path is reported as a readGap.
+    const gap = gapOf(out);
+    expect(gap.model).not.toHaveProperty('CognitoEvents');
+    expect(gap.readGapPaths).toContain('CognitoEvents');
     expect(warn).toHaveBeenCalled();
   });
 
@@ -113,9 +131,10 @@ describe('AWS::Cognito::IdentityPool GetCognitoEvents failure handling (#1085)',
       .rejects(Object.assign(new Error('endpoint not resolvable'), { name: 'UnknownEndpoint' }));
 
     const out = await read(ctx(POOL_ID, { CognitoEvents: DECLARED_EVENTS }));
-    // Still no false declared-tier drift: the declared value is folded to a readGap.
+    // Region-unavailability stays QUIET (not a coverage gap — the service can't exist here), so
+    // it keeps the #1085 mirror (declared == live → no false drift), NOT the #1326 loud readGap.
     expect(out).toMatchObject({ CognitoEvents: DECLARED_EVENTS });
-    // But it is SILENT — the deprecated cognito-sync service simply cannot exist there.
+    // And it is SILENT — the deprecated cognito-sync service simply cannot exist there.
     expect(warn).not.toHaveBeenCalled();
   });
 
