@@ -253,6 +253,24 @@ export function isDefinitiveNotManaged(
   return true;
 }
 
+// The child may carry EXPLICIT foreign-scope metadata that the physical-id ARN parse cannot see
+// (#1322). An AWS::SNS::Subscription's physical id is `<topicArn>:<uuid>` — always minted under
+// the TOPIC's (= this check's) account+region, so `isDefinitiveNotManaged` always reads it LOCAL
+// even when a FOREIGN subscriber stack owns it. `ListSubscriptionsByTopic` DOES return the true
+// scope: `Owner` (the subscription's owning account) and, for a cross-account / cross-region
+// fan-out, an ARN `Endpoint` carrying the subscriber's account+region. When either signals a
+// foreign scope, a ValidationError from the local DescribeStackResources is UNVERIFIABLE (the
+// owning stack is simply unreachable from here), so it must NOT be a definitive not-managed.
+export function hasForeignScopeSignal(c: AddedChild, accountId: string, region: string): boolean {
+  const owner = c.ownerAccountId;
+  if (typeof owner === 'string' && owner !== '' && owner !== accountId) {
+    return true;
+  }
+  return (c.scopeArns ?? []).some(
+    (arn) => arn.startsWith('arn:') && !isDefinitiveNotManaged(arn, accountId, region)
+  );
+}
+
 // Probe ONE candidate CloudFormation physical id against the run's account+region: does a
 // stack own a resource of THIS child's type (`c.resourceType`) with this exact physical id?
 // Returns the tri-state and memoizes any DEFINITIVE answer per physical id (a transient
@@ -317,10 +335,15 @@ async function probeSiblingPhysicalId(
     // sweep, AccessDenied without cloudformation:DescribeStackResources, a network blip) is also
     // 'unverified' and NOT memoized (a transient throttle must not poison the run). The foreign-
     // scope determination IS deterministic per physical id, so caching it as 'notManaged' is not
-    // done — we leave it un-cached like the other unverifiable cases for uniform handling.
+    // done — we leave it un-cached like the other unverifiable cases for uniform handling. The
+    // ARN parse is a GENERIC backstop, but it MISREADS a child whose physical id is always local
+    // to its parent yet may be foreign-owned (an SNS Subscription arn is `<topicArn>:<uuid>`),
+    // so an EXPLICIT foreign-scope metadata signal (`Owner` / ARN `Endpoint`) overrides it and
+    // also downgrades this to `unverified` (#1322).
     if (
       (e as { name?: string }).name === 'ValidationError' &&
-      isDefinitiveNotManaged(physicalId, accountId, region)
+      isDefinitiveNotManaged(physicalId, accountId, region) &&
+      !hasForeignScopeSignal(c, accountId, region)
     ) {
       cache.set(physicalId, 'notManaged');
       return 'notManaged';
