@@ -1,3 +1,10 @@
+## [0.12.78](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.77...v0.12.78) (2026-07-11)
+
+
+### Bug Fixes
+
+* **diff:** account-level default overrides break constant fold pins — ECS containerInsights / SSM tier / EBS encrypt-by-default ([#1070](https://github.com/go-to-k/cdk-real-drift/issues/1070)) ([#1454](https://github.com/go-to-k/cdk-real-drift/issues/1454)) ([d34c2ef](https://github.com/go-to-k/cdk-real-drift/commit/d34c2ef8144ef8d9daf486722c8f6b63a618bbda))
+
 ## [0.12.77](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.76...v0.12.77) (2026-07-11)
 
 
