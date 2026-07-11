@@ -1,3 +1,10 @@
+## [0.12.55](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.54...v0.12.55) (2026-07-11)
+
+
+### Bug Fixes
+
+* **commands:** apply the [#740](https://github.com/go-to-k/cdk-real-drift/issues/740) cross-account mismatch gate to record/ignore/revert ([#1309](https://github.com/go-to-k/cdk-real-drift/issues/1309)) ([#1421](https://github.com/go-to-k/cdk-real-drift/issues/1421)) ([c00283e](https://github.com/go-to-k/cdk-real-drift/commit/c00283e53165f71a9f75db9db51a06f84d2db3ad))
+
 ## [0.12.54](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.53...v0.12.54) (2026-07-11)
 
 
