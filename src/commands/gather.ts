@@ -54,6 +54,9 @@ const DEFAULT_SG_LIST_TYPES: ReadonlySet<string> = new Set([
   // #976: Neptune DBCluster's undeclared VpcSecurityGroupIds default is the VPC default SG —
   // gated in classify against the prefetched default-SG ids so an OOB swap/append surfaces.
   'AWS::Neptune::DBCluster',
+  // #1266: AmazonMQ Broker's undeclared SecurityGroups default is the VPC default SG — same gate,
+  // so the prefetch must fire when a broker is present too.
+  'AWS::AmazonMQ::Broker',
 ]);
 
 // #889: fetch the account/region VPC-default security-group ids — one `DescribeSecurityGroups`

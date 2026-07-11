@@ -231,6 +231,12 @@ const DEFAULT_SG_LIST_PATHS: Record<string, string> = {
   // hide an out-of-band SG swap/append (the exact security FN #889 fixed). Gate it through the
   // same derived VPC-default-SG check: fold a single default SG, surface an append or a swap.
   'AWS::Neptune::DBCluster': 'VpcSecurityGroupIds',
+  // #1266: an AmazonMQ Broker that declares no SecurityGroups reads back the VPC default SG — the
+  // same single-SG AWS first-run default the ALB/ENI/Neptune cases fold. It is OOB-mutable
+  // (`mq update-broker --security-groups`; SecurityGroups is NOT in the schema createOnlyProperties,
+  // unlike SubnetIds), so a value-independent fold would hide a rogue SG swap/append. Gate it
+  // through the same derived VPC-default-SG check: fold a single default SG, surface an append/swap.
+  'AWS::AmazonMQ::Broker': 'SecurityGroups',
 };
 /** #889 fold decision for an UNDECLARED default-SG list (ALB SecurityGroups / ENI GroupSet).
  *  Returns whether the value-independent fold should still apply for this live value:
