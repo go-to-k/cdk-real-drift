@@ -241,6 +241,22 @@ export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   'AWS::EC2::Subnet\0AssignIpv6AddressOnCreation',
   'AWS::EC2::Subnet\0PrivateDnsNameOptionsOnLaunch',
   'AWS::EC2::Subnet\0EnableDns64',
+  // The #651 EC2 Modify*Attribute silent-no-op class through its siblings (#1366): each
+  // of these mutable attributes is set by a one-attribute-per-call Modify*Attribute API
+  // (ModifyVpcAttribute / ModifyInstanceAttribute / ModifyNetworkInterfaceAttribute), the
+  // exact contract #651 live-proved for Subnet EnableDns64 — a `remove` revert drops the
+  // property from the desired model, the CC patch carries no op for that attribute, the
+  // handler never issues the Modify*Attribute call, and the live value persists though CC
+  // reports SUCCESS (revert loops forever). Each already folds `atDefault` from the
+  // top-level KNOWN_DEFAULTS (VPC EnableDnsSupport:true, Instance/ENI SourceDestCheck:true,
+  // Instance InstanceInitiatedShutdownBehavior:'stop'), so writing that default explicitly
+  // converges. SourceDestCheck:false is a security-relevant OOB flip (turns the interface
+  // into a forwarding/NAT pivot) — detected by the equality gate but silently unrevertable
+  // without the explicit write.
+  'AWS::EC2::VPC\0EnableDnsSupport',
+  'AWS::EC2::NetworkInterface\0SourceDestCheck',
+  'AWS::EC2::Instance\0SourceDestCheck',
+  'AWS::EC2::Instance\0InstanceInitiatedShutdownBehavior',
   // EC2 ModifyClientVpnEndpoint is a SELECTIVE-update API routed through an SDK writer
   // (CLIENT_VPN_SCALAR_PARAMS): a `remove` deletes the key from the desired model, the
   // writer skips the now-undefined param, and nothing is sent — Cloud Control-style
