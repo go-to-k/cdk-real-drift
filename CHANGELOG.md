@@ -1,3 +1,10 @@
+## [0.12.79](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.78...v0.12.79) (2026-07-11)
+
+
+### Bug Fixes
+
+* **read:** treat ApiGateway Deployment.StageName as declaring its stage ([#1460](https://github.com/go-to-k/cdk-real-drift/issues/1460)) ([#1464](https://github.com/go-to-k/cdk-real-drift/issues/1464)) ([0e7916f](https://github.com/go-to-k/cdk-real-drift/commit/0e7916fcc5117f87e8661360fe2b895dbfdb5b45))
+
 ## [0.12.78](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.77...v0.12.78) (2026-07-11)
 
 
