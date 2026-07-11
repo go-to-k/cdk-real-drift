@@ -1,3 +1,10 @@
+## [0.12.44](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.43...v0.12.44) (2026-07-11)
+
+
+### Bug Fixes
+
+* **revert:** pre-classify added AWS::EC2::NetworkAclEntry as not-revertable ([#1405](https://github.com/go-to-k/cdk-real-drift/issues/1405)) ([#1407](https://github.com/go-to-k/cdk-real-drift/issues/1407)) ([9deaea2](https://github.com/go-to-k/cdk-real-drift/commit/9deaea2160039d045cdc69b4c52b4ae00b8129a0))
+
 ## [0.12.43](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.42...v0.12.43) (2026-07-11)
 
 
