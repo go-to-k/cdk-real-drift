@@ -10,11 +10,19 @@ import {
   DescribeSecurityGroupsCommand,
   DescribeSubnetsCommand,
   EC2Client,
+  GetEbsEncryptionByDefaultCommand,
 } from '@aws-sdk/client-ec2';
+import { ECSClient, ListAccountSettingsCommand } from '@aws-sdk/client-ecs';
 import { DescribeOptionGroupOptionsCommand, RDSClient } from '@aws-sdk/client-rds';
+import { GetServiceSettingCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { buildCorpusCase, CORPUS_DIR_ENV, recordCorpusCase } from '../corpus/record.js';
 import { type Desired, loadDesired } from '../desired/template-adapter.js';
-import { CLUSTER_ECHO_CHILD, classifyResource, normalizeLiveModel } from '../diff/classify.js';
+import {
+  type AccountDefaults,
+  CLUSTER_ECHO_CHILD,
+  classifyResource,
+  normalizeLiveModel,
+} from '../diff/classify.js';
 import { resolveProperties } from '../normalize/intrinsic-resolver.js';
 import { READ_RETRY } from '../read/client-config.js';
 import {
@@ -138,6 +146,63 @@ async function fetchDefaultVpcSubnetIds(region: string): Promise<Set<string>> {
   }
   defaultSubnetIdsCache.set(region, ids);
   return ids;
+}
+
+// #1070: the effective account/region default settings a few undeclared defaults derive from — each
+// is an account-level control the owner can change (a documented hardening best practice), so a
+// fixed KNOWN_DEFAULTS pin FPs on every fresh deploy in an account that adopted it. Each lookup is
+// ONE read-only call, cached per region, and FAILS OPEN (returns undefined on any error — denied
+// permission, throttle, network — WITHOUT caching, so the next stack retries) so classify falls back
+// to the factory-default constant and a clean deploy never gains a first-run false positive. The
+// derived out-of-band change detection is therefore best-effort and requires the read permission.
+
+// ecs:ListAccountSettings effective `containerInsights` — AWS::ECS::Cluster.ClusterSettings default.
+const ecsContainerInsightsCache = new Map<string, string | undefined>();
+async function fetchEcsContainerInsightsDefault(region: string): Promise<string | undefined> {
+  if (ecsContainerInsightsCache.has(region)) return ecsContainerInsightsCache.get(region);
+  try {
+    const c = new ECSClient({ region, ...READ_RETRY });
+    const r = await c.send(
+      new ListAccountSettingsCommand({ name: 'containerInsights', effectiveSettings: true })
+    );
+    const value = r.settings?.find((s) => s.name === 'containerInsights')?.value;
+    ecsContainerInsightsCache.set(region, value);
+    return value;
+  } catch {
+    return undefined;
+  }
+}
+
+// ssm:GetServiceSetting `/ssm/parameter-store/default-parameter-tier` — AWS::SSM::Parameter.Tier default.
+const ssmParameterTierCache = new Map<string, string | undefined>();
+async function fetchSsmDefaultParameterTier(region: string): Promise<string | undefined> {
+  if (ssmParameterTierCache.has(region)) return ssmParameterTierCache.get(region);
+  try {
+    const c = new SSMClient({ region, ...READ_RETRY });
+    const r = await c.send(
+      new GetServiceSettingCommand({ SettingId: '/ssm/parameter-store/default-parameter-tier' })
+    );
+    const value = r.ServiceSetting?.SettingValue;
+    ssmParameterTierCache.set(region, value);
+    return value;
+  } catch {
+    return undefined;
+  }
+}
+
+// ec2:GetEbsEncryptionByDefault — AWS::EC2::Volume.Encrypted reads back `true` undeclared when on.
+const ebsEncryptionByDefaultCache = new Map<string, boolean | undefined>();
+async function fetchEbsEncryptionByDefault(region: string): Promise<boolean | undefined> {
+  if (ebsEncryptionByDefaultCache.has(region)) return ebsEncryptionByDefaultCache.get(region);
+  try {
+    const c = new EC2Client({ region, ...READ_RETRY });
+    const r = await c.send(new GetEbsEncryptionByDefaultCommand({}));
+    const value = r.EbsEncryptionByDefault;
+    ebsEncryptionByDefaultCache.set(region, value);
+    return value;
+  } catch {
+    return undefined;
+  }
 }
 
 // Regions already warned about a denied kms:ListAliases — the warning is one-per-region
@@ -1352,6 +1417,24 @@ export async function gatherFindings(
   if (desired.resources.some((r) => DEFAULT_SUBNET_LIST_TYPES.has(r.resourceType))) {
     defaultSubnetIds = await fetchDefaultVpcSubnetIds(region);
   }
+  // #1070: prefetch the effective account/region default settings a few undeclared defaults derive
+  // from — only for the affected type present in the stack, each fail-open. Threaded into classify
+  // so the ECS containerInsights / SSM default-tier / EBS encryption-by-default fold is a DERIVED
+  // equality gate against the account's real setting rather than a fixed constant that FPs once the
+  // owner adopts the hardening control (each NEW resource re-noising until recorded).
+  const accountDefaults: AccountDefaults = {};
+  if (desired.resources.some((r) => r.resourceType === 'AWS::ECS::Cluster')) {
+    const v = await fetchEcsContainerInsightsDefault(region);
+    if (v !== undefined) accountDefaults.ecsContainerInsights = v;
+  }
+  if (desired.resources.some((r) => r.resourceType === 'AWS::SSM::Parameter')) {
+    const v = await fetchSsmDefaultParameterTier(region);
+    if (v !== undefined) accountDefaults.ssmParameterTier = v;
+  }
+  if (desired.resources.some((r) => r.resourceType === 'AWS::EC2::Volume')) {
+    const v = await fetchEbsEncryptionByDefault(region);
+    if (v !== undefined) accountDefaults.ebsEncryptionByDefault = v;
+  }
   const classifyOpts = {
     accountId: desired.accountId,
     region,
@@ -1359,6 +1442,7 @@ export async function gatherFindings(
     stackTags: desired.stackTags ?? {},
     defaultSgIds,
     defaultSubnetIds,
+    accountDefaults,
     oaiCanonicalIds,
     siblingSgRules: buildSiblingSgRules(desired),
     siblingEventBusPolicies: buildSiblingEventBusPolicies(desired),

@@ -310,6 +310,59 @@ export function shouldFoldDefaultSgList(
   );
 }
 
+// #1070: the effective ACCOUNT/REGION-level default settings that turn a few "constant" undeclared
+// defaults into a function of account state. The owner can change each via a documented account/
+// region API (often a hardening best practice), so a fixed KNOWN_DEFAULTS pin FPs on every fresh
+// deploy in an account that adopted the setting. gather.ts resolves each via one read-only lookup;
+// a field is undefined when the lookup was denied/unavailable → the fold FAILS OPEN to today's
+// factory-default constant.
+export interface AccountDefaults {
+  // ecs:ListAccountSettings effective `containerInsights` — 'disabled' | 'enabled' | 'enhanced'.
+  ecsContainerInsights?: string;
+  // ssm:GetServiceSetting `/ssm/parameter-store/default-parameter-tier` — 'Standard' | 'Advanced'
+  // | 'Intelligent-Tiering'.
+  ssmParameterTier?: string;
+  // ec2:GetEbsEncryptionByDefault — whether a new volume that declares no `Encrypted` reads true.
+  ebsEncryptionByDefault?: boolean;
+}
+
+// #1070: for a handful of undeclared properties the value AWS assigns at creation is a function of
+// an account/region-level setting the owner can change, not a fixed constant. When gather.ts
+// resolved the effective setting, return the DERIVED expected value so the caller equality-gates it
+// (folding a clean deploy but SURFACING an out-of-band change away from the account default — e.g. a
+// cluster with Insights disabled in an Insights-enabled account). Returns undefined when the lookup
+// was unavailable OR this (type, key) is not account-derived → the caller falls back to the factory
+// KNOWN_DEFAULTS constant (ECS/SSM) or to plain `undeclared` (EBS has no constant) — today's behavior.
+function accountDerivedDefault(
+  resourceType: string,
+  key: string,
+  ad: AccountDefaults | undefined
+): { value: unknown } | undefined {
+  if (!ad) return undefined;
+  if (
+    resourceType === 'AWS::ECS::Cluster' &&
+    key === 'ClusterSettings' &&
+    ad.ecsContainerInsights !== undefined
+  ) {
+    return { value: [{ Name: 'containerInsights', Value: ad.ecsContainerInsights }] };
+  }
+  if (
+    resourceType === 'AWS::SSM::Parameter' &&
+    key === 'Tier' &&
+    ad.ssmParameterTier !== undefined
+  ) {
+    return { value: ad.ssmParameterTier };
+  }
+  if (
+    resourceType === 'AWS::EC2::Volume' &&
+    key === 'Encrypted' &&
+    ad.ebsEncryptionByDefault !== undefined
+  ) {
+    return { value: ad.ebsEncryptionByDefault };
+  }
+  return undefined;
+}
+
 // Identity-keyed object arrays where the template declares only a SUBSET of the elements
 // AWS always returns — keyed by the property -> the element's identity field. Cognito
 // UserPool `Schema` is the case: AWS returns all ~21 standard attributes (sub, email,
@@ -2137,6 +2190,12 @@ export function classifyResource(
     // subnets, so fold when EVERY live subnet is a default-VPC subnet and surface an OOB
     // re-placement into a subnet outside it. Undefined/empty → fail open (fold).
     defaultSubnetIds?: ReadonlySet<string>;
+    // #1070: effective ACCOUNT/REGION-level default settings resolved by gather.ts (ECS
+    // containerInsights, SSM default parameter tier, EBS encryption-by-default). A few undeclared
+    // defaults are a function of these, not a fixed constant — the pin FPs on every fresh deploy in
+    // an account that adopted the setting. Each field undefined → the fold falls back to the factory
+    // constant (fail-open). See accountDerivedDefault.
+    accountDefaults?: AccountDefaults;
     oaiCanonicalIds?: Record<string, string>; // OAI id -> S3CanonicalUserId, for CloudFront OAI principal match
     // Rules declared by SIBLING standalone AWS::EC2::SecurityGroupIngress/::SecurityGroupEgress
     // resources, keyed by the target SG's resolved GroupId (== the SG's physical id). Subtracted
@@ -4113,6 +4172,26 @@ export function classifyResource(
           nested: true,
         });
       }
+      continue;
+    }
+    // #1070: a value equal to its ACCOUNT/REGION-DERIVED default — ECS containerInsights, SSM
+    // default parameter tier, EBS encryption-by-default. Each default's VALUE is an account-level
+    // setting the owner can change (a documented hardening control), so a fixed KNOWN_DEFAULTS
+    // constant FPs on every fresh deploy in an account that adopted it. gather.ts prefetched the
+    // effective value; fold atDefault when the live value equals it (equality-gated — an out-of-band
+    // change AWAY from the account default still surfaces as `undeclared`). This branch is
+    // AUTHORITATIVE when the lookup resolved (so the stale factory constant below never wrongly
+    // folds a real change); when the lookup was denied/unavailable it returns undefined and the fold
+    // falls through to the factory constant (ECS/SSM) or to plain `undeclared` (EBS) — today's behavior.
+    const acctDefault = accountDerivedDefault(resourceType, k, opts.accountDefaults);
+    if (acctDefault !== undefined) {
+      findings.push({
+        tier: matchesKnownDefault(v, acctDefault.value) ? 'atDefault' : 'undeclared',
+        logicalId,
+        resourceType,
+        path: k,
+        actual: v,
+      });
       continue;
     }
     // NOTE: no `schema.writeOnly.has(k)` guard — a top-level write-only key was
