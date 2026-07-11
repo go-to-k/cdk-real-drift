@@ -784,4 +784,33 @@ describe('intrinsic resolver', () => {
     // a plain literal with no token is unchanged.
     expect(resolve('just-a-plain-value', ctx())).toBe('just-a-plain-value');
   });
+
+  // #904 part 2: `Fn::Transform` is a server-side macro directive that CFn merges INTO the
+  // enclosing object at deploy time, so it legally sits ALONGSIDE sibling keys. cdkrd cannot
+  // expand it locally → any object CONTAINING an `Fn::Transform` key (any arity) → UNRESOLVED.
+  it('#904 single-key `{Fn::Transform}` resolves UNRESOLVED (via the Fn:: default)', () => {
+    expect(resolve({ 'Fn::Transform': { Name: 'AWS::Include', Parameters: {} } }, ctx())).toBe(
+      UNRESOLVED
+    );
+  });
+
+  it('#904 SIBLING-keyed `Fn::Transform` (the API GW Body + AWS::Include pattern) → UNRESOLVED, not a leaked literal', () => {
+    // The canonical failure: an OpenAPI Body with an inline AWS::Include macro. Before the fix
+    // this fell through to the object-walk and kept the literal `Fn::Transform` key (a guaranteed
+    // --pre-deploy declared-tier FP that a revert would then write back into the live resource).
+    const body = {
+      swagger: '2.0',
+      'Fn::Transform': { Name: 'AWS::Include', Parameters: { Location: 's3://b/paths.yaml' } },
+    };
+    expect(resolve(body, ctx())).toBe(UNRESOLVED);
+    // and nested one level down inside a declared property object.
+    expect(resolve({ Body: body }, ctx())).toEqual({ Body: UNRESOLVED });
+  });
+
+  it('#904 NEGATIVE: an ordinary sibling-keyed object with NO Fn::Transform is walked normally', () => {
+    expect(resolve({ swagger: '2.0', info: { title: 't' } }, ctx())).toEqual({
+      swagger: '2.0',
+      info: { title: 't' },
+    });
+  });
 });

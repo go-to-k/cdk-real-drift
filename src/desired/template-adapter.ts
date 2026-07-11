@@ -251,6 +251,52 @@ export function changedDefaultParamInfo(
   return `warning: ${stackName}: ${diverged.length} local parameter(s) changed their Default vs the deployed value — the preview resolves them from the NEW local Default, but a plain \`cdk deploy\` KEEPS the deployed value (UsePreviousValue) unless \`--parameters <key>=<value>\` / \`--no-previous-parameters\` is passed: ${shown.join(', ')}${more}`;
 }
 
+// #904: a local synth template that carries a server-side Transform (SAM
+// `AWS::Serverless-2016-10-31`, `AWS::LanguageExtensions`, or a custom macro) is
+// systemically un-previewable under `--pre-deploy`. The normal deployed path fetches
+// the PROCESSED template (transforms already expanded server-side), so a SAM
+// `AWS::Serverless::Function` is an ordinary `AWS::Lambda::Function` and the
+// transform-GENERATED Role/RestApi are declared resources that compare cleanly. But
+// `--pre-deploy` swaps in the LOCAL, UNPROCESSED template: CDK never runs the
+// server-side transform, so every `AWS::Serverless::*` resource has no readable live
+// type (CC `TypeNotFoundException` → permanently `skipped`, its Handler/Runtime/Policies
+// never compared) and each transform-generated live resource is invisible (the `added`
+// tier only enumerates children of DECLARED parents). Rather than emit confusing
+// per-type DescribeType spam + silent skips, surface ONE honest per-stack warning naming
+// the Transform and the affected Serverless resources. Pure + exported for unit tests;
+// the caller gates on templateOverride (--pre-deploy). Returns the note, or null when the
+// template carries no server-side transform.
+export function transformStackWarning(
+  template: Record<string, any>,
+  stackName: string
+): string | null {
+  // A `Transform` directive names one or more macros (string or array). SAM and
+  // LanguageExtensions are the common named ones; any value is a server-side transform.
+  const rawTransform = template.Transform as unknown;
+  const transforms = (Array.isArray(rawTransform) ? rawTransform : [rawTransform])
+    .filter((t): t is string => typeof t === 'string' && t.length > 0)
+    .sort();
+  const resources = (template.Resources ?? {}) as Record<string, { Type?: unknown }>;
+  const serverless = Object.entries(resources)
+    .filter(([, def]) => typeof def?.Type === 'string' && def.Type.startsWith('AWS::Serverless::'))
+    .map(([logicalId]) => logicalId)
+    .sort();
+  // Fire only when the local template actually carries a transform (a named Transform
+  // directive OR a SAM `AWS::Serverless::*` resource — SAM stacks always declare the
+  // Transform, but guard on the resource set too so a macro that mutates ordinary types
+  // is still caught). A transform-free stack previews normally.
+  if (transforms.length === 0 && serverless.length === 0) return null;
+  const parts: string[] = [];
+  if (transforms.length > 0) parts.push(`Transform ${transforms.join(', ')}`);
+  if (serverless.length > 0) {
+    const shown = serverless.slice(0, 10);
+    const more =
+      serverless.length > shown.length ? `, …(+${serverless.length - shown.length} more)` : '';
+    parts.push(`${serverless.length} AWS::Serverless::* resource(s): ${shown.join(', ')}${more}`);
+  }
+  return `warning: ${stackName}: --pre-deploy CANNOT process server-side transforms — CDK's local synth output is UNPROCESSED, so transform-expanded resources are NOT previewed (${parts.join('; ')}). Each AWS::Serverless::* resource is \`skipped\` (its declared props are not compared) and any transform-generated resource is invisible. Run \`check\` WITHOUT --pre-deploy (the deployed, already-processed template) for a full comparison of a transformed stack.`;
+}
+
 // The AWS::Partition / AWS::URLSuffix pseudo-parameters are a deterministic function of the
 // region, NOT a commercial-partition constant. CDK env-agnostic stacks emit ${AWS::Partition}
 // inside nearly every Sub/Join-built ARN, so hard-coding `aws` / `amazonaws.com` mis-resolves
@@ -570,7 +616,15 @@ export async function loadDesired(
   const [tmplRes, stkRes, { physIds, typeOf: deployedTypeOf }] = await Promise.all([
     templateOverride
       ? Promise.resolve({ TemplateBody: undefined })
-      : client.send(new GetTemplateCommand({ StackName: stackName })),
+      : // #904: pin TemplateStage explicitly. The deployed-path desired model MUST be the
+        // PROCESSED template — server-side Transforms (SAM `AWS::Serverless-2016-10-31`,
+        // `AWS::LanguageExtensions`, macros) already expanded — so its logical ids and types
+        // match the live resources CFn actually created (a SAM `AWS::Serverless::Function`
+        // becomes an ordinary `AWS::Lambda::Function` + generated Role/RestApi). `Processed`
+        // IS the GetTemplate API default, but nothing pinned it; make it explicit so a future
+        // default change can never silently swap in the unprocessed `Original` (which would
+        // regress every transformed stack to the broken `--pre-deploy` shape — see #904).
+        client.send(new GetTemplateCommand({ StackName: stackName, TemplateStage: 'Processed' })),
     client.send(new DescribeStacksCommand({ StackName: stackName })),
     listStackResources(client, stackName),
   ]);
@@ -648,6 +702,12 @@ export async function loadDesired(
     // deployed value via UsePreviousValue (see changedDefaultParamInfo). Same stderr channel.
     const changedDefaultInfo = changedDefaultParamInfo(template, stackParams, stackName);
     if (changedDefaultInfo) console.error(changedDefaultInfo);
+    // #904: a Transform-bearing (SAM / LanguageExtensions / macro) local template cannot be
+    // server-side-processed by CDK's local synth, so its AWS::Serverless::* resources are
+    // `skipped` and its transform-generated resources are invisible under --pre-deploy. One
+    // honest per-stack note (vs confusing DescribeType spam) pointing to the deployed path.
+    const transformInfo = transformStackWarning(template, stackName);
+    if (transformInfo) console.error(transformInfo);
   }
 
   // #882: detect logical ids whose Type changed between the deployed stack and the declared

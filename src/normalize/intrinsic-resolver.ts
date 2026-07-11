@@ -299,6 +299,19 @@ export function resolve(node: unknown, ctx: ResolverContext, inCondition = false
         break;
     }
   }
+  // #904: `Fn::Transform` is a SERVER-SIDE macro directive (AWS::Include, a custom
+  // macro): CloudFormation MERGES the macro's expansion INTO the enclosing object at
+  // deploy time, so it legally sits ALONGSIDE sibling keys — the canonical API GW
+  // `Body: { swagger: "2.0", "Fn::Transform": { … } }` (AWS::Include) pattern. The
+  // single-key `{ "Fn::Transform": … }` form already degrades to UNRESOLVED via the
+  // `Fn::`-prefix default above, but a SIBLING-keyed occurrence fell through to the
+  // generic object-walk below and leaked the LITERAL `Fn::Transform` key into the
+  // declared value — a guaranteed `--pre-deploy` declared-tier false positive (the
+  // local synth template is unprocessed, so the macro is unexpanded), and a revert
+  // would then write the raw macro object back into the live resource. cdkrd cannot
+  // compute the expansion locally, so fail closed to UNRESOLVED whenever an object
+  // CONTAINS an `Fn::Transform` key, at ANY arity — the same treatment as Fn::GetAtt.
+  if ('Fn::Transform' in obj) return UNRESOLVED;
   const out: Record<string, unknown> = {};
   for (const [kk, vv] of Object.entries(obj)) out[kk] = resolve(vv, ctx, inCondition);
   return out;
