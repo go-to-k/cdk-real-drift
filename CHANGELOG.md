@@ -1,3 +1,10 @@
+## [0.12.59](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.58...v0.12.59) (2026-07-11)
+
+
+### Bug Fixes
+
+* **diff:** anchor EB generated-SecurityGroup fold to the real awseb-e-…AWSEBSecurityGroup shape ([#1264](https://github.com/go-to-k/cdk-real-drift/issues/1264)) ([#1426](https://github.com/go-to-k/cdk-real-drift/issues/1426)) ([df21c79](https://github.com/go-to-k/cdk-real-drift/commit/df21c79381e94e1be609bc3e8b31a757c45b7bc7))
+
 ## [0.12.58](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.57...v0.12.58) (2026-07-11)
 
 
