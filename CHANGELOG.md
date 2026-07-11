@@ -1,3 +1,10 @@
+## [0.12.99](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.98...v0.12.99) (2026-07-11)
+
+
+### Bug Fixes
+
+* **noise)+fix(schema:** RedshiftServerless Workgroup first-run FP trio — ENABLED/50 price-performance default, BaseCapacity -1 sentinel, Workgroup echo strip ([#1489](https://github.com/go-to-k/cdk-real-drift/issues/1489)) ([#1504](https://github.com/go-to-k/cdk-real-drift/issues/1504)) ([52a83f3](https://github.com/go-to-k/cdk-real-drift/commit/52a83f3ed01c961a5e6d0b4c38ceadcba5ccd389))
+
 ## [0.12.98](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.97...v0.12.98) (2026-07-11)
 
 
