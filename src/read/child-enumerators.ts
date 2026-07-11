@@ -2718,6 +2718,17 @@ function diffLogGroupFilters(
       identifier: identifierOf(f.name),
       label: f.label ?? f.name,
       live: { FilterName: f.name, LogGroupName: logGroupName },
+      // The CFn PHYSICAL id of both AWS::Logs::MetricFilter and ::SubscriptionFilter is the
+      // FilterName (its `Ref`) — which we KNOW here positionally. Carry it on siblingLookupId
+      // so the sibling-membership probe uses the EXACT id and skips the `|`-segment fan-out of
+      // the CC composite `identifier` (#1310). The FilterName charset is `[^:*]*`, so a `|` is
+      // legal INSIDE a name (`error|filter`); splitting the composite `LogGroupName|error|filter`
+      // on `|` never probes the true physical id `error|filter`, false-flagging a sibling-managed
+      // filter `added` with a destructive DeleteResource (edge 1). The fan-out also cross-probes
+      // the LogGroupName segment as if it were the child's physical id, false-MATCHING an
+      // unrelated sibling filter that happens to share the log group's name (edge 2). Probing the
+      // exact FilterName avoids both.
+      siblingLookupId: f.name,
     });
   }
   return added;

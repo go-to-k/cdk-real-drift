@@ -1535,6 +1535,165 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
     expect(cfn.commandCalls(DescribeStackResourcesCommand)).toHaveLength(1);
   });
 
+  // #1310 edge 3: the memo is TYPE-BLIND if keyed by physical id alone. `owns` gates on
+  // `ResourceType === c.resourceType`, so a 'managed' answer recorded for a MetricFilter named
+  // `errors` must NOT be replayed for a SubscriptionFilter of the same name — else a rogue OOB
+  // subscription filter on a shared log group folds to managed and stays invisible.
+  it('#1310: a per-type cache does NOT replay a MetricFilter answer for a same-named SubscriptionFilter', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    // A SIBLING stack owns a MetricFilter physically named `errors`; NO stack owns a
+    // SubscriptionFilter by that name (a ValidationError for anything else).
+    cfn.on(DescribeStackResourcesCommand).callsFake((input) => {
+      if (input.PhysicalResourceId === 'errors') {
+        return {
+          StackResources: [
+            {
+              StackName: 'MetricsStack',
+              LogicalResourceId: 'ErrorsMF',
+              PhysicalResourceId: 'errors',
+              ResourceType: 'AWS::Logs::MetricFilter',
+              Timestamp: new Date(0),
+              ResourceStatus: 'CREATE_COMPLETE',
+            },
+          ],
+        };
+      }
+      const notFound = new Error(`Stack for ${input.PhysicalResourceId} does not exist`);
+      notFound.name = 'ValidationError';
+      throw notFound;
+    });
+    // The SubscriptionFilter probe of `errors` gets the MetricFilter-typed resource back (wrong
+    // type -> `owns` misses), triggering the #726 pagination fallback on `MetricsStack`; it holds
+    // no SubscriptionFilter by that id -> notManaged.
+    cfn.on(ListStackResourcesCommand).resolves({ StackResourceSummaries: [] });
+    // Same shared cache across both children (as gather uses one cache per run).
+    const cache = new Map<string, SiblingCheck>();
+    // The sibling-managed MetricFilter `errors` on a shared log group -> managed.
+    const mf = await isManagedBySiblingStack(
+      cfn as unknown as CloudFormationClient,
+      { resourceType: 'AWS::Logs::MetricFilter', identifier: 'errors', label: 'errors', live: {} },
+      cache,
+      LOCAL_ACCOUNT,
+      LOCAL_REGION
+    );
+    expect(mf).toBe('managed');
+    // A rogue OOB SubscriptionFilter ALSO named `errors` must NOT inherit the MetricFilter's
+    // 'managed' from the cache — it re-probes as its OWN type and, finding no owning stack, is
+    // correctly notManaged (surfaced as `added`). With a type-blind cache this returned 'managed'.
+    const sf = await isManagedBySiblingStack(
+      cfn as unknown as CloudFormationClient,
+      {
+        resourceType: 'AWS::Logs::SubscriptionFilter',
+        identifier: 'errors',
+        label: 'errors',
+        live: {},
+      },
+      cache,
+      LOCAL_ACCOUNT,
+      LOCAL_REGION
+    );
+    expect(sf).toBe('notManaged');
+    // The two entries are kept apart by the `${resourceType}|${physicalId}` key.
+    expect(cache.get('AWS::Logs::MetricFilter|errors')).toBe('managed');
+    expect(cache.get('AWS::Logs::SubscriptionFilter|errors')).toBe('notManaged');
+  });
+
+  // #1310 edge 1: a FilterName may legally contain `|` (charset `[^:*]*`). The enumerator carries
+  // the true FilterName on `siblingLookupId`, so the sibling check probes the EXACT physical id and
+  // skips the CC-composite `|` fan-out. Without it, `shared-lg|error|filter` splits into
+  // `shared-lg`/`error`/`filter`, never probing the real physical id `error|filter` -> false added.
+  it('#1310: a MetricFilter whose name contains `|` resolves via siblingLookupId, not the split', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    const filterName = 'error|filter'; // legal FilterName with a `|`
+    cfn.on(DescribeStackResourcesCommand).callsFake((input) => {
+      if (input.PhysicalResourceId === filterName) {
+        return {
+          StackResources: [
+            {
+              StackName: 'SiblingStack',
+              LogicalResourceId: 'ErrFilter',
+              PhysicalResourceId: filterName,
+              ResourceType: 'AWS::Logs::MetricFilter',
+              Timestamp: new Date(0),
+              ResourceStatus: 'CREATE_COMPLETE',
+            },
+          ],
+        };
+      }
+      const notFound = new Error(`Stack for ${input.PhysicalResourceId} does not exist`);
+      notFound.name = 'ValidationError';
+      throw notFound;
+    });
+    const managed = await isManagedBySiblingStack(
+      cfn as unknown as CloudFormationClient,
+      {
+        resourceType: 'AWS::Logs::MetricFilter',
+        identifier: `shared-lg|${filterName}`, // CC composite LogGroupName|FilterName
+        label: filterName,
+        live: {},
+        siblingLookupId: filterName, // enumerator carries the true physical id positionally
+      },
+      new Map(),
+      LOCAL_ACCOUNT,
+      LOCAL_REGION
+    );
+    expect(managed).toBe('managed');
+    // exactly ONE probe, of the whole FilterName — the `|` was NOT split into segments
+    expect(cfn.commandCalls(DescribeStackResourcesCommand)).toHaveLength(1);
+    expect(cfn.commandCalls(DescribeStackResourcesCommand)[0]!.args[0].input).toMatchObject({
+      PhysicalResourceId: filterName,
+    });
+  });
+
+  // #1310 edge 2: without the positional id, the composite `app-logs|rogue-exfil-filter` fan-out
+  // cross-probes the LOG-GROUP segment `app-logs` as if it were the child's physical id — which
+  // false-MATCHES an unrelated sibling filter literally named `app-logs`, folding a rogue OOB
+  // filter on OUR `app-logs` log group to managed (invisible). With siblingLookupId set to the true
+  // FilterName, only `rogue-exfil-filter` is probed, so the rogue filter correctly surfaces.
+  it('#1310: a rogue filter on a log group named like a sibling filter surfaces via siblingLookupId', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    // A sibling stack owns a MetricFilter literally named `app-logs` (coincides with our log group
+    // name); nothing owns `rogue-exfil-filter`.
+    cfn.on(DescribeStackResourcesCommand).callsFake((input) => {
+      if (input.PhysicalResourceId === 'app-logs') {
+        return {
+          StackResources: [
+            {
+              StackName: 'SiblingStack',
+              LogicalResourceId: 'AppLogsMF',
+              PhysicalResourceId: 'app-logs',
+              ResourceType: 'AWS::Logs::MetricFilter',
+              Timestamp: new Date(0),
+              ResourceStatus: 'CREATE_COMPLETE',
+            },
+          ],
+        };
+      }
+      const notFound = new Error(`Stack for ${input.PhysicalResourceId} does not exist`);
+      notFound.name = 'ValidationError';
+      throw notFound;
+    });
+    const managed = await isManagedBySiblingStack(
+      cfn as unknown as CloudFormationClient,
+      {
+        resourceType: 'AWS::Logs::MetricFilter',
+        identifier: 'app-logs|rogue-exfil-filter', // CC composite LogGroupName|FilterName
+        label: 'rogue-exfil-filter',
+        live: {},
+        siblingLookupId: 'rogue-exfil-filter', // enumerator carries the true physical id
+      },
+      new Map(),
+      LOCAL_ACCOUNT,
+      LOCAL_REGION
+    );
+    // the exact FilterName is probed, NOT the coincidental log-group segment -> genuinely added
+    expect(managed).toBe('notManaged');
+    expect(cfn.commandCalls(DescribeStackResourcesCommand)).toHaveLength(1);
+    expect(cfn.commandCalls(DescribeStackResourcesCommand)[0]!.args[0].input).toMatchObject({
+      PhysicalResourceId: 'rogue-exfil-filter',
+    });
+  });
+
   it('memoizes the resolution per physical id (one API call for a repeated child)', async () => {
     const cfn = mockClient(CloudFormationClient);
     cfn.on(DescribeStackResourcesCommand).resolves({
@@ -1565,7 +1724,8 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
       LOCAL_REGION
     );
     expect(cfn.commandCalls(DescribeStackResourcesCommand)).toHaveLength(1);
-    expect(cache.get(subArn)).toBe('managed');
+    // #1310: the memo is keyed by `${resourceType}|${physicalId}`, not the physical id alone.
+    expect(cache.get(`AWS::SNS::Subscription|${subArn}`)).toBe('managed');
   });
 
   it('#754: a THROTTLE/denied error returns unverified and is NOT memoized', async () => {
@@ -1584,7 +1744,7 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
     // a failed check is 'unverified' (the caller reports coverage-incomplete, never a false added)
     expect(first).toBe('unverified');
     // NOT cached -> a later candidate re-attempts (a transient throttle must not poison the run)
-    expect(cache.has(subArn)).toBe(false);
+    expect(cache.has(`AWS::SNS::Subscription|${subArn}`)).toBe(false);
     const second = await isManagedBySiblingStack(
       cfn as unknown as CloudFormationClient,
       child(subArn),
@@ -1712,7 +1872,7 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
     // fail safe: unverifiable, so NOT a destructive-deletable `added`
     expect(managed).toBe('unverified');
     // and NOT memoized as notManaged (uniform with the other unverifiable cases)
-    expect(cache.has(foreignAccountArn)).toBe(false);
+    expect(cache.has(`AWS::SNS::Subscription|${foreignAccountArn}`)).toBe(false);
   });
 
   it('#959: a CROSS-REGION-managed subscription (ValidationError, foreign region ARN) is UNVERIFIED, not added', async () => {
@@ -1748,7 +1908,7 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
     );
     // a real local out-of-band addition is verifiable and MUST still surface (and be cached)
     expect(managed).toBe('notManaged');
-    expect(cache.get(subArn)).toBe('notManaged');
+    expect(cache.get(`AWS::SNS::Subscription|${subArn}`)).toBe('notManaged');
   });
 
   describe('isDefinitiveNotManaged (#959 foreign-scope classifier)', () => {

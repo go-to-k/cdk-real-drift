@@ -278,6 +278,13 @@ export function hasForeignScopeSignal(c: AddedChild, accountId: string, region: 
 // stack own a resource of THIS child's type (`c.resourceType`) with this exact physical id?
 // Returns the tri-state and memoizes any DEFINITIVE answer per physical id (a transient
 // throttle / unverifiable foreign-scope id is left un-cached so a retry can resolve it).
+// The memo MUST be keyed by `${resourceType}|${physicalId}`, not the physical id alone: the
+// `owns` predicate gates on `ResourceType === c.resourceType`, so the SAME physical id can be
+// 'managed' for one child type yet 'notManaged' for another (#1310). Two child types can share
+// a segment name — e.g. a shared log group's MetricFilter and SubscriptionFilter fan-out both
+// probe a `errors` segment — and a type-blind cache would replay a MetricFilter's 'managed'
+// answer for a SubscriptionFilter of the same name, folding a rogue OOB subscription filter to
+// managed. Keying by type keeps each type's answer independent.
 async function probeSiblingPhysicalId(
   cfn: CloudFormationClient,
   c: AddedChild,
@@ -286,7 +293,8 @@ async function probeSiblingPhysicalId(
   accountId: string,
   region: string
 ): Promise<SiblingCheck> {
-  const cached = cache.get(physicalId);
+  const cacheKey = `${c.resourceType}|${physicalId}`;
+  const cached = cache.get(cacheKey);
   if (cached !== undefined) return cached;
   let managed = false;
   try {
@@ -348,13 +356,13 @@ async function probeSiblingPhysicalId(
       isDefinitiveNotManaged(physicalId, accountId, region) &&
       !hasForeignScopeSignal(c, accountId, region)
     ) {
-      cache.set(physicalId, 'notManaged');
+      cache.set(cacheKey, 'notManaged');
       return 'notManaged';
     }
     return 'unverified';
   }
   const result: SiblingCheck = managed ? 'managed' : 'notManaged';
-  cache.set(physicalId, result);
+  cache.set(cacheKey, result);
   return result;
 }
 
