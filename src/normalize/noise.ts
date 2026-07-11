@@ -2847,14 +2847,32 @@ export const EB_OPTION_VALUE_INDEPENDENT: ReadonlySet<string> = new Set([
 // default (value-independent, derived-from-EnvironmentType, or equality-gated constant), else
 // 'undeclared' so a change away from the default still surfaces. `envType` is the sibling
 // `EnvironmentType` option's value (defaults to LoadBalanced, AWS's default when unset).
-// #893: an undeclared EB SecurityGroups option folds ONLY when every element is the
-// environment's own AWS-generated `awseb-*` security group (the value AWS assigns when the
-// user never set the option) — a resolved `awseb-e-…-AWSEBSecurityGroup-…` name or the
-// unresolved `{"Ref":"AWSEB…SecurityGroup"}` a ConfigurationTemplate still carries. A rogue
-// SG (`eb update-environment …SecurityGroups=sg-…`) matches neither and surfaces.
+// #893/#1264: an undeclared EB SecurityGroups option folds ONLY when every element is the
+// environment's own AWS-generated security group (the value AWS assigns when the user never
+// set the option). The generated shapes are ANCHORED — a bare `/awseb/i` substring match
+// (the #1264 bug) also folded any user/attacker-controllable SG name that merely CONTAINS
+// "awseb" (`my-awseb-backdoor`, a lone `awseb-backdoor`), hiding a rogue SG. The legitimate
+// generated forms are:
+//   - a resolved name `awseb-e-<envid>-stack-AWSEBSecurityGroup-<suffix>` — starts with the
+//     `awseb-e-` environment-resource prefix (case-insensitive);
+//   - a name carrying the exact CFn logical fragment `AWSEBSecurityGroup` /
+//     `AWSEBLoadBalancerSecurityGroup`;
+//   - the unresolved intrinsic logical id an `{"Ref":"AWSEB…SecurityGroup"}` a
+//     ConfigurationTemplate still carries collapses to — an element that IS exactly the
+//     `AWSEB…SecurityGroup` logical-id shape.
+// A rogue SG (`eb update-environment …SecurityGroups=sg-…`, `my-awseb-backdoor`) matches
+// none of these anchored shapes and surfaces.
+function isEbGeneratedGroup(el: string): boolean {
+  const name = el.trim();
+  if (name === '') return false;
+  // resolved environment-resource name: awseb-e-<envid>-…
+  if (/^awseb-e-/i.test(name)) return true;
+  // resolved name carrying the CFn logical fragment, or the bare logical id (Ref echo)
+  return /AWSEB(LoadBalancer)?SecurityGroup/.test(name);
+}
 function isAllEbGeneratedGroups(value: unknown): boolean {
   if (typeof value !== 'string' || value === '') return false;
-  return value.split(',').every((el) => /awseb/i.test(el.trim()));
+  return value.split(',').every((el) => isEbGeneratedGroup(el));
 }
 export function ebOptionSettingTier(
   namespace: unknown,
