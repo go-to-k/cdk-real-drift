@@ -23,7 +23,11 @@ import {
   typeNeedsManagedKeyResolution,
   usesManagedKmsAlias,
 } from '../read/kms-aliases.js';
-import { type AddedChild, CHILD_ENUMERATORS } from '../read/child-enumerators.js';
+import {
+  type AddedChild,
+  CC_READ_UNSUPPORTED_ADDED_TYPES,
+  CHILD_ENUMERATORS,
+} from '../read/child-enumerators.js';
 import { SDK_OVERRIDES } from '../read/overrides.js';
 import { CC_IDENTIFIER_ADAPTERS, readLive, type ReadResult } from '../read/router.js';
 import { getSchemaInfoResult } from '../schema/schema-strip.js';
@@ -216,30 +220,48 @@ function addedFinding(
 // partial model and applyBaseline never false-flags it as "changed" (a degraded snippet
 // vs a recorded full model would otherwise differ). `cfn` fetches the child type's schema
 // (readOnly/writeOnly strip); `schemas` is the shared cache.
-async function readAddedModel(
+export async function readAddedModel(
   cc: CloudControlClient,
   cfn: CloudFormationClient,
   c: AddedChild,
   schemas: Map<string, SchemaInfo>,
   oaiCanonicalIds: Record<string, string>
 ): Promise<{ model: Record<string, unknown>; ok: boolean }> {
-  try {
-    const g = await cc.send(
-      new GetResourceCommand({ TypeName: c.resourceType, Identifier: c.identifier })
-    );
-    const raw = JSON.parse(g.ResourceDescription?.Properties ?? '{}') as Record<string, unknown>;
-    // Reuse the per-run cache, else fetch. Only re-cache a SUCCESSFUL fetch: a DescribeType
-    // failure returns an EMPTY schema (#751 — schema-strip itself does not cache it), and
-    // caching that EMPTY in the per-run map would poison every later resource of this type
-    // (writeOnly reinclude drops declared write-only props, createOnly bars lost) even after
-    // the throttle clears — so leave the map unset on failure to let the next occurrence
-    // re-fetch (#1067). The EMPTY still drives THIS resource's normalize (degraded, no strip).
+  // Reuse the per-run cache, else fetch. Only re-cache a SUCCESSFUL fetch: a DescribeType
+  // failure returns an EMPTY schema (#751 — schema-strip itself does not cache it), and
+  // caching that EMPTY in the per-run map would poison every later resource of this type
+  // (writeOnly reinclude drops declared write-only props, createOnly bars lost) even after
+  // the throttle clears — so leave the map unset on failure to let the next occurrence
+  // re-fetch (#1067). The EMPTY still drives THIS resource's normalize (degraded, no strip).
+  const schemaFor = async (): Promise<SchemaInfo> => {
     let schema = schemas.get(c.resourceType);
     if (!schema) {
       const res = await getSchemaInfoResult(cfn, c.resourceType);
       schema = res.info;
       if (!res.failed) schemas.set(c.resourceType, schema);
     }
+    return schema;
+  };
+
+  // #1431: a NON_PROVISIONABLE added type (AWS::Route53::RecordSet) has no CC GetResource —
+  // it throws UnsupportedActionException every run, which the catch below would demote to
+  // `modelReadFailed` (record drops it, so an out-of-band record can never be endorsed). Its
+  // enumerator `live` snippet IS the full recordable model, so snapshot THAT (normalized like
+  // the CC path so a re-record → check is clean and a real later change still surfaces).
+  if (CC_READ_UNSUPPORTED_ADDED_TYPES.has(c.resourceType)) {
+    const schema = await schemaFor();
+    return {
+      model: normalizeLiveModel(c.live, schema, { oaiCanonicalIds, resourceType: c.resourceType }),
+      ok: true,
+    };
+  }
+
+  try {
+    const g = await cc.send(
+      new GetResourceCommand({ TypeName: c.resourceType, Identifier: c.identifier })
+    );
+    const raw = JSON.parse(g.ResourceDescription?.Properties ?? '{}') as Record<string, unknown>;
+    const schema = await schemaFor();
     return {
       model: normalizeLiveModel(raw, schema, { oaiCanonicalIds, resourceType: c.resourceType }),
       ok: true,

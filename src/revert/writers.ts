@@ -198,7 +198,12 @@ import {
   type UpdateSlotTypeCommandInput,
   type VoiceSettings,
 } from '@aws-sdk/client-lex-models-v2';
-import { ChangeResourceRecordSetsCommand, Route53Client } from '@aws-sdk/client-route-53';
+import {
+  ChangeResourceRecordSetsCommand,
+  ListResourceRecordSetsCommand,
+  type ResourceRecordSet,
+  Route53Client,
+} from '@aws-sdk/client-route-53';
 import { DeleteBucketPolicyCommand, PutBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
 import {
   ServiceDiscoveryClient,
@@ -3078,6 +3083,61 @@ const deleteAppSyncApiKey: SdkDeleter = async (ctx) => {
   );
 };
 
+// AWS::Route53::RecordSet (#1431, follow-up to #1312): NON_PROVISIONABLE — CC has no
+// DeleteResource handler (UnsupportedActionException), so an out-of-band record found by the
+// HostedZone child enumerator (#1315) is deleted via Route53's own ChangeResourceRecordSets
+// with Action DELETE — the sibling of the declared-drift UPSERT `writeRoute53RecordSet` above
+// (the #1312 note called for exactly this type-specific SDK routing). A DELETE change must
+// supply the record set EXACTLY (name / type / TTL / records / routing policy), so re-read the
+// zone's current inventory and DELETE the live RRSet whose enumerator-form composite identifier
+// (`<HostedZoneId>_<Name>_<Type>[_<SetIdentifier>]`, built by diffRoute53HostedZoneChildren)
+// equals the finding's physicalId. Matching by RECONSTRUCTING each live RRSet's identifier and
+// comparing whole strings (not splitting the composite) is robust to a '_' inside a DNS name
+// (`_dmarc.example.com`) or a user-chosen SetIdentifier. `ctx.parentPhysicalId` is the parent
+// HostedZone's physical id (== the zone id); fall back to the identifier prefix. A record with
+// no live match is already gone — the goal state (return without a change).
+const deleteRoute53RecordSet: SdkDeleter = async (ctx) => {
+  const id = ctx.physicalId;
+  const sep = id.indexOf('_');
+  const hostedZoneId = ctx.parentPhysicalId ?? (sep > 0 ? id.slice(0, sep) : undefined);
+  if (!hostedZoneId) {
+    throw new Error(`cannot resolve the hosted zone for the Route53 RecordSet delete: ${id}`);
+  }
+  const rrsetId = (r: ResourceRecordSet): string =>
+    `${hostedZoneId}_${r.Name}_${(r.Type ?? '').toUpperCase()}` +
+    (r.SetIdentifier !== undefined ? `_${r.SetIdentifier}` : '');
+
+  const client = new Route53Client({ region: ctx.region, ...CLIENT_TIMEOUTS });
+  let startName: string | undefined;
+  let startType: ResourceRecordSet['Type'] | undefined;
+  let startId: string | undefined;
+  for (;;) {
+    const res = await client.send(
+      new ListResourceRecordSetsCommand({
+        HostedZoneId: hostedZoneId,
+        StartRecordName: startName,
+        StartRecordType: startType,
+        ...(startId !== undefined && { StartRecordIdentifier: startId }),
+      })
+    );
+    for (const rr of res.ResourceRecordSets ?? []) {
+      if (!rr.Name || !rr.Type || rrsetId(rr) !== id) continue;
+      await client.send(
+        new ChangeResourceRecordSetsCommand({
+          HostedZoneId: hostedZoneId,
+          ChangeBatch: { Changes: [{ Action: 'DELETE', ResourceRecordSet: rr }] },
+        })
+      );
+      return;
+    }
+    if (!res.IsTruncated) return; // walked the whole zone with no match — already gone
+    startName = res.NextRecordName;
+    startType = res.NextRecordType;
+    startId = res.NextRecordIdentifier;
+  }
+};
+
 export const SDK_DELETERS: Record<string, SdkDeleter> = {
   'AWS::AppSync::ApiKey': deleteAppSyncApiKey,
+  'AWS::Route53::RecordSet': deleteRoute53RecordSet,
 };

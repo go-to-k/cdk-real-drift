@@ -749,18 +749,19 @@ function isUnderCreateOnly(findingPath: string, createOnlyPaths: readonly string
 // `UnsupportedActionException: Resource type <T> does not support DELETE action`. Pre-classify
 // them as `notRevertable` up front — the honest twin of the `deleted` / `no physical id`
 // gates — instead of offering a delete that loudly fails. Detection + record / ignore still
-// work; a type-specific SDK writer could later make it actually revertable.
+// work; a type-specific SDK deleter (SDK_DELETERS, the delete analog of SDK_WRITERS) can
+// later make a type actually revertable — at which point it leaves THIS set and the
+// `delete`-kind item is routed to the SDK deleter by stack-actions (the AWS::Route53::RecordSet
+// / AWS::AppSync::ApiKey precedent).
 //   - AWS::EC2::NetworkAclEntry: live-proven (#1315/#1405). CC GetResource reads it via the
 //     SDK override (`readEc2NetworkAclEntry`), but DeleteResource returns the unsupported-action
 //     error above (its CFn delete flows through the parent NetworkAcl's EC2 API, not CC).
-//   - AWS::Route53::RecordSet: NON_PROVISIONABLE per describe-type — a CC DeleteResource
-//     returns UnsupportedActionException (#1312). Surfaced by the HostedZone child enumerator;
-//     its real delete would go through the Route53 `ChangeResourceRecordSets` API (a DELETE
-//     change action), not CC. A type-specific SDK writer could make it actually revertable later.
-const CC_DELETE_UNSUPPORTED_ADDED_TYPES = new Set<string>([
-  'AWS::EC2::NetworkAclEntry',
-  'AWS::Route53::RecordSet',
-]);
+//
+// AWS::Route53::RecordSet (#1312) has GRADUATED out of this set (#1431): CC still cannot
+// delete it (NON_PROVISIONABLE), but SDK_DELETERS now carries a Route53
+// `ChangeResourceRecordSets` DELETE writer, so an added record IS revertable — a `delete`-kind
+// item is built and routed to that SDK deleter.
+const CC_DELETE_UNSUPPORTED_ADDED_TYPES = new Set<string>(['AWS::EC2::NetworkAclEntry']);
 
 export function buildRevertPlan(
   findings: Finding[],

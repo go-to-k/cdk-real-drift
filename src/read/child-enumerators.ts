@@ -286,6 +286,17 @@ export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::Route53::HostedZone': enumerateRoute53HostedZoneChildren,
 };
 
+// Enumerated child TYPES whose Cloud Control `GetResource` cannot read the full model — the
+// type is NON_PROVISIONABLE, so a CC read throws `UnsupportedActionException` every run. For
+// these the enumerator's own `live` snippet IS the complete recordable model (it is built from
+// the service API, not CC), so `record` must snapshot THAT instead of the doomed CC read.
+// Without this, `readAddedModel`'s CC `GetResource` fails → `modelReadFailed` → `buildRecorded`
+// drops the finding, so `record` / `ignore` could never endorse the out-of-band resource and it
+// re-surfaces as `added` on every `check` with no way to accept it (#1431). First member
+// AWS::Route53::RecordSet (its HostedZone enumerator carries a CFn-shaped
+// `{ Name, Type, TTL, ResourceRecords, AliasTarget }`).
+export const CC_READ_UNSUPPORTED_ADDED_TYPES = new Set<string>(['AWS::Route53::RecordSet']);
+
 // ── API Gateway ────────────────────────────────────────────────────────────
 // A RestApi owns Resources (paths), Methods, Authorizers, Models, and
 // RequestValidators. Each is a separate
