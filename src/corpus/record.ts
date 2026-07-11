@@ -87,6 +87,11 @@ export interface CorpusCase {
     // atDefault exactly as a real check does. Stored as an array (JSON has no Set); replay revives
     // it to a Set. Optional for back-compat (pre-#892 cases and non-EIP cases lack it).
     siblingEipAssociations?: string[];
+    // #1498: this Subnet's own identity (physicalId, else logicalId), present only when a declared
+    // sibling AWS::EC2::SubnetCidrBlock assigns its IPv6 CIDR, so replay reproduces the reflected
+    // Ipv6CidrBlock echo drop. Stored as an array (JSON has no Set); replay revives it to a Set.
+    // Optional for back-compat (pre-#1498 cases and non-Subnet cases lack it).
+    siblingSubnetCidrBlocks?: string[];
     // This TargetGroup's own identity (physicalId, else logicalId), present only when a declared
     // sibling dynamically registers into it (an ECS Service, an ASG, or its own lambda TargetType),
     // so replay reproduces the `generated` Targets fold and the case folds exactly as a real check
@@ -139,6 +144,7 @@ export function buildCorpusCase(
     siblingSgRules?: Record<string, { ingress: unknown[]; egress: unknown[] }>;
     bucketNotificationManaged?: Set<string>;
     siblingEipAssociations?: Set<string>;
+    siblingSubnetCidrBlocks?: Set<string>;
     siblingTargetGroupRegistrars?: Set<string>;
     clusterEchoModel?: Record<string, Record<string, unknown>>;
     rdsOptionSettingDefaults?: Record<string, Record<string, Record<string, string | null>>>;
@@ -174,6 +180,15 @@ export function buildCorpusCase(
     resource.physicalId && opts.siblingTargetGroupRegistrars?.has(resource.physicalId)
       ? resource.physicalId
       : opts.siblingTargetGroupRegistrars?.has(resource.logicalId)
+        ? resource.logicalId
+        : undefined;
+  // #1498: carry ONLY this Subnet's own identity from the stack-wide sibling-SubnetCidrBlock set.
+  // classify keys the reflected Ipv6CidrBlock drop on the physicalId first, else the logicalId —
+  // carry the same one that is present, so replay drops the echo the same way the live check did.
+  const subnetSiblingId =
+    resource.physicalId && opts.siblingSubnetCidrBlocks?.has(resource.physicalId)
+      ? resource.physicalId
+      : opts.siblingSubnetCidrBlocks?.has(resource.logicalId)
         ? resource.logicalId
         : undefined;
   const echoModel =
@@ -231,6 +246,7 @@ export function buildCorpusCase(
         : {}),
       ...(bucketNotif ? { bucketNotificationManaged: bucketNotif } : {}),
       ...(eipSiblingId ? { siblingEipAssociations: [eipSiblingId] } : {}),
+      ...(subnetSiblingId ? { siblingSubnetCidrBlocks: [subnetSiblingId] } : {}),
       ...(tgRegistrarId ? { siblingTargetGroupRegistrars: [tgRegistrarId] } : {}),
       ...(echoModel && resource.physicalId
         ? { clusterEchoModel: { [resource.physicalId]: echoModel } }
@@ -269,15 +285,20 @@ export function reviveSchema(s: CorpusCase['schema']): SchemaInfo {
  *  lockstep. */
 export function reviveOpts(o: CorpusCase['opts']): Omit<
   CorpusCase['opts'],
-  'bucketNotificationManaged' | 'siblingEipAssociations' | 'siblingTargetGroupRegistrars'
+  | 'bucketNotificationManaged'
+  | 'siblingEipAssociations'
+  | 'siblingSubnetCidrBlocks'
+  | 'siblingTargetGroupRegistrars'
 > & {
   bucketNotificationManaged?: Set<string>;
   siblingEipAssociations?: Set<string>;
+  siblingSubnetCidrBlocks?: Set<string>;
   siblingTargetGroupRegistrars?: Set<string>;
 } {
   const {
     bucketNotificationManaged,
     siblingEipAssociations,
+    siblingSubnetCidrBlocks,
     siblingTargetGroupRegistrars,
     ...rest
   } = o;
@@ -287,6 +308,9 @@ export function reviveOpts(o: CorpusCase['opts']): Omit<
       ? { bucketNotificationManaged: new Set(bucketNotificationManaged) }
       : {}),
     ...(siblingEipAssociations ? { siblingEipAssociations: new Set(siblingEipAssociations) } : {}),
+    ...(siblingSubnetCidrBlocks
+      ? { siblingSubnetCidrBlocks: new Set(siblingSubnetCidrBlocks) }
+      : {}),
     ...(siblingTargetGroupRegistrars
       ? { siblingTargetGroupRegistrars: new Set(siblingTargetGroupRegistrars) }
       : {}),

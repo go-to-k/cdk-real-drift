@@ -131,7 +131,8 @@
     "accountId": "111111111111",
     "region": "us-east-1",
     "kmsAliasTargets": {},
-    "oaiCanonicalIds": {}
+    "oaiCanonicalIds": {},
+    "siblingSubnetCidrBlocks": ["subnet-00c26f3fb4ea65291"]
   },
   "expected": [
     {
@@ -171,15 +172,6 @@
         "HostnameType": "ip-name",
         "EnableResourceNameDnsAAAARecord": false
       },
-      "physicalId": "subnet-00c26f3fb4ea65291",
-      "constructPath": "CdkRealDriftIntegVpcAttachMin/Vpc/publicSubnet1/Subnet"
-    },
-    {
-      "tier": "undeclared",
-      "logicalId": "VpcpublicSubnet1Subnet2BB74ED7",
-      "resourceType": "AWS::EC2::Subnet",
-      "path": "Ipv6CidrBlock",
-      "actual": "2600:1f18:2de0:6e00::/64",
       "physicalId": "subnet-00c26f3fb4ea65291",
       "constructPath": "CdkRealDriftIntegVpcAttachMin/Vpc/publicSubnet1/Subnet"
     },
