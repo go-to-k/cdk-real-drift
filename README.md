@@ -288,8 +288,10 @@ needs `--remove-unrecorded`).
 - **AppSync**: data sources, resolvers, functions
 - **CloudWatch Logs**: metric filters, subscription filters
 - **ELBv2**: listeners, listener rules
-- **EC2**: VPC subnets, VPC endpoints, VPC route tables, VPC network ACLs, route
-  table routes
+- **EC2**: VPC subnets, VPC endpoints, VPC route tables, VPC network ACLs, VPC
+  security groups (an out-of-band `create-security-group` — a rogue firewall in a
+  declared VPC; the VPC default SG and AWS-service-created SGs, e.g. an EKS cluster
+  SG, are folded so only a user-created group surfaces), route table routes
 - **ECS**: cluster services
 - **KMS**: key aliases, key grants (an out-of-band `kms create-grant` on a key —
   grants are not a CloudFormation type, so cdkrd surfaces them as a synthetic
@@ -1020,7 +1022,9 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   - `AWS::EC2::VPC` + `AWS::EC2::RouteTable`: `ec2:DescribeSubnets`,
     `ec2:DescribeRouteTables` (plus `ec2:DescribeInternetGateways` and
     `ec2:DescribeVpcs` for the VPC's out-of-band IGW attachment and secondary
-    CIDR sub-resources)
+    CIDR sub-resources, and `ec2:DescribeSecurityGroups` for a VPC's out-of-band
+    security groups — a rogue `AWS::EC2::SecurityGroup`; the default SG and
+    AWS-service-created SGs are folded)
   - `AWS::EC2::NetworkAcl`: `ec2:DescribeNetworkAcls` (enumerates a declared
     NACL's out-of-band entries — a rogue `AWS::EC2::NetworkAclEntry`)
   - `AWS::ECS::Cluster`: `ecs:ListServices` (distinct from the
