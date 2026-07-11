@@ -1,3 +1,10 @@
+## [0.12.64](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.63...v0.12.64) (2026-07-11)
+
+
+### Bug Fixes
+
+* **read:** per-child reconcile for Body-defined/quick-create APIs ([#1270](https://github.com/go-to-k/cdk-real-drift/issues/1270)) + DescribeDomains batching ([#1265](https://github.com/go-to-k/cdk-real-drift/issues/1265)) ([#1432](https://github.com/go-to-k/cdk-real-drift/issues/1432)) ([21bb5cc](https://github.com/go-to-k/cdk-real-drift/commit/21bb5cc532480a6e6c50d3b83c9216c0ea69bc10))
+
 ## [0.12.63](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.62...v0.12.63) (2026-07-11)
 
 
