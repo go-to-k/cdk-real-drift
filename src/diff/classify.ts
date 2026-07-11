@@ -466,6 +466,71 @@ function accountDerivedDefault(
   return undefined;
 }
 
+// #1500: for a CLUSTER-MODE-ENABLED ElastiCache ReplicationGroup, three undeclared properties AWS
+// materializes at creation are DETERMINISTIC FUNCTIONS of the declared shard/replica shape, not
+// fixed constants — the KNOWN_DEFAULTS `ClusterMode:'disabled'` pin only covers the non-cluster
+// case, so a cluster-mode RG (NumNodeGroups>1) first-run-FPs on all three. Derive (tier-2) and
+// equality-gate against the COMPUTED value so an out-of-band migration / failover flip / shard-
+// replica scale still surfaces:
+//   ClusterMode              -> 'enabled' when the declared shape is cluster-mode (NumNodeGroups>1,
+//                               a NodeGroupConfiguration, or an explicit ClusterMode='enabled').
+//   AutomaticFailoverEnabled -> true for a cluster-mode RG (cluster mode REQUIRES failover) and for
+//                               ANY valkey RG (the valkey API defaults it true even single-node —
+//                               it rejects a 1-node valkey RG unless failover is explicitly off).
+//   NumCacheClusters         -> NumNodeGroups x (1 + ReplicasPerNodeGroup) (total nodes across the
+//                               shards; the repro's 2x(1+0)=2), or the sum over a NodeGroupConfig.
+// Returns undefined for a property it cannot derive from the declared inputs (e.g. a non-cluster
+// redis AutomaticFailoverEnabled=false -> today's trivial-empty drop; a non-cluster ClusterMode ->
+// the KNOWN_DEFAULTS 'disabled' constant), leaving today's behavior for those.
+function elastiCacheReplicationGroupDerivedDefault(
+  key: string,
+  declared: Record<string, unknown>
+): { value: unknown } | undefined {
+  const numNodeGroups =
+    typeof declared['NumNodeGroups'] === 'number'
+      ? (declared['NumNodeGroups'] as number)
+      : undefined;
+  const nodeGroupConfig = Array.isArray(declared['NodeGroupConfiguration'])
+    ? (declared['NodeGroupConfiguration'] as Array<Record<string, unknown>>)
+    : undefined;
+  const replicasPerNodeGroup =
+    typeof declared['ReplicasPerNodeGroup'] === 'number'
+      ? (declared['ReplicasPerNodeGroup'] as number)
+      : undefined;
+  const engine =
+    typeof declared['Engine'] === 'string'
+      ? (declared['Engine'] as string).toLowerCase()
+      : undefined;
+  const clusterModeEnabled =
+    (numNodeGroups !== undefined && numNodeGroups > 1) ||
+    (nodeGroupConfig !== undefined && nodeGroupConfig.length > 0) ||
+    declared['ClusterMode'] === 'enabled';
+
+  if (key === 'ClusterMode') {
+    return clusterModeEnabled ? { value: 'enabled' } : undefined;
+  }
+  if (key === 'AutomaticFailoverEnabled') {
+    return clusterModeEnabled || engine === 'valkey' ? { value: true } : undefined;
+  }
+  if (key === 'NumCacheClusters') {
+    if (numNodeGroups !== undefined) {
+      return { value: numNodeGroups * (1 + (replicasPerNodeGroup ?? 0)) };
+    }
+    if (nodeGroupConfig !== undefined && nodeGroupConfig.length > 0) {
+      const total = nodeGroupConfig.reduce((sum, g) => {
+        const rc =
+          typeof g['ReplicaCount'] === 'number'
+            ? (g['ReplicaCount'] as number)
+            : (replicasPerNodeGroup ?? 0);
+        return sum + 1 + rc;
+      }, 0);
+      return { value: total };
+    }
+    return undefined;
+  }
+  return undefined;
+}
+
 // Identity-keyed object arrays where the template declares only a SUBSET of the elements
 // AWS always returns — keyed by the property -> the element's identity field. Cognito
 // UserPool `Schema` is the case: AWS returns all ~21 standard attributes (sub, email,
@@ -4477,6 +4542,24 @@ export function classifyResource(
         actual: v,
       });
       continue;
+    }
+    // #1500: a cluster-mode ElastiCache RG's undeclared ClusterMode / AutomaticFailoverEnabled /
+    // NumCacheClusters are DERIVED from the declared shard/replica shape (see the helper). Fold
+    // atDefault when the live value equals the computed default (equality-gated — an out-of-band
+    // migration / failover flip / shard-replica scale still surfaces). Authoritative like acctDefault
+    // above: undefined (non-cluster / non-derivable) falls through to the KNOWN_DEFAULTS constant.
+    if (resourceType === 'AWS::ElastiCache::ReplicationGroup') {
+      const rgDerived = elastiCacheReplicationGroupDerivedDefault(k, declared);
+      if (rgDerived !== undefined) {
+        findings.push({
+          tier: matchesKnownDefault(v, rgDerived.value) ? 'atDefault' : 'undeclared',
+          logicalId,
+          resourceType,
+          path: k,
+          actual: v,
+        });
+        continue;
+      }
     }
     // NOTE: no `schema.writeOnly.has(k)` guard — a top-level write-only key was
     // already stripped from `live` by writeOnlyPaths above, so it cannot reach here
