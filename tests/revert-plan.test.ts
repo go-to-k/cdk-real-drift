@@ -1660,6 +1660,37 @@ describe('buildRevertPlan', () => {
     }
   });
 
+  it('EB Application nested ResourceLifecycleConfig.VersionLifecycleConfig undeclared -> sdk item, op top routes to the EB writer (#1437)', () => {
+    // Post-#1437 an out-of-band lifecycle change surfaces at the DESCENDED nested path (the
+    // ServiceRole residual folds separately), so the revert op path is nested. It must still
+    // route through the EB SDK writer (top segment ResourceLifecycleConfig), which rewrites the
+    // whole lifecycle to the disabled default.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::ElasticBeanstalk::Application',
+      path: 'ResourceLifecycleConfig.VersionLifecycleConfig',
+      actual: {
+        MaxCountRule: { DeleteSourceFromS3: false, Enabled: true, MaxCount: 5 },
+        MaxAgeRule: { DeleteSourceFromS3: false, MaxAgeInDays: 180, Enabled: false },
+      },
+      physicalId: 'my-eb-app',
+      logicalId: 'App',
+      unrecorded: true,
+    });
+    const plan = buildRevertPlan([f], undefined, { removeUnrecorded: true });
+    expect(plan.notRevertable).toHaveLength(0);
+    expect(plan.items[0]).toMatchObject({
+      kind: 'sdk',
+      resourceType: 'AWS::ElasticBeanstalk::Application',
+    });
+    const op = plan.items[0]!.ops[0]!;
+    // The nested path is in KNOWN_DEFAULT_PATHS, so it reverts as an explicit set-default `add`
+    // of the default VersionLifecycleConfig (not a bare `remove`). Its op path top segment still
+    // routes to the EB SDK writer, which reconstructs the WHOLE default ResourceLifecycleConfig.
+    expect(op.op).toBe('add');
+    expect(op.path.replace(/^\//, '').split('/')[0]).toBe('ResourceLifecycleConfig');
+  });
+
   it('Cognito IdentityPool: CognitoEvents -> prop-scoped sdk item, a base prop -> cc item', () => {
     // The IdentityPool SDK override only ENRICHES the CC read with the writeOnly
     // CognitoEvents, so it is CC_REVERTABLE_DESPITE_READ_OVERRIDE: base-property reverts

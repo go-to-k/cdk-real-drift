@@ -2412,11 +2412,18 @@ const writeElasticBeanstalkApplication: SdkWriter = async (ctx, ops) => {
       // add/replace -> the declared intent (whole object), falling back to the op's carried
       // value then the default. The declared object is preferred over op.value so a NESTED
       // op path still writes the complete, coherent config rather than a leaf fragment.
+      // op.value is only the WHOLE ResourceLifecycleConfig when the op targets the object
+      // itself (`/ResourceLifecycleConfig`); a nested set-default op (#1437 —
+      // `/ResourceLifecycleConfig/VersionLifecycleConfig`, emitted since the object is now
+      // DESCENDED) carries only that sub-block, so writing op.value there would send a
+      // wrapper-less fragment as the whole config. Trust op.value ONLY for the whole-object op;
+      // otherwise fall to the declared object then the default (the coherent whole either way).
+      const targetsWholeObject = op.path.replace(/^\//, '') === 'ResourceLifecycleConfig';
       lifecycle =
         op.op === 'remove'
           ? EB_APPLICATION_DEFAULT_RESOURCE_LIFECYCLE
           : (asObject(ctx.declared['ResourceLifecycleConfig']) ??
-            asObject(op.value) ??
+            (targetsWholeObject ? asObject(op.value) : undefined) ??
             EB_APPLICATION_DEFAULT_RESOURCE_LIFECYCLE);
     }
   }

@@ -86,7 +86,10 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // but DISABLED (Enabled:false, MaxCount 200 / MaxAgeInDays 180, DeleteSourceFromS3:false).
   // Equality-gated: enable a lifecycle rule out of band and the object no longer matches,
   // so it re-surfaces as real undeclared drift. Observed live on a fresh elasticbeanstalk-
-  // rich Application (2026-07-07).
+  // rich Application (2026-07-07). This whole-object fold is the CLEAN-deploy fast path (no
+  // ServiceRole present); once a lifecycle rule is set + reverted EB KEEPS a ServiceRole the
+  // object can never shed, so it falls through to the DESCEND_UNDECLARED_OBJECT_PATHS +
+  // KNOWN_DEFAULT_PATHS + GENERATED_NESTED_PATHS split below that folds the residual (#1437).
   'AWS::ElasticBeanstalk::Application': {
     ResourceLifecycleConfig: {
       VersionLifecycleConfig: {
@@ -2061,6 +2064,19 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
       InCluster: true,
     },
   },
+  'AWS::ElasticBeanstalk::Application': {
+    // The substantive half of an undeclared ResourceLifecycleConfig, descended
+    // (DESCEND_UNDECLARED_OBJECT_PATHS above) so it folds independently of the AWS-kept
+    // `ServiceRole` sibling (value-independent via GENERATED_NESTED_PATHS). This pins the
+    // version-lifecycle policy AWS materializes when nothing is declared: both rules PRESENT but
+    // DISABLED (the same constant as the whole-object KNOWN_DEFAULTS entry, minus the ServiceRole).
+    // Equality-gated: enable a rule out of band, or change a MaxCount/MaxAgeInDays, and the object no
+    // longer matches, so the real lifecycle change re-surfaces as undeclared drift (#1437).
+    'ResourceLifecycleConfig.VersionLifecycleConfig': {
+      MaxCountRule: { DeleteSourceFromS3: false, Enabled: false, MaxCount: 200 },
+      MaxAgeRule: { DeleteSourceFromS3: false, MaxAgeInDays: 180, Enabled: false },
+    },
+  },
   'AWS::Batch::JobDefinition': {
     // A Fargate job definition reads back the documented runtime-platform defaults
     // (x86_64 / Linux) and the LATEST Fargate platform version when none is declared.
@@ -2592,6 +2608,19 @@ export const DESCEND_UNDECLARED_OBJECT_PATHS: Record<string, ReadonlySet<string>
   // independent via GENERATED_NESTED_PATHS below). A single whole-object KNOWN_DEFAULTS entry
   // can't cover both (the per-account KMS ARN can't be pinned), so descend + split.
   'AWS::MSK::Cluster': new Set(['EncryptionInfo']),
+  // An EB Application that declares no ResourceLifecycleConfig folds the WHOLE object via the
+  // KNOWN_DEFAULTS entry above on a CLEAN deploy (no ServiceRole present). But once a lifecycle
+  // rule is set out of band the API REQUIRES a ServiceRole, and EB KEEPS that ServiceRole even
+  // after `revert` writes the rules back to the disabled default — so the post-revert object is
+  // `{ServiceRole:<arn>, VersionLifecycleConfig:{default}}`, which the whole-object KNOWN_DEFAULTS
+  // no longer matches (the extra ServiceRole key), leaving it perpetually [Potential Drift] (#1437).
+  // Descend it so the two sub-blocks fold independently: `VersionLifecycleConfig` is the stable
+  // constant (folded via KNOWN_DEFAULT_PATHS below) and `ServiceRole` is the AWS-assigned/kept IAM
+  // role ARN (value-independent via GENERATED_NESTED_PATHS below — a user who wants a specific role
+  // DECLARES ResourceLifecycleConfig.ServiceRole, compared in the declared loop). An ENABLED rule
+  // (or a non-default MaxCount) still breaks the VersionLifecycleConfig equality gate and surfaces,
+  // so out-of-band detection is preserved.
+  'AWS::ElasticBeanstalk::Application': new Set(['ResourceLifecycleConfig']),
 };
 
 // Value-DEPENDENT generated-name fold, scoped by type + top-level path. Folds a live value
@@ -2719,6 +2748,17 @@ export const GENERATED_NESTED_PATHS: Record<string, ReadonlySet<string>> = {
     'EncryptionInfo.EncryptionAtRest',
     'BrokerNodeGroupInfo.SecurityGroups',
   ]),
+  // An EB Application's undeclared ResourceLifecycleConfig is descended
+  // (DESCEND_UNDECLARED_OBJECT_PATHS), so once a lifecycle rule is set out of band EB stamps in a
+  // `ServiceRole` (an IAM role ARN the UpdateApplicationResourceLifecycle API requires) and KEEPS
+  // it even after `revert` writes the disabled default — leaving `ResourceLifecycleConfig.ServiceRole`
+  // as a live-only leaf here. It is an AWS-assigned/kept role ARN, never user intent when undeclared
+  // (the RDS/OpenSearch/MSK KmsKeyId / SecurityGroups value-independent class): fold it regardless of
+  // value so a lifecycle-config that is otherwise at-default no longer perpetually surfaces (#1437). A
+  // user who wants a specific role DECLARES ResourceLifecycleConfig.ServiceRole, compared in the
+  // declared loop. The substantive VersionLifecycleConfig still folds equality-gated via
+  // KNOWN_DEFAULT_PATHS, so an enabled rule / non-default MaxCount is still detected.
+  'AWS::ElasticBeanstalk::Application': new Set(['ResourceLifecycleConfig.ServiceRole']),
 };
 
 // Elastic Beanstalk ConfigurationTemplate `OptionSettings` first-run default fold. A template
