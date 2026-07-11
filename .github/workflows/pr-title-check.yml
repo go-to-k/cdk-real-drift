@@ -33,3 +33,12 @@ jobs:
             chore
             revert
           requireScope: false
+      # The action above only checks the LEADING type; it accepts a COMPOUND title like
+      # `fix(read)+fix(revert): …`, which renders an ugly CHANGELOG scope and historically
+      # failed to release at all (semantic-release headerPattern; fixed in #1448). Enforce a
+      # SINGLE type + optional single scope here so the release + changelog stay clean.
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v5
+      - name: Reject compound / malformed PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: node scripts/check-pr-title.mjs "$PR_TITLE"
