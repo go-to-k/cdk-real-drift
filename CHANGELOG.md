@@ -1,3 +1,11 @@
+## [0.12.67](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.66...v0.12.67) (2026-07-11)
+
+
+### Bug Fixes
+
+* **desired:** make --pre-deploy honest for Transform-bearing apps + pin Processed template stage ([#904](https://github.com/go-to-k/cdk-real-drift/issues/904)) ([#1439](https://github.com/go-to-k/cdk-real-drift/issues/1439)) ([ac521c5](https://github.com/go-to-k/cdk-real-drift/commit/ac521c56f2bf2554a5d5f21ba5a896d0c34ac527))
+* **diff:** escalate RedshiftServerless Workgroup + TransitGateway value-independent folds to detection-preserving gates ([#1269](https://github.com/go-to-k/cdk-real-drift/issues/1269), [#1280](https://github.com/go-to-k/cdk-real-drift/issues/1280)) ([#1438](https://github.com/go-to-k/cdk-real-drift/issues/1438)) ([28f8223](https://github.com/go-to-k/cdk-real-drift/commit/28f8223d1a92723ff11bc0fa6ce9cab17f5d0699))
+
 ## [0.12.66](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.65...v0.12.66) (2026-07-11)
 
 
