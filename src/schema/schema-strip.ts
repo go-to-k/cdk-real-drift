@@ -18,6 +18,7 @@ const EMPTY: SchemaInfo = {
   readOnlyPaths: [],
   writeOnlyPaths: [],
   createOnlyPaths: [],
+  conditionalCreateOnlyPaths: [],
   defaults: {},
   defaultPaths: {},
   unorderedScalarPaths: [],
@@ -568,6 +569,12 @@ export function parseSchema(schemaJson: string): SchemaInfo {
   // rejects it cleanly (it never silently replaces) — an honest failure beats a silent
   // bar. (Live-confirmed on AWS::RDS::DBInstance BackupRetentionPeriod.)
   const createOnlyPaths = dotted(schema.createOnlyProperties);
+  // The conditional-create-only props, kept SEPARATE from createOnlyPaths (the revert BAR
+  // deliberately excludes them — they are mutable in the common case). writeOnlyReincludeOps
+  // consults this to avoid re-including a conditional-create-only write-only prop into a CC
+  // read-modify-write patch, which the provider's update handler would reject as a create-only
+  // "add" (#1330). Same pointer-normalization (pointerToDotted) as createOnlyPaths.
+  const conditionalCreateOnlyPaths = dotted(schema.conditionalCreateOnlyProperties);
   // Build the TOP-LEVEL defaults map. A top-level property may carry its `default`
   // DIRECTLY, or be written as `{ "$ref": "#/definitions/X" }` where definition X holds
   // the `default` (IoTFleetWise Status=DRAFT, HealthLake SseConfiguration, Deadline Queue
@@ -609,6 +616,7 @@ export function parseSchema(schemaJson: string): SchemaInfo {
     readOnlyPaths,
     writeOnlyPaths,
     createOnlyPaths,
+    conditionalCreateOnlyPaths,
     defaults,
     defaultPaths,
     unorderedScalarPaths: unorderedArrayPaths.scalar,

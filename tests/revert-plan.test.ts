@@ -2617,6 +2617,48 @@ describe('writeOnlyReincludeOps (Cloud Control read-modify-write contract, cdkd 
     ]);
   });
 
+  it('does NOT re-include a write-only prop that is CONDITIONAL-create-only (RDS DBInstance DBSnapshotIdentifier) — reverting an unrelated prop must not fail #1330', () => {
+    // AWS::RDS::DBInstance DBSnapshotIdentifier is write-only AND in
+    // conditionalCreateOnlyProperties (create-only ONLY when restoring from a snapshot).
+    // parseSchema deliberately keeps it OUT of createOnlyPaths (so the revert BAR does not
+    // block reverting everyday mutable props — #413/#421), so the isUnderCreateOnly
+    // createOnlyPaths check does NOT catch it. Before the fix, reverting an unrelated
+    // BackupRetentionPeriod re-included `add /DBSnapshotIdentifier`, and because a CC read
+    // handler never returns a write-only prop the update handler saw it as newly ADDED — the
+    // create-only condition — so the WHOLE revert failed (#1330, the #252 failure class). It
+    // must be skipped via conditionalCreateOnlyPaths.
+    const rdsSchema: SchemaInfo = {
+      readOnly: new Set<string>(),
+      writeOnly: new Set(['DBSnapshotIdentifier', 'MasterUserPassword']),
+      createOnly: new Set<string>(),
+      readOnlyPaths: [],
+      writeOnlyPaths: ['DBSnapshotIdentifier', 'MasterUserPassword'],
+      createOnlyPaths: [], // conditional props are NOT here (the #413/#421 split)
+      conditionalCreateOnlyPaths: ['DBSnapshotIdentifier'],
+      defaults: {},
+      defaultPaths: {},
+    };
+    const rdsDeclared = {
+      DBSnapshotIdentifier: 'rds:prod-snap',
+      MasterUserPassword: 'hunter2',
+      BackupRetentionPeriod: 7,
+    };
+    const ops = writeOnlyReincludeOps(rdsDeclared, rdsSchema, [
+      { op: 'add', path: '/BackupRetentionPeriod', value: 7, human: 'x' },
+    ]);
+    // DBSnapshotIdentifier (conditional-create-only) is NOT re-included; the plain
+    // write-only MasterUserPassword still IS (it would silently vanish otherwise).
+    expect(ops).toEqual([
+      {
+        op: 'add',
+        path: '/MasterUserPassword',
+        value: 'hunter2',
+        human:
+          'MasterUserPassword -> re-include write-only (Cloud Control read-modify-write contract)',
+      },
+    ]);
+  });
+
   it('re-includes a NESTED write-only prop (IAM User LoginProfile.Password) — no credential reset (WAVE24)', () => {
     // AWS::IAM::User has only the NESTED write-only path LoginProfile.Password; the
     // top-level write-only set is EMPTY, so the old top-level-only loop re-included
@@ -2957,6 +2999,39 @@ describe('conditional/hard create-only split invariant over real CFn schemas (is
     expect(hardAsserted).toBeGreaterThan(50);
     expect(condAsserted).toBeGreaterThan(20);
     expect(typesWithConditional).toBeGreaterThan(3);
+  });
+
+  it('parseSchema: every CONDITIONAL create-only prop IS carried on conditionalCreateOnlyPaths (for the #1330 write-only re-include skip)', () => {
+    // The conditional props are excluded from createOnlyPaths (asserted above), but they
+    // must still be REACHABLE for writeOnlyReincludeOps to skip a conditional-create-only
+    // write-only prop (#1330). parseSchema exposes them on the separate
+    // conditionalCreateOnlyPaths field.
+    let condAsserted = 0;
+    for (const fx of fixtures) {
+      const info = parseSchema(
+        JSON.stringify({
+          createOnlyProperties: fx.createOnlyProperties,
+          conditionalCreateOnlyProperties: fx.conditionalCreateOnlyProperties,
+        })
+      );
+      const conditional = new Set(info.conditionalCreateOnlyPaths ?? []);
+      const hard = new Set(info.createOnlyPaths);
+      // Every conditional prop is carried on conditionalCreateOnlyPaths (1:1 count — the
+      // field is populated by parseSchema for exactly these props) and NONE of them leak
+      // into the hard createOnlyPaths bar.
+      expect(conditional.size).toBe(fx.conditionalCreateOnlyProperties.length);
+      for (const dotted of conditional) expect(hard.has(dotted)).toBe(false);
+      // The simple TOP-LEVEL conditional props (`/properties/<Name>`, no further segments)
+      // match the test's local pointerToDotted directly, proving the stored values are the
+      // real dotted paths — not just the right count.
+      for (const p of fx.conditionalCreateOnlyProperties) {
+        if (/^\/properties\/[^/]+$/.test(p)) {
+          expect(conditional.has(pointerToDotted(p))).toBe(true);
+        }
+      }
+      condAsserted += fx.conditionalCreateOnlyProperties.length;
+    }
+    expect(condAsserted).toBeGreaterThan(20);
   });
 
   it('consumer (buildRevertPlan/isUnderCreateOnly): a HARD create-only top-level prop bars revert, a CONDITIONAL one does not', () => {
