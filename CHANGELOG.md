@@ -1,3 +1,10 @@
+## [0.12.57](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.56...v0.12.57) (2026-07-11)
+
+
+### Bug Fixes
+
+* **cli:** reject --all combined with named stacks instead of silently overriding ([#1327](https://github.com/go-to-k/cdk-real-drift/issues/1327)) ([#1349](https://github.com/go-to-k/cdk-real-drift/issues/1349)) ([97e0958](https://github.com/go-to-k/cdk-real-drift/commit/97e09582c4b8c04d76d71e48e0696c3f5abd39b5))
+
 ## [0.12.56](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.55...v0.12.56) (2026-07-11)
 
 
