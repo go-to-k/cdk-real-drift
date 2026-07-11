@@ -1,3 +1,10 @@
+## [0.12.100](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.99...v0.12.100) (2026-07-11)
+
+
+### Bug Fixes
+
+* **sweep:** fold subnet/ECS-INACTIVE/KMS-PendingDeletion phantom orphans (new resource_gone arms) ([#1505](https://github.com/go-to-k/cdk-real-drift/issues/1505)) ([200e38e](https://github.com/go-to-k/cdk-real-drift/commit/200e38eccaa2697ea5f1fa81f7cd691d722568cc))
+
 ## [0.12.99](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.98...v0.12.99) (2026-07-11)
 
 
