@@ -448,6 +448,10 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     ProtocolVersion: 'HTTP1',
     IpAddressType: 'ipv4',
     Matcher: { HttpCode: '200' },
+    // TargetType is create-only; a TG that omits it defaults to `instance` and echoes it
+    // undeclared. Equality-gated so a declared lambda/ip/alb value is compared in the
+    // declared loop. Live-verified 2026-07-11.
+    TargetType: 'instance',
   },
   'AWS::ElasticLoadBalancingV2::LoadBalancer': {
     IpAddressType: 'ipv4',
@@ -3833,6 +3837,10 @@ export const ELB_ATTRIBUTE_DEFAULTS: Record<string, Record<string, string>> = {
     'load_balancing.algorithm.type': 'round_robin',
     'load_balancing.cross_zone.enabled': 'use_load_balancer_configuration',
     'slow_start.duration_seconds': '0',
+    // instance/ip TGs return this attribute-bag default even while stickiness is off; bag
+    // values are strings so the trivial-empty drop misses "false". Equality-gated: an
+    // out-of-band stickiness ENABLE ("true") still surfaces.
+    'stickiness.enabled': 'false',
     // latent stickiness defaults AWS returns even while stickiness.enabled is false
     'stickiness.app_cookie.duration_seconds': '86400',
     'stickiness.lb_cookie.duration_seconds': '86400',
@@ -4026,6 +4034,28 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
   // Observed live on fresh (non-imported) Aurora stacks in ap-northeast-1.
   'AWS::RDS::DBInstance': new Set(['DBInstanceIdentifier']),
   'AWS::RDS::DBCluster': new Set(['DBClusterIdentifier']),
+  // The "stored as a lowercase string" identifier family — ElastiCache, DocumentDB,
+  // Neptune, and DMS all lowercase their resource identifier on creation (AWS CLI help:
+  // "This parameter is stored as a lowercase string"), so a template that declares a
+  // mixed-case identifier (e.g. CDK derives it from a construct id) reads back all-lowercase
+  // and a case-sensitive compare false-flags DECLARED drift on every check — a permanent FP
+  // that survives `record` and never converges (a revert just re-writes the mixed case, which
+  // the service lowercases again). Every identifier here is create-only, so case-insensitive
+  // equality hides no revertable drift (a genuine rename is a replacement). ElastiCache
+  // SubnetGroup live-verified; the rest docs-verified from the AWS CLI help. NOTE:
+  // AWS::RDS::DBSubnetGroup.DBSubnetGroupName and AWS::Route53::HostedZone.Name were
+  // live-ruled-out (RDS/Route53 PRESERVE case on read) so they are deliberately NOT added.
+  'AWS::ElastiCache::SubnetGroup': new Set(['CacheSubnetGroupName']),
+  'AWS::ElastiCache::ReplicationGroup': new Set(['ReplicationGroupId']),
+  'AWS::ElastiCache::CacheCluster': new Set(['ClusterName']),
+  'AWS::DocDB::DBCluster': new Set(['DBClusterIdentifier']),
+  'AWS::DocDB::DBInstance': new Set(['DBInstanceIdentifier']),
+  'AWS::DocDB::DBSubnetGroup': new Set(['DBSubnetGroupName']),
+  'AWS::Neptune::DBCluster': new Set(['DBClusterIdentifier']),
+  'AWS::Neptune::DBInstance': new Set(['DBInstanceIdentifier']),
+  'AWS::Neptune::DBSubnetGroup': new Set(['DBSubnetGroupName']),
+  'AWS::DMS::ReplicationInstance': new Set(['ReplicationInstanceIdentifier']),
+  'AWS::DMS::ReplicationSubnetGroup': new Set(['ReplicationSubnetGroupIdentifier']),
   // DMS Endpoint `EndpointType` — the CFn/CDK value is lowercase (`source` /
   // `target`) but the DMS API echoes it UPPERCASE (`SOURCE` / `TARGET`) on the
   // DescribeEndpoints read (the SDK_OVERRIDES reader), so a case-sensitive compare
