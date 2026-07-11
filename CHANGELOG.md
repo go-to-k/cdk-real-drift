@@ -1,3 +1,11 @@
+## [0.12.74](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.73...v0.12.74) (2026-07-11)
+
+
+### Bug Fixes
+
+* **read)+fix(revert:** record-endorse + real delete for an out-of-band Route53 RecordSet ([#1431](https://github.com/go-to-k/cdk-real-drift/issues/1431)) ([#1446](https://github.com/go-to-k/cdk-real-drift/issues/1446)) ([0acddde](https://github.com/go-to-k/cdk-real-drift/commit/0acdddeb77ccb9a46528a3deeb8cf91ea68613f2))
+* **release:** parse compound fix(x)+fix(y) commit types in the semantic-release headerPattern ([#1448](https://github.com/go-to-k/cdk-real-drift/issues/1448)) ([63d1d53](https://github.com/go-to-k/cdk-real-drift/commit/63d1d53cdbd53211954405afa501978c3dfa9226))
+
 ## [0.12.73](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.72...v0.12.73) (2026-07-11)
 
 
