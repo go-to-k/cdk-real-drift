@@ -5,6 +5,7 @@
 import { isStackNotDeployed, StackNotCheckableError } from '../aws-errors.js';
 import { isInteractive, parseCommonArgs } from '../cli-args.js';
 import { applyIgnores, loadConfig } from '../config/config-file.js';
+import { createAccountGate } from './account-gate.js';
 import { resolveStacks } from './resolve-stacks.js';
 import { gatherFindings } from './gather.js';
 import { gatherWithProgress, progressLabel } from './progress.js';
@@ -50,7 +51,14 @@ export async function runRecord(args: string[]): Promise<number> {
   let wroteAny = false;
   // gather-phase spinner (see gatherWithProgress) — text mode + TTY only.
   const showProgress = !a.json && isInteractive();
-  for (const [idx, { stackName, region, template }] of stacks.entries()) {
+  // #1309: the #740 cross-account mismatch gate (previously check-only). Without it, a
+  // stack env-pinned to another account either misreported "not deployed yet" or — with
+  // a same-named stack in the reachable account — snapshotted the WRONG account's live
+  // values into a fresh `<stack>.<wrong-account>.<region>.json` baseline as reviewed
+  // intent. Skip (not error), mirroring check: a multi-account app is recorded one
+  // account at a time.
+  const accountGate = createAccountGate('record');
+  for (const [idx, { stackName, region, account, template }] of stacks.entries()) {
     if (!region) {
       const msg =
         'no region — set env on the stack, pass --region, or set a region for the AWS profile';
@@ -60,6 +68,20 @@ export async function runRecord(args: string[]): Promise<number> {
       continue;
     }
     try {
+      // #1309 pre-read gate: a proven mismatch skips BEFORE any live read, so the wrong
+      // account is never even queried (same placement as check's gate).
+      const mismatch = await accountGate.preRead(account, region);
+      if (mismatch.skip) {
+        console.error(`note: ${stackName}: ${mismatch.message}`);
+        if (a.json)
+          jsonReports.push({
+            stack: stackLabel(stackName, region),
+            recorded: 0,
+            wrote: false,
+            error: mismatch.message,
+          });
+        continue;
+      }
       // gather FIRST: the baseline filename embeds the accountId, which only the
       // gather (DescribeStackResources) resolves. (R21 — was load-then-gather.)
       // `template` (synth) recovers GetTemplate's `?`-masked non-ASCII literals.
@@ -68,6 +90,22 @@ export async function runRecord(args: string[]): Promise<number> {
         progressLabel(idx, stacks.length, stackName, region),
         () => gatherFindings(stackName, region, undefined, template)
       );
+      // #1309 post-read guard (belt-and-suspenders, mirrors check's #740 case 2): if STS
+      // could not resolve the caller, the pre-read gate let the read proceed — a
+      // SAME-NAMED stack in the reachable account means the state just read is the wrong
+      // account's. Never write it into a baseline.
+      const readMismatch = accountGate.postRead(account, desired.accountId);
+      if (readMismatch.skip) {
+        console.error(`note: ${stackName}: ${readMismatch.message}`);
+        if (a.json)
+          jsonReports.push({
+            stack: stackLabel(stackName, region),
+            recorded: 0,
+            wrote: false,
+            error: readMismatch.message,
+          });
+        continue;
+      }
       // #786: warn loudly when the stack is mid-operation / failed — recording now would
       // snapshot TRANSIENT live values into the git-committed baseline. Same wording/stderr
       // routing check uses; a --yes run still records (just warned), matching check's behavior.
