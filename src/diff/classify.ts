@@ -1664,7 +1664,7 @@ function matchesPropertyTransform(
   //    when array reindexing (unordered-array sort) makes the raw-tree index unreliable — e.g.
   //    Cassandra `$lowercase(ColumnType)` needs `{ ColumnType: <value> }` regardless of position.
   //  - declaredValue itself: for a `$`-self-referencing expression.
-  const scopes = [parentObject, rootObject, { [leafName]: declaredValue }, declaredValue];
+  const scopes = buildTransformScopes(declaredValue, parentObject, rootObject, leafName);
   for (const alt of transformExpr.split(' $OR ')) {
     const expr = alt.trim();
     if (!expr) continue;
@@ -1680,6 +1680,67 @@ function matchesPropertyTransform(
     }
   }
   return false;
+}
+
+// #1304: build the ordered list of JSONata input scopes for a `propertyTransform`, INCLUDING a
+// type-coerced retry for the numeric-string / number mismatch. `resolveRef` resolves a `Ref` to a
+// CloudFormation Parameter from DescribeStacks parameter values, which are ALWAYS strings — even for
+// a `Type: Number` parameter — so a template that parameterizes e.g. `StartingPositionTimestamp`
+// carries the declared leaf as the STRING `"1700000000"`. A numeric transform (`... * 1000`) then
+// throws JSONata `T2001` ("left side of * must be a number") → fails open → the s→ms declared FP
+// #881 fixed is back for the parameterized form. The reverse also bites: GameLift Fleet
+// `AnywhereConfiguration.Cost` uses `$contains(Cost, ".") ? ...` which throws on a number-declared
+// Cost. So when the declared LEAF is a numeric string, append scopes with a `Number()`-coerced leaf;
+// when it is a number, append scopes with a `String()`-coerced leaf. The coerced scopes are tried
+// AFTER the raw ones, so an expression that already matches uncoerced is unaffected, and the fold
+// stays STRICTLY equality-gated (transform(coerced-declared) must still deep-equal live) — detection
+// is preserved. Purely additive: no coercion when the leaf is neither a numeric string nor a number.
+function buildTransformScopes(
+  declaredValue: unknown,
+  parentObject: unknown,
+  rootObject: unknown,
+  leafName: string
+): unknown[] {
+  const scopes: unknown[] = [
+    parentObject,
+    rootObject,
+    { [leafName]: declaredValue },
+    declaredValue,
+  ];
+  const coerced = coerceNumericLeaf(declaredValue);
+  if (coerced === undefined) return scopes;
+  // Rebuild the by-name synthetic + parent/root scopes with the coerced leaf substituted, so an
+  // expression referencing the leaf by name OR through its parent/root object sees a number where
+  // the transform expects one (and vice versa).
+  const coercedParent = substituteLeaf(parentObject, leafName, coerced);
+  const coercedRoot = substituteLeaf(rootObject, leafName, coerced);
+  if (coercedParent !== undefined) scopes.push(coercedParent);
+  if (coercedRoot !== undefined && coercedRoot !== coercedParent) scopes.push(coercedRoot);
+  scopes.push({ [leafName]: coerced }, coerced);
+  return scopes;
+}
+
+// Return the type-coerced counterpart of a leaf when it is a numeric string (→ Number) or a number
+// (→ String), else `undefined` (nothing to retry). A numeric string is one that round-trips through
+// Number without becoming NaN and is non-empty — `"1700000000"` → 1700000000; `"abc"`/`""` → skip.
+function coerceNumericLeaf(value: unknown): number | string | undefined {
+  if (typeof value === 'string') {
+    if (value.trim() === '') return undefined;
+    const n = Number(value);
+    return Number.isNaN(n) ? undefined : n;
+  }
+  if (typeof value === 'number') return String(value);
+  return undefined;
+}
+
+// Return a shallow copy of `obj` with `obj[leafName]` replaced by `coerced`, when `obj` is a plain
+// object that actually carries that leaf; else `undefined` (no coerced variant of this scope). Only
+// the direct leaf is substituted — the transform reads it by that exact name from the parent/root.
+function substituteLeaf(obj: unknown, leafName: string, coerced: number | string): unknown {
+  if (obj == null || typeof obj !== 'object' || Array.isArray(obj)) return undefined;
+  const rec = obj as Record<string, unknown>;
+  if (!(leafName in rec)) return undefined;
+  return { ...rec, [leafName]: coerced };
 }
 
 // Resolve the PARENT object of a dotted drift path within a value tree. `PartitionKeyColumns.0.

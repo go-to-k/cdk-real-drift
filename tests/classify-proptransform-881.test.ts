@@ -111,4 +111,41 @@ describe('#881 propertyTransform folds service-transformed declared echoes', () 
     const f = classifyResource(res, { StartingPositionTimestamp: 1_700_000_000_000 }, baseSchema);
     expect(declaredPaths(f)).toContain('StartingPositionTimestamp');
   });
+
+  // #1304: a template that parameterizes StartingPositionTimestamp carries the declared leaf as the
+  // STRING "1700000000" (resolveRef reads DescribeStacks parameter values, which are ALWAYS strings,
+  // even for a `Type: Number` parameter). The `... * 1000` transform then throws JSONata T2001 on
+  // the string → fails open → the s→ms declared FP is back. The Number()-coerced retry folds it.
+  it('#1304 StartingPositionTimestamp declared as a NUMERIC STRING (parameterized Ref) still folds', () => {
+    const res = mk('AWS::Lambda::EventSourceMapping', {
+      StartingPositionTimestamp: '1700000000',
+    });
+    const s = schema({ StartingPositionTimestamp: 'StartingPositionTimestamp * 1000' });
+    // live echoes milliseconds; declared is the string form → WITHOUT the coerced retry this is a FP
+    const f = classifyResource(res, { StartingPositionTimestamp: 1_700_000_000_000 }, s);
+    expect(declaredPaths(f)).not.toContain('StartingPositionTimestamp');
+  });
+
+  it('#1304 NEGATIVE: a numeric-string declared with a genuinely different live STILL surfaces', () => {
+    const res = mk('AWS::Lambda::EventSourceMapping', {
+      StartingPositionTimestamp: '1700000000',
+    });
+    const s = schema({ StartingPositionTimestamp: 'StartingPositionTimestamp * 1000' });
+    // coerced Number("1700000000") * 1000 != live → real drift is preserved
+    const f = classifyResource(res, { StartingPositionTimestamp: 9_999_999_999_999 }, s);
+    expect(declaredPaths(f)).toContain('StartingPositionTimestamp');
+  });
+
+  // #1304 reverse direction: the GameLift Fleet AnywhereConfiguration.Cost transform
+  // `$contains(Cost, ".") ? Cost : Cost & ".0"` throws on a NUMBER-declared Cost — the String()
+  // -coerced retry lets a number-declared Cost fold against the live decimal-string echo.
+  it('#1304 GameLift Fleet AnywhereConfiguration.Cost declared as a NUMBER folds (String coercion)', () => {
+    const res = mk('AWS::GameLift::Fleet', { AnywhereConfiguration: { Cost: 25 } });
+    const s = schema({
+      'AnywhereConfiguration.Cost': '$contains(Cost, ".") ? Cost : Cost & ".0"',
+    });
+    // live stores the canonical decimal string "25.0" — number-declared throws $contains uncoerced
+    const f = classifyResource(res, { AnywhereConfiguration: { Cost: '25.0' } }, s);
+    expect(declaredPaths(f)).not.toContain('AnywhereConfiguration.Cost');
+  });
 });
