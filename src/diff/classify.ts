@@ -86,6 +86,7 @@ import {
   alignNameValueSubset,
   RATE_EXPRESSION_PATHS,
   resolveGeneratedDefault,
+  NESTED_OBJECT_ARRAY_IDENTITY,
   sortNestedObjectArrays,
   sortUnorderedObjectArray,
   stripAsymmetricIdentityFields,
@@ -1298,27 +1299,6 @@ const isPolicyStatementArray = (arr: unknown[]): boolean =>
 const isInlinePolicyArray = (arr: unknown[]): boolean =>
   arr.length > 0 && arr.every((el) => isNestedObject(el) && 'PolicyDocument' in el);
 
-// A `{Key,Value}` tag list — the shape canonicalizeTagLists (normalize/noise.ts) SORTS on
-// BOTH compare sides by its `Key` identity field, while the live side additionally has its
-// `aws:*` tags stripped. A per-element VALUE change then diffs at a `Tags.<sortedIdx>.Value`
-// path whose index is the SORTED+STRIPPED position — it does NOT map to the RAW live model
-// (raw order, aws:* tags present) Cloud Control patches, so a sub-path patch lands on the
-// WRONG element (silent corruption) or out of range (loud reject) (#750). The safe revert is
-// a WHOLE-ARRAY write of the declared list (revert then re-attaches aws:* managed tags via
-// tagPreservingOps where the array is a tag property), collapsed by the revert plan exactly
-// like an UNORDERED_OBJECT_ARRAY.
-// #1271: this misalignment is NOT unique to `{Key,Value}` tag lists. `canonicalizeTagLists`
-// sorts EVERY object array whose every element carries ANY of the five identity fields
-// (`Key`/`Id`/`AttributeName`/`IndexName`/`Name`) — CloudWatch Alarm `Dimensions` ({Name,Value}),
-// S3 `LifecycleConfiguration.Rules` ({Id,...}), DynamoDB `GlobalSecondaryIndexes` ({IndexName})
-// / `AttributeDefinitions` ({AttributeName}). A per-element sub-value drift inside any of them
-// diffs at the SORTED index, which does not map to the raw model Cloud Control patches — a
-// per-element op would revert the WRONG element (or, for the top-level {Key,Value} case,
-// leave the real drift while corrupting an innocent element). So hoist the whole class, not
-// just Key/Value tags: any identity-sorted object array whose value IS the top-level array.
-const isIdentitySortedObjectArray = (arr: unknown[]): boolean =>
-  arr.length > 0 && identityField(arr) !== undefined;
-
 // True when every key of `sub` is present in `sup` with an equal value (objects
 // recurse so a nested declared block must also be a subset; everything else is
 // deep-equal). Used to align a declared policy statement to the live statement it is
@@ -1654,6 +1634,63 @@ function remapSortedIndexToDeclared(
   if (el === undefined) return path;
   const rawIdx = rawDeclared.findIndex((e) => deepEqual(e, el));
   return rawIdx < 0 ? path : `${arrayKey}.${rawIdx}${m[2]}`;
+}
+
+// #1271/#1306: does a per-element declared-drift path CROSS an object array that classify
+// SORTED before the positional diff — either identity-keyed by canonicalizeTagLists (an
+// array whose every element carries one of the five IDENTITY_FIELDS, at ANY depth) OR a
+// nested insertionOrder:false array sorted by sortNestedObjectArrays? If so, the drift's
+// array index is a SORTED position that does NOT map to the RAW live model Cloud Control
+// patches — a sub-path patch would corrupt the wrong (unchanged) live element while the real
+// drift survives. Returns the OUTERMOST such array's own path + its declared value so the
+// caller can collapse the finding to a whole-ARRAY revert (the #1241 {Key,Value} hoist,
+// generalized to the whole class) — replacing just that array, not the whole top-level
+// property (a nested `DistributionConfig.Origins` reverts Origins, never all of
+// DistributionConfig). The outermost array is the collapse target because any array ABOVE it
+// is unsorted (its index is raw and addressable), while everything at/below the sorted array
+// has a misaligned index. A SINGLE-element array can never be reordered (sorted == raw) so it
+// is skipped — the length check is the only order-independent misalignment signal available
+// here (both compare sides are already canonicalized, so raw order is not visible), and it is
+// what keeps #529's single-entry nested {Key,Value} list (inside the order-significant Logs
+// Transformer pipeline) a precise per-element patch. Walks the declared value `v` (rooted at
+// top-level key `k`); `nestedSubPaths` / `nestedIdentityBySubPath` are keyed RELATIVE to `k`.
+function crossedSortedArrayRevert(
+  v: unknown,
+  k: string,
+  driftPath: string,
+  resourceType: string,
+  nestedSubPaths: readonly string[],
+  nestedIdentityBySubPath: Record<string, string>
+): { path: string; value: unknown } | undefined {
+  if (!driftPath.startsWith(`${k}.`)) return undefined;
+  const orderSigKeys = ORDER_SIGNIFICANT_ARRAY_KEYS[resourceType];
+  const orderSigPaths = ORDER_SIGNIFICANT_PATHS[resourceType];
+  const rel = driftPath.slice(k.length + 1).split('.');
+  let cur: unknown = v;
+  let arrPathRel = ''; // dotted path (object keys only) of `cur`, relative to k
+  let parentKey = k; // the key name the current value sits under (k for the top-level value)
+  for (const seg of rel) {
+    if (Array.isArray(cur)) {
+      const arr: unknown[] = cur;
+      if (!/^\d+$/.test(seg)) return undefined; // a non-index step off an array is malformed
+      const fullPath = arrPathRel ? `${k}.${arrPathRel}` : k;
+      // An ORDER-SIGNIFICANT array (CodePipeline Stages/Actions, Logs Transformer pipeline,
+      // Scheduler PlacementStrategy) is NEVER sorted — its index is RAW and addressable — so
+      // it must stay a surgical per-element revert. Skip it and descend (raw index aligns).
+      const orderSig = (orderSigKeys?.has(parentKey) || orderSigPaths?.has(fullPath)) ?? false;
+      const idField = identityField(arr) ?? nestedIdentityBySubPath[arrPathRel];
+      const sortable = !orderSig && (idField !== undefined || nestedSubPaths.includes(arrPathRel));
+      if (sortable && arr.length >= 2) return { path: fullPath, value: arr };
+      cur = arr[Number(seg)]; // aligned here → descend to check for a deeper reordered array
+    } else if (cur !== null && typeof cur === 'object') {
+      cur = (cur as Record<string, unknown>)[seg];
+      arrPathRel = arrPathRel ? `${arrPathRel}.${seg}` : seg;
+      parentKey = seg;
+    } else {
+      return undefined;
+    }
+  }
+  return undefined;
 }
 
 // Translate a Custom::S3BucketNotifications CR's DECLARED `NotificationConfiguration` (rendered
@@ -3408,6 +3445,13 @@ export function classifyResource(
           .map((p) => p.slice(k.length + 1))
       ),
     ];
+    // #1306: per-nested-array identity fields for THIS key, re-keyed from the full dotted
+    // NESTED_OBJECT_ARRAY_IDENTITY path to the `${k}.`-stripped sub-path sortNestedObjectArrays
+    // uses — so the nested set sorts by identity (stable under a non-identity value change)
+    // rather than full canonical JSON (which cascades a single change into several findings).
+    const nestedIdentityBySubPath: Record<string, string> = {};
+    for (const [fullPath, idf] of Object.entries(NESTED_OBJECT_ARRAY_IDENTITY[resourceType] ?? {}))
+      if (fullPath.startsWith(`${k}.`)) nestedIdentityBySubPath[fullPath.slice(k.length + 1)] = idf;
     let declaredVal: unknown = v;
     let liveVal: unknown = live[k];
     // For an UNORDERED_OBJECT_ARRAY, the source whose TOP-LEVEL order still matches the
@@ -3492,20 +3536,24 @@ export function classifyResource(
       // template order, so its elements deep-equal the sorted declaredVal's elements AND
       // its index is the template index — exactly what remapSortedIndexToDeclared needs.
       const declaredNestedSorted =
-        nestedSubPaths.length > 0 ? sortNestedObjectArrays(v, nestedSubPaths) : v;
+        nestedSubPaths.length > 0
+          ? sortNestedObjectArrays(v, nestedSubPaths, nestedIdentityBySubPath)
+          : v;
       // Key the sort on the element's IDENTITY field (when the type has one) so a change to a
       // NON-identity sibling keeps the element aligned on both sides (else a mutable field that
       // sorts before the identity — Cognito ScopeDescription, Secret KmsKeyId — misaligns).
       const idField = UNORDERED_OBJECT_ARRAY_IDENTITY[resourceType]?.[k];
       declaredVal = sortUnorderedObjectArray(declaredNestedSorted, idField);
       liveVal = sortUnorderedObjectArray(
-        nestedSubPaths.length > 0 ? sortNestedObjectArrays(live[k], nestedSubPaths) : live[k],
+        nestedSubPaths.length > 0
+          ? sortNestedObjectArrays(live[k], nestedSubPaths, nestedIdentityBySubPath)
+          : live[k],
         idField
       );
       if (Array.isArray(declaredNestedSorted)) declaredRemapSource = declaredNestedSorted;
     } else if (nestedSubPaths.length > 0) {
-      declaredVal = sortNestedObjectArrays(v, nestedSubPaths);
-      liveVal = sortNestedObjectArrays(live[k], nestedSubPaths);
+      declaredVal = sortNestedObjectArrays(v, nestedSubPaths, nestedIdentityBySubPath);
+      liveVal = sortNestedObjectArrays(live[k], nestedSubPaths, nestedIdentityBySubPath);
     }
     // R95: the live side is compared in FULL — no subset projection. An R75
     // generic `projectLiveToDeclaredSubset` used to drop live elements whose
@@ -3875,13 +3923,26 @@ export function classifyResource(
       // per-element pointer against a sorted index that does not exist in the raw model.
       // Only fires for a per-element (`${k}.` sub-path) drift; a whole-array drift already
       // carries the right path. The unorderedObjArray branch above handles the type-/schema-
-      // opted-in unordered object arrays; this covers the identity-sorted arrays it misses
-      // (CloudWatch Alarm Dimensions, S3 lifecycle Rules, DynamoDB GSI/AttributeDefinitions, …).
-      const identitySortedWhole =
-        !unorderedObjArray &&
-        Array.isArray(v) &&
-        isIdentitySortedObjectArray(v) &&
-        d.path.startsWith(`${k}.`);
+      // opted-in unordered object arrays; this covers the identity-sorted arrays it misses.
+      // #1271 (top-level identity arrays) landed via #1440; #1306 extends the hoist to a per-
+      // element drift whose path crosses a sorted object array at ANY depth — a nested
+      // insertionOrder:false array (Bedrock Guardrail FiltersConfig) OR a nested identity-keyed
+      // array (S3 LifecycleConfiguration.Rules, CloudFront DistributionConfig.Origins). Collapse
+      // to a whole-ARRAY revert of that SPECIFIC array (its own path + declared value), so a
+      // nested Origins reverts Origins — never all of DistributionConfig; the plan reads
+      // Finding.wholeArrayRevert (tagPreservingOps still re-attaches aws:* tags where the array
+      // is a tag property). Superset of #1440's top-level-only gate (which used {path:k,value:v};
+      // for a top-level array where v IS the array this returns the identical {path:k,value:arr}).
+      const crossedSorted = unorderedObjArray
+        ? undefined
+        : crossedSortedArrayRevert(
+            v,
+            k,
+            d.path,
+            resourceType,
+            nestedSubPaths,
+            nestedIdentityBySubPath
+          );
       const unorderedExtra =
         unorderedObjArray && Array.isArray(declaredVal) && declaredRemapSource
           ? {
@@ -3892,8 +3953,8 @@ export function classifyResource(
               path: remapSortedIndexToDeclared(d.path, k, declaredVal, declaredRemapSource),
               wholeArrayRevert: { path: k, value: v },
             }
-          : identitySortedWhole
-            ? { wholeArrayRevert: { path: k, value: v } }
+          : crossedSorted
+            ? { wholeArrayRevert: crossedSorted }
             : {};
       pushDeclaredFinding(findings, {
         logicalId,

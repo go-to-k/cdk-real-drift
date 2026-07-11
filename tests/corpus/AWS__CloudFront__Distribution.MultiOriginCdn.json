@@ -1,6 +1,6 @@
 {
   "corpusVersion": 1,
-  "description": "Identity-keyed array sets: a multi-origin distribution returns Origins in a different ORDER (sorted by Id on both sides — not drift), while a REAL change inside one origin (OriginPath) still surfaces as declared drift with the post-sort index path.",
+  "description": "Identity-keyed array sets: a multi-origin distribution returns Origins in a different ORDER (sorted by Id on both sides — not drift), while a REAL change inside one origin (OriginPath) still surfaces as declared drift. The finding carries the post-sort index path AND (#1271) a wholeArrayRevert hoisting to the whole DistributionConfig.Origins array, so the revert replaces the array by declared value rather than patching a post-sort index that does not map to the raw live model.",
   "resource": {
     "logicalId": "MultiOriginCdn",
     "resourceType": "AWS::CloudFront::Distribution",
@@ -63,7 +63,22 @@
       "path": "DistributionConfig.Origins.1.OriginPath",
       "desired": "/v1",
       "actual": "/v2",
-      "physicalId": "E7F8G9H0J1K2L3"
+      "physicalId": "E7F8G9H0J1K2L3",
+      "wholeArrayRevert": {
+        "path": "DistributionConfig.Origins",
+        "value": [
+          {
+            "DomainName": "api.corpus.example.com",
+            "Id": "api-origin",
+            "OriginPath": ""
+          },
+          {
+            "DomainName": "corpus-assets.s3.us-east-1.amazonaws.com",
+            "Id": "static-assets",
+            "OriginPath": "/v1"
+          }
+        ]
+      }
     }
   ]
 }

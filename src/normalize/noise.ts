@@ -5571,18 +5571,60 @@ export const UNORDERED_NESTED_OBJECT_ARRAY_PATHS: Record<string, ReadonlySet<str
   ]),
 };
 
+// #1306: per-type NESTED object-array IDENTITY fields — the nested twin of
+// UNORDERED_OBJECT_ARRAY_IDENTITY (which reaches TOP-LEVEL arrays only). Keyed by
+// resourceType -> { full DOTTED path (from the resource root, matching
+// UNORDERED_NESTED_OBJECT_ARRAY_PATHS) -> the element's identity field }. Passed to
+// sortNestedObjectArrays so the nested set is sorted by identity FIRST (then canonical
+// JSON), keeping an element in the SAME aligned slot on both compare sides when a
+// NON-identity value drifts — otherwise a plain canonical-JSON sort moves the changed
+// element to a new slot and the positional diff CASCADES into several bogus findings
+// (a single out-of-band Guardrail FiltersConfig OutputStrength change reported 3 drifts).
+// Only OBJECT arrays whose elements carry a stable identity + a mutable sibling need this;
+// scalar sets (Headers/Aliases/KafkaBootstrapServers/NonKeyAttributes) do not. The
+// identity need not be one of canonicalizeTagLists's five IDENTITY_FIELDS — these are
+// per-type (Type/Text/ContainerPort/SourceContainer/ConditionKey).
+export const NESTED_OBJECT_ARRAY_IDENTITY: Record<string, Record<string, string>> = {
+  'AWS::Bedrock::Guardrail': {
+    'ContentPolicyConfig.FiltersConfig': 'Type',
+    'TopicPolicyConfig.TopicsConfig': 'Name',
+    'SensitiveInformationPolicyConfig.PiiEntitiesConfig': 'Type',
+    'SensitiveInformationPolicyConfig.RegexesConfig': 'Name',
+    'WordPolicyConfig.WordsConfig': 'Text',
+  },
+  'AWS::ECS::TaskDefinition': {
+    'ContainerDefinitions.PortMappings': 'ContainerPort',
+    'ContainerDefinitions.VolumesFrom': 'SourceContainer',
+  },
+  'AWS::Backup::BackupSelection': {
+    'BackupSelection.ListOfTags': 'ConditionKey',
+  },
+};
+
 // Return a deep clone of `value` (a declared/live property subtree rooted at one
 // top-level key) with the object array at each of `subPaths` (dotted, RELATIVE to that
 // root) sorted into canonical order. Applied to BOTH the declared and live side before
 // the positional nested diff so a reordered-but-equal set aligns; a non-array or absent
 // path is left untouched, and a genuine element change still differs after the sort.
-export function sortNestedObjectArrays(value: unknown, subPaths: readonly string[]): unknown {
+export function sortNestedObjectArrays(
+  value: unknown,
+  subPaths: readonly string[],
+  // #1306: per-sub-path identity field (keyed by the SAME relative sub-path as `subPaths`).
+  // Without it a nested unordered array is sorted by full canonical JSON, so a per-element
+  // VALUE change moves the element to a new sorted slot and the positional diff cascades to
+  // several bogus findings (a 1-change Bedrock Guardrail FiltersConfig edit reported 3×).
+  // Keying the sort on the element identity FIRST (FiltersConfig→Type, WordsConfig→Text, …)
+  // keeps the changed element in the SAME aligned slot on both sides, so only it differs —
+  // the nested twin of UNORDERED_OBJECT_ARRAY_IDENTITY for the top-level branch.
+  identityBySubPath?: Record<string, string>
+): unknown {
   if (subPaths.length === 0 || value === null || typeof value !== 'object') return value;
   // A sub-path may cross an ARRAY (ECS `ContainerDefinitions.PortMappings`: the parent
   // ContainerDefinitions is itself an array, so PortMappings lives one level down inside
   // EACH element). Recurse element-wise, applying the same remaining sub-paths inside
   // every element, so the nested set is sorted within each container.
-  if (Array.isArray(value)) return value.map((el) => sortNestedObjectArrays(el, subPaths));
+  if (Array.isArray(value))
+    return value.map((el) => sortNestedObjectArrays(el, subPaths, identityBySubPath));
   const clone = structuredClone(value) as Record<string, unknown>;
   for (const sub of subPaths) {
     const segs = sub.split('.');
@@ -5593,7 +5635,8 @@ export function sortNestedObjectArrays(value: unknown, subPaths: readonly string
         next !== null && typeof next === 'object' ? (next as Record<string, unknown>) : undefined;
     }
     const last = segs[segs.length - 1] as string;
-    if (cur && Array.isArray(cur[last])) cur[last] = sortUnorderedObjectArray(cur[last]);
+    if (cur && Array.isArray(cur[last]))
+      cur[last] = sortUnorderedObjectArray(cur[last], identityBySubPath?.[sub]);
   }
   return clone;
 }
