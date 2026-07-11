@@ -647,6 +647,27 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('#1289: undeclared ClientVpnEndpoint SessionTimeoutHours -> add op writing the 24 KNOWN_DEFAULTS default, not a no-op remove', () => {
+    // AWS::EC2::ClientVpnEndpoint SessionTimeoutHours folds atDefault at its constant
+    // KNOWN_DEFAULTS default (24, #1102). It is a CLIENT_VPN_SCALAR_PARAMS writer prop, so a
+    // bare `remove` is un-expressible (the writer throws "cannot be cleared … update it
+    // manually") — exactly the VpnPort selective-writer no-op class. Revert of an out-of-band
+    // ModifyClientVpnEndpoint --session-timeout-hours must write the 24 default explicitly.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::EC2::ClientVpnEndpoint',
+      path: 'SessionTimeoutHours',
+      actual: 12,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/SessionTimeoutHours',
+      value: 24,
+      prior: 12,
+    });
+  });
+
   it('#912: undeclared ClientVpnEndpoint DisconnectOnSessionTimeout -> add op writing the true KNOWN_DEFAULTS default', () => {
     // Same selective-writer no-op class as VpnPort; write the `true` KNOWN_DEFAULTS default.
     const f = F({
