@@ -111,7 +111,13 @@ import {
   ListRulesCommand,
   type Rule as EventBridgeRule,
 } from '@aws-sdk/client-eventbridge';
-import { type AliasListEntry, KMSClient, ListAliasesCommand } from '@aws-sdk/client-kms';
+import {
+  type AliasListEntry,
+  type GrantListEntry,
+  KMSClient,
+  ListAliasesCommand,
+  ListGrantsCommand,
+} from '@aws-sdk/client-kms';
 import {
   type AliasConfiguration as LambdaAliasConfiguration,
   type EventSourceMappingConfiguration,
@@ -269,8 +275,9 @@ export type ChildEnumerator = (ctx: EnumeratorContext) => Promise<AddedChild[]>;
 // Cognito User Pools (clients) the sixth; AppSync GraphQL APIs (data sources) the seventh;
 // CloudWatch Logs log groups (metric filters) the eighth; Elastic Load Balancing v2 load
 // balancers (listeners) the ninth; EC2 VPCs (subnets) the tenth; EC2 route tables
-// (routes) the eleventh; ECS clusters (services) the twelfth; KMS keys (aliases) the
-// thirteenth; AppConfig applications (environments) the fourteenth; Elastic Load Balancing
+// (routes) the eleventh; ECS clusters (services) the twelfth; KMS keys (aliases, plus an
+// out-of-band `create-grant` surfaced as a synthetic AWS::KMS::Grant — grants are not a CFn
+// type, #835) the thirteenth; AppConfig applications (environments) the fourteenth; Elastic Load Balancing
 // v2 listeners (rules) the fifteenth; EFS file systems (mount targets) the sixteenth;
 // RDS DB clusters (DB instances) the seventeenth; Route53 hosted zones (record sets) the
 // eighteenth; EC2 network ACLs (NACL entries) the nineteenth; S3 buckets (an out-of-band
@@ -4520,7 +4527,7 @@ async function pageAliases(client: KMSClient, keyId: string): Promise<AliasListE
   return out;
 }
 
-async function enumerateKmsKeyChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+export async function enumerateKmsKeyChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
   const { parent, desired, region } = ctx;
   const keyId = parent.physicalId; // a Key's physical id IS its KeyId (UUID)
   if (!keyId) return [];
@@ -4545,7 +4552,101 @@ async function enumerateKmsKeyChildren(ctx: EnumeratorContext): Promise<AddedChi
     .filter((a): a is AliasListEntry & { AliasName: string } => typeof a.AliasName === 'string')
     .map((a) => ({ name: a.AliasName }));
 
-  return diffKmsKeyChildren({ declaredAliasNames, liveAliases });
+  // The second out-of-band dimension (#835): KMS grants. A grant is NOT a CloudFormation /
+  // Cloud Control resource (no `AWS::KMS::Grant` type exists), so an `aws kms create-grant` —
+  // delegating key-use permission to an arbitrary principal (a cross-account decrypt vector) —
+  // is invisible to cdk / CFn drift AND to the Key's own model.
+  const grants = await pageGrants(client, keyId);
+  const liveGrants = grants
+    .filter((g): g is GrantListEntry & { GrantId: string } => typeof g.GrantId === 'string')
+    .map((g) => ({
+      grantId: g.GrantId,
+      name: g.Name,
+      granteePrincipal: g.GranteePrincipal,
+      retiringPrincipal: g.RetiringPrincipal,
+      operations: g.Operations,
+    }));
+
+  return diffKmsKeyChildren({ declaredAliasNames, liveAliases }).concat(
+    diffKmsKeyGrants({ liveGrants })
+  );
+}
+
+// ── KMS grants ─────────────────────────────────────────────────────────────
+// A KMS grant is a standalone permission delegation on a key — NOT a CloudFormation resource
+// (there is no `AWS::KMS::Grant` type). So cdkrd models an out-of-band grant with a SYNTHETIC
+// `AWS::KMS::Grant` resource type: the finding's identity is the GrantId, and revert removes it
+// via the `deleteKmsGrant` SDK deleter (RevokeGrant keyed on the parent key + GrantId), not CC —
+// CC has no handler for a type it does not know. gather likewise skips a CC GetResource for it
+// (CC_GET_UNSUPPORTED_ADDED_TYPES) and records the enumerator's `live` snippet.
+//
+// THE FALSE-POSITIVE HAZARD: AWS SERVICES auto-create grants on a customer key whenever a
+// stack-declared resource USES that key — a Lambda whose env vars are encrypted with the key
+// gets a grant with `RetiringPrincipal: lambda.<region>.amazonaws.com` (verified live), and
+// EBS / RDS / DynamoDB / SecretsManager / etc. do the same. Those are AWS-managed side effects
+// of a DECLARED resource, not a user's out-of-band change, so surfacing them would false-flag
+// every such clean deploy (and offer a destructive RevokeGrant that would break the service).
+// The discriminator (verified live): a service-created grant names an AWS SERVICE PRINCIPAL
+// (`<service>.amazonaws.com`, optionally regionalized) as its `GranteePrincipal` OR its
+// `RetiringPrincipal`; a genuine out-of-band human grant names an IAM ARN principal and has no
+// service retiring principal. Fold any grant with a service principal on either side; surface
+// only a grant whose grantee is a non-service (IAM) principal AND whose retiring principal is
+// not a service. This can never mask a genuine rogue grant (a human grant to a service principal
+// is not a meaningful attack — the service already has its own grants), and never surfaces the
+// AWS-managed ones.
+
+// An AWS service principal is `<label>.amazonaws.com` or a regionalized
+// `<label>.<region>.amazonaws.com` — NOT an `arn:` IAM principal. Used to tell an AWS-managed,
+// service-created grant from a user's out-of-band `create-grant`.
+export function isAwsServicePrincipal(principal: string | undefined): boolean {
+  if (typeof principal !== 'string' || principal.startsWith('arn:')) return false;
+  return /^[a-z0-9-]+(\.[a-z0-9-]+)*\.amazonaws\.com$/.test(principal);
+}
+
+export interface KmsKeyGrantInput {
+  liveGrants: {
+    grantId: string;
+    name?: string | undefined;
+    granteePrincipal?: string | undefined;
+    retiringPrincipal?: string | undefined;
+    operations?: string[] | undefined;
+  }[];
+}
+
+export function diffKmsKeyGrants(input: KmsKeyGrantInput): AddedChild[] {
+  const added: AddedChild[] = [];
+  for (const g of input.liveGrants) {
+    // Fold AWS-service-created grants (a declared resource's side effect), surface only a
+    // genuine out-of-band grant to a non-service (human / IAM) principal.
+    if (isAwsServicePrincipal(g.granteePrincipal) || isAwsServicePrincipal(g.retiringPrincipal)) {
+      continue;
+    }
+    added.push({
+      resourceType: 'AWS::KMS::Grant', // SYNTHETIC — not a real CFn/CC type; routes to the SDK deleter
+      identifier: g.grantId, // the RevokeGrant target; a bare id (no `|`), local to this account+region
+      siblingLookupId: g.grantId,
+      label: g.name ? `grant ${g.name} (${g.grantId.slice(0, 12)}…)` : `grant ${g.grantId}`,
+      live: {
+        GrantId: g.grantId,
+        ...(g.name !== undefined ? { GrantName: g.name } : {}),
+        ...(g.granteePrincipal !== undefined ? { GranteePrincipal: g.granteePrincipal } : {}),
+        ...(g.retiringPrincipal !== undefined ? { RetiringPrincipal: g.retiringPrincipal } : {}),
+        ...(g.operations !== undefined ? { Operations: g.operations } : {}),
+      },
+    });
+  }
+  return added;
+}
+
+async function pageGrants(client: KMSClient, keyId: string): Promise<GrantListEntry[]> {
+  const out: GrantListEntry[] = [];
+  let marker: string | undefined;
+  do {
+    const res = await client.send(new ListGrantsCommand({ KeyId: keyId, Marker: marker }));
+    out.push(...(res.Grants ?? []));
+    marker = res.NextMarker;
+  } while (marker);
+  return out;
 }
 
 // ── AppConfig ──────────────────────────────────────────────────────────────────

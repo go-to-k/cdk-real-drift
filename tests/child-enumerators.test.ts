@@ -25,6 +25,11 @@ import {
   ListVersionsByFunctionCommand,
 } from '@aws-sdk/client-lambda';
 import {
+  KMSClient,
+  ListAliasesCommand as KmsListAliasesCommand,
+  ListGrantsCommand as KmsListGrantsCommand,
+} from '@aws-sdk/client-kms';
+import {
   DescribeDBClustersCommand,
   DescribeDBInstancesCommand,
   RDSClient,
@@ -75,6 +80,9 @@ import {
   diffGraphQLApiFunctions,
   diffGraphQLApiResolvers,
   diffKmsKeyChildren,
+  diffKmsKeyGrants,
+  enumerateKmsKeyChildren,
+  isAwsServicePrincipal,
   diffLambdaFunctionAliases,
   diffLambdaFunctionChildren,
   diffLambdaFunctionUrls,
@@ -1248,6 +1256,140 @@ describe('diffKmsKeyChildren (KMS key aliases)', () => {
         liveAliases: [{ name: 'alias/a' }, { name: 'alias/b' }],
       })
     ).toEqual([]);
+  });
+});
+
+describe('isAwsServicePrincipal (service-grant discriminator, #835)', () => {
+  it('recognizes a bare service principal', () => {
+    expect(isAwsServicePrincipal('lambda.amazonaws.com')).toBe(true);
+    expect(isAwsServicePrincipal('rds.amazonaws.com')).toBe(true);
+  });
+  it('recognizes a regionalized service principal (as KMS returns for Lambda)', () => {
+    expect(isAwsServicePrincipal('lambda.us-east-1.amazonaws.com')).toBe(true);
+  });
+  it('rejects an IAM ARN principal (a human/role grantee)', () => {
+    expect(isAwsServicePrincipal('arn:aws:iam::111122223333:root')).toBe(false);
+    expect(isAwsServicePrincipal('arn:aws:sts::111122223333:assumed-role/Role/session')).toBe(
+      false
+    );
+  });
+  it('rejects undefined and a non-amazonaws host', () => {
+    expect(isAwsServicePrincipal(undefined)).toBe(false);
+    expect(isAwsServicePrincipal('evil.example.com')).toBe(false);
+  });
+});
+
+describe('diffKmsKeyGrants (KMS grants, #835)', () => {
+  it('surfaces an out-of-band grant to an IAM principal as a synthetic AWS::KMS::Grant', () => {
+    const added = diffKmsKeyGrants({
+      liveGrants: [
+        {
+          grantId: 'abc123def456',
+          name: 'rogue-human-grant',
+          granteePrincipal: 'arn:aws:iam::111122223333:root',
+          operations: ['Encrypt', 'Decrypt'],
+        },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::KMS::Grant',
+        identifier: 'abc123def456',
+        siblingLookupId: 'abc123def456',
+        label: 'grant rogue-human-grant (abc123def456…)',
+        live: {
+          GrantId: 'abc123def456',
+          GrantName: 'rogue-human-grant',
+          GranteePrincipal: 'arn:aws:iam::111122223333:root',
+          Operations: ['Encrypt', 'Decrypt'],
+        },
+      },
+    ]);
+  });
+
+  it('folds an AWS-service-created grant (RetiringPrincipal is a service principal) — zero FP', () => {
+    // The exact shape a Lambda env-encryption key gets (verified live): grantee = the fn's
+    // assumed-role session, RetiringPrincipal = lambda.<region>.amazonaws.com.
+    const added = diffKmsKeyGrants({
+      liveGrants: [
+        {
+          grantId: 'svcgrant1',
+          name: 'Stack-Fn-.../uuid',
+          granteePrincipal: 'arn:aws:sts::111122223333:assumed-role/Stack-FnServiceRole/Stack-Fn',
+          retiringPrincipal: 'lambda.us-east-1.amazonaws.com',
+          operations: ['Decrypt', 'RetireGrant'],
+        },
+      ],
+    });
+    expect(added).toEqual([]);
+  });
+
+  it('folds a grant whose GRANTEE is a service principal', () => {
+    const added = diffKmsKeyGrants({
+      liveGrants: [{ grantId: 'g', granteePrincipal: 'dynamodb.amazonaws.com' }],
+    });
+    expect(added).toEqual([]);
+  });
+
+  it('no grants -> nothing', () => {
+    expect(diffKmsKeyGrants({ liveGrants: [] })).toEqual([]);
+  });
+
+  it('a human grant with NO name still surfaces (label falls back to the id)', () => {
+    const added = diffKmsKeyGrants({
+      liveGrants: [{ grantId: 'nameless-grant-id', granteePrincipal: 'arn:aws:iam::1:user/u' }],
+    });
+    expect(added[0]!.label).toBe('grant nameless-grant-id');
+  });
+});
+
+describe('enumerateKmsKeyChildren e2e (aliases + grants, #835)', () => {
+  const baseCtx = (resources: unknown[] = []) =>
+    ({
+      parent: { physicalId: 'key-uuid-1', logicalId: 'Key' },
+      desired: { resources, ctx: { liveAttrs: {} } },
+      region: 'us-east-1',
+    }) as unknown as EnumeratorContext;
+
+  it('surfaces an out-of-band human grant, folds the AWS-service grant', async () => {
+    const kms = mockClient(KMSClient);
+    kms.on(KmsListAliasesCommand).resolves({ Aliases: [] });
+    kms.on(KmsListGrantsCommand).resolves({
+      Grants: [
+        {
+          GrantId: 'human1',
+          Name: 'rogue',
+          GranteePrincipal: 'arn:aws:iam::111122223333:root',
+          Operations: ['Decrypt'],
+        },
+        {
+          GrantId: 'svc1',
+          GranteePrincipal: 'arn:aws:sts::111122223333:assumed-role/R/s',
+          RetiringPrincipal: 'lambda.us-east-1.amazonaws.com',
+        },
+      ],
+    });
+    const added = await enumerateKmsKeyChildren(baseCtx());
+    expect(added.map((a) => ({ type: a.resourceType, id: a.identifier }))).toEqual([
+      { type: 'AWS::KMS::Grant', id: 'human1' },
+    ]);
+    kms.restore();
+  });
+
+  it('a fresh key with no aliases and no non-service grants is CLEAN (zero FP)', async () => {
+    const kms = mockClient(KMSClient);
+    kms.on(KmsListAliasesCommand).resolves({ Aliases: [] });
+    kms.on(KmsListGrantsCommand).resolves({ Grants: [] });
+    expect(await enumerateKmsKeyChildren(baseCtx())).toEqual([]);
+    kms.restore();
+  });
+
+  it('a ListGrants error PROPAGATES (parent skipped, no false added)', async () => {
+    const kms = mockClient(KMSClient);
+    kms.on(KmsListAliasesCommand).resolves({ Aliases: [] });
+    kms.on(KmsListGrantsCommand).rejects(new Error('AccessDenied'));
+    await expect(enumerateKmsKeyChildren(baseCtx())).rejects.toThrow('AccessDenied');
+    kms.restore();
   });
 });
 

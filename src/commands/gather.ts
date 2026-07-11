@@ -382,11 +382,17 @@ export function addedFinding(
 // the enumerator carries would fail. The enumerator's `live` snippet ({ Topics, PolicyDocument }) IS
 // the recordable model; use it. (Its real delete goes through the `deleteSnsTopicPolicy` SDK deleter
 // — SetTopicAttributes back to the AWS-default policy — not CC.)
+// AWS::KMS::Grant (#835): a SYNTHETIC type — a KMS grant is not a CloudFormation / Cloud Control
+// resource at all, so CC GetResource / DescribeType cannot know it. The child enumerator's `live`
+// snippet ({ GrantId, GranteePrincipal, Operations, … }) IS the recordable model; use it. (Its real
+// delete goes through the `deleteKmsGrant` SDK deleter — RevokeGrant keyed on the parent key +
+// GrantId — not CC.)
 const CC_GET_UNSUPPORTED_ADDED_TYPES = new Set<string>([
   'AWS::Route53::RecordSet',
   'AWS::SQS::QueuePolicy',
   'AWS::SecretsManager::ResourcePolicy',
   'AWS::SNS::TopicPolicy',
+  'AWS::KMS::Grant',
 ]);
 
 // Read the added child's FULL live model via Cloud Control GetResource (its
