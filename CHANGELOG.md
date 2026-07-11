@@ -1,3 +1,10 @@
+## [0.12.86](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.85...v0.12.86) (2026-07-11)
+
+
+### Bug Fixes
+
+* **noise:** gp3 EC2::Volume undeclared Iops/Throughput baseline fold — first-run FP ([#1471](https://github.com/go-to-k/cdk-real-drift/issues/1471)) ([#1475](https://github.com/go-to-k/cdk-real-drift/issues/1475)) ([80499e7](https://github.com/go-to-k/cdk-real-drift/commit/80499e7a451c7d2e04a7344b5f31e6f10cef8d4b))
+
 ## [0.12.85](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.84...v0.12.85) (2026-07-11)
 
 
