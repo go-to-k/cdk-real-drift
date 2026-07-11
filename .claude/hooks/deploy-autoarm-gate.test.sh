@@ -145,32 +145,46 @@ obs_check "tracker ok -> ARMED, no warning"            ok      0 1
 # when BASH_SOURCE alone would not point at the checkout. Use a scratch owner so we
 # do not pollute a real bughunt sentinel, and clean it up.
 default_resolve_check() {
-  local tmp stderrf exit_code pending owner_file
+  local tmp stderrf exit_code
   tmp=$(mktemp -d); stderrf="$tmp/stderr"
-  local owner="autoarm-selftest-1423-$$"
+  # A UNIQUE scratch SESSION id. The hook DERIVES its owner as `autoarm-<sid>` from the payload
+  # session_id and IGNORES any inherited CDKRD_BUGHUNT_OWNER — so the cleanup below MUST target
+  # `autoarm-<scratch_sid>`, the exact owner the hook writes. (An earlier version passed
+  # session_id "deft" while cleaning a different owner string, so it cleared a non-existent owner
+  # and leaked an `autoarm-deft` residue file into the shared pending dir.) $$ keeps it unique so
+  # it can never collide with a real session's token.
+  local scratch_sid="selftest-1423-$$"
   local payload
-  payload="{\"tool_input\":{\"command\":$(printf '%s' "aws cloudformation deploy --stack-name Foo" | jq -Rs .)},\"session_id\":\"deft\"}"
+  payload="{\"tool_input\":{\"command\":$(printf '%s' "aws cloudformation deploy --stack-name Foo" | jq -Rs .)},\"session_id\":\"$scratch_sid\"}"
   set +e
-  printf '%s' "$payload" | CLAUDE_CODE_SESSION_ID="" CDKRD_BUGHUNT_OWNER="$owner" \
-    bash "$HOOK" >/dev/null 2>"$stderrf"
+  printf '%s' "$payload" | CLAUDE_CODE_SESSION_ID="" bash "$HOOK" >/dev/null 2>"$stderrf"
   exit_code=$?
   set -e
-  # Locate the shared pending dir the real tracker writes to, then check + clean up.
-  local root
+  # Resolve the sibling tracker AND the shared pending dir the hook armed the sentinel in, the
+  # same way bughunt-track.sh does (dirname of the git common dir), so we can clean up AND assert
+  # the cleanup actually worked.
+  local root common_dir pending_dir owner_file
   root="$(git rev-parse --show-toplevel 2>/dev/null)/.claude/skills/hunt-bugs/bughunt-track.sh"
+  common_dir="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+  pending_dir="$(dirname "$common_dir")/.markgate-bughunt-pending.d"
+  owner_file="$pending_dir/autoarm-$scratch_sid"
+  # Clean up the scratch sentinel the hook armed — owner is `autoarm-<scratch_sid>`.
+  if [ -x "$root" ]; then
+    CDKRD_BUGHUNT_OWNER="autoarm-$scratch_sid" CDKRD_BUGHUNT_FORCE_CLEAR=1 "$root" clear >/dev/null 2>&1 || true
+  fi
   local ok=1
   [ "$exit_code" -eq 0 ] || ok=0
   # A successful default resolution prints the ARMED message (not the WARNING).
   grep -q "gate is now ARMED" "$stderrf" 2>/dev/null || ok=0
   grep -qi "WARNING" "$stderrf" 2>/dev/null && ok=0
+  # Regression guard: cleanup must actually remove the scratch owner file — no leaked residue.
+  [ ! -e "$owner_file" ] || ok=0
   if [ "$ok" -eq 1 ]; then
-    PASS=$((PASS + 1)); echo "ok   - default resolves real tracker via git-toplevel fallback"
+    PASS=$((PASS + 1)); echo "ok   - default resolves real tracker via git-toplevel fallback (armed + cleaned up)"
   else
-    FAIL=$((FAIL + 1)); echo "FAIL - default resolves real tracker via git-toplevel fallback (exit=$exit_code); stderr:"; cat "$stderrf"
-  fi
-  # Clean up the scratch sentinel we just armed so the test is side-effect free.
-  if [ -x "$root" ]; then
-    CDKRD_BUGHUNT_OWNER="$owner" CDKRD_BUGHUNT_FORCE_CLEAR=1 "$root" clear >/dev/null 2>&1 || true
+    FAIL=$((FAIL + 1)); echo "FAIL - default resolves real tracker via git-toplevel fallback (exit=$exit_code, residue=$([ -e "$owner_file" ] && echo yes || echo no)); stderr:"; cat "$stderrf"
+    # Belt-and-suspenders: remove any leaked residue so even a FAILing run stays side-effect free.
+    rm -f "$owner_file"
   fi
   rm -rf "$tmp"
 }
