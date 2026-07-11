@@ -79,6 +79,14 @@ export interface Finding {
   // policy (real IAM grants). Mirrors DesiredResource.siblingPolicyNames; only the
   // 'unresolved' sentinel is propagated (the resolved case is already filtered out).
   siblingPolicyNames?: 'unresolved' | undefined;
+  // declared tier only (#688): this property is DELEGATED to Application Auto Scaling — the stack
+  // declares a sibling AWS::ApplicationAutoScaling::ScalableTarget over it. classify already FOLDED
+  // the common case (live value within the declared [MinCapacity,MaxCapacity] band = the scaler
+  // enforcing intent); this flag rides only on the residual OUT-OF-BAND finding (a real over-set).
+  // The revert plan reads it and refuses to act — writing the declared initial value back would be
+  // immediately re-adjusted by the autoscaler, so the revert never converges (non-revertable, the
+  // user must change the ScalableTarget band / scaling policy, or record/ignore to accept).
+  autoscalerGoverned?: boolean | undefined;
   // declared tier only: this per-element finding lives inside an UNORDERED_OBJECT_ARRAY
   // (a SET the service returns REORDERED — SecurityGroup rules, PrefixList Entries, …).
   // classify sorts BOTH sides by canonical JSON before the positional subset diff, so the

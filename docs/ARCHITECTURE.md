@@ -1057,11 +1057,17 @@ DynamoDB `SSESpecification`) — derived from a full golden-corpus audit. This c
 the whole removed-collection FN class for every type at once; a new genuine readGap
 surfaces as a VISIBLE, denylist-able false positive, never a silent FN.
 
-`ignored` (R32) is for properties an external system legitimately keeps rewriting —
-Application Auto Scaling moving an ECS Service `DesiredCount`, DynamoDB autoscaled
-capacity, externally-managed Lambda reserved concurrency. Because `record` is a value
-snapshot, recording such a property would re-detect and force a re-record every time
-the value moves. Path-level ignore rules (the `.driftignore` / Terraform
+`ignored` (R32) is for properties an external system legitimately keeps rewriting.
+The most common case — a property a sibling `AWS::ApplicationAutoScaling::ScalableTarget`
+governs (ECS Service `DesiredCount`, DynamoDB autoscaled capacity, a Lambda alias's
+provisioned concurrency) — is now folded automatically while the live value stays
+within the declared `MinCapacity`/`MaxCapacity` band, so it needs no rule (#688,
+`AAS_SCALABLE_DIMENSIONS` in `diff/classify.ts`, band map built by
+`gather.buildScalableTargetBands`; a value beyond the band surfaces and is marked
+non-revertable). `ignored` remains for what that does not cover — externally-managed
+Lambda **reserved** concurrency, or any property another controller rewrites. Because
+`record` is a value snapshot, recording such a property would re-detect and force a
+re-record every time the value moves. Path-level ignore rules (the `.driftignore` / Terraform
 `ignore_changes` equivalent) live in a git-committed **`.cdkrd/ignore.yaml`** —
 deliberately separate from the baseline, which `record` rewrites wholesale (a
 hand-written rule there would be erased), and because a rule is hand-edited policy,

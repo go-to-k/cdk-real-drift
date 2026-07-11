@@ -25,6 +25,7 @@ import { GetServiceSettingCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { buildCorpusCase, CORPUS_DIR_ENV, recordCorpusCase } from '../corpus/record.js';
 import { type Desired, loadDesired } from '../desired/template-adapter.js';
 import {
+  AAS_SCALABLE_DIMENSIONS,
   type AccountDefaults,
   CLUSTER_ECHO_CHILD,
   classifyResource,
@@ -1138,6 +1139,113 @@ export function buildClusterEchoModels(desired: Desired): Record<string, Record<
   return map;
 }
 
+const SCALABLE_TARGET_TYPE = 'AWS::ApplicationAutoScaling::ScalableTarget';
+
+// Every logicalId referenced by a value's intrinsics — a `{Ref: X}`, an `{Fn::GetAtt: [X, ...]}`
+// (or the string `X.attr` form), the `${X}` / `${X.attr}` substitutions inside an `{Fn::Sub}`, and
+// recursively through `{Fn::Join}` parts / arrays / objects. Used to link a ScalableTarget to the
+// resource its `ResourceId` names (a CDK ScalableTarget builds ResourceId by interpolating a Ref /
+// GetAtt to the governed service/table). Pure.
+function collectRefLogicalIds(v: unknown, out: Set<string> = new Set()): Set<string> {
+  if (v == null) return out;
+  if (Array.isArray(v)) {
+    for (const el of v) collectRefLogicalIds(el, out);
+    return out;
+  }
+  if (typeof v !== 'object') return out;
+  const o = v as Record<string, unknown>;
+  if ('Ref' in o && typeof o.Ref === 'string') out.add(o.Ref);
+  if ('Fn::GetAtt' in o) {
+    const g = o['Fn::GetAtt'];
+    if (Array.isArray(g) && typeof g[0] === 'string') out.add(g[0]);
+    else if (typeof g === 'string') out.add(g.split('.')[0] ?? g);
+  }
+  if ('Fn::Sub' in o) {
+    const s = o['Fn::Sub'];
+    const body = Array.isArray(s) ? s[0] : s;
+    if (typeof body === 'string') {
+      for (const m of body.matchAll(/\$\{([A-Za-z0-9]+)(?:\.[^}]+)?\}/g)) {
+        if (m[1]) out.add(m[1]);
+      }
+    }
+    if (Array.isArray(s) && s[1] && typeof s[1] === 'object') collectRefLogicalIds(s[1], out);
+  }
+  for (const [k, val] of Object.entries(o)) {
+    if (k === 'Ref' || k === 'Fn::GetAtt' || k === 'Fn::Sub') continue;
+    collectRefLogicalIds(val, out);
+  }
+  return out;
+}
+
+// #688: per GOVERNED resource logicalId, the Application Auto Scaling bands a sibling
+// AWS::ApplicationAutoScaling::ScalableTarget declares over its properties — `{ path, min, max }[]`.
+// classify (applyAutoscalerBandFold) folds a declared finding whose live value is within its band
+// (the autoscaler enforcing the template's own delegation — not drift) and marks an OUT-OF-BAND
+// value non-revertable. Each ScalableTarget's ScalableDimension is looked up in
+// AAS_SCALABLE_DIMENSIONS for the governed type + property path(s); the governed resource is linked
+// by the Ref/GetAtt in the (raw) ResourceId, falling back to matching the resolved ResourceId string
+// against a candidate's physical id. Fail-open at every step (an unresolved link / non-numeric band
+// simply yields no fold, so the finding stays visible — never a hidden change).
+export function buildScalableTargetBands(
+  desired: Desired
+): Record<string, { path: string; min: number; max: number }[]> {
+  const byLogicalId = new Map<string, DesiredResource>();
+  const byType = new Map<string, DesiredResource[]>();
+  for (const r of desired.resources) {
+    byLogicalId.set(r.logicalId, r);
+    const arr = byType.get(r.resourceType);
+    if (arr) arr.push(r);
+    else byType.set(r.resourceType, [r]);
+  }
+  const map: Record<string, { path: string; min: number; max: number }[]> = {};
+  const num = (v: unknown): number | undefined =>
+    typeof v === 'number' && Number.isFinite(v) ? v : undefined;
+
+  for (const r of desired.resources) {
+    if (r.resourceType !== SCALABLE_TARGET_TYPE) continue;
+    const decl = (r.declared ?? {}) as Record<string, unknown>;
+    const dim = decl.ScalableDimension;
+    if (typeof dim !== 'string') continue;
+    const spec = AAS_SCALABLE_DIMENSIONS[dim];
+    if (!spec) continue;
+
+    // Band: the declared MinCapacity/MaxCapacity (intent), falling back to the live model.
+    const live = desired.ctx.liveAttrs[r.logicalId] ?? {};
+    const min = num(decl.MinCapacity) ?? num(live.MinCapacity);
+    const max = num(decl.MaxCapacity) ?? num(live.MaxCapacity);
+    if (min === undefined || max === undefined) continue;
+
+    // Link to the governed resource: prefer a Ref/GetAtt in the raw ResourceId, of the right type.
+    const rawResourceId = (r.declaredRaw as Record<string, unknown> | undefined)?.ResourceId;
+    let governed: DesiredResource | undefined;
+    for (const id of collectRefLogicalIds(rawResourceId)) {
+      const cand = byLogicalId.get(id);
+      if (cand && cand.resourceType === spec.resourceType) {
+        governed = cand;
+        break;
+      }
+    }
+    // Fallback: match the resolved ResourceId string against a candidate's physical id.
+    if (!governed) {
+      const rid = decl.ResourceId;
+      if (typeof rid === 'string') {
+        const segs = new Set(rid.split('/'));
+        governed = byType
+          .get(spec.resourceType)
+          ?.find(
+            (c) =>
+              c.physicalId !== undefined && (segs.has(c.physicalId) || rid.endsWith(c.physicalId))
+          );
+      }
+    }
+    if (!governed) continue;
+
+    const entries = (map[governed.logicalId] ??= []);
+    for (const path of spec.paths) entries.push({ path, min, max });
+  }
+  return map;
+}
+
 // #978: resolve each AWS::RDS::OptionGroup's option-default catalog from
 // `describe-option-group-options` (per engine+version, cached and paginated), keyed
 // `physicalId -> optionName -> settingName -> DefaultValue|null`. classify folds a live-only
@@ -1585,6 +1693,7 @@ export async function gatherFindings(
     bucketNotificationManaged: buildBucketNotificationManaged(desired),
     bucketNotificationConfigs: buildBucketNotificationConfigs(desired),
     clusterEchoModel: buildClusterEchoModels(desired),
+    scalableTargetBands: buildScalableTargetBands(desired),
     rdsOptionSettingDefaults: await buildRdsOptionSettingDefaults(desired, region),
   };
 
@@ -1696,6 +1805,7 @@ export async function regatherTouched(
     bucketNotificationManaged: buildBucketNotificationManaged(desired),
     bucketNotificationConfigs: buildBucketNotificationConfigs(desired),
     clusterEchoModel: buildClusterEchoModels(desired),
+    scalableTargetBands: buildScalableTargetBands(desired),
     rdsOptionSettingDefaults: await buildRdsOptionSettingDefaults(desired, region),
   };
 
