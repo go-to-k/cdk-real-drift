@@ -1,3 +1,10 @@
+## [0.12.54](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.53...v0.12.54) (2026-07-11)
+
+
+### Bug Fixes
+
+* **revert:** added AWS::AppSync::ApiKey delete routes through appsync DeleteApiKey ([#1386](https://github.com/go-to-k/cdk-real-drift/issues/1386)) ([#1420](https://github.com/go-to-k/cdk-real-drift/issues/1420)) ([07d2a69](https://github.com/go-to-k/cdk-real-drift/commit/07d2a69b690d623e90b1fa262cd301e0e156e6c8))
+
 ## [0.12.53](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.52...v0.12.53) (2026-07-11)
 
 
