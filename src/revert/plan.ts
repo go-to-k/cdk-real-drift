@@ -753,7 +753,14 @@ function isUnderCreateOnly(findingPath: string, createOnlyPaths: readonly string
 //   - AWS::EC2::NetworkAclEntry: live-proven (#1315/#1405). CC GetResource reads it via the
 //     SDK override (`readEc2NetworkAclEntry`), but DeleteResource returns the unsupported-action
 //     error above (its CFn delete flows through the parent NetworkAcl's EC2 API, not CC).
-const CC_DELETE_UNSUPPORTED_ADDED_TYPES = new Set<string>(['AWS::EC2::NetworkAclEntry']);
+//   - AWS::Route53::RecordSet: NON_PROVISIONABLE per describe-type — a CC DeleteResource
+//     returns UnsupportedActionException (#1312). Surfaced by the HostedZone child enumerator;
+//     its real delete would go through the Route53 `ChangeResourceRecordSets` API (a DELETE
+//     change action), not CC. A type-specific SDK writer could make it actually revertable later.
+const CC_DELETE_UNSUPPORTED_ADDED_TYPES = new Set<string>([
+  'AWS::EC2::NetworkAclEntry',
+  'AWS::Route53::RecordSet',
+]);
 
 export function buildRevertPlan(
   findings: Finding[],
