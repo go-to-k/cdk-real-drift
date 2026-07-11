@@ -172,6 +172,23 @@ const MEANINGFUL_WHEN_OFF: Record<string, Record<string, (ctx: OffStateContext) 
   // object, which isTrivialEmpty would swallow BEFORE the pin gate — hiding a wholesale
   // security disable. It is unconditionally meaningful when off, so surface it.
   'AWS::GuardDuty::Detector': { DataSources: () => true },
+  // #660: an ESM is created ENABLED for every source type — CreateEventSourceMapping's
+  // Enabled defaults to true, and no clean-deploy configuration reads false undeclared
+  // (live-confirmed on a fresh SQS mapping 2026-07-11; Kafka/MSK/DynamoDB/Kinesis document
+  // the same default). An undeclared Enabled=false is an out-of-band DISABLE that silently
+  // stops the pipeline, so it is unconditionally meaningful.
+  'AWS::Lambda::EventSourceMapping': { Enabled: () => true },
+  // #660: health checks can only be disabled for LAMBDA target groups — ModifyTargetGroup
+  // rejects HealthCheckEnabled=false for every other target type ("Health check enabled
+  // must be true for target groups with target type 'instance'", live-confirmed
+  // 2026-07-11), so a non-lambda TG never reads false on a clean deploy and an undeclared
+  // false there is a real out-of-band state. A lambda TG reads false as its DEFAULT (the
+  // derived knownDef pin below flips to false for it), so its off state is NOT meaningful.
+  // TargetType is create-only and defaults to 'instance' when omitted, so the declared
+  // value (or its absence) is authoritative.
+  'AWS::ElasticLoadBalancingV2::TargetGroup': {
+    HealthCheckEnabled: ({ declared }) => declared['TargetType'] !== 'lambda',
+  },
 };
 
 // #1092: GuardDuty protection Features whose new-detector default Status is DISABLED (not the
@@ -2891,6 +2908,19 @@ export function classifyResource(
     if (creditDefault !== undefined) {
       knownDef = { ...knownDef, CreditSpecification: { CPUCredits: creditDefault } };
     }
+  }
+  // #660: a LAMBDA target group's HealthCheckEnabled default is FALSE (health checks are
+  // opt-in for lambda targets), the inverse of the base KNOWN_DEFAULTS pin `true` (the
+  // default for every other target type, where disabling is API-rejected). Derive the pin
+  // from the declared TargetType (create-only; a lambda TG must declare it — CFn defaults
+  // an omitted TargetType to 'instance') and equality-gate it (fold tier 2): a clean
+  // lambda TG's undeclared false folds atDefault, while an out-of-band health-check
+  // ENABLE (live true ≠ derived false) now surfaces instead of matching the base pin.
+  if (
+    resourceType === 'AWS::ElasticLoadBalancingV2::TargetGroup' &&
+    declared['TargetType'] === 'lambda'
+  ) {
+    knownDef = { ...knownDef, HealthCheckEnabled: false };
   }
   // #640: a gp2 EBS Volume (declared VolumeType "gp2", or omitted — gp2 is the AWS default)
   // reads back an undeclared baseline Iops that AWS computes from the declared Size:
