@@ -356,8 +356,22 @@ export async function listExports(
 // Per-account+region cache of resolved `/cdk/exports/*` SSM parameters (name -> value), for
 // the CDK `crossRegionReferences: true` pattern. Like exportsCache, these parameters are scoped
 // to an account AND a region (they are written into the CONSUMER region by the reader), so the
-// cache key MUST carry BOTH axes. A single prefetch serves every reader GetAtt in the stack.
+// cache key MUST carry BOTH axes.
+//
+// Unlike exportsCache (backed by ListExports, which returns ALL exports so one fetch fully
+// determines the account:region content), getCrossRegionExports fetches only the names the
+// CURRENT stack's template references. The cached value is therefore a running MERGE across
+// every stack in the account:region — NOT a single stack's subset. Caching the first stack's
+// subset as the whole-key value starved every later same-region consumer stack of its own
+// (different) export names: they resolved UNRESOLVED though their parameters were live and
+// readable, re-hiding the out-of-band cert swap #741 was fixed to catch (#1282). The canonical
+// `crossRegionReferences: true` shape — several same-region stacks importing a us-east-1 ACM
+// cert — is exactly that population.
 const crossRegionExportsCache = new Map<string, Record<string, string>>();
+// Names already REQUESTED for a key (resolved OR confirmed-missing), so a name that came back
+// InvalidParameters is not re-fetched by every later stack. Without this tombstone a
+// confirmed-missing name would page ssm:GetParameters once per consumer stack forever.
+const crossRegionExportsFetched = new Map<string, Set<string>>();
 
 // The CDK cross-region-reference reader custom-resource type.
 const CROSS_REGION_EXPORT_READER_TYPE = 'Custom::CrossRegionExportReader';
@@ -420,7 +434,10 @@ export function collectCrossRegionExportNames(template: Record<string, any>): st
 // ssm:GetParameters (batched 10 at a time). Returns name -> value; a name that is missing /
 // unreadable is simply LEFT OUT (fail closed — resolveGetAtt then yields UNRESOLVED). Cached
 // per account:region so repeated gather runs in the same process don't re-fetch. Mirrors the
-// listExports prefetch/cache idiom.
+// listExports prefetch/cache idiom — but MERGES, fetching only the names not yet requested for
+// this key and accumulating results, because each stack references a DIFFERENT subset of the
+// account:region's exports (#1282). Fully-served requests (every name already attempted) return
+// the accumulated map with no SDK call.
 export async function getCrossRegionExports(
   ssm: SSMClient,
   accountId: string,
@@ -428,20 +445,30 @@ export async function getCrossRegionExports(
   names: string[]
 ): Promise<Record<string, string>> {
   const cacheKey = `${accountId}:${region}`;
-  const cached = crossRegionExportsCache.get(cacheKey);
-  if (cached) return cached;
-  const out: Record<string, string> = {};
-  for (let i = 0; i < names.length; i += 10) {
-    const batch = names.slice(i, i + 10);
+  const resolved = crossRegionExportsCache.get(cacheKey) ?? {};
+  const attempted = crossRegionExportsFetched.get(cacheKey) ?? new Set<string>();
+  const toFetch = names.filter((n) => !attempted.has(n));
+  if (toFetch.length === 0) return resolved;
+  // Accumulate into LOCAL copies and commit to the module cache only after every page
+  // succeeds: a throw mid-fetch must leave the cache untouched (no partial/poisoned map), the
+  // same all-or-nothing failure contract the previous throw-before-set had. On that throw the
+  // caller warns and every reader GetAtt in the stack falls back to UNRESOLVED for the run.
+  const nextResolved: Record<string, string> = { ...resolved };
+  const nextAttempted = new Set(attempted);
+  for (let i = 0; i < toFetch.length; i += 10) {
+    const batch = toFetch.slice(i, i + 10);
     const res = await ssm.send(new GetParametersCommand({ Names: batch }));
     for (const p of res.Parameters ?? []) {
-      if (p.Name && typeof p.Value === 'string') out[p.Name] = p.Value;
+      if (p.Name && typeof p.Value === 'string') nextResolved[p.Name] = p.Value;
     }
     // InvalidParameters (names that don't exist) are returned separately and intentionally
-    // dropped — the reader GetAtt for a missing name stays UNRESOLVED (fail closed).
+    // dropped from the value map — the reader GetAtt for a missing name stays UNRESOLVED (fail
+    // closed) — but the whole batch is marked attempted so it is not re-requested (tombstone).
+    for (const n of batch) nextAttempted.add(n);
   }
-  crossRegionExportsCache.set(cacheKey, out);
-  return out;
+  crossRegionExportsCache.set(cacheKey, nextResolved);
+  crossRegionExportsFetched.set(cacheKey, nextAttempted);
+  return nextResolved;
 }
 
 // Page ListStackResources (DescribeStackResources caps at 100; CDK stacks reach ~500).
