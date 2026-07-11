@@ -1,3 +1,10 @@
+## [0.12.66](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.65...v0.12.66) (2026-07-11)
+
+
+### Bug Fixes
+
+* **diff:** escalate RoleARN + AmazonMQ Broker SecurityGroups value-independent folds to detection-preserving gates ([#1284](https://github.com/go-to-k/cdk-real-drift/issues/1284), [#1266](https://github.com/go-to-k/cdk-real-drift/issues/1266)) ([#1433](https://github.com/go-to-k/cdk-real-drift/issues/1433)) ([33364a6](https://github.com/go-to-k/cdk-real-drift/commit/33364a635d53d7fb674556d64d1599c8f147dd60))
+
 ## [0.12.65](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.64...v0.12.65) (2026-07-11)
 
 
