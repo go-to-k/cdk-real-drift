@@ -299,6 +299,81 @@ describe('buildRevertPlan', () => {
     expect(finalTags).toHaveLength(3);
   });
 
+  it('#1271: a value change inside a canonicalize-SORTED {Name,Value} array (NOT a {Key,Value} tag list) reverts as a WHOLE-ARRAY write, not a per-element patch against the wrong sorted index', () => {
+    // The #750 hoist only fired for {Key,Value} tag lists (identityField === "Key"). But
+    // canonicalizeTagLists sorts EVERY object array whose every element carries ANY of the five
+    // identity fields (Key/Id/AttributeName/IndexName/Name). A CloudWatch Alarm `Dimensions`
+    // array is {Name,Value} — sorted by `Name` on both sides — so a per-element VALUE drift
+    // diffs at a SORTED index that does NOT map to the RAW live model. A `/Dimensions/<i>/Value`
+    // patch would revert the WRONG (innocent) element while the real drift survives.
+
+    // Declared in NON-sorted Name order (QueueName before Env); QueueName's value drifted OOB.
+    const declaredDims = [
+      { Name: 'QueueName', Value: 'prod-queue' }, // desired value (drifted live)
+      { Name: 'Env', Value: 'prod' },
+    ];
+    // RAW live model: same (raw, unsorted) order, only QueueName.Value changed out of band.
+    const liveRaw: Record<string, unknown> = {
+      Dimensions: [
+        { Name: 'QueueName', Value: 'HACKED-queue' },
+        { Name: 'Env', Value: 'prod' },
+      ],
+    };
+    const emptySchema: SchemaInfo = {
+      readOnly: new Set(),
+      writeOnly: new Set(),
+      createOnly: new Set(),
+      readOnlyPaths: [],
+      writeOnlyPaths: [],
+      createOnlyPaths: [],
+      defaults: {},
+      defaultPaths: {},
+    };
+    const findings = classifyResource(
+      {
+        logicalId: 'Alarm',
+        resourceType: 'AWS::CloudWatch::Alarm',
+        physicalId: 'my-alarm',
+        declared: { Dimensions: declaredDims },
+      },
+      liveRaw,
+      emptySchema
+    );
+    const drift = findings.find((f) => f.tier === 'declared');
+    expect(drift).toBeDefined();
+    // canonicalizeTagLists sorted by Name → [Env(0), QueueName(1)], so the finding's own path is
+    // the SORTED index `Dimensions.1.Value` — which in the RAW model is Env, NOT QueueName. A
+    // per-element patch here is exactly the corruption #1271 describes. The hoist saves it:
+    expect(drift!.path).toBe('Dimensions.1.Value');
+    expect(drift!.wholeArrayRevert).toBeDefined();
+    expect(drift!.wholeArrayRevert!.path).toBe('Dimensions');
+    expect(drift!.wholeArrayRevert!.value).toEqual(
+      expect.arrayContaining([
+        { Name: 'QueueName', Value: 'prod-queue' },
+        { Name: 'Env', Value: 'prod' },
+      ])
+    );
+
+    // The revert plan collapses to ONE whole-array `/Dimensions` op — never a per-element
+    // `/Dimensions/<sortedIdx>/Value` patch against an index that misaligns with the raw model.
+    const plan = buildRevertPlan(findings, undefined, {
+      liveByLogical: new Map([['Alarm', liveRaw]]),
+    });
+    expect(plan.items).toHaveLength(1);
+    const ops = plan.items[0]!.ops;
+    expect(ops).toHaveLength(1);
+    expect(ops[0]!.path).toBe('/Dimensions');
+    expect(ops[0]!.op).toBe('add');
+    expect(ops.some((o) => /^\/Dimensions\/\d+\//.test(o.path))).toBe(false);
+    // The whole-array value applied reverts QueueName AND leaves Env untouched (not corrupted).
+    expect(ops[0]!.value).toEqual(
+      expect.arrayContaining([
+        { Name: 'QueueName', Value: 'prod-queue' },
+        { Name: 'Env', Value: 'prod' },
+      ])
+    );
+  });
+
   it('ManagedPolicy attachment detach -> SDK item, op carries the member on attributeKey', () => {
     // a declared-but-detached Role finding (path Roles, attributeKey = role name) must
     // route to the SDK writer (ManagedPolicy is a whole-type writer) and carry the

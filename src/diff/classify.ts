@@ -1288,14 +1288,20 @@ const isInlinePolicyArray = (arr: unknown[]): boolean =>
 // path whose index is the SORTED+STRIPPED position — it does NOT map to the RAW live model
 // (raw order, aws:* tags present) Cloud Control patches, so a sub-path patch lands on the
 // WRONG element (silent corruption) or out of range (loud reject) (#750). The safe revert is
-// a WHOLE-ARRAY `/Tags` write of the declared list (revert then re-attaches aws:* managed
-// tags via tagPreservingOps), collapsed by the revert plan exactly like an UNORDERED_OBJECT_
-// ARRAY. Recognized by the Key identity field + a Value on every element (a plain identity-
-// keyed object array — CloudFront Origins, etc. — has no Value and is unaffected).
-const isKeyValueTagList = (arr: unknown[]): boolean =>
-  arr.length > 0 &&
-  identityField(arr) === 'Key' &&
-  arr.every((el) => isNestedObject(el) && 'Value' in el);
+// a WHOLE-ARRAY write of the declared list (revert then re-attaches aws:* managed tags via
+// tagPreservingOps where the array is a tag property), collapsed by the revert plan exactly
+// like an UNORDERED_OBJECT_ARRAY.
+// #1271: this misalignment is NOT unique to `{Key,Value}` tag lists. `canonicalizeTagLists`
+// sorts EVERY object array whose every element carries ANY of the five identity fields
+// (`Key`/`Id`/`AttributeName`/`IndexName`/`Name`) — CloudWatch Alarm `Dimensions` ({Name,Value}),
+// S3 `LifecycleConfiguration.Rules` ({Id,...}), DynamoDB `GlobalSecondaryIndexes` ({IndexName})
+// / `AttributeDefinitions` ({AttributeName}). A per-element sub-value drift inside any of them
+// diffs at the SORTED index, which does not map to the raw model Cloud Control patches — a
+// per-element op would revert the WRONG element (or, for the top-level {Key,Value} case,
+// leave the real drift while corrupting an innocent element). So hoist the whole class, not
+// just Key/Value tags: any identity-sorted object array whose value IS the top-level array.
+const isIdentitySortedObjectArray = (arr: unknown[]): boolean =>
+  arr.length > 0 && identityField(arr) !== undefined;
 
 // True when every key of `sub` is present in `sup` with an equal value (objects
 // recurse so a nested declared block must also be a subset; everything else is
@@ -3842,21 +3848,23 @@ export function classifyResource(
         matchesAncestorPropertyTransform(schema.propertyTransforms, d.path, declared, live)
       )
         continue;
-      // A per-element drift INSIDE a `{Key,Value}` tag list (#750): canonicalizeTagLists
-      // sorted the list by `Key` on both compare sides (and stripped the live side's aws:*
-      // tags), so `d.path`'s index is the SORTED+STRIPPED position that does NOT map to the
-      // RAW live model Cloud Control patches — a sub-path `add /Tags/<i>/Value` patch would
-      // corrupt the wrong live element or go out of range. Carry the WHOLE declared tag list
-      // on wholeArrayRevert so the revert plan collapses these into ONE whole-array `/Tags`
-      // replacement (tagPreservingOps then re-attaches the live aws:* managed tags), never a
+      // A per-element drift INSIDE an identity-sorted object array (#750 for {Key,Value} tags,
+      // #1271 for the wider class): canonicalizeTagLists sorted the array by its identity field
+      // on both compare sides (and stripped the live side's aws:* tags where it is a tag list),
+      // so `d.path`'s index is the SORTED+STRIPPED position that does NOT map to the RAW live
+      // model Cloud Control patches — a sub-path `add /<key>/<i>/<sub>` patch would corrupt the
+      // wrong live element or go out of range. Carry the WHOLE declared array on wholeArrayRevert
+      // so the revert plan collapses these into ONE whole-array replacement (tagPreservingOps then
+      // re-attaches the live aws:* managed tags where the array is a tag property), never a
       // per-element pointer against a sorted index that does not exist in the raw model.
       // Only fires for a per-element (`${k}.` sub-path) drift; a whole-array drift already
       // carries the right path. The unorderedObjArray branch above handles the type-/schema-
-      // opted-in unordered object arrays; this covers the identity-sorted tag lists it misses.
-      const tagListWhole =
+      // opted-in unordered object arrays; this covers the identity-sorted arrays it misses
+      // (CloudWatch Alarm Dimensions, S3 lifecycle Rules, DynamoDB GSI/AttributeDefinitions, …).
+      const identitySortedWhole =
         !unorderedObjArray &&
         Array.isArray(v) &&
-        isKeyValueTagList(v) &&
+        isIdentitySortedObjectArray(v) &&
         d.path.startsWith(`${k}.`);
       const unorderedExtra =
         unorderedObjArray && Array.isArray(declaredVal) && declaredRemapSource
@@ -3868,7 +3876,7 @@ export function classifyResource(
               path: remapSortedIndexToDeclared(d.path, k, declaredVal, declaredRemapSource),
               wholeArrayRevert: { path: k, value: v },
             }
-          : tagListWhole
+          : identitySortedWhole
             ? { wholeArrayRevert: { path: k, value: v } }
             : {};
       pushDeclaredFinding(findings, {
