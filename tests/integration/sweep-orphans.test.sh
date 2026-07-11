@@ -92,6 +92,40 @@ mem_out="$(PATH="$tmp:$PATH" AWS_REGION=us-east-1 CDKRD_SWEEP_MIN_AGE_HOURS=0 ba
 assert "layer 1 membership PROTECTS a truncated-name member even when OLD + name-unbacked" "$mem_out" "SKIP \(active-stack member.*IAM-role CdkRealDriftIntegImageBuilderRi-BuilderRole-abc"
 refute "the member role is NOT reported as an orphan" "$mem_out" "ORPHAN.*IAM-role CdkRealDriftIntegImageBuilderRi-BuilderRole-abc"
 
+# #1463: a just-deleted EBS volume lingering in the RGT tag index (InvalidVolume.NotFound on a
+# direct probe) must fold to the RGT-lag SKIP, never a hard ORPHAN that deadlocks the gate —
+# mirroring the vpc-endpoint / instance resource_gone arms.
+cat > "$tmp/aws" <<'MOCK'
+#!/usr/bin/env bash
+case "$1/${2:-}" in
+  cloudformation/list-stacks)              echo "SomeUnrelatedStack" ;;
+  resourcegroupstaggingapi/get-resources)  printf '%s\tNone\n' "arn:aws:ec2:us-east-1:123456789012:volume/vol-0deadbeef00000000" ;;
+  ec2/describe-volumes)                     echo "An error occurred (InvalidVolume.NotFound) when calling the DescribeVolumes operation: The volume 'vol-0deadbeef00000000' does not exist." >&2; exit 255 ;;
+  *) : ;;
+esac
+MOCK
+chmod +x "$tmp/aws"
+gone_out="$(PATH="$tmp:$PATH" AWS_REGION=us-east-1 bash "$SWEEP" 2>&1 || true)"
+assert "#1463 a NotFound EBS volume folds to the RGT-lag SKIP (not ORPHAN)" "$gone_out" "SKIP \(tagged mapping for an already-deleted resource.*volume/vol-0deadbeef00000000"
+refute "#1463 the deleted volume is NOT reported as an orphan" "$gone_out" "ORPHAN.*volume/vol-0deadbeef00000000"
+assert "#1463 sweep is CLEAN once the phantom volume is folded" "$gone_out" "SWEEP CLEAN"
+
+# #1463 fail-safe: a volume that STILL EXISTS (DescribeVolumes succeeds) is a REAL orphan and must
+# stay RED — resource_gone folds ONLY a definitive InvalidVolume.NotFound, never a live volume.
+cat > "$tmp/aws" <<'MOCK'
+#!/usr/bin/env bash
+case "$1/${2:-}" in
+  cloudformation/list-stacks)              echo "SomeUnrelatedStack" ;;
+  resourcegroupstaggingapi/get-resources)  printf '%s\tNone\n' "arn:aws:ec2:us-east-1:123456789012:volume/vol-0liveaaaa00000000" ;;
+  ec2/describe-volumes)                     echo "available" ;;
+  *) : ;;
+esac
+MOCK
+chmod +x "$tmp/aws"
+live_out="$(PATH="$tmp:$PATH" AWS_REGION=us-east-1 bash "$SWEEP" 2>&1 || true)"
+assert "#1463 fail-safe: an EXISTING volume stays a hard ORPHAN (never folded)" "$live_out" "ORPHAN.*volume/vol-0liveaaaa00000000"
+refute "#1463 fail-safe: an existing volume is NOT folded to the RGT-lag SKIP" "$live_out" "already-deleted resource.*volume/vol-0liveaaaa00000000"
+
 rm -rf "$tmp"
 echo "----"
 echo "sweep-orphans: $PASS passed, $FAIL failed"
