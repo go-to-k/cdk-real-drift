@@ -76,15 +76,21 @@ import {
   type UserPoolClientDescription,
 } from '@aws-sdk/client-cognito-identity-provider';
 import {
+  DescribeInternetGatewaysCommand,
   DescribeNetworkAclsCommand,
   DescribeRouteTablesCommand,
   DescribeSubnetsCommand,
   DescribeVpcEndpointsCommand,
+  DescribeVpcsCommand,
   EC2Client,
+  type InternetGateway as Ec2InternetGateway,
   type NetworkAcl as Ec2NetworkAcl,
+  type NetworkAclEntry as Ec2NetworkAclEntry,
   type Route as Ec2Route,
   type RouteTable as Ec2RouteTable,
+  type RouteTableAssociation as Ec2RouteTableAssociation,
   type Subnet as Ec2Subnet,
+  type Vpc as Ec2Vpc,
   type VpcEndpoint as Ec2VpcEndpoint,
 } from '@aws-sdk/client-ec2';
 import { ECSClient, ListServicesCommand } from '@aws-sdk/client-ecs';
@@ -240,7 +246,7 @@ export type ChildEnumerator = (ctx: EnumeratorContext) => Promise<AddedChild[]>;
 // thirteenth; AppConfig applications (environments) the fourteenth; Elastic Load Balancing
 // v2 listeners (rules) the fifteenth; EFS file systems (mount targets) the sixteenth;
 // RDS DB clusters (DB instances) the seventeenth; Route53 hosted zones (record sets) the
-// eighteenth.
+// eighteenth; EC2 network ACLs (NACL entries) the nineteenth.
 export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::ApiGateway::RestApi': enumerateRestApiChildren,
   'AWS::ApiGatewayV2::Api': enumerateHttpApiChildren,
@@ -254,6 +260,7 @@ export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::ElasticLoadBalancingV2::Listener': enumerateListenerChildren,
   'AWS::EC2::VPC': enumerateVpcChildren,
   'AWS::EC2::RouteTable': enumerateRouteTableChildren,
+  'AWS::EC2::NetworkAcl': enumerateNetworkAclChildren,
   'AWS::ECS::Cluster': enumerateEcsClusterChildren,
   'AWS::KMS::Key': enumerateKmsKeyChildren,
   'AWS::AppConfig::Application': enumerateAppConfigApplicationChildren,
@@ -2701,6 +2708,33 @@ async function enumerateListenerChildren(ctx: EnumeratorContext): Promise<AddedC
 // `Main` twin of the ELBv2 default-rule / auto-created-child pattern). VPCEndpoints have NO
 // such default class, so no filter is needed for them. (Every non-default, non-declared
 // route table / NACL IS a real out-of-band addition.)
+//
+// SUB-resource additions (#1315). Beyond whole-resource children, the console-level OOB
+// additions that re-route or open a VPC are themselves separate CloudFormation resources but
+// live INSIDE the parent's describe payload, so they are invisible to whole-resource
+// enumeration. Three are diffed here on the VPC parent:
+//   - Subnet↔route-table associations (`AWS::EC2::SubnetRouteTableAssociation`): re-pointing a
+//     subnet re-routes all its traffic. DescribeRouteTables already returns each table's
+//     `Associations[]` (used above only for the `Main` filter); the NON-Main, subnet-bearing
+//     ones are diffed against declared AWS::EC2::SubnetRouteTableAssociation. The CC
+//     primaryIdentifier is the bare `rtbassoc-…` (RouteTableAssociationId) — a clean
+//     DeleteResource revert (disassociate).
+//   - IGW attachment (`AWS::EC2::VPCGatewayAttachment`): an internet gateway quietly attached
+//     to a "private" VPC. DescribeInternetGateways with an `attachment.vpc-id` filter surfaces
+//     it; diffed against declared AWS::EC2::VPCGatewayAttachment on this VPC. The CC
+//     primaryIdentifier is the composite `["/properties/AttachmentType","/properties/VpcId"]`
+//     whose runtime form is `IGW|<VpcId>` (verified live via CC list-resources) — a clean
+//     DeleteResource revert (detach).
+//   - Secondary VPC CIDR (`AWS::EC2::VPCCidrBlock`): an OOB `associate-vpc-cidr-block`. The
+//     VPC's own `CidrBlockAssociations` / `Ipv6CidrBlockAssociations` carry every secondary
+//     block; the PRIMARY IPv4 block (`Vpc.CidrBlock`) is filtered out, and the rest are diffed
+//     against declared AWS::EC2::VPCCidrBlock. The CC primaryIdentifier is
+//     `["/properties/Id","/properties/VpcId"]` (child-first), runtime form `<AssociationId>|
+//     <VpcId>` (#647) — a clean DeleteResource revert (disassociate).
+// A fourth sub-resource — NACL entries (`AWS::EC2::NetworkAclEntry`) — is diffed on the
+// separate AWS::EC2::NetworkAcl parent enumerator below (a console "allow ALL from
+// 0.0.0.0/0" rule punched into a declared NACL reads CLEAN and survives record — a firewall
+// hole).
 
 // Pure diff: declared subnet ids + live inventory -> the added subnets.
 export interface VpcChildInput {
@@ -2788,6 +2822,91 @@ export function diffVpcNaclChildren(input: VpcNaclChildInput): AddedChild[] {
   return added;
 }
 
+// Pure diff: declared subnet↔route-table association ids + live inventory (Main + non-subnet
+// associations already filtered out upstream) -> the added associations. A
+// AWS::EC2::SubnetRouteTableAssociation's CFn physical id (Ref) IS its RouteTableAssociationId
+// (`rtbassoc-…`), which is also the CC primaryIdentifier, so declared associations are matched
+// by that id. Re-pointing a subnet at a different route table (a fresh associate / a
+// replace-route-table-association) yields a NEW RouteTableAssociationId, so an OOB re-point
+// surfaces as an `added` association not present in the template.
+export interface SubnetRouteTableAssociationChildInput {
+  declaredAssociationIds: string[]; // RouteTableAssociationIds of AWS::EC2::SubnetRouteTableAssociation on this VPC
+  liveAssociations: {
+    id: string;
+    subnetId?: string | undefined;
+    routeTableId?: string | undefined;
+  }[];
+}
+
+export function diffSubnetRouteTableAssociationChildren(
+  input: SubnetRouteTableAssociationChildInput
+): AddedChild[] {
+  const declared = new Set(input.declaredAssociationIds);
+  const added: AddedChild[] = [];
+  for (const a of input.liveAssociations) {
+    if (declared.has(a.id)) continue;
+    added.push({
+      resourceType: 'AWS::EC2::SubnetRouteTableAssociation',
+      identifier: a.id, // RouteTableAssociationId IS the CC primaryIdentifier (rtbassoc-…)
+      label: a.subnetId ? `${a.subnetId} -> ${a.routeTableId ?? '?'}` : a.id,
+      live: { Id: a.id, SubnetId: a.subnetId, RouteTableId: a.routeTableId },
+    });
+  }
+  return added;
+}
+
+// Pure diff: declared IGW-attachment vpc ids + live attachment inventory -> the added
+// attachments. A AWS::EC2::VPCGatewayAttachment attaching an internet gateway is keyed by
+// its VpcId (a VPC has at most one IGW attachment), so a declared attachment on THIS VPC
+// suppresses the live one; an OOB `attach-internet-gateway` on an unattached VPC surfaces.
+// The CC primaryIdentifier is the composite [AttachmentType, VpcId], runtime `IGW|<VpcId>`.
+export interface VpcGatewayAttachmentChildInput {
+  vpcId: string;
+  hasDeclaredIgwAttachment: boolean; // an AWS::EC2::VPCGatewayAttachment (InternetGatewayId set) on THIS VPC
+  liveInternetGatewayId?: string | undefined; // the IGW live-attached to THIS VPC, if any
+}
+
+export function diffVpcGatewayAttachmentChildren(
+  input: VpcGatewayAttachmentChildInput
+): AddedChild[] {
+  const { vpcId, hasDeclaredIgwAttachment, liveInternetGatewayId } = input;
+  if (!liveInternetGatewayId || hasDeclaredIgwAttachment) return [];
+  return [
+    {
+      resourceType: 'AWS::EC2::VPCGatewayAttachment',
+      identifier: `IGW|${vpcId}`, // CC composite AttachmentType|VpcId (runtime form IGW|<VpcId>)
+      label: `${liveInternetGatewayId} -> ${vpcId}`,
+      live: { AttachmentType: 'IGW', InternetGatewayId: liveInternetGatewayId, VpcId: vpcId },
+    },
+  ];
+}
+
+// Pure diff: declared secondary-CIDR blocks + live secondary-block inventory (the PRIMARY
+// IPv4 block already filtered out upstream) -> the added CIDR associations. A
+// AWS::EC2::VPCCidrBlock is matched by its CIDR block value (the CFn physical id is the
+// opaque AssociationId, so the human-declarable CIDR is the stable identity handle). The CC
+// primaryIdentifier is [Id, VpcId] (child-first), runtime `<AssociationId>|<VpcId>` (#647).
+export interface VpcCidrBlockChildInput {
+  vpcId: string;
+  declaredCidrs: string[]; // CidrBlock / Ipv6CidrBlock values of AWS::EC2::VPCCidrBlock on this VPC
+  liveCidrBlocks: { associationId: string; cidr: string }[];
+}
+
+export function diffVpcCidrBlockChildren(input: VpcCidrBlockChildInput): AddedChild[] {
+  const declared = new Set(input.declaredCidrs);
+  const added: AddedChild[] = [];
+  for (const b of input.liveCidrBlocks) {
+    if (declared.has(b.cidr)) continue;
+    added.push({
+      resourceType: 'AWS::EC2::VPCCidrBlock',
+      identifier: `${b.associationId}|${input.vpcId}`, // CC composite Id|VpcId (child-first, #647)
+      label: b.cidr,
+      live: { Id: b.associationId, VpcId: input.vpcId, CidrBlock: b.cidr },
+    });
+  }
+  return added;
+}
+
 async function pageSubnets(client: EC2Client, vpcId: string): Promise<Ec2Subnet[]> {
   const out: Ec2Subnet[] = [];
   let next: string | undefined;
@@ -2852,7 +2971,31 @@ async function pageNetworkAcls(client: EC2Client, vpcId: string): Promise<Ec2Net
   return out;
 }
 
-async function enumerateVpcChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+async function pageInternetGateways(
+  client: EC2Client,
+  vpcId: string
+): Promise<Ec2InternetGateway[]> {
+  const out: Ec2InternetGateway[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(
+      new DescribeInternetGatewaysCommand({
+        Filters: [{ Name: 'attachment.vpc-id', Values: [vpcId] }],
+        NextToken: next,
+      })
+    );
+    out.push(...(res.InternetGateways ?? []));
+    next = res.NextToken;
+  } while (next);
+  return out;
+}
+
+async function describeVpc(client: EC2Client, vpcId: string): Promise<Ec2Vpc | undefined> {
+  const res = await client.send(new DescribeVpcsCommand({ VpcIds: [vpcId] }));
+  return res.Vpcs?.[0];
+}
+
+export async function enumerateVpcChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
   const { parent, desired, region } = ctx;
   const vpcId = parent.physicalId; // a VPC's physical id IS its VpcId
   if (!vpcId) return [];
@@ -2874,6 +3017,36 @@ async function enumerateVpcChildren(ctx: EnumeratorContext): Promise<AddedChild[
       declaredRouteTableIds.push(r.physicalId);
     } else if (r.resourceType === 'AWS::EC2::NetworkAcl') {
       declaredNaclIds.push(r.physicalId);
+    }
+  }
+
+  // Declared sub-resources of THIS VPC (#1315): subnet↔route-table associations (keyed by
+  // RouteTableAssociationId = the Ref/physical id), IGW attachments (an
+  // AWS::EC2::VPCGatewayAttachment with an InternetGatewayId on this VPC), and secondary CIDR
+  // blocks (an AWS::EC2::VPCCidrBlock, matched by its declared CidrBlock / Ipv6CidrBlock).
+  const declaredAssociationIds: string[] = [];
+  let hasDeclaredIgwAttachment = false;
+  const declaredCidrs: string[] = [];
+  for (const r of desired.resources) {
+    if (r.resourceType === 'AWS::EC2::SubnetRouteTableAssociation') {
+      // A subnet↔route-table association references its VPC only INDIRECTLY (via SubnetId /
+      // RouteTableId), so it cannot be scoped by VpcId here; the live-association diff below
+      // is already scoped to THIS VPC's tables, so an association id declared on ANOTHER VPC
+      // simply never matches a live id in this set (no false suppression). Match by the
+      // RouteTableAssociationId = the resource's Ref / physical id.
+      if (r.physicalId) declaredAssociationIds.push(r.physicalId);
+    } else if (
+      r.resourceType === 'AWS::EC2::VPCGatewayAttachment' &&
+      parentRefMatches(r.declared.VpcId, vpcId) &&
+      r.declared.InternetGatewayId != null
+    ) {
+      hasDeclaredIgwAttachment = true;
+    } else if (
+      r.resourceType === 'AWS::EC2::VPCCidrBlock' &&
+      parentRefMatches(r.declared.VpcId, vpcId)
+    ) {
+      const cidr = r.declared.CidrBlock ?? r.declared.Ipv6CidrBlock;
+      if (typeof cidr === 'string') declaredCidrs.push(cidr);
     }
   }
 
@@ -2900,6 +3073,25 @@ async function enumerateVpcChildren(ctx: EnumeratorContext): Promise<AddedChild[
     .filter((rt) => !(rt.Associations ?? []).some((a) => a.Main === true))
     .map((rt) => ({ id: rt.RouteTableId, label: rt.RouteTableId }));
 
+  // Subnet↔route-table associations (#1315): the same DescribeRouteTables payload carries each
+  // table's `Associations[]`. Keep only the EXPLICIT subnet associations — drop the MAIN
+  // association (`Main: true`, the implicit default) and any non-subnet (gateway) association,
+  // both of which have no `AWS::EC2::SubnetRouteTableAssociation` template resource. A live
+  // association whose RouteTableAssociationId is not declared is an out-of-band re-point.
+  const liveAssociations = routeTables
+    .flatMap((rt) => rt.Associations ?? [])
+    .filter(
+      (a): a is Ec2RouteTableAssociation & { RouteTableAssociationId: string } =>
+        typeof a.RouteTableAssociationId === 'string' &&
+        a.Main !== true &&
+        typeof a.SubnetId === 'string'
+    )
+    .map((a) => ({
+      id: a.RouteTableAssociationId,
+      subnetId: a.SubnetId,
+      routeTableId: a.RouteTableId,
+    }));
+
   // Drop the DEFAULT NACL (AWS auto-creates one per VPC, `IsDefault: true`) — a built-in
   // default, never an out-of-band addition.
   const nacls = await pageNetworkAcls(client, vpcId);
@@ -2910,12 +3102,163 @@ async function enumerateVpcChildren(ctx: EnumeratorContext): Promise<AddedChild[
     .filter((n) => n.IsDefault !== true)
     .map((n) => ({ id: n.NetworkAclId, label: n.NetworkAclId }));
 
+  // IGW attachment (#1315): DescribeInternetGateways filtered to `attachment.vpc-id` returns
+  // the internet gateway currently attached to THIS VPC (at most one). If the template does
+  // not declare an AWS::EC2::VPCGatewayAttachment for it, the attachment is out of band.
+  const internetGateways = await pageInternetGateways(client, vpcId);
+  const liveInternetGatewayId = internetGateways.find(
+    (igw): igw is Ec2InternetGateway & { InternetGatewayId: string } =>
+      typeof igw.InternetGatewayId === 'string'
+  )?.InternetGatewayId;
+
+  // Secondary VPC CIDR (#1315): DescribeVpcs returns the VPC's CidrBlockAssociations +
+  // Ipv6CidrBlockAssociations. Drop the PRIMARY IPv4 block (`Vpc.CidrBlock`, created with the
+  // VPC and never a template resource); every other associated block is a secondary CIDR
+  // corresponding to a declarable AWS::EC2::VPCCidrBlock. An association whose CIDR value is
+  // not declared is an out-of-band `associate-vpc-cidr-block`.
+  const vpc = await describeVpc(client, vpcId);
+  const primaryCidr = typeof vpc?.CidrBlock === 'string' ? vpc.CidrBlock : undefined;
+  const liveCidrBlocks: { associationId: string; cidr: string }[] = [];
+  for (const b of vpc?.CidrBlockAssociationSet ?? []) {
+    if (typeof b.AssociationId !== 'string' || typeof b.CidrBlock !== 'string') continue;
+    if (b.CidrBlock === primaryCidr) continue; // the primary IPv4 block is not a template resource
+    liveCidrBlocks.push({ associationId: b.AssociationId, cidr: b.CidrBlock });
+  }
+  for (const b of vpc?.Ipv6CidrBlockAssociationSet ?? []) {
+    if (typeof b.AssociationId !== 'string' || typeof b.Ipv6CidrBlock !== 'string') continue;
+    liveCidrBlocks.push({ associationId: b.AssociationId, cidr: b.Ipv6CidrBlock });
+  }
+
   return [
     ...diffVpcChildren({ declaredSubnetIds, liveSubnets }),
     ...diffVpcEndpointChildren({ declaredEndpointIds, liveEndpoints }),
     ...diffVpcRouteTableChildren({ declaredRouteTableIds, liveRouteTables }),
     ...diffVpcNaclChildren({ declaredNaclIds, liveNacls }),
+    ...diffSubnetRouteTableAssociationChildren({ declaredAssociationIds, liveAssociations }),
+    ...diffVpcGatewayAttachmentChildren({
+      vpcId,
+      hasDeclaredIgwAttachment,
+      liveInternetGatewayId,
+    }),
+    ...diffVpcCidrBlockChildren({ vpcId, declaredCidrs, liveCidrBlocks }),
   ];
+}
+
+// ── EC2 (NetworkAcl) ──────────────────────────────────────────────────────────
+// An `AWS::EC2::NetworkAcl` owns Entries (NACL rules), each a separate CloudFormation
+// resource (`AWS::EC2::NetworkAclEntry`). The CC `AWS::EC2::NetworkAcl` model is only
+// Id/VpcId/Tags — it does NOT reflect its entries inline — so a console / CLI
+// `create-network-acl-entry` (someone punches an "allow ALL from 0.0.0.0/0" rule into a
+// DECLARED NACL out of band, a firewall hole) reads CLEAN and survives `record`, invisible
+// to cdk drift / CFn drift detection (they only compare template-declared resources). Read
+// the parent NACL's `Entries[]` via EC2 DescribeNetworkAcls and diff them against the
+// declared AWS::EC2::NetworkAclEntry resources on this NACL.
+//
+// FP-safety: every NACL AWS-auto-creates two DEFAULT deny-all catch-all rules (RuleNumber
+// 32767, one ingress + one egress; the IPv6 default uses the same 32767 with an
+// Ipv6CidrBlock ::/0) that are NOT template resources — filtered out here (the `32767` twin
+// of the Main route-table / IsDefault NACL default-child pattern). A NACL entry's identity
+// within its NACL is the (RuleNumber, Egress) pair (a NACL holds at most one entry per
+// pair). The CC primaryIdentifier is the opaque readOnly `Id` (a generated form CC's
+// UnsupportedAction GetResource/DeleteResource cannot consume — the same CC gap that made
+// readEc2NetworkAclEntry an SDK override), so the `added` `identifier` is the
+// `NetworkAclId|RuleNumber|Egress` composite: this SURFACES the rule (the primary value —
+// visibility + record / ignore) even though a CC DeleteResource revert is not available for
+// this type.
+
+// AWS auto-creates the catch-all DEFAULT deny rule (ingress + egress) at RuleNumber 32767 on
+// every NACL; it is not a template resource and must never surface as `added` (#1315).
+const NACL_DEFAULT_RULE_NUMBER = 32767;
+
+// Pure diff: declared NACL-entry keys + live entry inventory (the 32767 default rules already
+// filtered out upstream) -> the added entries. A NACL entry is matched by its
+// (RuleNumber, Egress) identity within the NACL.
+export interface NetworkAclEntryChildInput {
+  naclId: string;
+  declaredEntryKeys: string[]; // `${RuleNumber}|${Egress}` for each declared AWS::EC2::NetworkAclEntry on this NACL
+  liveEntries: {
+    ruleNumber: number;
+    egress: boolean;
+    cidr?: string | undefined; // CidrBlock / Ipv6CidrBlock — display only
+    ruleAction?: string | undefined; // allow / deny — display only
+  }[];
+}
+
+export function diffNetworkAclEntryChildren(input: NetworkAclEntryChildInput): AddedChild[] {
+  const { naclId, declaredEntryKeys, liveEntries } = input;
+  const declared = new Set(declaredEntryKeys);
+  const added: AddedChild[] = [];
+  for (const e of liveEntries) {
+    const key = `${e.ruleNumber}|${e.egress}`;
+    if (declared.has(key)) continue;
+    const dir = e.egress ? 'egress' : 'ingress';
+    const detail = [e.ruleAction, e.cidr].filter((v) => v != null).join(' ');
+    added.push({
+      resourceType: 'AWS::EC2::NetworkAclEntry',
+      // CC primaryIdentifier is the opaque readOnly `Id` (CC has no read/delete handler for
+      // this type), so use the NetworkAclId|RuleNumber|Egress identity composite.
+      identifier: `${naclId}|${e.ruleNumber}|${e.egress}`,
+      label: `#${e.ruleNumber} ${dir}${detail ? ` ${detail}` : ''}`,
+      live: {
+        NetworkAclId: naclId,
+        RuleNumber: e.ruleNumber,
+        Egress: e.egress,
+        ...(e.ruleAction != null ? { RuleAction: e.ruleAction } : {}),
+        ...(e.cidr != null ? { CidrBlock: e.cidr } : {}),
+      },
+    });
+  }
+  return added;
+}
+
+async function describeNetworkAcl(
+  client: EC2Client,
+  naclId: string
+): Promise<Ec2NetworkAcl | undefined> {
+  const res = await client.send(new DescribeNetworkAclsCommand({ NetworkAclIds: [naclId] }));
+  return res.NetworkAcls?.[0];
+}
+
+export async function enumerateNetworkAclChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  const naclId = parent.physicalId; // a NetworkAcl's physical id IS its NetworkAclId
+  if (!naclId) return [];
+
+  // Declared NACL entries on THIS NACL (Ref/GetAtt NetworkAclId already resolved to the
+  // physical id by gather). A NACL entry's CFn physical id is an opaque generated id, so
+  // MATCH declared entries by their (RuleNumber, Egress) identity within the NACL.
+  const declaredEntryKeys: string[] = [];
+  for (const r of desired.resources) {
+    if (
+      r.resourceType !== 'AWS::EC2::NetworkAclEntry' ||
+      !parentRefMatches(r.declared.NetworkAclId, naclId)
+    ) {
+      continue;
+    }
+    const ruleNumber = r.declared.RuleNumber;
+    // Egress defaults to false when the template omits it (an ingress rule).
+    const egress = r.declared.Egress === true;
+    if (typeof ruleNumber === 'number') declaredEntryKeys.push(`${ruleNumber}|${egress}`);
+  }
+
+  const client = new EC2Client({ region, ...READ_RETRY });
+  const nacl = await describeNetworkAcl(client, naclId);
+  const liveEntries = (nacl?.Entries ?? [])
+    .filter(
+      (e): e is Ec2NetworkAclEntry & { RuleNumber: number; Egress: boolean } =>
+        typeof e.RuleNumber === 'number' && typeof e.Egress === 'boolean'
+    )
+    // Drop the AWS-auto-created catch-all default rules (RuleNumber 32767, ingress + egress,
+    // IPv4 + IPv6) — built-in defaults, never out-of-band additions.
+    .filter((e) => e.RuleNumber !== NACL_DEFAULT_RULE_NUMBER)
+    .map((e) => ({
+      ruleNumber: e.RuleNumber,
+      egress: e.Egress,
+      cidr: e.CidrBlock ?? e.Ipv6CidrBlock,
+      ruleAction: e.RuleAction,
+    }));
+
+  return diffNetworkAclEntryChildren({ naclId, declaredEntryKeys, liveEntries });
 }
 
 // ── EC2 (RouteTable) ────────────────────────────────────────────────────────────

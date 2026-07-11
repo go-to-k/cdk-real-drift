@@ -8,6 +8,15 @@ import {
   GetStagesCommand as GetRestStagesCommand,
 } from '@aws-sdk/client-api-gateway';
 import {
+  DescribeInternetGatewaysCommand,
+  DescribeNetworkAclsCommand,
+  DescribeRouteTablesCommand,
+  DescribeSubnetsCommand,
+  DescribeVpcEndpointsCommand,
+  DescribeVpcsCommand,
+  EC2Client,
+} from '@aws-sdk/client-ec2';
+import {
   LambdaClient,
   ListAliasesCommand,
   ListEventSourceMappingsCommand,
@@ -27,10 +36,12 @@ import { UNRESOLVED } from '../src/normalize/intrinsic-resolver.js';
 import type { EnumeratorContext } from '../src/read/child-enumerators.js';
 import {
   enumerateLambdaFunctionChildren,
+  enumerateNetworkAclChildren,
   enumerateRdsClusterChildren,
   enumerateRestApiChildren,
   enumerateRoute53HostedZoneChildren,
   enumerateSnsTopicChildren,
+  enumerateVpcChildren,
   diffApiGatewayAuthorizers,
   diffApiGatewayChildren,
   diffApiGatewayGatewayResponses,
@@ -58,6 +69,7 @@ import {
   diffLoadBalancerChildren,
   diffLogGroupChildren,
   diffLogGroupSubscriptionFilters,
+  diffNetworkAclEntryChildren,
   diffRdsClusterChildren,
   diffRoute53HostedZoneChildren,
   diffRouteTableChildren,
@@ -66,8 +78,11 @@ import {
   diffUserPoolGroups,
   diffUserPoolIdentityProviders,
   diffUserPoolResourceServers,
+  diffSubnetRouteTableAssociationChildren,
+  diffVpcCidrBlockChildren,
   diffVpcChildren,
   diffVpcEndpointChildren,
+  diffVpcGatewayAttachmentChildren,
   diffVpcNaclChildren,
   diffVpcRouteTableChildren,
   isBodyDefinedHttpApi,
@@ -2168,6 +2183,356 @@ describe('diffVpcNaclChildren (EC2 VPC network ACLs) — #1045', () => {
         liveNacls: [{ id: ACL('a') }, { id: ACL('b') }],
       })
     ).toEqual([]);
+  });
+});
+
+// ── #1315: VPC sub-resource additions ────────────────────────────────────────
+
+describe('diffSubnetRouteTableAssociationChildren (EC2 subnet↔route-table associations) — #1315', () => {
+  const ASSOC = (id: string) => `rtbassoc-${id}`;
+
+  it('flags an out-of-band subnet re-point (association not in the template)', () => {
+    const added = diffSubnetRouteTableAssociationChildren({
+      declaredAssociationIds: [ASSOC('declared')],
+      liveAssociations: [
+        { id: ASSOC('declared'), subnetId: 'subnet-a', routeTableId: 'rtb-1' },
+        { id: ASSOC('rogue'), subnetId: 'subnet-b', routeTableId: 'rtb-2' },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::EC2::SubnetRouteTableAssociation',
+        identifier: ASSOC('rogue'), // bare rtbassoc-… IS the CC primaryIdentifier
+        label: 'subnet-b -> rtb-2',
+        live: { Id: ASSOC('rogue'), SubnetId: 'subnet-b', RouteTableId: 'rtb-2' },
+      },
+    ]);
+  });
+
+  it('no drift when every live association is declared', () => {
+    expect(
+      diffSubnetRouteTableAssociationChildren({
+        declaredAssociationIds: [ASSOC('a'), ASSOC('b')],
+        liveAssociations: [
+          { id: ASSOC('a'), subnetId: 'subnet-a', routeTableId: 'rtb-1' },
+          { id: ASSOC('b'), subnetId: 'subnet-b', routeTableId: 'rtb-2' },
+        ],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffVpcGatewayAttachmentChildren (EC2 IGW attachment) — #1315', () => {
+  it('flags an internet gateway attached out of band (no declared attachment)', () => {
+    const added = diffVpcGatewayAttachmentChildren({
+      vpcId: 'vpc-1',
+      hasDeclaredIgwAttachment: false,
+      liveInternetGatewayId: 'igw-rogue',
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::EC2::VPCGatewayAttachment',
+        identifier: 'IGW|vpc-1', // CC composite AttachmentType|VpcId, runtime IGW|<VpcId>
+        label: 'igw-rogue -> vpc-1',
+        live: { AttachmentType: 'IGW', InternetGatewayId: 'igw-rogue', VpcId: 'vpc-1' },
+      },
+    ]);
+  });
+
+  it('no drift when the IGW attachment is declared', () => {
+    expect(
+      diffVpcGatewayAttachmentChildren({
+        vpcId: 'vpc-1',
+        hasDeclaredIgwAttachment: true,
+        liveInternetGatewayId: 'igw-declared',
+      })
+    ).toEqual([]);
+  });
+
+  it('no drift when no IGW is attached', () => {
+    expect(
+      diffVpcGatewayAttachmentChildren({
+        vpcId: 'vpc-1',
+        hasDeclaredIgwAttachment: false,
+        liveInternetGatewayId: undefined,
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffVpcCidrBlockChildren (EC2 secondary VPC CIDR) — #1315', () => {
+  it('flags an out-of-band secondary CIDR (not in the template; primary already filtered upstream)', () => {
+    const added = diffVpcCidrBlockChildren({
+      vpcId: 'vpc-1',
+      declaredCidrs: ['10.1.0.0/16'],
+      liveCidrBlocks: [
+        { associationId: 'vpc-cidr-assoc-declared', cidr: '10.1.0.0/16' },
+        { associationId: 'vpc-cidr-assoc-rogue', cidr: '10.2.0.0/16' },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::EC2::VPCCidrBlock',
+        identifier: 'vpc-cidr-assoc-rogue|vpc-1', // CC composite Id|VpcId (child-first, #647)
+        label: '10.2.0.0/16',
+        live: { Id: 'vpc-cidr-assoc-rogue', VpcId: 'vpc-1', CidrBlock: '10.2.0.0/16' },
+      },
+    ]);
+  });
+
+  it('no drift when every secondary CIDR is declared', () => {
+    expect(
+      diffVpcCidrBlockChildren({
+        vpcId: 'vpc-1',
+        declaredCidrs: ['10.1.0.0/16', '2600:1f18::/56'],
+        liveCidrBlocks: [
+          { associationId: 'a1', cidr: '10.1.0.0/16' },
+          { associationId: 'a2', cidr: '2600:1f18::/56' },
+        ],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffNetworkAclEntryChildren (EC2 NACL entries) — #1315', () => {
+  const NACL = 'acl-1';
+
+  it('flags a rogue allow-all ingress rule punched into a declared NACL (32767 default filtered upstream)', () => {
+    const added = diffNetworkAclEntryChildren({
+      naclId: NACL,
+      declaredEntryKeys: ['100|false'], // a declared ingress rule at RuleNumber 100
+      liveEntries: [
+        { ruleNumber: 100, egress: false, cidr: '10.0.0.0/16', ruleAction: 'allow' },
+        { ruleNumber: 50, egress: false, cidr: '0.0.0.0/0', ruleAction: 'allow' }, // rogue
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::EC2::NetworkAclEntry',
+        identifier: `${NACL}|50|false`, // NetworkAclId|RuleNumber|Egress (CC Id is opaque/unsupported)
+        label: '#50 ingress allow 0.0.0.0/0',
+        live: {
+          NetworkAclId: NACL,
+          RuleNumber: 50,
+          Egress: false,
+          RuleAction: 'allow',
+          CidrBlock: '0.0.0.0/0',
+        },
+      },
+    ]);
+  });
+
+  it('an egress rule with the same RuleNumber as a declared ingress rule is distinct (Egress in the key)', () => {
+    const added = diffNetworkAclEntryChildren({
+      naclId: NACL,
+      declaredEntryKeys: ['100|false'], // declared: RuleNumber 100 ingress
+      liveEntries: [
+        { ruleNumber: 100, egress: false, cidr: '10.0.0.0/16', ruleAction: 'allow' },
+        { ruleNumber: 100, egress: true, cidr: '0.0.0.0/0', ruleAction: 'allow' }, // rogue egress
+      ],
+    });
+    expect(added.map((a) => a.identifier)).toEqual([`${NACL}|100|true`]);
+  });
+
+  it('no drift when every non-default entry is declared', () => {
+    expect(
+      diffNetworkAclEntryChildren({
+        naclId: NACL,
+        declaredEntryKeys: ['100|false', '200|true'],
+        liveEntries: [
+          { ruleNumber: 100, egress: false, cidr: '10.0.0.0/16', ruleAction: 'allow' },
+          { ruleNumber: 200, egress: true, cidr: '0.0.0.0/0', ruleAction: 'allow' },
+        ],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('enumerateNetworkAclChildren (EC2 NACL entries, end-to-end) — #1315', () => {
+  it('filters the 32767 default rules (IPv4 + IPv6) and surfaces only the rogue entry', async () => {
+    const ec2 = mockClient(EC2Client);
+    ec2.on(DescribeNetworkAclsCommand).resolves({
+      NetworkAcls: [
+        {
+          NetworkAclId: 'acl-1',
+          Entries: [
+            { RuleNumber: 100, Egress: false, CidrBlock: '10.0.0.0/16', RuleAction: 'allow' }, // declared
+            { RuleNumber: 50, Egress: false, CidrBlock: '0.0.0.0/0', RuleAction: 'allow' }, // rogue
+            { RuleNumber: 32767, Egress: false, CidrBlock: '0.0.0.0/0', RuleAction: 'deny' }, // default IPv4
+            { RuleNumber: 32767, Egress: true, CidrBlock: '0.0.0.0/0', RuleAction: 'deny' }, // default egress
+            { RuleNumber: 32768, Egress: false, Ipv6CidrBlock: '::/0', RuleAction: 'deny' }, // AWS uses 32767 for v6 too; keep realistic
+          ],
+        },
+      ],
+    });
+    const ctx = {
+      parent: { logicalId: 'Nacl', physicalId: 'acl-1', declared: {} },
+      desired: {
+        resources: [
+          {
+            resourceType: 'AWS::EC2::NetworkAclEntry',
+            physicalId: 'entry0',
+            declared: { NetworkAclId: 'acl-1', RuleNumber: 100, Egress: false },
+          },
+        ],
+        ctx: { liveAttrs: {} },
+      },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    const added = await enumerateNetworkAclChildren(ctx);
+    // The declared #100 and both 32767 defaults are gone; the rogue #50 (and the v6 #32768,
+    // which is NOT the 32767 default) surface.
+    expect(added.map((a) => a.identifier).sort()).toEqual(['acl-1|32768|false', 'acl-1|50|false']);
+    ec2.restore();
+  });
+});
+
+describe('enumerateVpcChildren (EC2 VPC sub-resources, end-to-end) — #1315', () => {
+  const baseEc2 = () => {
+    const ec2 = mockClient(EC2Client);
+    ec2
+      .on(DescribeSubnetsCommand)
+      .resolves({ Subnets: [] })
+      .on(DescribeVpcEndpointsCommand)
+      .resolves({ VpcEndpoints: [] })
+      .on(DescribeNetworkAclsCommand)
+      .resolves({ NetworkAcls: [] });
+    return ec2;
+  };
+
+  it('surfaces a rogue subnet re-point, an OOB IGW attachment, and a secondary CIDR while filtering the Main association + primary CIDR', async () => {
+    const ec2 = baseEc2();
+    ec2
+      .on(DescribeRouteTablesCommand)
+      .resolves({
+        RouteTables: [
+          {
+            RouteTableId: 'rtb-main',
+            Associations: [{ RouteTableAssociationId: 'rtbassoc-main', Main: true }], // filtered
+          },
+          {
+            RouteTableId: 'rtb-1',
+            Associations: [
+              {
+                RouteTableAssociationId: 'rtbassoc-rogue',
+                Main: false,
+                SubnetId: 'subnet-x',
+                RouteTableId: 'rtb-1',
+              },
+              // a gateway (non-subnet) association is filtered (no SubnetId)
+              { RouteTableAssociationId: 'rtbassoc-gw', Main: false, GatewayId: 'igw-y' },
+            ],
+          },
+        ],
+      })
+      .on(DescribeInternetGatewaysCommand)
+      .resolves({ InternetGateways: [{ InternetGatewayId: 'igw-rogue' }] })
+      .on(DescribeVpcsCommand)
+      .resolves({
+        Vpcs: [
+          {
+            VpcId: 'vpc-1',
+            CidrBlock: '10.0.0.0/16', // primary — filtered
+            CidrBlockAssociationSet: [
+              { AssociationId: 'assoc-primary', CidrBlock: '10.0.0.0/16' }, // primary, filtered
+              { AssociationId: 'vpc-cidr-assoc-rogue', CidrBlock: '10.9.0.0/16' }, // rogue
+            ],
+            Ipv6CidrBlockAssociationSet: [],
+          },
+        ],
+      });
+    const ctx = {
+      parent: { logicalId: 'Vpc', physicalId: 'vpc-1', declared: {} },
+      desired: {
+        // The route table itself is declared (rtb-1) — only its ASSOCIATION is out of band, so
+        // the RouteTable must not surface, isolating the sub-resource diff.
+        resources: [
+          {
+            resourceType: 'AWS::EC2::RouteTable',
+            physicalId: 'rtb-1',
+            declared: { VpcId: 'vpc-1' },
+          },
+        ],
+        ctx: { liveAttrs: {} },
+      },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    const added = await enumerateVpcChildren(ctx);
+    expect(added.map((a) => `${a.resourceType} ${a.identifier}`).sort()).toEqual([
+      'AWS::EC2::SubnetRouteTableAssociation rtbassoc-rogue',
+      'AWS::EC2::VPCCidrBlock vpc-cidr-assoc-rogue|vpc-1',
+      'AWS::EC2::VPCGatewayAttachment IGW|vpc-1',
+    ]);
+    ec2.restore();
+  });
+
+  it('no sub-resource drift when the association, IGW attachment, and secondary CIDR are all declared', async () => {
+    const ec2 = baseEc2();
+    ec2
+      .on(DescribeRouteTablesCommand)
+      .resolves({
+        RouteTables: [
+          {
+            RouteTableId: 'rtb-1',
+            Associations: [
+              {
+                RouteTableAssociationId: 'rtbassoc-declared',
+                Main: false,
+                SubnetId: 'subnet-x',
+                RouteTableId: 'rtb-1',
+              },
+            ],
+          },
+        ],
+      })
+      .on(DescribeInternetGatewaysCommand)
+      .resolves({ InternetGateways: [{ InternetGatewayId: 'igw-declared' }] })
+      .on(DescribeVpcsCommand)
+      .resolves({
+        Vpcs: [
+          {
+            VpcId: 'vpc-1',
+            CidrBlock: '10.0.0.0/16',
+            CidrBlockAssociationSet: [
+              { AssociationId: 'assoc-primary', CidrBlock: '10.0.0.0/16' },
+              { AssociationId: 'assoc-sec', CidrBlock: '10.9.0.0/16' },
+            ],
+            Ipv6CidrBlockAssociationSet: [],
+          },
+        ],
+      });
+    const ctx = {
+      parent: { logicalId: 'Vpc', physicalId: 'vpc-1', declared: {} },
+      desired: {
+        resources: [
+          {
+            resourceType: 'AWS::EC2::RouteTable',
+            physicalId: 'rtb-1',
+            declared: { VpcId: 'vpc-1' },
+          },
+          {
+            resourceType: 'AWS::EC2::SubnetRouteTableAssociation',
+            physicalId: 'rtbassoc-declared',
+            declared: { SubnetId: 'subnet-x', RouteTableId: 'rtb-1' },
+          },
+          {
+            resourceType: 'AWS::EC2::VPCGatewayAttachment',
+            physicalId: 'att0',
+            declared: { VpcId: 'vpc-1', InternetGatewayId: 'igw-declared' },
+          },
+          {
+            resourceType: 'AWS::EC2::VPCCidrBlock',
+            physicalId: 'cidr0',
+            declared: { VpcId: 'vpc-1', CidrBlock: '10.9.0.0/16' },
+          },
+        ],
+        ctx: { liveAttrs: {} },
+      },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    const added = await enumerateVpcChildren(ctx);
+    expect(added).toEqual([]);
+    ec2.restore();
   });
 });
 
