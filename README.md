@@ -1046,8 +1046,10 @@ place, since Cloud Control has no handler for the type),
 `ecs:UpdateService` (reverts an `AWS::ECS::Service` `ServiceConnectConfiguration` /
 `VolumeConfigurations` drift — the whole writeOnly prop is re-supplied, since Cloud
 Control cannot sub-path patch it),
-`elasticbeanstalk:UpdateApplication` / `elasticbeanstalk:UpdateEnvironment`
-(revert an `AWS::ElasticBeanstalk::Application` / `Environment`),
+`elasticbeanstalk:UpdateApplication` / `elasticbeanstalk:UpdateEnvironment` /
+`elasticbeanstalk:UpdateApplicationResourceLifecycle` (revert an
+`AWS::ElasticBeanstalk::Application` — including its `ResourceLifecycleConfig` — or
+`Environment`),
 `codebuild:UpdateReportGroup` (reverts an `AWS::CodeBuild::ReportGroup`),
 `dax:UpdateCluster` / `dax:UpdateParameterGroup` (revert an `AWS::DAX::Cluster` /
 `ParameterGroup`),
