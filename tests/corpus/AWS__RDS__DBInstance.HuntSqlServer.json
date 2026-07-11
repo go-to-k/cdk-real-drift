@@ -1,0 +1,488 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntSqlServer",
+    "resourceType": "AWS::RDS::DBInstance",
+    "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+    "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer",
+    "declared": {
+      "AllocatedStorage": "20",
+      "DBInstanceClass": "db.t3.micro",
+      "Engine": "sqlserver-ex",
+      "MasterUserPassword": "cdkrdHuntPassw0rd1",
+      "MasterUsername": "huntadmin",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "DatabaseInsightsMode": "standard",
+    "StorageEncrypted": false,
+    "StatusInfos": [],
+    "CertificateDetails": {
+      "ValidTill": "2029-07-11T17:19:23Z",
+      "CAIdentifier": "rds-ca-rsa2048-g1"
+    },
+    "Port": "1433",
+    "AdditionalStorageVolumes": [],
+    "StorageThroughput": 0,
+    "DbiResourceId": "db-UEZFOSQRUFABEOC6EOLZPPE4HA",
+    "ReadReplicaDBClusterIdentifiers": [],
+    "MonitoringInterval": 0,
+    "DBParameterGroupName": "default.sqlserver-ex-15.0",
+    "DBInstanceArn": "arn:aws:rds:us-east-1:111111111111:db:cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+    "Endpoint": {
+      "Address": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb.caxxotukouxo.us-east-1.rds.amazonaws.com",
+      "Port": "1433",
+      "HostedZoneId": "Z2R2ITUGPM61AM"
+    },
+    "LatestRestorableTime": "2026-07-11T17:23:27.397Z",
+    "MultiAZ": false,
+    "Engine": "sqlserver-ex",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegRdsSqlServerMin",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntSqlServer",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegRdsSqlServerMin/e9769270-7d4a-11f1-86c0-129f2ad4b51d",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "EngineVersion": "15.00.4470.1.v1",
+    "StorageType": "gp2",
+    "DBInstanceStatus": "available",
+    "DBInstanceClass": "db.t3.micro",
+    "AvailabilityZone": "us-east-1d",
+    "OptionGroupName": "default:sqlserver-ex-15-00",
+    "EnablePerformanceInsights": false,
+    "ReadReplicaDBInstanceIdentifiers": [],
+    "AutoMinorVersionUpgrade": true,
+    "DBSubnetGroupName": "default",
+    "DeletionProtection": false,
+    "DBInstanceIdentifier": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+    "AllocatedStorage": "20",
+    "MasterUserSecret": {},
+    "DBSecurityGroups": [],
+    "MasterUsername": "huntadmin",
+    "PubliclyAccessible": true,
+    "CharacterSetName": "SQL_Latin1_General_CP1_CI_AS",
+    "AssociatedRoles": [],
+    "InstanceCreateTime": "2026-07-11T17:22:21.533Z",
+    "ProcessorFeatures": [],
+    "PreferredBackupWindow": "04:57-05:27",
+    "NetworkType": "IPV4",
+    "DedicatedLogVolume": false,
+    "CopyTagsToSnapshot": false,
+    "LicenseModel": "license-included",
+    "PreferredMaintenanceWindow": "fri:04:23-fri:04:53",
+    "BackupTarget": "region",
+    "CACertificateIdentifier": "rds-ca-rsa2048-g1",
+    "ManageMasterUserPassword": false,
+    "VPCSecurityGroups": ["sg-0a26e23e2310ee0c9"],
+    "EnableIAMDatabaseAuthentication": false,
+    "BackupRetentionPeriod": 1,
+    "EnableCloudwatchLogsExports": []
+  },
+  "schema": {
+    "readOnly": [
+      "AutomaticRestartTime",
+      "CertificateDetails",
+      "DBInstanceArn",
+      "DBInstanceStatus",
+      "DbiResourceId",
+      "Endpoint",
+      "InstanceCreateTime",
+      "IsStorageConfigUpgradeAvailable",
+      "LatestRestorableTime",
+      "ListenerEndpoint",
+      "PercentProgress",
+      "ReadReplicaDBClusterIdentifiers",
+      "ReadReplicaDBInstanceIdentifiers",
+      "ResumeFullAutomationModeTime",
+      "SecondaryAvailabilityZone",
+      "StatusInfos"
+    ],
+    "writeOnly": [
+      "AllowMajorVersionUpgrade",
+      "ApplyImmediately",
+      "AutomaticBackupReplicationKmsKeyId",
+      "CertificateRotationRestart",
+      "DBSnapshotIdentifier",
+      "DeleteAutomatedBackups",
+      "MasterUserAuthenticationType",
+      "MasterUserPassword",
+      "RestoreTime",
+      "SourceDBInstanceAutomatedBackupsArn",
+      "SourceDBInstanceIdentifier",
+      "SourceDbiResourceId",
+      "SourceRegion",
+      "TdeCredentialPassword",
+      "UseDefaultProcessorFeatures",
+      "UseLatestRestorableTime"
+    ],
+    "createOnly": [
+      "BackupTarget",
+      "CharacterSetName",
+      "CustomIAMInstanceProfile",
+      "DBClusterIdentifier",
+      "DBInstanceIdentifier",
+      "DBName",
+      "DBSubnetGroupName",
+      "DBSystemId",
+      "KmsKeyId",
+      "MasterUsername",
+      "NcharCharacterSetName",
+      "SourceRegion",
+      "StorageEncrypted",
+      "Timezone"
+    ],
+    "readOnlyPaths": [
+      "AutomaticRestartTime",
+      "CertificateDetails",
+      "CertificateDetails.CAIdentifier",
+      "CertificateDetails.ValidTill",
+      "DBInstanceArn",
+      "DBInstanceStatus",
+      "DbiResourceId",
+      "Endpoint",
+      "Endpoint.Address",
+      "Endpoint.HostedZoneId",
+      "Endpoint.Port",
+      "InstanceCreateTime",
+      "IsStorageConfigUpgradeAvailable",
+      "LatestRestorableTime",
+      "ListenerEndpoint",
+      "ListenerEndpoint.Address",
+      "ListenerEndpoint.HostedZoneId",
+      "ListenerEndpoint.Port",
+      "MasterUserSecret.SecretArn",
+      "PercentProgress",
+      "ReadReplicaDBClusterIdentifiers",
+      "ReadReplicaDBInstanceIdentifiers",
+      "ResumeFullAutomationModeTime",
+      "SecondaryAvailabilityZone",
+      "StatusInfos"
+    ],
+    "writeOnlyPaths": [
+      "AllowMajorVersionUpgrade",
+      "ApplyImmediately",
+      "AutomaticBackupReplicationKmsKeyId",
+      "CertificateRotationRestart",
+      "DBSnapshotIdentifier",
+      "DeleteAutomatedBackups",
+      "MasterUserAuthenticationType",
+      "MasterUserPassword",
+      "RestoreTime",
+      "SourceDBInstanceAutomatedBackupsArn",
+      "SourceDBInstanceIdentifier",
+      "SourceDbiResourceId",
+      "SourceRegion",
+      "TdeCredentialPassword",
+      "UseDefaultProcessorFeatures",
+      "UseLatestRestorableTime"
+    ],
+    "createOnlyPaths": [
+      "BackupTarget",
+      "CharacterSetName",
+      "CustomIAMInstanceProfile",
+      "DBClusterIdentifier",
+      "DBInstanceIdentifier",
+      "DBName",
+      "DBSubnetGroupName",
+      "DBSystemId",
+      "KmsKeyId",
+      "MasterUsername",
+      "NcharCharacterSetName",
+      "SourceRegion",
+      "StorageEncrypted",
+      "Timezone"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "AutoMinorVersionUpgrade",
+      "actual": true,
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "AvailabilityZone",
+      "actual": "us-east-1d",
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "BackupRetentionPeriod",
+      "actual": 1,
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "BackupTarget",
+      "actual": "region",
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "CACertificateIdentifier",
+      "actual": "rds-ca-rsa2048-g1",
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "CharacterSetName",
+      "actual": "SQL_Latin1_General_CP1_CI_AS",
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "CopyTagsToSnapshot",
+      "actual": false,
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "DBParameterGroupName",
+      "actual": "default.sqlserver-ex-15.0",
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "DBSubnetGroupName",
+      "actual": "default",
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "DatabaseInsightsMode",
+      "actual": "standard",
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "DedicatedLogVolume",
+      "actual": false,
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "EnableIAMDatabaseAuthentication",
+      "actual": false,
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "EnablePerformanceInsights",
+      "actual": false,
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "EngineVersion",
+      "actual": "15.00.4470.1.v1",
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "LicenseModel",
+      "actual": "license-included",
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "ManageMasterUserPassword",
+      "actual": false,
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "MonitoringInterval",
+      "actual": 0,
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "MultiAZ",
+      "actual": false,
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "NetworkType",
+      "actual": "IPV4",
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "OptionGroupName",
+      "actual": "default:sqlserver-ex-15-00",
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "Port",
+      "actual": "1433",
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "PreferredBackupWindow",
+      "actual": "04:57-05:27",
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "PreferredMaintenanceWindow",
+      "actual": "fri:04:23-fri:04:53",
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "StorageEncrypted",
+      "actual": false,
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "StorageThroughput",
+      "actual": 0,
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "StorageType",
+      "actual": "gp2",
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "VPCSecurityGroups",
+      "actual": ["sg-0a26e23e2310ee0c9"],
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    },
+    {
+      "tier": "readGap",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "MasterUserPassword",
+      "note": "write-only — cannot be read back",
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "HuntSqlServer",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "PubliclyAccessible",
+      "actual": true,
+      "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+    }
+  ]
+}

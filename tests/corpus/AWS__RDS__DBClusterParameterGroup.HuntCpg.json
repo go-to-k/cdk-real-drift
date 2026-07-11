@@ -1,0 +1,80 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntCpg",
+    "resourceType": "AWS::RDS::DBClusterParameterGroup",
+    "physicalId": "cdkrdhunt-mixed-cpg",
+    "constructPath": "CdkRealDriftIntegCaseIdentsMin/HuntCpg",
+    "declared": {
+      "DBClusterParameterGroupName": "CdkrdHunt-Mixed-CPG",
+      "Description": "cdkrd hunt mixed-case cluster parameter group",
+      "Family": "aurora-mysql8.0",
+      "Parameters": {
+        "time_zone": "UTC"
+      },
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Description": "cdkrd hunt mixed-case cluster parameter group",
+    "Parameters": {
+      "time_zone": "UTC"
+    },
+    "Family": "aurora-mysql8.0",
+    "DBClusterParameterGroupName": "cdkrdhunt-mixed-cpg",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegCaseIdentsMin",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntCpg",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegCaseIdentsMin/09209c20-7d4a-11f1-b021-12e64a14fec7",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["DBClusterParameterGroupName", "Description", "Family"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["DBClusterParameterGroupName", "Description", "Family"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "declared",
+      "logicalId": "HuntCpg",
+      "resourceType": "AWS::RDS::DBClusterParameterGroup",
+      "path": "DBClusterParameterGroupName",
+      "desired": "CdkrdHunt-Mixed-CPG",
+      "actual": "cdkrdhunt-mixed-cpg",
+      "physicalId": "cdkrdhunt-mixed-cpg",
+      "constructPath": "CdkRealDriftIntegCaseIdentsMin/HuntCpg"
+    }
+  ]
+}

@@ -1,0 +1,170 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntEc2Ce",
+    "resourceType": "AWS::Batch::ComputeEnvironment",
+    "physicalId": "arn:aws:batch:us-east-1:111111111111:compute-environment/HuntEc2Ce-gSceaeX2klnBFu3O",
+    "constructPath": "CdkRealDriftIntegS3KmsDdbBatchMin/HuntEc2Ce",
+    "declared": {
+      "ComputeResources": {
+        "InstanceRole": "arn:aws:iam::111111111111:instance-profile/cdkrd-hunt-batch-profile",
+        "InstanceTypes": ["m5.large", "c5.large"],
+        "MaxvCpus": 4,
+        "MinvCpus": 0,
+        "SecurityGroupIds": ["sg-08d425c27e4eec7cf"],
+        "Subnets": ["subnet-05ddfe200fef4f0a5"],
+        "Type": "EC2"
+      },
+      "Tags": {
+        "cdkrd:ephemeral": "1"
+      },
+      "Type": "MANAGED"
+    }
+  },
+  "liveRaw": {
+    "Type": "MANAGED",
+    "ServiceRole": "arn:aws:iam::111111111111:role/aws-service-role/batch.amazonaws.com/AWSServiceRoleForBatch",
+    "ComputeEnvironmentName": "HuntEc2Ce-gSceaeX2klnBFu3O",
+    "ComputeResources": {
+      "Subnets": ["subnet-05ddfe200fef4f0a5"],
+      "Type": "EC2",
+      "MinvCpus": 0,
+      "MaxvCpus": 4,
+      "InstanceRole": "arn:aws:iam::111111111111:instance-profile/cdkrd-hunt-batch-profile",
+      "InstanceTypes": ["m5.large", "c5.large"],
+      "Ec2Configuration": [
+        {
+          "ImageType": "ECS_AL2023"
+        }
+      ],
+      "SecurityGroupIds": ["sg-08d425c27e4eec7cf"],
+      "DesiredvCpus": 0
+    },
+    "State": "ENABLED",
+    "ComputeEnvironmentArn": "arn:aws:batch:us-east-1:111111111111:compute-environment/HuntEc2Ce-gSceaeX2klnBFu3O",
+    "Tags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "schema": {
+    "readOnly": ["ComputeEnvironmentArn"],
+    "writeOnly": ["ReplaceComputeEnvironment", "UpdatePolicy"],
+    "createOnly": ["ComputeEnvironmentName", "EksConfiguration", "Tags", "Type"],
+    "readOnlyPaths": [
+      "ComputeEnvironmentArn",
+      "ComputeResources.Ec2Configuration.*.BatchImageStatus"
+    ],
+    "writeOnlyPaths": [
+      "ComputeResources.UpdateToLatestImageVersion",
+      "ReplaceComputeEnvironment",
+      "UpdatePolicy"
+    ],
+    "createOnlyPaths": [
+      "ComputeEnvironmentName",
+      "ComputeResources.SpotIamFleetRole",
+      "EksConfiguration",
+      "Tags",
+      "Type"
+    ],
+    "defaults": {
+      "ReplaceComputeEnvironment": true
+    },
+    "defaultPaths": {
+      "ComputeResources.UpdateToLatestImageVersion": false,
+      "ReplaceComputeEnvironment": true,
+      "UpdatePolicy.TerminateJobsOnUpdate": false,
+      "UpdatePolicy.JobExecutionTimeoutMinutes": 30,
+      "EksConfiguration.EksClusterArn": false,
+      "EksConfiguration.KubernetesNamespace": false
+    },
+    "unorderedScalarPaths": [
+      "ComputeResources.InstanceTypes",
+      "ComputeResources.SecurityGroupIds",
+      "ComputeResources.Subnets"
+    ],
+    "unorderedObjectArrayPaths": [
+      "ComputeResources.Ec2Configuration",
+      "ComputeResources.LaunchTemplate.Overrides"
+    ],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {
+      "alias/aws/acm": "b3729196-d9c5-4e2a-9e8e-d733b92c8317",
+      "alias/aws/appflow": "a2152495-1376-4c30-9183-7ee24ad10386",
+      "alias/aws/backup": "b405e2ab-23b0-48e9-834e-aa3aeeded51d",
+      "alias/aws/cloud9": "c656784b-cd79-45fa-a302-4670428047dc",
+      "alias/aws/codeartifact": "f4915da2-dabd-4aaa-a58b-6cc98c3bcbc6",
+      "alias/aws/codecommit": "f4b560a8-2769-4fdc-95ce-67e234814090",
+      "alias/aws/dms": "8b0bca8d-7f3f-4f19-bebf-bf6c72f3f1e6",
+      "alias/aws/dynamodb": "e6ab85f6-b5b2-4f38-9782-d1d3f0ca9bad",
+      "alias/aws/ebs": "76039e55-2469-4c94-95ab-e12d8615bb98",
+      "alias/aws/elasticfilesystem": "ed4a6b88-bcd1-43fe-beff-35a748bded74",
+      "alias/aws/es": "db99576a-7bcf-4386-a93e-0334efbed006",
+      "alias/aws/kinesis": "51c70be1-ec2a-4e9f-ae04-aa16f1bfdcad",
+      "alias/aws/lambda": "67e127ea-46c8-4b0b-b3de-18a40e8a84a4",
+      "alias/aws/lightsail": "4085ed99-9004-436f-b8c6-e81417e55591",
+      "alias/aws/rds": "9ee8feba-ae18-445a-bcab-306f7748fb6c",
+      "alias/aws/s3": "b471f899-bf30-4944-a7d9-70f37d183eaa",
+      "alias/aws/secretsmanager": "6419a4af-eac7-4cb3-babe-297fdceba8a1",
+      "alias/aws/sns": "aa9c1b5f-821f-418a-a1b1-a60435b7dc1c",
+      "alias/aws/ssm": "4040fe62-b533-4a5d-ab2c-6301fb6bbd2a"
+    },
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEc2Ce",
+      "resourceType": "AWS::Batch::ComputeEnvironment",
+      "path": "ComputeResources.Ec2Configuration",
+      "actual": [
+        {
+          "ImageType": "ECS_AL2023"
+        }
+      ],
+      "nested": true,
+      "physicalId": "arn:aws:batch:us-east-1:111111111111:compute-environment/HuntEc2Ce-gSceaeX2klnBFu3O",
+      "constructPath": "CdkRealDriftIntegS3KmsDdbBatchMin/HuntEc2Ce"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEc2Ce",
+      "resourceType": "AWS::Batch::ComputeEnvironment",
+      "path": "ServiceRole",
+      "actual": "arn:aws:iam::111111111111:role/aws-service-role/batch.amazonaws.com/AWSServiceRoleForBatch",
+      "physicalId": "arn:aws:batch:us-east-1:111111111111:compute-environment/HuntEc2Ce-gSceaeX2klnBFu3O",
+      "constructPath": "CdkRealDriftIntegS3KmsDdbBatchMin/HuntEc2Ce"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEc2Ce",
+      "resourceType": "AWS::Batch::ComputeEnvironment",
+      "path": "State",
+      "actual": "ENABLED",
+      "physicalId": "arn:aws:batch:us-east-1:111111111111:compute-environment/HuntEc2Ce-gSceaeX2klnBFu3O",
+      "constructPath": "CdkRealDriftIntegS3KmsDdbBatchMin/HuntEc2Ce"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "HuntEc2Ce",
+      "resourceType": "AWS::Batch::ComputeEnvironment",
+      "path": "ComputeEnvironmentName",
+      "actual": "HuntEc2Ce-gSceaeX2klnBFu3O",
+      "physicalId": "arn:aws:batch:us-east-1:111111111111:compute-environment/HuntEc2Ce-gSceaeX2klnBFu3O",
+      "constructPath": "CdkRealDriftIntegS3KmsDdbBatchMin/HuntEc2Ce"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "HuntEc2Ce",
+      "resourceType": "AWS::Batch::ComputeEnvironment",
+      "path": "ComputeResources.DesiredvCpus",
+      "actual": 0,
+      "nested": true,
+      "physicalId": "arn:aws:batch:us-east-1:111111111111:compute-environment/HuntEc2Ce-gSceaeX2klnBFu3O",
+      "constructPath": "CdkRealDriftIntegS3KmsDdbBatchMin/HuntEc2Ce"
+    }
+  ]
+}

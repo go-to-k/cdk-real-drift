@@ -1,0 +1,103 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntIdPool",
+    "resourceType": "AWS::Cognito::IdentityPool",
+    "physicalId": "us-east-1:a3a86be5-a785-487e-8abb-9776db858d76",
+    "constructPath": "CdkRealDriftIntegReorderProbesMin/HuntIdPool",
+    "declared": {
+      "AllowUnauthenticatedIdentities": false,
+      "CognitoIdentityProviders": [
+        {
+          "ClientId": "1n37bfmhf0881dv1ma8a1eceef",
+          "ProviderName": "cognito-idp.us-east-1.amazonaws.com/us-east-1_jz3pqMAyL"
+        },
+        {
+          "ClientId": "7fa16qtk76omj562c5cpa1fmdc",
+          "ProviderName": "cognito-idp.us-east-1.amazonaws.com/us-east-1_jz3pqMAyL"
+        }
+      ],
+      "IdentityPoolName": "cdkrd-hunt-reorder-idpool",
+      "IdentityPoolTags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "CognitoIdentityProviders": [
+      {
+        "ServerSideTokenCheck": false,
+        "ProviderName": "cognito-idp.us-east-1.amazonaws.com/us-east-1_jz3pqMAyL",
+        "ClientId": "1n37bfmhf0881dv1ma8a1eceef"
+      },
+      {
+        "ServerSideTokenCheck": false,
+        "ProviderName": "cognito-idp.us-east-1.amazonaws.com/us-east-1_jz3pqMAyL",
+        "ClientId": "7fa16qtk76omj562c5cpa1fmdc"
+      }
+    ],
+    "Id": "us-east-1:a3a86be5-a785-487e-8abb-9776db858d76",
+    "IdentityPoolName": "cdkrd-hunt-reorder-idpool",
+    "SupportedLoginProviders": {},
+    "AllowUnauthenticatedIdentities": false,
+    "Name": "cdkrd-hunt-reorder-idpool",
+    "SamlProviderARNs": [],
+    "OpenIdConnectProviderARNs": [],
+    "AllowClassicFlow": false,
+    "IdentityPoolTags": [
+      {
+        "Value": "HuntIdPool",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      },
+      {
+        "Value": "CdkRealDriftIntegReorderProbesMin",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegReorderProbesMin/e6337560-7d4a-11f1-a1a9-0e48750aef13",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Id", "Name"],
+    "writeOnly": ["CognitoStreams", "PushSync"],
+    "createOnly": [],
+    "readOnlyPaths": ["Id", "Name"],
+    "writeOnlyPaths": ["CognitoStreams", "PushSync"],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [
+      "OpenIdConnectProviderARNs",
+      "PushSync.ApplicationArns",
+      "SamlProviderARNs"
+    ],
+    "unorderedObjectArrayPaths": ["CognitoIdentityProviders"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntIdPool",
+      "resourceType": "AWS::Cognito::IdentityPool",
+      "path": "AllowClassicFlow",
+      "actual": false,
+      "physicalId": "us-east-1:a3a86be5-a785-487e-8abb-9776db858d76",
+      "constructPath": "CdkRealDriftIntegReorderProbesMin/HuntIdPool"
+    }
+  ]
+}

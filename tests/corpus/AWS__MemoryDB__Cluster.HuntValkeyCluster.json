@@ -1,0 +1,227 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntValkeyCluster",
+    "resourceType": "AWS::MemoryDB::Cluster",
+    "physicalId": "cdkrd-hunt-mdb-valkey",
+    "constructPath": "CdkRealDriftIntegMemoryDbValkeyMin/HuntValkeyCluster",
+    "declared": {
+      "ACLName": "open-access",
+      "ClusterName": "cdkrd-hunt-mdb-valkey",
+      "Engine": "valkey",
+      "NodeType": "db.t4g.small",
+      "SubnetGroupName": "cdkrd-hunt-mdb-valkey-sng",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Status": "available",
+    "NumReplicasPerShard": 1,
+    "EngineVersion": "7.3",
+    "ParameterGroupName": "default.memorydb-valkey7",
+    "SubnetGroupName": "cdkrd-hunt-mdb-valkey-sng",
+    "Port": 6379,
+    "ACLName": "open-access",
+    "AutoMinorVersionUpgrade": true,
+    "SecurityGroupIds": [],
+    "ClusterEndpoint": {
+      "Address": "clustercfg.cdkrd-hunt-mdb-valkey.jzgy0l.memorydb.us-east-1.amazonaws.com",
+      "Port": 6379
+    },
+    "NumShards": 1,
+    "SnapshotWindow": "05:30-06:30",
+    "SnapshotRetentionLimit": 0,
+    "DataTiering": "false",
+    "TLSEnabled": true,
+    "NetworkType": "ipv4",
+    "NodeType": "db.t4g.small",
+    "IpDiscovery": "ipv4",
+    "ClusterName": "cdkrd-hunt-mdb-valkey",
+    "MaintenanceWindow": "sun:04:30-sun:05:30",
+    "ParameterGroupStatus": "in-sync",
+    "ARN": "arn:aws:memorydb:us-east-1:111111111111:cluster/cdkrd-hunt-mdb-valkey",
+    "Engine": "valkey",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["ARN", "ParameterGroupStatus", "Status"],
+    "writeOnly": ["FinalSnapshotName", "MultiRegionClusterName", "SnapshotArns", "SnapshotName"],
+    "createOnly": [
+      "ClusterName",
+      "DataTiering",
+      "KmsKeyId",
+      "MultiRegionClusterName",
+      "NetworkType",
+      "Port",
+      "SnapshotArns",
+      "SnapshotName",
+      "SubnetGroupName",
+      "TLSEnabled"
+    ],
+    "readOnlyPaths": [
+      "ARN",
+      "ClusterEndpoint.Address",
+      "ClusterEndpoint.Port",
+      "ParameterGroupStatus",
+      "Status"
+    ],
+    "writeOnlyPaths": [
+      "FinalSnapshotName",
+      "MultiRegionClusterName",
+      "SnapshotArns",
+      "SnapshotName"
+    ],
+    "createOnlyPaths": [
+      "ClusterName",
+      "DataTiering",
+      "KmsKeyId",
+      "MultiRegionClusterName",
+      "NetworkType",
+      "Port",
+      "SnapshotArns",
+      "SnapshotName",
+      "SubnetGroupName",
+      "TLSEnabled"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["SecurityGroupIds", "SnapshotArns"],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntValkeyCluster",
+      "resourceType": "AWS::MemoryDB::Cluster",
+      "path": "AutoMinorVersionUpgrade",
+      "actual": true,
+      "physicalId": "cdkrd-hunt-mdb-valkey",
+      "constructPath": "CdkRealDriftIntegMemoryDbValkeyMin/HuntValkeyCluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntValkeyCluster",
+      "resourceType": "AWS::MemoryDB::Cluster",
+      "path": "DataTiering",
+      "actual": "false",
+      "physicalId": "cdkrd-hunt-mdb-valkey",
+      "constructPath": "CdkRealDriftIntegMemoryDbValkeyMin/HuntValkeyCluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntValkeyCluster",
+      "resourceType": "AWS::MemoryDB::Cluster",
+      "path": "EngineVersion",
+      "actual": "7.3",
+      "physicalId": "cdkrd-hunt-mdb-valkey",
+      "constructPath": "CdkRealDriftIntegMemoryDbValkeyMin/HuntValkeyCluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntValkeyCluster",
+      "resourceType": "AWS::MemoryDB::Cluster",
+      "path": "IpDiscovery",
+      "actual": "ipv4",
+      "physicalId": "cdkrd-hunt-mdb-valkey",
+      "constructPath": "CdkRealDriftIntegMemoryDbValkeyMin/HuntValkeyCluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntValkeyCluster",
+      "resourceType": "AWS::MemoryDB::Cluster",
+      "path": "MaintenanceWindow",
+      "actual": "sun:04:30-sun:05:30",
+      "physicalId": "cdkrd-hunt-mdb-valkey",
+      "constructPath": "CdkRealDriftIntegMemoryDbValkeyMin/HuntValkeyCluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntValkeyCluster",
+      "resourceType": "AWS::MemoryDB::Cluster",
+      "path": "NetworkType",
+      "actual": "ipv4",
+      "physicalId": "cdkrd-hunt-mdb-valkey",
+      "constructPath": "CdkRealDriftIntegMemoryDbValkeyMin/HuntValkeyCluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntValkeyCluster",
+      "resourceType": "AWS::MemoryDB::Cluster",
+      "path": "NumReplicasPerShard",
+      "actual": 1,
+      "physicalId": "cdkrd-hunt-mdb-valkey",
+      "constructPath": "CdkRealDriftIntegMemoryDbValkeyMin/HuntValkeyCluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntValkeyCluster",
+      "resourceType": "AWS::MemoryDB::Cluster",
+      "path": "NumShards",
+      "actual": 1,
+      "physicalId": "cdkrd-hunt-mdb-valkey",
+      "constructPath": "CdkRealDriftIntegMemoryDbValkeyMin/HuntValkeyCluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntValkeyCluster",
+      "resourceType": "AWS::MemoryDB::Cluster",
+      "path": "ParameterGroupName",
+      "actual": "default.memorydb-valkey7",
+      "physicalId": "cdkrd-hunt-mdb-valkey",
+      "constructPath": "CdkRealDriftIntegMemoryDbValkeyMin/HuntValkeyCluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntValkeyCluster",
+      "resourceType": "AWS::MemoryDB::Cluster",
+      "path": "Port",
+      "actual": 6379,
+      "physicalId": "cdkrd-hunt-mdb-valkey",
+      "constructPath": "CdkRealDriftIntegMemoryDbValkeyMin/HuntValkeyCluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntValkeyCluster",
+      "resourceType": "AWS::MemoryDB::Cluster",
+      "path": "SnapshotRetentionLimit",
+      "actual": 0,
+      "physicalId": "cdkrd-hunt-mdb-valkey",
+      "constructPath": "CdkRealDriftIntegMemoryDbValkeyMin/HuntValkeyCluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntValkeyCluster",
+      "resourceType": "AWS::MemoryDB::Cluster",
+      "path": "SnapshotWindow",
+      "actual": "05:30-06:30",
+      "physicalId": "cdkrd-hunt-mdb-valkey",
+      "constructPath": "CdkRealDriftIntegMemoryDbValkeyMin/HuntValkeyCluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntValkeyCluster",
+      "resourceType": "AWS::MemoryDB::Cluster",
+      "path": "TLSEnabled",
+      "actual": true,
+      "physicalId": "cdkrd-hunt-mdb-valkey",
+      "constructPath": "CdkRealDriftIntegMemoryDbValkeyMin/HuntValkeyCluster"
+    }
+  ]
+}

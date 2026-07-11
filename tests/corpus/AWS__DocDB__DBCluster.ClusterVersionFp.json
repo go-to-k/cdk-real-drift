@@ -61,20 +61,11 @@
   },
   "expected": [
     {
-      "tier": "readGap",
+      "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::DocDB::DBCluster",
-      "path": "DBSubnetGroupName",
-      "note": "declared but not returned by live read",
-      "physicalId": "cluster-sgjbomufexjn",
-      "constructPath": "CdkRealDriftIntegDocdbVersionFp/Cluster"
-    },
-    {
-      "tier": "readGap",
-      "logicalId": "Cluster",
-      "resourceType": "AWS::DocDB::DBCluster",
-      "path": "MasterUserPassword",
-      "note": "declared but not returned by live read",
+      "path": "BackupRetentionPeriod",
+      "actual": 1,
       "physicalId": "cluster-sgjbomufexjn",
       "constructPath": "CdkRealDriftIntegDocdbVersionFp/Cluster"
     },
@@ -82,8 +73,8 @@
       "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::DocDB::DBCluster",
-      "path": "BackupRetentionPeriod",
-      "actual": 1,
+      "path": "DBClusterParameterGroupName",
+      "actual": "default.docdb5.0",
       "physicalId": "cluster-sgjbomufexjn",
       "constructPath": "CdkRealDriftIntegDocdbVersionFp/Cluster"
     },
@@ -118,17 +109,26 @@
       "tier": "atDefault",
       "logicalId": "Cluster",
       "resourceType": "AWS::DocDB::DBCluster",
-      "path": "DBClusterParameterGroupName",
-      "actual": "default.docdb5.0",
+      "path": "VpcSecurityGroupIds",
+      "actual": ["sg-00bae803921b5e299"],
       "physicalId": "cluster-sgjbomufexjn",
       "constructPath": "CdkRealDriftIntegDocdbVersionFp/Cluster"
     },
     {
-      "tier": "undeclared",
+      "tier": "readGap",
       "logicalId": "Cluster",
       "resourceType": "AWS::DocDB::DBCluster",
-      "path": "VpcSecurityGroupIds",
-      "actual": ["sg-00bae803921b5e299"],
+      "path": "DBSubnetGroupName",
+      "note": "declared but not returned by live read",
+      "physicalId": "cluster-sgjbomufexjn",
+      "constructPath": "CdkRealDriftIntegDocdbVersionFp/Cluster"
+    },
+    {
+      "tier": "readGap",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::DocDB::DBCluster",
+      "path": "MasterUserPassword",
+      "note": "declared but not returned by live read",
       "physicalId": "cluster-sgjbomufexjn",
       "constructPath": "CdkRealDriftIntegDocdbVersionFp/Cluster"
     }

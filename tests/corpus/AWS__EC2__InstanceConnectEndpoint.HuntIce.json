@@ -1,0 +1,115 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntIce",
+    "resourceType": "AWS::EC2::InstanceConnectEndpoint",
+    "physicalId": "eice-06b5fccf9badd4e5d",
+    "constructPath": "CdkRealDriftIntegVpcAttachMin/HuntIce",
+    "declared": {
+      "SubnetId": "subnet-00c26f3fb4ea65291",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "CreatedAt": "2026-07-11T17:24:14Z",
+    "AvailabilityZoneId": "use1-az1",
+    "AvailabilityZone": "us-east-1a",
+    "NetworkInterfaceIds": ["eni-00643b8175af84120"],
+    "SubnetId": "subnet-00c26f3fb4ea65291",
+    "SecurityGroupIds": ["sg-08e63f5cc038cca50"],
+    "PreserveClientIp": false,
+    "OwnerId": "111111111111",
+    "VpcId": "vpc-079e8dc0eebeb1ca7",
+    "InstanceConnectEndpointArn": "arn:aws:ec2:us-east-1:111111111111:instance-connect-endpoint/eice-06b5fccf9badd4e5d",
+    "State": "create-complete",
+    "Id": "eice-06b5fccf9badd4e5d",
+    "StateMessage": "",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegVpcAttachMin",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntIce",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegVpcAttachMin/44135ef0-7d4d-11f1-86fa-0ee6188a468b",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "PublicDnsNames": {
+      "Dualstack": {
+        "DnsName": "eice-06b5fccf9badd4e5d.bf5df978.ec2-instance-connect-endpoint.us-east-1.api.aws",
+        "FipsDnsName": "eice-06b5fccf9badd4e5d.bf5df978.fips.ec2-instance-connect-endpoint.us-east-1.api.aws"
+      },
+      "Ipv4": {
+        "DnsName": "eice-06b5fccf9badd4e5d.bf5df978.ec2-instance-connect-endpoint.us-east-1.amazonaws.com",
+        "FipsDnsName": "eice-06b5fccf9badd4e5d.bf5df978.fips.ec2-instance-connect-endpoint.us-east-1.amazonaws.com"
+      }
+    }
+  },
+  "schema": {
+    "readOnly": [
+      "AvailabilityZone",
+      "AvailabilityZoneId",
+      "CreatedAt",
+      "Id",
+      "InstanceConnectEndpointArn",
+      "NetworkInterfaceIds",
+      "OwnerId",
+      "PublicDnsNames",
+      "State",
+      "StateMessage",
+      "VpcId"
+    ],
+    "writeOnly": ["ClientToken"],
+    "createOnly": ["ClientToken", "PreserveClientIp", "SecurityGroupIds", "SubnetId"],
+    "readOnlyPaths": [
+      "AvailabilityZone",
+      "AvailabilityZoneId",
+      "CreatedAt",
+      "Id",
+      "InstanceConnectEndpointArn",
+      "NetworkInterfaceIds",
+      "OwnerId",
+      "PublicDnsNames",
+      "State",
+      "StateMessage",
+      "VpcId"
+    ],
+    "writeOnlyPaths": ["ClientToken"],
+    "createOnlyPaths": ["ClientToken", "PreserveClientIp", "SecurityGroupIds", "SubnetId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["SecurityGroupIds"],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntIce",
+      "resourceType": "AWS::EC2::InstanceConnectEndpoint",
+      "path": "SecurityGroupIds",
+      "actual": ["sg-08e63f5cc038cca50"],
+      "physicalId": "eice-06b5fccf9badd4e5d",
+      "constructPath": "CdkRealDriftIntegVpcAttachMin/HuntIce"
+    }
+  ]
+}

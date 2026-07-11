@@ -1,0 +1,57 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntFwPolicy",
+    "resourceType": "AWS::NetworkFirewall::FirewallPolicy",
+    "physicalId": "arn:aws:network-firewall:us-east-1:111111111111:firewall-policy/cdkrd-hunt-fw-policy",
+    "constructPath": "CdkRealDriftIntegNetFwMin/HuntFwPolicy",
+    "declared": {
+      "FirewallPolicy": {
+        "StatelessDefaultActions": ["aws:forward_to_sfe"],
+        "StatelessFragmentDefaultActions": ["aws:drop"]
+      },
+      "FirewallPolicyName": "cdkrd-hunt-fw-policy",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "FirewallPolicyArn": "arn:aws:network-firewall:us-east-1:111111111111:firewall-policy/cdkrd-hunt-fw-policy",
+    "FirewallPolicyName": "cdkrd-hunt-fw-policy",
+    "FirewallPolicyId": "f5d0cab2-5995-4342-b67f-25ecb4174529",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "FirewallPolicy": {
+      "StatelessDefaultActions": ["aws:forward_to_sfe"],
+      "StatelessFragmentDefaultActions": ["aws:drop"]
+    }
+  },
+  "schema": {
+    "readOnly": ["FirewallPolicyArn", "FirewallPolicyId"],
+    "writeOnly": [],
+    "createOnly": ["FirewallPolicyName"],
+    "readOnlyPaths": ["FirewallPolicyArn", "FirewallPolicyId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["FirewallPolicyName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": ["FirewallPolicy.PolicyVariables.RuleVariables"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

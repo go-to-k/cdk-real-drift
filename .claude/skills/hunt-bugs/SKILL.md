@@ -174,6 +174,13 @@ short of a fix the user wanted.
    DBCluster/DBInstance, AppSync ApiKey/GraphQLSchema — all `SDK_OVERRIDES` candidates,
    not hunt targets.)
 
+   The INVERSE is prime hunting ground: an `SDK_OVERRIDES` reader / `SDK_SUPPLEMENTS`
+   entry that EXISTS but has **zero corpus cases and zero fixtures** was added from a
+   live FN report without ever exercising the barest first-run path — deploy its
+   minimal form first (the 2026-07-12 hunt's RedshiftServerless Workgroup trio, #1489,
+   came from exactly this audit; ACM Certificate / ELBv2 TrustStore / DAX /
+   MediaConvert / SageMaker EndpointConfig / ClientVPN remain unexercised).
+
    **A `read` handler being present is NOT enough — also check the
    `primaryIdentifier` ARITY.** A type can have a CC `read` handler yet still be
    silently `skipped` with a `ValidationException` (a DIFFERENT read-gap class than
@@ -317,7 +324,16 @@ clean. Then promote the cases that add coverage into `tests/corpus/`:
   for types **not already present** — `ls tests/corpus/ | grep <Type>` first.
   Genuinely-new resource types are the win; skip near-duplicates of types already
   covered (VPC/subnet/route-table boilerplate a fixture drags along is usually
-  already represented — don't flood the corpus with it).
+  already represented — don't flood the corpus with it). **Also check the exact
+  FILENAME**: generic CDK logical ids (`VpcpublicSubnet1Subnet…`) collide across
+  fixtures, and a same-name `cp` silently OVERWRITES the existing case — rename the
+  new one with a distinct suffix (e.g. `AWS__EC2__Subnet.Ipv6AttachHunt.json`)
+  when the id already exists (2026-07-12 hunt clobbered one this way).
+- A promoted case whose `expected` pins an OPEN issue's wrong behavior WILL churn:
+  parallel agents fix filed issues within hours, so after any rebase re-RUN classify
+  over the promoted cases and regenerate `expected` (a throwaway env-gated test file
+  that rewrites `c.expected` from `classifyResource` output beats hand-editing;
+  delete it before commit). Three peer fixes landed mid-hunt on 2026-07-12 alone.
 - Run `vp run test` and confirm the new `corpus-replay` cases pass. Commit the new
   corpus JSONs in the SAME PR as the fixture (and the fix, if any). An intended
   behavior change updates a case's `expected` in the same diff, making the semantic
@@ -495,6 +511,13 @@ Recorded]` breakdown with `--verbose`.
   `|| fail`), or guard with `set +e`.
 - **Always `npm install` + `cdk synth` before deploy** — a synth-time TS error is
   free to catch; a half-failed deploy is not.
+- **Deploy-time API validation differences across engine/mode variants are
+  FINDINGS, not mere fixture bugs.** A minimal variant deploy that FAILS validation
+  is telling you the variant's defaults differ (valkey RGs default
+  AutomaticFailoverEnabled=true — a 1-node group is rejected — and demand an explicit
+  TransitEncryptionEnabled, both unlike redis; observed 2026-07-12). Record the
+  difference in the fixture comment (it documents the axis) and declare the minimum
+  to proceed — the surviving undeclared surface is still the probe.
 - **`example.com` / `.test` / `.example` are AWS-RESERVED for Route53 hosted zones**
   (`InvalidDomainNameException` on create). A Route53 fixture must use a non-reserved
   placeholder domain (e.g. `cdkrd-fphunt-x9z7q.com.`) — a public hosted zone for a

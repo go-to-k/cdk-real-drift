@@ -901,8 +901,12 @@ describe('noise suppressors', () => {
       // The current AWS default RDS server CA (constant; engine-derived RDS values fold via
       // ENGINE_DEFAULTS / DEFAULT_MANAGED_NAME_PATHS instead).
       CACertificateIdentifier: 'rds-ca-rsa2048-g1',
+      // The literal "default" subnet group an undeclared instance is placed into
+      // (rds-postgres-min / aurora-pg-min live, 2026-07-12).
+      DBSubnetGroupName: 'default',
     });
     expect(KNOWN_DEFAULTS['AWS::RDS::DBCluster'].NetworkType).toBe('IPV4');
+    expect(KNOWN_DEFAULTS['AWS::RDS::DBCluster'].DBSubnetGroupName).toBe('default');
     expect(KNOWN_DEFAULTS['AWS::ElastiCache::ReplicationGroup']).toEqual({
       AutoMinorVersionUpgrade: true,
       ClusterMode: 'disabled',

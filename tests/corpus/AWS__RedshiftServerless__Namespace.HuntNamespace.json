@@ -1,0 +1,135 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntNamespace",
+    "resourceType": "AWS::RedshiftServerless::Namespace",
+    "physicalId": "cdkrd-hunt-ns",
+    "constructPath": "CdkRealDriftIntegRedshiftSlMin/HuntNamespace",
+    "declared": {
+      "NamespaceName": "cdkrd-hunt-ns",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "AdminUsername": "admin",
+    "NamespaceName": "cdkrd-hunt-ns",
+    "IamRoles": [],
+    "SnapshotCopyConfigurations": [],
+    "KmsKeyId": "AWS_OWNED_KMS_KEY",
+    "DbName": "dev",
+    "Namespace": {
+      "Status": "AVAILABLE",
+      "NamespaceName": "cdkrd-hunt-ns",
+      "AdminUsername": "admin",
+      "CreationDate": "2026-07-11T16:56:21.367Z",
+      "IamRoles": [],
+      "NamespaceArn": "arn:aws:redshift-serverless:us-east-1:111111111111:namespace/4c509edc-06c0-40b1-aa7f-e0efbbc4237b",
+      "KmsKeyId": "AWS_OWNED_KMS_KEY",
+      "DbName": "dev",
+      "NamespaceId": "4c509edc-06c0-40b1-aa7f-e0efbbc4237b",
+      "LogExports": []
+    },
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegRedshiftSlMin",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntNamespace",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegRedshiftSlMin/6a6cb5f0-7d49-11f1-acd0-0e7116711003",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "LogExports": []
+  },
+  "schema": {
+    "readOnly": ["Namespace"],
+    "writeOnly": [
+      "AdminUserPassword",
+      "FinalSnapshotName",
+      "FinalSnapshotRetentionPeriod",
+      "ManageAdminPassword",
+      "RedshiftIdcApplicationArn"
+    ],
+    "createOnly": ["NamespaceName"],
+    "readOnlyPaths": [
+      "Namespace",
+      "Namespace.AdminUsername",
+      "Namespace.CreationDate",
+      "Namespace.DbName",
+      "Namespace.DefaultIamRoleArn",
+      "Namespace.IamRoles",
+      "Namespace.KmsKeyId",
+      "Namespace.LogExports",
+      "Namespace.NamespaceArn",
+      "Namespace.NamespaceId",
+      "Namespace.NamespaceName",
+      "Namespace.Status"
+    ],
+    "writeOnlyPaths": [
+      "AdminUserPassword",
+      "FinalSnapshotName",
+      "FinalSnapshotRetentionPeriod",
+      "ManageAdminPassword",
+      "RedshiftIdcApplicationArn"
+    ],
+    "createOnlyPaths": ["NamespaceName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [
+      "IamRoles",
+      "LogExports",
+      "Namespace.IamRoles",
+      "Namespace.LogExports"
+    ],
+    "unorderedObjectArrayPaths": ["SnapshotCopyConfigurations"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntNamespace",
+      "resourceType": "AWS::RedshiftServerless::Namespace",
+      "path": "AdminUsername",
+      "actual": "admin",
+      "physicalId": "cdkrd-hunt-ns",
+      "constructPath": "CdkRealDriftIntegRedshiftSlMin/HuntNamespace"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntNamespace",
+      "resourceType": "AWS::RedshiftServerless::Namespace",
+      "path": "DbName",
+      "actual": "dev",
+      "physicalId": "cdkrd-hunt-ns",
+      "constructPath": "CdkRealDriftIntegRedshiftSlMin/HuntNamespace"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntNamespace",
+      "resourceType": "AWS::RedshiftServerless::Namespace",
+      "path": "KmsKeyId",
+      "actual": "AWS_OWNED_KMS_KEY",
+      "physicalId": "cdkrd-hunt-ns",
+      "constructPath": "CdkRealDriftIntegRedshiftSlMin/HuntNamespace"
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntSubnetIpv6",
+    "resourceType": "AWS::EC2::SubnetCidrBlock",
+    "physicalId": "subnet-cidr-assoc-0c55defa345aa38b2",
+    "constructPath": "CdkRealDriftIntegVpcAttachMin/HuntSubnetIpv6",
+    "declared": {
+      "Ipv6CidrBlock": "__cdkrd_corpus_unresolved__",
+      "SubnetId": "subnet-00c26f3fb4ea65291"
+    }
+  },
+  "liveRaw": {
+    "Ipv6AddressAttribute": "public",
+    "IpSource": "amazon",
+    "Id": "subnet-cidr-assoc-0c55defa345aa38b2",
+    "SubnetId": "subnet-00c26f3fb4ea65291",
+    "Ipv6CidrBlock": "2600:1f18:2de0:6e00::/64"
+  },
+  "schema": {
+    "readOnly": ["Id", "IpSource", "Ipv6AddressAttribute"],
+    "writeOnly": ["Ipv6IpamPoolId", "Ipv6NetmaskLength"],
+    "createOnly": ["Ipv6CidrBlock", "Ipv6IpamPoolId", "Ipv6NetmaskLength", "SubnetId"],
+    "readOnlyPaths": ["Id", "IpSource", "Ipv6AddressAttribute"],
+    "writeOnlyPaths": ["Ipv6IpamPoolId", "Ipv6NetmaskLength"],
+    "createOnlyPaths": ["Ipv6CidrBlock", "Ipv6IpamPoolId", "Ipv6NetmaskLength", "SubnetId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "unresolved",
+      "logicalId": "HuntSubnetIpv6",
+      "resourceType": "AWS::EC2::SubnetCidrBlock",
+      "path": "Ipv6CidrBlock",
+      "physicalId": "subnet-cidr-assoc-0c55defa345aa38b2",
+      "constructPath": "CdkRealDriftIntegVpcAttachMin/HuntSubnetIpv6"
+    }
+  ]
+}

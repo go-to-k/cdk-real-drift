@@ -1,0 +1,89 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntOnDemandStream",
+    "resourceType": "AWS::Kinesis::Stream",
+    "physicalId": "CdkRealDriftIntegStreamFifoMin-HuntOnDemandStream-XZtQuI441hsC",
+    "constructPath": "CdkRealDriftIntegStreamFifoMin/HuntOnDemandStream",
+    "declared": {
+      "StreamModeDetails": {
+        "StreamMode": "ON_DEMAND"
+      },
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "StreamModeDetails": {
+      "StreamMode": "ON_DEMAND"
+    },
+    "WarmThroughputObject": {
+      "CurrentMiBps": 0,
+      "TargetMiBps": 0
+    },
+    "Arn": "arn:aws:kinesis:us-east-1:111111111111:stream/CdkRealDriftIntegStreamFifoMin-HuntOnDemandStream-XZtQuI441hsC",
+    "MaxRecordSizeInKiB": 1024,
+    "RetentionPeriodHours": 24,
+    "DesiredShardLevelMetrics": [],
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "Name": "CdkRealDriftIntegStreamFifoMin-HuntOnDemandStream-XZtQuI441hsC",
+    "ShardCount": 4
+  },
+  "schema": {
+    "readOnly": ["Arn", "WarmThroughputObject"],
+    "writeOnly": ["WarmThroughputMiBps"],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn", "WarmThroughputObject"],
+    "writeOnlyPaths": ["WarmThroughputMiBps"],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["DesiredShardLevelMetrics"],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOnDemandStream",
+      "resourceType": "AWS::Kinesis::Stream",
+      "path": "MaxRecordSizeInKiB",
+      "actual": 1024,
+      "physicalId": "CdkRealDriftIntegStreamFifoMin-HuntOnDemandStream-XZtQuI441hsC",
+      "constructPath": "CdkRealDriftIntegStreamFifoMin/HuntOnDemandStream"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOnDemandStream",
+      "resourceType": "AWS::Kinesis::Stream",
+      "path": "RetentionPeriodHours",
+      "actual": 24,
+      "physicalId": "CdkRealDriftIntegStreamFifoMin-HuntOnDemandStream-XZtQuI441hsC",
+      "constructPath": "CdkRealDriftIntegStreamFifoMin/HuntOnDemandStream"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOnDemandStream",
+      "resourceType": "AWS::Kinesis::Stream",
+      "path": "ShardCount",
+      "actual": 4,
+      "physicalId": "CdkRealDriftIntegStreamFifoMin-HuntOnDemandStream-XZtQuI441hsC",
+      "constructPath": "CdkRealDriftIntegStreamFifoMin/HuntOnDemandStream"
+    }
+  ]
+}

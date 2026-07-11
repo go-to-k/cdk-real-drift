@@ -1,0 +1,249 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntDetector",
+    "resourceType": "AWS::GuardDuty::Detector",
+    "physicalId": "713e956581494931b2d42a05fe9616d0",
+    "constructPath": "CdkRealDriftIntegGdSecHubMin/HuntDetector",
+    "declared": {
+      "Enable": true,
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "FindingPublishingFrequency": "SIX_HOURS",
+    "DataSources": {
+      "MalwareProtection": {
+        "ScanEc2InstanceWithFindings": {
+          "EbsVolumes": true
+        }
+      },
+      "S3Logs": {
+        "Enable": true
+      },
+      "Kubernetes": {
+        "AuditLogs": {
+          "Enable": true
+        }
+      }
+    },
+    "Enable": true,
+    "Features": [
+      {
+        "Status": "ENABLED",
+        "Name": "CLOUD_TRAIL"
+      },
+      {
+        "Status": "ENABLED",
+        "Name": "DNS_LOGS"
+      },
+      {
+        "Status": "ENABLED",
+        "Name": "FLOW_LOGS"
+      },
+      {
+        "Status": "ENABLED",
+        "Name": "S3_DATA_EVENTS"
+      },
+      {
+        "Status": "ENABLED",
+        "Name": "EKS_AUDIT_LOGS"
+      },
+      {
+        "Status": "ENABLED",
+        "Name": "EBS_MALWARE_PROTECTION"
+      },
+      {
+        "Status": "ENABLED",
+        "Name": "RDS_LOGIN_EVENTS"
+      },
+      {
+        "Status": "DISABLED",
+        "Name": "AI_ANALYST"
+      },
+      {
+        "Status": "DISABLED",
+        "AdditionalConfiguration": [
+          {
+            "Status": "DISABLED",
+            "Name": "EKS_ADDON_MANAGEMENT"
+          }
+        ],
+        "Name": "EKS_RUNTIME_MONITORING"
+      },
+      {
+        "Status": "ENABLED",
+        "Name": "LAMBDA_NETWORK_LOGS"
+      },
+      {
+        "Status": "DISABLED",
+        "AdditionalConfiguration": [
+          {
+            "Status": "DISABLED",
+            "Name": "EKS_ADDON_MANAGEMENT"
+          },
+          {
+            "Status": "DISABLED",
+            "Name": "ECS_FARGATE_AGENT_MANAGEMENT"
+          },
+          {
+            "Status": "DISABLED",
+            "Name": "EC2_AGENT_MANAGEMENT"
+          }
+        ],
+        "Name": "RUNTIME_MONITORING"
+      }
+    ],
+    "Id": "713e956581494931b2d42a05fe9616d0",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegGdSecHubMin",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntDetector",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegGdSecHubMin/692cbbe0-7d49-11f1-b4f9-0affe6509ac1",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntDetector",
+      "resourceType": "AWS::GuardDuty::Detector",
+      "path": "DataSources",
+      "actual": {
+        "MalwareProtection": {
+          "ScanEc2InstanceWithFindings": {
+            "EbsVolumes": true
+          }
+        },
+        "S3Logs": {
+          "Enable": true
+        },
+        "Kubernetes": {
+          "AuditLogs": {
+            "Enable": true
+          }
+        }
+      },
+      "physicalId": "713e956581494931b2d42a05fe9616d0",
+      "constructPath": "CdkRealDriftIntegGdSecHubMin/HuntDetector"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntDetector",
+      "resourceType": "AWS::GuardDuty::Detector",
+      "path": "Features",
+      "actual": [
+        {
+          "Status": "DISABLED",
+          "Name": "AI_ANALYST"
+        },
+        {
+          "Status": "ENABLED",
+          "Name": "CLOUD_TRAIL"
+        },
+        {
+          "Status": "ENABLED",
+          "Name": "DNS_LOGS"
+        },
+        {
+          "Status": "ENABLED",
+          "Name": "EBS_MALWARE_PROTECTION"
+        },
+        {
+          "Status": "ENABLED",
+          "Name": "EKS_AUDIT_LOGS"
+        },
+        {
+          "Status": "DISABLED",
+          "AdditionalConfiguration": [
+            {
+              "Status": "DISABLED",
+              "Name": "EKS_ADDON_MANAGEMENT"
+            }
+          ],
+          "Name": "EKS_RUNTIME_MONITORING"
+        },
+        {
+          "Status": "ENABLED",
+          "Name": "FLOW_LOGS"
+        },
+        {
+          "Status": "ENABLED",
+          "Name": "LAMBDA_NETWORK_LOGS"
+        },
+        {
+          "Status": "ENABLED",
+          "Name": "RDS_LOGIN_EVENTS"
+        },
+        {
+          "Status": "DISABLED",
+          "AdditionalConfiguration": [
+            {
+              "Status": "DISABLED",
+              "Name": "EC2_AGENT_MANAGEMENT"
+            },
+            {
+              "Status": "DISABLED",
+              "Name": "ECS_FARGATE_AGENT_MANAGEMENT"
+            },
+            {
+              "Status": "DISABLED",
+              "Name": "EKS_ADDON_MANAGEMENT"
+            }
+          ],
+          "Name": "RUNTIME_MONITORING"
+        },
+        {
+          "Status": "ENABLED",
+          "Name": "S3_DATA_EVENTS"
+        }
+      ],
+      "physicalId": "713e956581494931b2d42a05fe9616d0",
+      "constructPath": "CdkRealDriftIntegGdSecHubMin/HuntDetector"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntDetector",
+      "resourceType": "AWS::GuardDuty::Detector",
+      "path": "FindingPublishingFrequency",
+      "actual": "SIX_HOURS",
+      "physicalId": "713e956581494931b2d42a05fe9616d0",
+      "constructPath": "CdkRealDriftIntegGdSecHubMin/HuntDetector"
+    }
+  ]
+}

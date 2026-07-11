@@ -64,36 +64,11 @@
   },
   "expected": [
     {
-      "tier": "readGap",
-      "logicalId": "ClusterEB0386A7",
-      "resourceType": "AWS::DocDB::DBCluster",
-      "path": "DBSubnetGroupName",
-      "note": "declared but not returned by live read",
-      "physicalId": "clustereb0386a7-n9uafygdqpfe",
-      "constructPath": "CdkRealDriftIntegDocdbRich/Cluster"
-    },
-    {
-      "tier": "unresolved",
-      "logicalId": "ClusterEB0386A7",
-      "resourceType": "AWS::DocDB::DBCluster",
-      "path": "MasterUserPassword",
-      "physicalId": "clustereb0386a7-n9uafygdqpfe",
-      "constructPath": "CdkRealDriftIntegDocdbRich/Cluster"
-    },
-    {
-      "tier": "unresolved",
-      "logicalId": "ClusterEB0386A7",
-      "resourceType": "AWS::DocDB::DBCluster",
-      "path": "MasterUsername",
-      "physicalId": "clustereb0386a7-n9uafygdqpfe",
-      "constructPath": "CdkRealDriftIntegDocdbRich/Cluster"
-    },
-    {
       "tier": "atDefault",
       "logicalId": "ClusterEB0386A7",
       "resourceType": "AWS::DocDB::DBCluster",
-      "path": "Port",
-      "actual": 27017,
+      "path": "DBClusterParameterGroupName",
+      "actual": "default.docdb5.0",
       "physicalId": "clustereb0386a7-n9uafygdqpfe",
       "constructPath": "CdkRealDriftIntegDocdbRich/Cluster"
     },
@@ -103,6 +78,24 @@
       "resourceType": "AWS::DocDB::DBCluster",
       "path": "EngineVersion",
       "actual": "5.0.0",
+      "physicalId": "clustereb0386a7-n9uafygdqpfe",
+      "constructPath": "CdkRealDriftIntegDocdbRich/Cluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ClusterEB0386A7",
+      "resourceType": "AWS::DocDB::DBCluster",
+      "path": "KmsKeyId",
+      "actual": "arn:aws:kms:us-east-1:111111111111:key/9ee8feba-ae18-445a-bcab-306f7748fb6c",
+      "physicalId": "clustereb0386a7-n9uafygdqpfe",
+      "constructPath": "CdkRealDriftIntegDocdbRich/Cluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ClusterEB0386A7",
+      "resourceType": "AWS::DocDB::DBCluster",
+      "path": "Port",
+      "actual": 27017,
       "physicalId": "clustereb0386a7-n9uafygdqpfe",
       "constructPath": "CdkRealDriftIntegDocdbRich/Cluster"
     },
@@ -125,20 +118,27 @@
       "constructPath": "CdkRealDriftIntegDocdbRich/Cluster"
     },
     {
-      "tier": "atDefault",
+      "tier": "readGap",
       "logicalId": "ClusterEB0386A7",
       "resourceType": "AWS::DocDB::DBCluster",
-      "path": "KmsKeyId",
-      "actual": "arn:aws:kms:us-east-1:111111111111:key/9ee8feba-ae18-445a-bcab-306f7748fb6c",
+      "path": "DBSubnetGroupName",
+      "note": "declared but not returned by live read",
       "physicalId": "clustereb0386a7-n9uafygdqpfe",
       "constructPath": "CdkRealDriftIntegDocdbRich/Cluster"
     },
     {
-      "tier": "atDefault",
+      "tier": "unresolved",
       "logicalId": "ClusterEB0386A7",
       "resourceType": "AWS::DocDB::DBCluster",
-      "path": "DBClusterParameterGroupName",
-      "actual": "default.docdb5.0",
+      "path": "MasterUserPassword",
+      "physicalId": "clustereb0386a7-n9uafygdqpfe",
+      "constructPath": "CdkRealDriftIntegDocdbRich/Cluster"
+    },
+    {
+      "tier": "unresolved",
+      "logicalId": "ClusterEB0386A7",
+      "resourceType": "AWS::DocDB::DBCluster",
+      "path": "MasterUsername",
       "physicalId": "clustereb0386a7-n9uafygdqpfe",
       "constructPath": "CdkRealDriftIntegDocdbRich/Cluster"
     }

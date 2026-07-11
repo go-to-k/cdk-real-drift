@@ -1,0 +1,75 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntPg",
+    "resourceType": "AWS::RDS::DBParameterGroup",
+    "physicalId": "cdkrdhunt-mixed-pg",
+    "constructPath": "CdkRealDriftIntegCaseIdentsMin/HuntPg",
+    "declared": {
+      "DBParameterGroupName": "CdkrdHunt-Mixed-PG",
+      "Description": "cdkrd hunt mixed-case parameter group",
+      "Family": "mysql8.0",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "DBParameterGroupName": "cdkrdhunt-mixed-pg",
+    "Description": "cdkrd hunt mixed-case parameter group",
+    "Parameters": {},
+    "Family": "mysql8.0",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegCaseIdentsMin",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntPg",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegCaseIdentsMin/09209c20-7d4a-11f1-b021-12e64a14fec7",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["DBParameterGroupName", "Description", "Family"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["DBParameterGroupName", "Description", "Family"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "declared",
+      "logicalId": "HuntPg",
+      "resourceType": "AWS::RDS::DBParameterGroup",
+      "path": "DBParameterGroupName",
+      "desired": "CdkrdHunt-Mixed-PG",
+      "actual": "cdkrdhunt-mixed-pg",
+      "physicalId": "cdkrdhunt-mixed-pg",
+      "constructPath": "CdkRealDriftIntegCaseIdentsMin/HuntPg"
+    }
+  ]
+}

@@ -1,0 +1,141 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntFifoMin",
+    "resourceType": "AWS::SQS::Queue",
+    "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegStreamFifoMin-HuntFifoMin-NxQtSnwxbFpx.fifo",
+    "constructPath": "CdkRealDriftIntegStreamFifoMin/HuntFifoMin",
+    "declared": {
+      "FifoQueue": true,
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "ReceiveMessageWaitTimeSeconds": 0,
+    "FifoThroughputLimit": "perQueue",
+    "FifoQueue": true,
+    "MaximumMessageSize": 1048576,
+    "VisibilityTimeout": 30,
+    "QueueUrl": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegStreamFifoMin-HuntFifoMin-NxQtSnwxbFpx.fifo",
+    "SqsManagedSseEnabled": true,
+    "DelaySeconds": 0,
+    "MessageRetentionPeriod": 345600,
+    "DeduplicationScope": "queue",
+    "ContentBasedDeduplication": false,
+    "Arn": "arn:aws:sqs:us-east-1:111111111111:CdkRealDriftIntegStreamFifoMin-HuntFifoMin-NxQtSnwxbFpx.fifo",
+    "QueueName": "CdkRealDriftIntegStreamFifoMin-HuntFifoMin-NxQtSnwxbFpx.fifo",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "QueueUrl"],
+    "writeOnly": [],
+    "createOnly": ["FifoQueue", "QueueName"],
+    "readOnlyPaths": ["Arn", "QueueUrl"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["FifoQueue", "QueueName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntFifoMin",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "DeduplicationScope",
+      "actual": "queue",
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegStreamFifoMin-HuntFifoMin-NxQtSnwxbFpx.fifo",
+      "constructPath": "CdkRealDriftIntegStreamFifoMin/HuntFifoMin"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntFifoMin",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "DelaySeconds",
+      "actual": 0,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegStreamFifoMin-HuntFifoMin-NxQtSnwxbFpx.fifo",
+      "constructPath": "CdkRealDriftIntegStreamFifoMin/HuntFifoMin"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntFifoMin",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "FifoThroughputLimit",
+      "actual": "perQueue",
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegStreamFifoMin-HuntFifoMin-NxQtSnwxbFpx.fifo",
+      "constructPath": "CdkRealDriftIntegStreamFifoMin/HuntFifoMin"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntFifoMin",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "MaximumMessageSize",
+      "actual": 1048576,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegStreamFifoMin-HuntFifoMin-NxQtSnwxbFpx.fifo",
+      "constructPath": "CdkRealDriftIntegStreamFifoMin/HuntFifoMin"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntFifoMin",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "MessageRetentionPeriod",
+      "actual": 345600,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegStreamFifoMin-HuntFifoMin-NxQtSnwxbFpx.fifo",
+      "constructPath": "CdkRealDriftIntegStreamFifoMin/HuntFifoMin"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntFifoMin",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "ReceiveMessageWaitTimeSeconds",
+      "actual": 0,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegStreamFifoMin-HuntFifoMin-NxQtSnwxbFpx.fifo",
+      "constructPath": "CdkRealDriftIntegStreamFifoMin/HuntFifoMin"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntFifoMin",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "SqsManagedSseEnabled",
+      "actual": true,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegStreamFifoMin-HuntFifoMin-NxQtSnwxbFpx.fifo",
+      "constructPath": "CdkRealDriftIntegStreamFifoMin/HuntFifoMin"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntFifoMin",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "VisibilityTimeout",
+      "actual": 30,
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegStreamFifoMin-HuntFifoMin-NxQtSnwxbFpx.fifo",
+      "constructPath": "CdkRealDriftIntegStreamFifoMin/HuntFifoMin"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "HuntFifoMin",
+      "resourceType": "AWS::SQS::Queue",
+      "path": "QueueName",
+      "actual": "CdkRealDriftIntegStreamFifoMin-HuntFifoMin-NxQtSnwxbFpx.fifo",
+      "physicalId": "https://sqs.us-east-1.amazonaws.com/111111111111/CdkRealDriftIntegStreamFifoMin-HuntFifoMin-NxQtSnwxbFpx.fifo",
+      "constructPath": "CdkRealDriftIntegStreamFifoMin/HuntFifoMin"
+    }
+  ]
+}

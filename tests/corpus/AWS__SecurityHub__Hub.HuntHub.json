@@ -1,0 +1,53 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntHub",
+    "resourceType": "AWS::SecurityHub::Hub",
+    "physicalId": "arn:aws:securityhub:us-east-1:111111111111:hub/default",
+    "constructPath": "CdkRealDriftIntegGdSecHubMin/HuntHub",
+    "declared": {
+      "Tags": {
+        "cdkrd:ephemeral": "1"
+      }
+    }
+  },
+  "liveRaw": {
+    "ControlFindingGenerator": "SECURITY_CONTROL",
+    "SubscribedAt": "2026-07-11T16:56:19.003Z",
+    "AutoEnableControls": false,
+    "ARN": "arn:aws:securityhub:us-east-1:111111111111:hub/default",
+    "Tags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "schema": {
+    "readOnly": ["ARN", "SubscribedAt"],
+    "writeOnly": ["EnableDefaultStandards"],
+    "createOnly": [],
+    "readOnlyPaths": ["ARN", "SubscribedAt"],
+    "writeOnlyPaths": ["EnableDefaultStandards"],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntHub",
+      "resourceType": "AWS::SecurityHub::Hub",
+      "path": "ControlFindingGenerator",
+      "actual": "SECURITY_CONTROL",
+      "physicalId": "arn:aws:securityhub:us-east-1:111111111111:hub/default",
+      "constructPath": "CdkRealDriftIntegGdSecHubMin/HuntHub"
+    }
+  ]
+}

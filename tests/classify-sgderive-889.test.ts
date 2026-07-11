@@ -52,6 +52,23 @@ const CASES: Array<{ label: string; type: string; key: string }> = [
     type: 'AWS::Neptune::DBCluster',
     key: 'VpcSecurityGroupIds',
   },
+  // 2026-07-12 hunt (aurora-pg-min / rds-postgres-min): the RDS twins of the Neptune entry —
+  // both OOB-mutable via `rds modify-db-cluster` / `modify-db-instance --vpc-security-group-ids`.
+  {
+    label: 'RDS DBCluster VpcSecurityGroupIds',
+    type: 'AWS::RDS::DBCluster',
+    key: 'VpcSecurityGroupIds',
+  },
+  {
+    label: 'RDS DBInstance VPCSecurityGroups (legacy plural path)',
+    type: 'AWS::RDS::DBInstance',
+    key: 'VPCSecurityGroups',
+  },
+  {
+    label: 'DocDB DBCluster VpcSecurityGroupIds',
+    type: 'AWS::DocDB::DBCluster',
+    key: 'VpcSecurityGroupIds',
+  },
 ];
 
 for (const { label, type, key } of CASES) {

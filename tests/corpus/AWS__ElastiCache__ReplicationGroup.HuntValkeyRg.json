@@ -1,0 +1,272 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntValkeyRg",
+    "resourceType": "AWS::ElastiCache::ReplicationGroup",
+    "physicalId": "cdh15rygbts7ya8",
+    "constructPath": "CdkRealDriftIntegElastiCacheValkeyMin/HuntValkeyRg",
+    "declared": {
+      "AutomaticFailoverEnabled": false,
+      "CacheNodeType": "cache.t4g.micro",
+      "Engine": "valkey",
+      "NumCacheClusters": 1,
+      "ReplicationGroupDescription": "cdkrd hunt minimal valkey replication group",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "TransitEncryptionEnabled": false
+    }
+  },
+  "liveRaw": {
+    "ReadEndPoint": {
+      "Addresses": "[cdh15rygbts7ya8-001.jzgy0l.0001.use1.cache.amazonaws.com]",
+      "PortsList": ["6379"],
+      "AddressesList": ["cdh15rygbts7ya8-001.jzgy0l.0001.use1.cache.amazonaws.com"],
+      "Ports": "[6379]"
+    },
+    "ClusterMode": "disabled",
+    "Port": 6379,
+    "ReaderEndPoint": {
+      "Address": "cdh15rygbts7ya8-ro.jzgy0l.ng.0001.use1.cache.amazonaws.com",
+      "Port": "6379"
+    },
+    "AutomaticFailoverEnabled": false,
+    "ReplicasPerNodeGroup": 0,
+    "ReplicationGroupDescription": "cdkrd hunt minimal valkey replication group",
+    "MultiAZEnabled": false,
+    "TransitEncryptionEnabled": false,
+    "NetworkType": "ipv4",
+    "ReplicationGroupId": "cdh15rygbts7ya8",
+    "Engine": "valkey",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "NumCacheClusters": 1,
+    "ConfigurationEndPoint": {},
+    "AtRestEncryptionEnabled": true,
+    "AutoMinorVersionUpgrade": true,
+    "SnapshotWindow": "04:00-05:00",
+    "CacheNodeType": "cache.t4g.micro",
+    "SnapshotRetentionLimit": 0,
+    "UserGroupIds": [],
+    "IpDiscovery": "ipv4",
+    "DataTieringEnabled": false,
+    "LogDeliveryConfigurations": [],
+    "PrimaryEndPoint": {
+      "Address": "cdh15rygbts7ya8.jzgy0l.ng.0001.use1.cache.amazonaws.com",
+      "Port": "6379"
+    },
+    "PreferredMaintenanceWindow": "thu:03:00-thu:04:00",
+    "EngineVersion": "9.1.0"
+  },
+  "schema": {
+    "readOnly": [
+      "ConfigurationEndPoint",
+      "EffectiveDurability",
+      "PrimaryEndPoint",
+      "ReadEndPoint",
+      "ReaderEndPoint"
+    ],
+    "writeOnly": [
+      "AuthToken",
+      "CacheParameterGroupName",
+      "CacheSecurityGroupNames",
+      "CacheSubnetGroupName",
+      "KmsKeyId",
+      "NodeGroupConfiguration",
+      "NumNodeGroups",
+      "PreferredCacheClusterAZs",
+      "PrimaryClusterId",
+      "SecurityGroupIds",
+      "SnapshotArns",
+      "SnapshotName"
+    ],
+    "createOnly": [
+      "AtRestEncryptionEnabled",
+      "CacheSubnetGroupName",
+      "DataTieringEnabled",
+      "GlobalReplicationGroupId",
+      "KmsKeyId",
+      "NetworkType",
+      "Port",
+      "PreferredCacheClusterAZs",
+      "ReplicationGroupId",
+      "SnapshotArns",
+      "SnapshotName"
+    ],
+    "readOnlyPaths": [
+      "ConfigurationEndPoint",
+      "ConfigurationEndPoint.Address",
+      "ConfigurationEndPoint.Port",
+      "EffectiveDurability",
+      "PrimaryEndPoint",
+      "PrimaryEndPoint.Address",
+      "PrimaryEndPoint.Port",
+      "ReadEndPoint",
+      "ReadEndPoint.Addresses",
+      "ReadEndPoint.AddressesList",
+      "ReadEndPoint.Ports",
+      "ReadEndPoint.PortsList",
+      "ReaderEndPoint",
+      "ReaderEndPoint.Address",
+      "ReaderEndPoint.Port"
+    ],
+    "writeOnlyPaths": [
+      "AuthToken",
+      "CacheParameterGroupName",
+      "CacheSecurityGroupNames",
+      "CacheSubnetGroupName",
+      "KmsKeyId",
+      "NodeGroupConfiguration",
+      "NumNodeGroups",
+      "PreferredCacheClusterAZs",
+      "PrimaryClusterId",
+      "SecurityGroupIds",
+      "SnapshotArns",
+      "SnapshotName"
+    ],
+    "createOnlyPaths": [
+      "AtRestEncryptionEnabled",
+      "CacheSubnetGroupName",
+      "DataTieringEnabled",
+      "GlobalReplicationGroupId",
+      "KmsKeyId",
+      "NetworkType",
+      "Port",
+      "PreferredCacheClusterAZs",
+      "ReplicationGroupId",
+      "SnapshotArns",
+      "SnapshotName"
+    ],
+    "defaults": {
+      "NumNodeGroups": 1,
+      "AutomaticFailoverEnabled": false,
+      "TransitEncryptionEnabled": false,
+      "AtRestEncryptionEnabled": false,
+      "SnapshotRetentionLimit": 0
+    },
+    "defaultPaths": {
+      "NumNodeGroups": 1,
+      "AutomaticFailoverEnabled": false,
+      "TransitEncryptionEnabled": false,
+      "AtRestEncryptionEnabled": false,
+      "SnapshotRetentionLimit": 0
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntValkeyRg",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "AtRestEncryptionEnabled",
+      "actual": true,
+      "physicalId": "cdh15rygbts7ya8",
+      "constructPath": "CdkRealDriftIntegElastiCacheValkeyMin/HuntValkeyRg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntValkeyRg",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "AutoMinorVersionUpgrade",
+      "actual": true,
+      "physicalId": "cdh15rygbts7ya8",
+      "constructPath": "CdkRealDriftIntegElastiCacheValkeyMin/HuntValkeyRg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntValkeyRg",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "ClusterMode",
+      "actual": "disabled",
+      "physicalId": "cdh15rygbts7ya8",
+      "constructPath": "CdkRealDriftIntegElastiCacheValkeyMin/HuntValkeyRg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntValkeyRg",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "EngineVersion",
+      "actual": "9.1.0",
+      "physicalId": "cdh15rygbts7ya8",
+      "constructPath": "CdkRealDriftIntegElastiCacheValkeyMin/HuntValkeyRg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntValkeyRg",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "IpDiscovery",
+      "actual": "ipv4",
+      "physicalId": "cdh15rygbts7ya8",
+      "constructPath": "CdkRealDriftIntegElastiCacheValkeyMin/HuntValkeyRg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntValkeyRg",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "NetworkType",
+      "actual": "ipv4",
+      "physicalId": "cdh15rygbts7ya8",
+      "constructPath": "CdkRealDriftIntegElastiCacheValkeyMin/HuntValkeyRg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntValkeyRg",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "Port",
+      "actual": 6379,
+      "physicalId": "cdh15rygbts7ya8",
+      "constructPath": "CdkRealDriftIntegElastiCacheValkeyMin/HuntValkeyRg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntValkeyRg",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "PreferredMaintenanceWindow",
+      "actual": "thu:03:00-thu:04:00",
+      "physicalId": "cdh15rygbts7ya8",
+      "constructPath": "CdkRealDriftIntegElastiCacheValkeyMin/HuntValkeyRg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntValkeyRg",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "ReplicasPerNodeGroup",
+      "actual": 0,
+      "physicalId": "cdh15rygbts7ya8",
+      "constructPath": "CdkRealDriftIntegElastiCacheValkeyMin/HuntValkeyRg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntValkeyRg",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "SnapshotRetentionLimit",
+      "actual": 0,
+      "physicalId": "cdh15rygbts7ya8",
+      "constructPath": "CdkRealDriftIntegElastiCacheValkeyMin/HuntValkeyRg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntValkeyRg",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "SnapshotWindow",
+      "actual": "04:00-05:00",
+      "physicalId": "cdh15rygbts7ya8",
+      "constructPath": "CdkRealDriftIntegElastiCacheValkeyMin/HuntValkeyRg"
+    }
+  ]
+}

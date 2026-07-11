@@ -1,0 +1,111 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntStatelessRg",
+    "resourceType": "AWS::NetworkFirewall::RuleGroup",
+    "physicalId": "arn:aws:network-firewall:us-east-1:111111111111:stateless-rulegroup/cdkrd-hunt-stateless-rg",
+    "constructPath": "CdkRealDriftIntegNetFwMin/HuntStatelessRg",
+    "declared": {
+      "Capacity": 10,
+      "RuleGroup": {
+        "RulesSource": {
+          "StatelessRulesAndCustomActions": {
+            "StatelessRules": [
+              {
+                "Priority": 1,
+                "RuleDefinition": {
+                  "Actions": ["aws:pass"],
+                  "MatchAttributes": {
+                    "Destinations": [
+                      {
+                        "AddressDefinition": "0.0.0.0/0"
+                      }
+                    ],
+                    "Protocols": [6],
+                    "Sources": [
+                      {
+                        "AddressDefinition": "0.0.0.0/0"
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "RuleGroupName": "cdkrd-hunt-stateless-rg",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "Type": "STATELESS"
+    }
+  },
+  "liveRaw": {
+    "Type": "STATELESS",
+    "RuleGroupId": "ce6ce290-b26b-4de6-bf92-88868c4fbc4b",
+    "Capacity": 10,
+    "RuleGroupName": "cdkrd-hunt-stateless-rg",
+    "RuleGroupArn": "arn:aws:network-firewall:us-east-1:111111111111:stateless-rulegroup/cdkrd-hunt-stateless-rg",
+    "RuleGroup": {
+      "RulesSource": {
+        "StatelessRulesAndCustomActions": {
+          "StatelessRules": [
+            {
+              "Priority": 1,
+              "RuleDefinition": {
+                "Actions": ["aws:pass"],
+                "MatchAttributes": {
+                  "Protocols": [6],
+                  "Destinations": [
+                    {
+                      "AddressDefinition": "0.0.0.0/0"
+                    }
+                  ],
+                  "Sources": [
+                    {
+                      "AddressDefinition": "0.0.0.0/0"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["RuleGroupArn", "RuleGroupId"],
+    "writeOnly": [],
+    "createOnly": ["Capacity", "RuleGroupName", "Type"],
+    "readOnlyPaths": ["RuleGroupArn", "RuleGroupId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Capacity", "RuleGroupName", "Type"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": [
+      "RuleGroup.ReferenceSets.IPSetReferences",
+      "RuleGroup.RuleVariables.IPSets",
+      "RuleGroup.RuleVariables.PortSets"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

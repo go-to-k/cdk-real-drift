@@ -1,0 +1,73 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntEipAssoc",
+    "resourceType": "AWS::EC2::EIPAssociation",
+    "physicalId": "eipassoc-0038c9fea5e46017a",
+    "constructPath": "CdkRealDriftIntegVpcAttachMin/HuntEipAssoc",
+    "declared": {
+      "AllocationId": "__cdkrd_corpus_unresolved__",
+      "NetworkInterfaceId": "eni-040a1bc440441bd0d"
+    }
+  },
+  "liveRaw": {
+    "PrivateIpAddress": "10.0.0.141",
+    "AllocationId": "eipalloc-03e831eea5316f289",
+    "Id": "eipassoc-0038c9fea5e46017a",
+    "NetworkInterfaceId": "eni-040a1bc440441bd0d",
+    "EIP": "18.215.93.30"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["AllocationId", "EIP", "InstanceId", "NetworkInterfaceId", "PrivateIpAddress"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "AllocationId",
+      "EIP",
+      "InstanceId",
+      "NetworkInterfaceId",
+      "PrivateIpAddress"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEipAssoc",
+      "resourceType": "AWS::EC2::EIPAssociation",
+      "path": "EIP",
+      "actual": "18.215.93.30",
+      "physicalId": "eipassoc-0038c9fea5e46017a",
+      "constructPath": "CdkRealDriftIntegVpcAttachMin/HuntEipAssoc"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEipAssoc",
+      "resourceType": "AWS::EC2::EIPAssociation",
+      "path": "PrivateIpAddress",
+      "actual": "10.0.0.141",
+      "physicalId": "eipassoc-0038c9fea5e46017a",
+      "constructPath": "CdkRealDriftIntegVpcAttachMin/HuntEipAssoc"
+    },
+    {
+      "tier": "unresolved",
+      "logicalId": "HuntEipAssoc",
+      "resourceType": "AWS::EC2::EIPAssociation",
+      "path": "AllocationId",
+      "physicalId": "eipassoc-0038c9fea5e46017a",
+      "constructPath": "CdkRealDriftIntegVpcAttachMin/HuntEipAssoc"
+    }
+  ]
+}
