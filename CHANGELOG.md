@@ -1,3 +1,11 @@
+## [0.12.63](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.62...v0.12.63) (2026-07-11)
+
+
+### Bug Fixes
+
+* **diff:** equality-gate CR-managed S3 NotificationConfiguration so an out-of-band change surfaces ([#1283](https://github.com/go-to-k/cdk-real-drift/issues/1283)) ([#1428](https://github.com/go-to-k/cdk-real-drift/issues/1428)) ([bd1cac2](https://github.com/go-to-k/cdk-real-drift/commit/bd1cac2c0a98843f515359089587baf24f4eb96c))
+* **revert:** bar Route53::RecordSet added delete as notRevertable — CC has no DeleteResource handler ([#1312](https://github.com/go-to-k/cdk-real-drift/issues/1312)) ([#1427](https://github.com/go-to-k/cdk-real-drift/issues/1427)) ([d43ee32](https://github.com/go-to-k/cdk-real-drift/commit/d43ee327fc0db2c1ad5a8a2e8fb7f96892f16368))
+
 ## [0.12.62](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.61...v0.12.62) (2026-07-11)
 
 
