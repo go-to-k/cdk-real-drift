@@ -354,7 +354,7 @@
       "constructPath": "CdkRealDriftIntegEc2Rich/Host"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "HostB4E45AD7",
       "resourceType": "AWS::EC2::Instance",
       "path": "SecurityGroups",
@@ -372,7 +372,7 @@
       "constructPath": "CdkRealDriftIntegEc2Rich/Host"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "HostB4E45AD7",
       "resourceType": "AWS::EC2::Instance",
       "path": "Volumes",
@@ -390,7 +390,7 @@
       "constructPath": "CdkRealDriftIntegEc2Rich/Host"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "HostB4E45AD7",
       "resourceType": "AWS::EC2::Instance",
       "path": "NetworkInterfaces",

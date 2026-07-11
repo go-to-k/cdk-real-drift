@@ -133,3 +133,114 @@ describe('#640 EC2 NetworkInterface PrivateIpAddresses / GroupSet (value-indepen
     expect(tier(f, 'atDefault')).not.toContain('GroupSet');
   });
 });
+
+describe('#640 EC2 Instance AvailabilityZone (create-only, value-independent, undeclared)', () => {
+  // Live-repro (2026-07-11): a CfnInstance placed by SubnetId, declaring no AZ, reads back
+  // AvailabilityZone = "us-east-1a" — the create-only twin of the folded SubnetId/CpuOptions.
+  const res = mk('AWS::EC2::Instance', {
+    ImageId: 'ami-1',
+    InstanceType: 't3.micro',
+    SubnetId: 'subnet-1',
+  });
+  it('folds the AWS-assigned AZ on a clean deploy (undeclared -> atDefault)', () => {
+    const f = classifyResource(res, { AvailabilityZone: 'us-east-1a' }, emptySchema);
+    expect(tier(f, 'atDefault')).toContain('AvailabilityZone');
+    expect(tier(f, 'undeclared')).not.toContain('AvailabilityZone');
+  });
+  it('is value-independent: any AZ folds (create-only, physically cannot drift out of band)', () => {
+    for (const az of ['us-east-1a', 'us-east-1b', 'eu-west-1c']) {
+      const f = classifyResource(res, { AvailabilityZone: az }, emptySchema);
+      expect(tier(f, 'atDefault')).toContain('AvailabilityZone');
+    }
+  });
+  it('does NOT fold a DECLARED AvailabilityZone that differs — declared drift still surfaces', () => {
+    const declaredRes = mk('AWS::EC2::Instance', {
+      ImageId: 'ami-1',
+      InstanceType: 't3.micro',
+      AvailabilityZone: 'us-east-1a',
+    });
+    const f = classifyResource(declaredRes, { AvailabilityZone: 'us-east-1b' }, emptySchema);
+    expect(tier(f, 'atDefault')).not.toContain('AvailabilityZone');
+    expect(tier(f, 'declared')).toContain('AvailabilityZone');
+  });
+});
+
+describe('#640 EC2 Instance SecurityGroups / Volumes / BlockDeviceMappings / NetworkInterfaces (reach ZERO)', () => {
+  // A fresh CfnInstance declaring only ImageId/InstanceType/SubnetId/SecurityGroupIds reads back all
+  // four of these undeclared on a clean deploy (live-confirmed 2026-07-11). Each folds atDefault —
+  // detection is preserved via the mechanism noted per path.
+  const res = mk('AWS::EC2::Instance', {
+    ImageId: 'ami-1',
+    InstanceType: 't3.micro',
+    SubnetId: 'subnet-1',
+    SecurityGroupIds: ['sg-1'],
+  });
+  const LIVE = {
+    SecurityGroups: ['StackName-BenchSecurityGroup-abc123'],
+    Volumes: [{ VolumeId: 'vol-0abc', Device: '/dev/xvda' }],
+    BlockDeviceMappings: [
+      {
+        DeviceName: '/dev/xvda',
+        Ebs: {
+          SnapshotId: 'snap-1',
+          VolumeType: 'gp3',
+          Encrypted: false,
+          Iops: 3000,
+          VolumeSize: 8,
+        },
+      },
+    ],
+    NetworkInterfaces: [{ DeviceIndex: '0', SubnetId: 'subnet-1', GroupSet: ['sg-1'] }],
+  };
+  it('folds all four undeclared AWS-auto-created baselines on a clean deploy (ZERO potential drift)', () => {
+    const f = classifyResource(res, LIVE, emptySchema);
+    expect(tier(f, 'atDefault')).toEqual(
+      expect.arrayContaining([
+        'SecurityGroups',
+        'Volumes',
+        'BlockDeviceMappings',
+        'NetworkInterfaces',
+      ])
+    );
+    expect(tier(f, 'undeclared')).toEqual([]);
+  });
+  it('SecurityGroups is value-independent (any name folds — the SecurityGroupIds sibling detects swaps)', () => {
+    const f = classifyResource(res, { SecurityGroups: ['some-other-sg-name'] }, emptySchema);
+    expect(tier(f, 'atDefault')).toContain('SecurityGroups');
+  });
+  it('NetworkInterfaces SURFACES an out-of-band ENI attach (a non-primary DeviceIndex)', () => {
+    const f = classifyResource(
+      res,
+      {
+        NetworkInterfaces: [
+          { DeviceIndex: '0', SubnetId: 'subnet-1' },
+          { DeviceIndex: '1', SubnetId: 'subnet-1' }, // rogue attached ENI
+        ],
+      },
+      emptySchema
+    );
+    expect(tier(f, 'undeclared')).toContain('NetworkInterfaces');
+    expect(tier(f, 'atDefault')).not.toContain('NetworkInterfaces');
+  });
+  it('NetworkInterfaces folds the lone auto-created primary (DeviceIndex 0)', () => {
+    const f = classifyResource(
+      res,
+      { NetworkInterfaces: [{ DeviceIndex: '0', SubnetId: 'subnet-1' }] },
+      emptySchema
+    );
+    expect(tier(f, 'atDefault')).toContain('NetworkInterfaces');
+  });
+  it('does NOT fold declared NetworkInterfaces — compared in the declared loop instead', () => {
+    const declaredRes = mk('AWS::EC2::Instance', {
+      ImageId: 'ami-1',
+      InstanceType: 't3.micro',
+      NetworkInterfaces: [{ DeviceIndex: '0', SubnetId: 'subnet-declared' }],
+    });
+    const f = classifyResource(
+      declaredRes,
+      { NetworkInterfaces: [{ DeviceIndex: '0', SubnetId: 'subnet-different' }] },
+      emptySchema
+    );
+    expect(tier(f, 'atDefault')).not.toContain('NetworkInterfaces');
+  });
+});

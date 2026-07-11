@@ -891,6 +891,9 @@ describe('noise suppressors', () => {
       ManageMasterUserPassword: false,
       MultiAZ: false,
       StorageEncrypted: false,
+      // RDS default backup retention (1 day) — the standalone DBInstance twin of the DBCluster /
+      // DocDB default, missed while the corpus was Aurora/DBCluster-centric.
+      BackupRetentionPeriod: 1,
       // The current AWS default RDS server CA (constant; engine-derived RDS values fold via
       // ENGINE_DEFAULTS / DEFAULT_MANAGED_NAME_PATHS instead).
       CACertificateIdentifier: 'rds-ca-rsa2048-g1',

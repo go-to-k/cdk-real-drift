@@ -8,10 +8,12 @@
 // a running instance with no replacement), so it is NOT folded value-independent (that would HIDE an
 // OOB SG swap); instead it goes through the derived VPC-default-SG GATE (#889/#640): fold the single
 // VPC-default SG a clean deploy reads back, surface an append or a swap to a non-default SG.
-// STILL deferred (this test documents the boundary): the name-form `SecurityGroups` (needs SG id→name
-// resolution to gate safely) and NetworkInterfaces / Volumes (a rogue ENI / volume can be attached
-// OOB — needs a nested-attach mechanism) STILL surface as undeclared drift. A user who pins any folded
-// item DECLARES it, which is then compared in the declared loop and does NOT fold here.
+// The rest of the batch now ALSO folds (reaching the zero-first-check invariant), each with detection
+// preserved: the name-form `SecurityGroups` folds value-independent because the id-form sibling
+// `SecurityGroupIds` above is the canonical swap detector; `Volumes` (pure AWS-assigned identifiers)
+// and `BlockDeviceMappings` (the AMI-derived root husk) fold value-independent; `NetworkInterfaces`
+// folds the auto-created primary but SURFACES an out-of-band ENI attach (per-element DeviceIndex gate
+// in classify.ts). A user who pins any folded item DECLARES it, compared in the declared loop.
 import { describe, expect, it } from 'vite-plus/test';
 import { classifyResource } from '../src/diff/classify.js';
 import type { DesiredResource, Finding, SchemaInfo } from '../src/types.js';
@@ -60,16 +62,33 @@ describe('#640 EC2 Instance first-run undeclared folds (value-independent)', () 
   // The single VPC-default SG id the clean deploy read back, supplied to the #889/#640 SG gate.
   const defaultSgIds = new Set(['sg-027bb24dfa8eb1b48']);
 
-  it('folds the create-only CpuOptions + SubnetId AND the gated default SecurityGroupIds', () => {
+  it('folds the whole first-run undeclared batch on a clean deploy — ZERO potential drift', () => {
     const fs = classifyResource(mk(declared), structuredClone(live), schema(), { defaultSgIds });
-    expect(tier(fs, 'atDefault')).toEqual(['CpuOptions', 'SecurityGroupIds', 'SubnetId']);
+    // Every AWS-auto-created baseline folds atDefault; nothing surfaces as undeclared.
+    expect(tier(fs, 'atDefault')).toEqual([
+      'CpuOptions',
+      'NetworkInterfaces',
+      'SecurityGroupIds',
+      'SecurityGroups',
+      'SubnetId',
+      'Volumes',
+    ]);
+    expect(tier(fs, 'undeclared')).toEqual([]);
   });
 
-  it('SecurityGroups (name-form) / NetworkInterfaces / Volumes are NOT folded — they still surface', () => {
-    // The name-form SecurityGroups (needs id→name resolution) and NetworkInterfaces / Volumes (a
-    // rogue ENI / volume can be attached OOB) deliberately do NOT fold here yet — deferred boundary.
-    const fs = classifyResource(mk(declared), structuredClone(live), schema(), { defaultSgIds });
-    expect(tier(fs, 'undeclared')).toEqual(['NetworkInterfaces', 'SecurityGroups', 'Volumes']);
+  it('NetworkInterfaces SURFACES an out-of-band ENI attach (non-primary DeviceIndex) — detection preserved', () => {
+    // A rogue `attach-network-interface` adds a secondary interface at DeviceIndex 1; the per-element
+    // gate must SURFACE the whole path (the attach a value-independent fold would hide).
+    const attached = {
+      ...structuredClone(live),
+      NetworkInterfaces: [
+        { NetworkInterfaceId: 'eni-primary', DeviceIndex: '0' },
+        { NetworkInterfaceId: 'eni-rogue', DeviceIndex: '1' },
+      ],
+    };
+    const fs = classifyResource(mk(declared), attached, schema(), { defaultSgIds });
+    expect(tier(fs, 'undeclared')).toContain('NetworkInterfaces');
+    expect(tier(fs, 'atDefault')).not.toContain('NetworkInterfaces');
   });
 
   it('SecurityGroupIds SURFACES on an out-of-band swap to a NON-default SG (detection preserved)', () => {

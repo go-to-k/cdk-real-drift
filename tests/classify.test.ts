@@ -6140,17 +6140,20 @@ describe('Aurora DBInstance cluster-echo strip (CLUSTER_ECHO_CHILD)', () => {
   });
 
   it('KEEPS an instance value that DIVERGES from the cluster (echo strip is equality-gated)', () => {
-    // EngineVersion echoes the cluster; an instance value that DIFFERS must surface (it is not
-    // an echo). Uses a non-value-independent prop so the echo-strip gate is what is tested.
+    // BackupRetentionPeriod echoes the cluster (14); an instance value that DIFFERS must surface (it
+    // is not an echo). Uses a non-value-independent prop whose diverging value (7) also does not match
+    // the KNOWN_DEFAULTS constant (1), so the echo-strip gate is the only thing that could drop it —
+    // and since it diverges, it does not. (EngineVersion, the former vehicle, now folds value-
+    // independent as a GA-version default, so it can no longer demonstrate the echo-strip gate.)
     const t = tiers(
       classifyResource(
         inst({ DBClusterIdentifier: 'c1' }),
-        { EngineVersion: '8.0.mysql_aurora.3.09.0' },
+        { BackupRetentionPeriod: 7 },
         bareEcho,
         { clusterEchoModel }
       )
     );
-    expect(t.undeclared).toEqual(['EngineVersion']);
+    expect(t.undeclared).toEqual(['BackupRetentionPeriod']);
   });
 
   it('KEEPS an instance-only property the cluster does not carry (equality-gated)', () => {
@@ -7122,14 +7125,23 @@ describe('RDS engine-derived defaults fold to atDefault', () => {
     ).toContain('Port');
   });
 
-  it('non-Aurora StorageType (gp2 on plain MySQL) does NOT fold — only the aurora constant does', () => {
-    const t = cls(
+  it('non-Aurora StorageType folds the engine-derived gp2 default; a non-default (io1) still surfaces', () => {
+    // A provisioned (non-Aurora) engine that declares no StorageType reads back gp2 — folds atDefault
+    // (live-confirmed on a fresh mysql db.t3.micro, 2026-07-11). Equality-gated: io1/gp3 still surface.
+    const gp2 = cls(
       'AWS::RDS::DBInstance',
       { Engine: 'mysql' },
       { Engine: 'mysql', StorageType: 'gp2' }
     );
-    expect(t.undeclared).toContain('StorageType');
-    expect(t.atDefault).not.toContain('StorageType');
+    expect(gp2.atDefault).toContain('StorageType');
+    expect(gp2.undeclared).not.toContain('StorageType');
+    const io1 = cls(
+      'AWS::RDS::DBInstance',
+      { Engine: 'mysql' },
+      { Engine: 'mysql', StorageType: 'io1' }
+    );
+    expect(io1.undeclared).toContain('StorageType');
+    expect(io1.atDefault).not.toContain('StorageType');
   });
 
   it('default parameter/option groups fold by the reserved default. / default: prefix', () => {
