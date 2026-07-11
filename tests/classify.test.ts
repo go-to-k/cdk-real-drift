@@ -6469,6 +6469,11 @@ describe('RDS AWS-assigned values fold value-independent (KmsKeyId/AZ/windows)',
       expect(t('AWS::RDS::DBInstance', {}, { EngineLifecycleSupport: v }).atDefault).toContain(
         'EngineLifecycleSupport'
       );
+      // #1406: Aurora GlobalCluster carries the same enrollment with the same creation-era
+      // non-reconstructability — live-observed first-run undeclared on a fresh headless deploy.
+      expect(t('AWS::RDS::GlobalCluster', {}, { EngineLifecycleSupport: v }).atDefault).toContain(
+        'EngineLifecycleSupport'
+      );
     }
   });
 
