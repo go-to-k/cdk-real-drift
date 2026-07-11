@@ -62,12 +62,25 @@ export function buildStackSelector(patterns: string[] | undefined): StackSelecto
 
 export interface SynthStack {
   stackName: string;
+  // #1316: the toolkit-lib HIERARCHICAL id (`Stage/Stack` for a stack nested in a CDK `Stage`,
+  // else identical to stackName). CDK-native tooling (`cdk ls`/`cdk synth`) identifies a staged
+  // stack by this, while the deployed CloudFormation `stackName` is the stage-qualified
+  // `Stage-Stack`. resolveStacks matches a CLI positional against BOTH forms so the cdk-native
+  // `Dev/Net` works AND scopes the #905 selector (which matches on hierarchicalId) correctly.
+  hierarchicalId: string;
   region: string | undefined; // the stack's own env.region (concrete) — for per-stack drift reads
   // #740: the stack's own env.account (concrete 12-digit id), or undefined for an
   // env-agnostic stack — used by check to skip a stack pinned to an account the active
   // credentials are NOT for (instead of misreporting it "not deployed yet") and to guard
   // against a same-named stack in the reachable account being wrong-account compared.
   account: string | undefined;
+  // #1316: the stack's OWN error-level synthesis messages (an `Annotations.addError(...)` —
+  // cdk-nag, a security aspect, a "do not deploy" guard). toolkit.synth's metadata validation
+  // only aborts on the SELECTOR-matched collection, and the #905 selector matches on
+  // hierarchicalId; a stackName-form positional (`Dev-Net`) matches ZERO hierarchicalIds, so
+  // that validation is silently skipped and a broken app is read/reverted. resolveStacks
+  // re-checks these for the SELECTED stacks and aborts, restoring the no-args abort behavior.
+  errorMessages: string[];
   template: Record<string, unknown>;
 }
 
@@ -82,6 +95,40 @@ export const CONCRETE_REGION = /^[a-z]{2}(-[a-z]+)+-\d+$/;
 // neither of which matches — so an unpinned account maps to undefined (see concreteAccount),
 // mirroring how CONCRETE_REGION distinguishes a real region pin from a token/placeholder.
 export const CONCRETE_ACCOUNT = /^\d{12}$/;
+
+// The `level` string a toolkit-lib `SynthesisMessage` carries for an error-level annotation
+// (`Annotations.addError(...)`). `SynthesisMessageLevel.ERROR`'s runtime value — compared as a
+// string literal because toolkit-lib does NOT re-export the `SynthesisMessageLevel` enum (#1316).
+const SYNTHESIS_ERROR_LEVEL = 'error';
+
+/** The minimal shape of a toolkit-lib `SynthesisMessage` we read: only its `level` + a
+ *  human-readable `entry.data`. */
+interface SynthMessageLike {
+  readonly level: string;
+  readonly entry?: { readonly data?: unknown } | undefined;
+}
+
+/**
+ * Extract the ERROR-level synthesis messages of a single stack artifact (#1316).
+ *
+ * A stack's `Annotations.addError(...)` (cdk-nag, a security aspect, a "do not deploy" guard)
+ * surfaces as a `messages` entry with `level === 'error'`. toolkit.synth's own
+ * `validateStacksMetadata` aborts on these — but ONLY for the SELECTOR-matched stacks, and the
+ * #905 selector matches on hierarchicalId, so a stackName-form positional (`Dev-Net`) that
+ * matches zero hierarchicalIds skips that validation entirely. We re-collect them here so
+ * resolveStacks can abort on the SELECTED stacks, restoring the no-args abort behavior for the
+ * named case. Pure + exported for unit tests. Returns the human-readable error strings (empty
+ * when the stack has no error annotation).
+ */
+export function stackErrorMessages(messages: readonly SynthMessageLike[] | undefined): string[] {
+  if (!messages) return [];
+  return messages
+    .filter((m) => m.level === SYNTHESIS_ERROR_LEVEL)
+    .map((m) => {
+      const data = m.entry?.data;
+      return typeof data === 'string' && data.length > 0 ? data : 'error';
+    });
+}
 
 // Map a raw `s.environment.account` to a concrete 12-digit account id, or undefined when it
 // is not pinned (toolkit-lib's `"unknown-account"` / a `${Token...}` for an env-agnostic
@@ -297,10 +344,16 @@ export async function synthApp(app: string, opts: SynthOptions = {}): Promise<Sy
     // correct live-read target.
     return cached.cloudAssembly.stacksRecursively.map((s) => ({
       stackName: s.stackName,
+      // #1316: the toolkit HIERARCHICAL id (`Stage/Stack` for a staged stack) so resolveStacks
+      // can match a cdk-native positional against it AND scope the #905 selector correctly.
+      hierarchicalId: s.hierarchicalId,
       region: CONCRETE_REGION.test(s.environment.region) ? s.environment.region : undefined,
       // #740: carry the stack's own env.account (concrete 12-digit id, else undefined) so
       // check can tell a stack pinned to ANOTHER account from a genuinely-undeployed one.
       account: concreteAccount(s.environment.account),
+      // #1316: the stack's error-level annotations, so resolveStacks can abort on a SELECTED
+      // stack whose validation toolkit.synth's hierarchicalId-scoped selector skipped.
+      errorMessages: stackErrorMessages(s.messages),
       template: s.template as Record<string, unknown>,
     }));
   } finally {
@@ -310,9 +363,15 @@ export async function synthApp(app: string, opts: SynthOptions = {}): Promise<Sy
 
 export interface DiscoveredStack {
   stackName: string;
+  // #1316: the toolkit HIERARCHICAL id (`Stage/Stack` for a staged stack, else == stackName) —
+  // resolveStacks matches a positional against this too (see SynthStack.hierarchicalId).
+  hierarchicalId: string;
   region: string | undefined; // the stack's own env.region, when concrete
   // #740: the stack's own env.account, when concrete (12-digit) — see SynthStack.account.
   account: string | undefined;
+  // #1316: the stack's error-level synthesis annotations (see SynthStack.errorMessages) —
+  // resolveStacks aborts on a SELECTED stack that carries any.
+  errorMessages: string[];
   // the synthesized template — carried through so the check path can recover GetTemplate's
   // `?`-masked non-ASCII literals from it without re-synthesizing (synthApp already built it).
   template: Record<string, unknown>;
@@ -329,8 +388,10 @@ export async function discoverStacks(
 ): Promise<DiscoveredStack[]> {
   return (await synthApp(app, opts)).map((s) => ({
     stackName: s.stackName,
+    hierarchicalId: s.hierarchicalId,
     region: s.region,
     account: s.account,
+    errorMessages: s.errorMessages,
     template: s.template,
   }));
 }

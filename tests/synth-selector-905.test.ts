@@ -50,8 +50,22 @@ vi.mock('../src/synth/resolve-app.js', () => ({
 }));
 
 const discovered = [
-  { stackName: 'GoodStack', region: 'us-east-1', template: {} },
-  { stackName: 'BadLookupStack', region: 'us-east-1', template: {} },
+  {
+    stackName: 'GoodStack',
+    hierarchicalId: 'GoodStack',
+    region: 'us-east-1',
+    account: undefined,
+    errorMessages: [],
+    template: {},
+  },
+  {
+    stackName: 'BadLookupStack',
+    hierarchicalId: 'BadLookupStack',
+    region: 'us-east-1',
+    account: undefined,
+    errorMessages: [],
+    template: {},
+  },
 ];
 type DiscoverFn = (
   app: string,

@@ -17,6 +17,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { CommonArgs } from '../cli-args.js';
 import { resolveApp } from '../synth/resolve-app.js';
+import type { DiscoveredStack } from '../synth/synth.js';
 import { discoverStacks } from '../synth/synth.js';
 import { isGlob, matchesGlob } from './glob-match.js';
 
@@ -130,6 +131,59 @@ export interface ResolvedStack {
   template: Record<string, unknown>;
 }
 
+/**
+ * #1316: does a CLI positional select this discovered stack? A positional matches against BOTH
+ * the deployed CloudFormation `stackName` AND the toolkit `hierarchicalId` (`Stage/Stack` for a
+ * stack nested in a CDK `Stage`), so BOTH `check Dev-Net` (the stage-qualified stackName cdkrd
+ * historically accepted) AND the cdk-native `check Dev/Net` (what `cdk ls`/`cdk synth` show, and
+ * what the #905 selector actually matches on) resolve to the staged stack. A positional with a
+ * glob metachar (`*`/`?`) is matched as a glob against each identifier; a plain positional matches
+ * either identifier EXACTLY (equivalent to a metachar-free glob, but kept as `===` for clarity and
+ * to preserve the exact-name semantics). For a top-level stack the two identifiers are identical,
+ * so behavior there is unchanged. Pure + exported for unit tests.
+ */
+export function positionalMatchesStack(
+  positional: string,
+  stack: { stackName: string; hierarchicalId?: string | undefined }
+): boolean {
+  // `hierarchicalId` falls back to `stackName` for a top-level stack (they are identical there),
+  // so an absent id degrades to a stackName-only match — never a crash.
+  const hierarchicalId = stack.hierarchicalId ?? stack.stackName;
+  if (isGlob(positional)) {
+    return matchesGlob(positional, stack.stackName) || matchesGlob(positional, hierarchicalId);
+  }
+  return positional === stack.stackName || positional === hierarchicalId;
+}
+
+/**
+ * #1316: the residual-hole guard. toolkit.synth's metadata validation aborts on a stack's
+ * error-level annotations (`Annotations.addError(...)` — cdk-nag, a security aspect, a
+ * "do not deploy" guard), but ONLY for the SELECTOR-matched collection, and the #905 selector
+ * matches on hierarchicalId. A stackName-form positional (`Dev-Net`) matches zero hierarchicalIds,
+ * so that validation is silently skipped — cdkrd would then read (and `revert --yes` write back)
+ * a template from an app in an error state. After selecting the target stacks, re-check THEIR
+ * error annotations and throw so the caller aborts (check maps a resolveStacks throw to exit 2),
+ * restoring the no-args abort behavior for the named case. The no-args / --all path already had
+ * toolkit.synth validate every stack (no selector), so this is a belt for the named case.
+ * Aggregates messages across every selected stack. Pure + exported for unit tests.
+ */
+export function assertNoStackErrors(
+  selected: readonly { stackName: string; errorMessages?: readonly string[] | undefined }[]
+): void {
+  const lines: string[] = [];
+  for (const s of selected) {
+    // An absent `errorMessages` (an older/looser caller) degrades to "no errors" — never a crash.
+    for (const msg of s.errorMessages ?? []) lines.push(`  ${s.stackName}: ${msg}`);
+  }
+  if (lines.length > 0) {
+    throw new Error(
+      `the CDK app synthesized with ${lines.length} error(s) (an Annotations.addError — cdk-nag / ` +
+        'security aspect / do-not-deploy guard) on the selected stack(s); refusing to read or ' +
+        `revert an app in an error state:\n${lines.join('\n')}`
+    );
+  }
+}
+
 export async function resolveStacks(a: CommonArgs): Promise<ResolvedStack[]> {
   const app = resolveApp(a.app);
   if (!app) {
@@ -179,6 +233,10 @@ export async function resolveStacks(a: CommonArgs): Promise<ResolvedStack[]> {
   // --all, or no names → every stack the app defines. --all is the explicit form of the
   // no-argument default; it also overrides any positional names (target everything).
   if (a.all || a.stackNames.length === 0) {
+    // #1316: every stack is selected here, so surface any error-level annotation and abort —
+    // mirroring the named case below. (toolkit.synth already validated all stacks with no
+    // selector on this path, so it normally threw first; this keeps the guard uniform.)
+    assertNoStackErrors(discovered);
     return discovered.map((s) => ({
       stackName: s.stackName,
       region: s.region ?? fallbackRegion,
@@ -187,9 +245,14 @@ export async function resolveStacks(a: CommonArgs): Promise<ResolvedStack[]> {
     }));
   }
 
-  // names (exact and/or glob) matched against the app's stacks
+  // names (exact and/or glob) matched against the app's stacks — matched against BOTH the
+  // deployed stackName AND the toolkit hierarchicalId (#1316, positionalMatchesStack).
   const seen = new Set<string>();
   const out: ResolvedStack[] = [];
+  // #1316: the DISCOVERED stacks a positional selected — so we can re-check their error-level
+  // annotations after selection and abort (the residual hole a stackName-form positional opened:
+  // the #905 hierarchicalId-scoped selector skipped their validation). Keyed like `add`'s dedup.
+  const selectedByKey = new Map<string, DiscoveredStack>();
   const add = (
     stackName: string,
     region: string | undefined,
@@ -209,40 +272,52 @@ export async function resolveStacks(a: CommonArgs): Promise<ResolvedStack[]> {
     seen.add(key);
     out.push({ stackName, region, account, template });
   };
-  const known = (): string => discovered.map((s) => s.stackName).join(', ') || 'none';
+  // The known-stacks hint lists BOTH identifier forms when they differ (`Stage/Stack (Stage-Stack)`,
+  // mirroring `cdk ls`), so a user who mistyped one form sees the other they could have used (#1316).
+  const known = (): string =>
+    discovered
+      .map((s) =>
+        s.hierarchicalId === s.stackName ? s.stackName : `${s.hierarchicalId} (${s.stackName})`
+      )
+      .join(', ') || 'none';
+  // Record a positional-selected discovered stack for the post-selection error check (#1316).
+  const select = (s: DiscoveredStack): void => {
+    add(s.stackName, s.region ?? fallbackRegion, s.account, s.template);
+    selectedByKey.set(`${s.stackName}\0${s.region ?? ''}\0${s.account ?? ''}`, s);
+  };
   for (const name of a.stackNames) {
+    // Match a positional against BOTH the stackName AND the hierarchicalId (#1316) — a plain
+    // positional matches either EXACTLY, a `*`/`?` positional globs either. This is what makes
+    // the cdk-native `Dev/Net` form resolve (and scope the #905 selector correctly), while the
+    // stage-qualified `Dev-Net` stackName form keeps working.
+    const hits = discovered.filter((s) => positionalMatchesStack(name, s));
     if (isGlob(name)) {
-      // Count MATCHES (matchesGlob true), NOT net add() calls: `add` dedups via
+      // Count MATCHES (positionalMatchesStack true), NOT net add() calls: `add` dedups via
       // `seen`, so a glob hitting an already-added stack is still a match and must
       // NOT error. A glob that matches ZERO discovered stacks is a hard error,
       // mirroring the exact-name-typo throw — otherwise `check 'Pord-*' Dev --fail`
       // (a typo'd prod glob) silently checks nothing for the glob and exits 0, so
       // CI believes prod was covered.
-      let matched = 0;
-      for (const s of discovered) {
-        if (matchesGlob(name, s.stackName)) {
-          matched++;
-          add(s.stackName, s.region ?? fallbackRegion, s.account, s.template);
-        }
-      }
-      if (matched === 0)
+      if (hits.length === 0)
         throw new Error(
           `glob "${name}" matched no stacks defined by the CDK app (found: ${known()})`
         );
+      for (const hit of hits) select(hit);
     } else {
-      // Collect ALL discovered stacks with this exact name, NOT just the first
-      // (#884). A multi-REGION app can define the same stackName in two envs
+      // Collect ALL discovered stacks matching this exact name/hierarchicalId, NOT just the
+      // first (#884). A multi-REGION app can define the same stackName in two envs
       // (e.g. `Dup` in us-east-1 AND us-west-2); `add` dedups on name+region so
       // the two distinct-region instances are both kept while a same-name
       // same-region duplicate still collapses. `find` silently dropped every
       // instance but the first, so `check Dup --fail` greenlit the other region.
-      const hits = discovered.filter((s) => s.stackName === name);
       if (hits.length === 0)
         throw new Error(`stack "${name}" is not defined by the CDK app (found: ${known()})`);
-      for (const hit of hits)
-        add(hit.stackName, hit.region ?? fallbackRegion, hit.account, hit.template);
+      for (const hit of hits) select(hit);
     }
   }
+  // #1316: abort on any error-level annotation of the SELECTED stacks — the validation
+  // toolkit.synth's hierarchicalId-scoped #905 selector skipped for a stackName-form positional.
+  assertNoStackErrors([...selectedByKey.values()]);
   if (out.length === 0) {
     throw new Error(`no stacks match ${a.stackNames.join(', ')} (found: ${known()})`);
   }
