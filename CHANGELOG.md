@@ -1,3 +1,10 @@
+## [0.12.82](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.81...v0.12.82) (2026-07-11)
+
+
+### Bug Fixes
+
+* **tooling:** sweep-orphans ec2:volume resource_gone arm — deleted-volume RGT-lag phantom no longer deadlocks the gate ([#1463](https://github.com/go-to-k/cdk-real-drift/issues/1463)) ([#1470](https://github.com/go-to-k/cdk-real-drift/issues/1470)) ([9889fe8](https://github.com/go-to-k/cdk-real-drift/commit/9889fe82c9b9e98d5d29890d044780934bca5cdf))
+
 ## [0.12.81](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.80...v0.12.81) (2026-07-11)
 
 
