@@ -4621,6 +4621,22 @@ export function classifyResource(
       findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
       continue;
     }
+    // #1487: an ON_DEMAND Kinesis stream cannot declare `ShardCount` (CloudFormation rejects
+    // ShardCount together with `StreamMode: ON_DEMAND`), so the undeclared live value can never be
+    // user intent; AWS materializes an initial shard count (4 today) and AUTO-SCALES it with
+    // traffic, so no constant pins it — a tier-2 sibling-gated, value-independent fold. Gate on the
+    // effective `StreamModeDetails.StreamMode` (declared preferred, else the live echo) being
+    // ON_DEMAND. A PROVISIONED stream declares `ShardCount` and is compared in the declared loop
+    // (unchanged), so this never hides a provisioned-count drift.
+    if (resourceType === 'AWS::Kinesis::Stream' && k === 'ShardCount') {
+      const streamMode =
+        (declared.StreamModeDetails as Record<string, unknown> | undefined)?.StreamMode ??
+        (live.StreamModeDetails as Record<string, unknown> | undefined)?.StreamMode;
+      if (streamMode === 'ON_DEMAND') {
+        findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
+        continue;
+      }
+    }
     // A live value that is an AWS-MANAGED default resource NAME, recognized by its reserved
     // `default.` / `default:` prefix (an RDS instance's default parameter/option group) rather
     // than a constant — a CUSTOM group name never carries the prefix, so it still surfaces.
