@@ -1,3 +1,10 @@
+## [0.12.39](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.38...v0.12.39) (2026-07-11)
+
+
+### Bug Fixes
+
+* **read+diff:** DMS::Endpoint *Settings blobs become a counted readGap, not false declared drift ([#1293](https://github.com/go-to-k/cdk-real-drift/issues/1293)) ([#1397](https://github.com/go-to-k/cdk-real-drift/issues/1397)) ([5ade326](https://github.com/go-to-k/cdk-real-drift/commit/5ade326d9f31504bf16c2c56aab6cfc8e95b51c0))
+
 ## [0.12.38](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.37...v0.12.38) (2026-07-10)
 
 
