@@ -4292,6 +4292,22 @@ const canonRoute53Name = (s: string): string => s.replace(/\.$/, '').toLowerCase
 const route53RecordKey = (name: string, type: string, setIdentifier?: string): string =>
   `${canonRoute53Name(name)}|${type.toUpperCase()}${setIdentifier !== undefined ? `|${setIdentifier}` : ''}`;
 
+// The composite identity carried on an out-of-band RecordSet's `added` finding: the zone id +
+// the RAW live record name (trailing dot preserved) + uppercased type (+ SetIdentifier for
+// routing variants). It is NOT a Cloud Control primaryIdentifier (RecordSet is NON_PROVISIONABLE
+// — CC cannot read/delete it); it is the stable key the report/record use AND the token the
+// #1431 Route53 SDK deleter matches a live record against. Shared with revert/writers.ts so the
+// enumerator's construction and the deleter's reconstruction can never drift apart (a split-based
+// parse would be ambiguous — DNS names may contain `_`, e.g. `_dmarc.example.com`).
+export const route53RecordSetIdentifier = (
+  hostedZoneId: string,
+  name: string,
+  type: string,
+  setIdentifier?: string
+): string =>
+  `${hostedZoneId}_${name}_${type.toUpperCase()}` +
+  (setIdentifier !== undefined ? `_${setIdentifier}` : '');
+
 // Pure diff: declared record identities + live inventory -> the added (out-of-band) records.
 // Separated from the SDK calls so the matching + apex-filter logic is unit-tested offline.
 export interface Route53HostedZoneChildInput {
@@ -4335,12 +4351,10 @@ export function diffRoute53HostedZoneChildren(input: Route53HostedZoneChildInput
     if (type === 'SOA') continue;
     if (type === 'NS' && apex !== undefined && name === apex) continue;
     if (declared.has(route53RecordKey(r.name, r.type, r.setIdentifier))) continue;
-    // NON_PROVISIONABLE in the CC registry -> this identifier is NOT raw-revertible (see the
-    // block comment above); it is the best composite from the CC identity fields for display /
-    // record, not a CC DeleteResource target.
-    const identifier =
-      `${hostedZoneId}_${r.name}_${type}` +
-      (r.setIdentifier !== undefined ? `_${r.setIdentifier}` : '');
+    // NON_PROVISIONABLE in the CC registry -> this identifier is NOT a CC DeleteResource target
+    // (see the block comment above); it is the best composite from the CC identity fields for
+    // display / record and the token the #1431 SDK deleter matches a live record against.
+    const identifier = route53RecordSetIdentifier(hostedZoneId, r.name, type, r.setIdentifier);
     added.push({
       resourceType: 'AWS::Route53::RecordSet',
       identifier,
@@ -4353,8 +4367,9 @@ export function diffRoute53HostedZoneChildren(input: Route53HostedZoneChildInput
 
 // Page ListResourceRecordSets (name/type/identifier-cursor paginated: StartRecordName /
 // StartRecordType / StartRecordIdentifier -> NextRecordName / NextRecordType /
-// NextRecordIdentifier while IsTruncated).
-async function pageResourceRecordSets(
+// NextRecordIdentifier while IsTruncated). Exported so the #1431 Route53 SDK deleter can
+// re-read the zone's live records to find the exact ResourceRecordSet a DELETE change needs.
+export async function pageResourceRecordSets(
   client: Route53Client,
   hostedZoneId: string
 ): Promise<ResourceRecordSet[]> {
