@@ -1267,10 +1267,13 @@ const readCodeBuildReportGroup: OverrideReader = async ({ physicalId, region }) 
 const readEc2NetworkAclEntry: OverrideReader = async ({ declared, region }) => {
   const naclId = str(declared.NetworkAclId);
   const ruleNumber = declared.RuleNumber;
-  const egress = declared.Egress;
-  // RuleNumber + Egress are required identity; an unresolved NetworkAclId (Symbol) or a
-  // missing identity field -> skipped (fail-open, never a false read).
-  if (!naclId || typeof ruleNumber !== 'number' || typeof egress !== 'boolean') return undefined;
+  // Egress is OPTIONAL in the CFn schema with documented default `false` (every plain
+  // ingress rule omits it), so it is NOT required identity: default it to the schema
+  // default so an omitted-Egress entry still reads and matches the live `Egress=false`
+  // entry. RuleNumber stays genuinely required; an unresolved NetworkAclId (Symbol) or
+  // a missing/non-number RuleNumber -> skipped (fail-open, never a false read).
+  const egress = typeof declared.Egress === 'boolean' ? declared.Egress : false;
+  if (!naclId || typeof ruleNumber !== 'number') return undefined;
 
   const c = new EC2Client({ region, ...READ_RETRY });
   // InvalidNetworkAclID.NotFound surfaces if the NACL itself was deleted out of band —

@@ -3015,20 +3015,130 @@ describe('EC2 NetworkAclEntry (Cloud Control read-gap: UnsupportedActionExceptio
     );
   });
 
-  it('undefined (skipped) when NetworkAclId is unresolved or identity is missing', async () => {
+  it('undefined (skipped) when NetworkAclId is unresolved or RuleNumber is missing', async () => {
+    // unresolved NetworkAclId (str() -> undefined for a non-string / Symbol)
     expect(
       await SDK_OVERRIDES['AWS::EC2::NetworkAclEntry'](ctx({ RuleNumber: 100, Egress: false }))
     ).toBeUndefined();
+    // missing RuleNumber (still genuinely required identity)
     expect(
       await SDK_OVERRIDES['AWS::EC2::NetworkAclEntry'](
         ctx({ NetworkAclId: 'acl-123', Egress: false })
       )
     ).toBeUndefined();
-    expect(
-      await SDK_OVERRIDES['AWS::EC2::NetworkAclEntry'](
-        ctx({ NetworkAclId: 'acl-123', RuleNumber: 100 })
-      )
-    ).toBeUndefined();
+  });
+
+  it('reads an ingress rule that OMITS the optional Egress (#1456): defaults Egress to false and matches the live Egress=false entry', async () => {
+    ec2.on(DescribeNetworkAclsCommand).resolves({
+      NetworkAcls: [
+        {
+          NetworkAclId: 'acl-123',
+          Entries: [
+            // a decoy EGRESS entry with the same RuleNumber must NOT match the
+            // default-ingress lookup (Egress defaults to false)
+            { RuleNumber: 100, Egress: true, Protocol: '-1', RuleAction: 'deny' },
+            {
+              RuleNumber: 100,
+              Egress: false,
+              Protocol: '-1',
+              RuleAction: 'allow',
+              CidrBlock: '0.0.0.0/0',
+            },
+          ],
+        },
+      ],
+    });
+    // NO Egress declared — the natural way to write a plain ingress rule
+    const out = await SDK_OVERRIDES['AWS::EC2::NetworkAclEntry'](
+      ctx({
+        NetworkAclId: 'acl-123',
+        RuleNumber: 100,
+        Protocol: -1,
+        RuleAction: 'allow',
+        CidrBlock: '0.0.0.0/0',
+      })
+    );
+    expect(out).toBeDefined();
+    expect(out).toEqual({
+      NetworkAclId: 'acl-123',
+      RuleNumber: 100,
+      Egress: false,
+      Protocol: -1,
+      RuleAction: 'allow',
+      CidrBlock: '0.0.0.0/0',
+    });
+  });
+
+  it('detects an out-of-band change on an omitted-Egress ingress rule (allow -> deny reflected in the read model)', async () => {
+    ec2.on(DescribeNetworkAclsCommand).resolves({
+      NetworkAcls: [
+        {
+          NetworkAclId: 'acl-123',
+          Entries: [
+            {
+              RuleNumber: 100,
+              Egress: false,
+              Protocol: '-1',
+              RuleAction: 'deny', // flipped out of band from the declared 'allow'
+              CidrBlock: '0.0.0.0/0',
+            },
+          ],
+        },
+      ],
+    });
+    const out = await SDK_OVERRIDES['AWS::EC2::NetworkAclEntry'](
+      ctx({
+        NetworkAclId: 'acl-123',
+        RuleNumber: 100,
+        Protocol: -1,
+        RuleAction: 'allow',
+        CidrBlock: '0.0.0.0/0',
+      })
+    );
+    // the read reflects the LIVE value so the allow -> deny drift is detectable
+    expect(out?.RuleAction).toBe('deny');
+  });
+
+  it('regression: an entry declaring Egress: true still reads and matches the egress entry', async () => {
+    ec2.on(DescribeNetworkAclsCommand).resolves({
+      NetworkAcls: [
+        {
+          NetworkAclId: 'acl-eg',
+          Entries: [
+            // decoy ingress with same RuleNumber must not match Egress: true lookup
+            { RuleNumber: 300, Egress: false, Protocol: '-1', RuleAction: 'allow' },
+            {
+              RuleNumber: 300,
+              Egress: true,
+              Protocol: '6',
+              RuleAction: 'allow',
+              CidrBlock: '0.0.0.0/0',
+              PortRange: { From: 443, To: 443 },
+            },
+          ],
+        },
+      ],
+    });
+    const out = await SDK_OVERRIDES['AWS::EC2::NetworkAclEntry'](
+      ctx({
+        NetworkAclId: 'acl-eg',
+        RuleNumber: 300,
+        Egress: true,
+        Protocol: 6,
+        RuleAction: 'allow',
+        CidrBlock: '0.0.0.0/0',
+        PortRange: { From: 443, To: 443 },
+      })
+    );
+    expect(out).toEqual({
+      NetworkAclId: 'acl-eg',
+      RuleNumber: 300,
+      Egress: true,
+      Protocol: 6,
+      RuleAction: 'allow',
+      CidrBlock: '0.0.0.0/0',
+      PortRange: { From: 443, To: 443 },
+    });
   });
 });
 
