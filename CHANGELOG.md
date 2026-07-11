@@ -1,3 +1,10 @@
+## [0.12.40](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.39...v0.12.40) (2026-07-11)
+
+
+### Bug Fixes
+
+* **check:** --pre-deploy synth inherits the [#905](https://github.com/go-to-k/cdk-real-drift/issues/905) target-stack selector ([#1325](https://github.com/go-to-k/cdk-real-drift/issues/1325)) ([#1401](https://github.com/go-to-k/cdk-real-drift/issues/1401)) ([59bd3a3](https://github.com/go-to-k/cdk-real-drift/commit/59bd3a34c239419287776f2dc5509c7d1d79b22d))
+
 ## [0.12.39](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.38...v0.12.39) (2026-07-11)
 
 
