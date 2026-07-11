@@ -1,3 +1,10 @@
+## [0.12.72](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.71...v0.12.72) (2026-07-11)
+
+
+### Bug Fixes
+
+* **diff:** gate EB InstanceTypes against the architecture-derived default (cost-bomb detection) ([#1278](https://github.com/go-to-k/cdk-real-drift/issues/1278), [#1263](https://github.com/go-to-k/cdk-real-drift/issues/1263)) ([#1443](https://github.com/go-to-k/cdk-real-drift/issues/1443)) ([1fb024f](https://github.com/go-to-k/cdk-real-drift/commit/1fb024f1bc9d74c3cddd9f570f00176b7abd4571))
+
 ## [0.12.71](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.70...v0.12.71) (2026-07-11)
 
 
