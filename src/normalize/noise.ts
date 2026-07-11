@@ -1051,6 +1051,12 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     KmsKeyId: 'AWS_OWNED_KMS_KEY',
     NumberOfNodes: 1,
   },
+  // #1492: a Redshift ScheduledAction that declares no `Enable` reads back `true` — AWS enables a
+  // new schedule by default. Stable constant → equality-gated fold; an out-of-band
+  // `modify-scheduled-action --disable` (Enable=false) no longer matches and surfaces.
+  'AWS::Redshift::ScheduledAction': {
+    Enable: true,
+  },
   'AWS::EC2::VPCEndpoint': {
     IpAddressType: 'ipv4',
     // A Gateway endpoint that omits VpcEndpointType reads back the AWS service default

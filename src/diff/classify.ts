@@ -196,6 +196,13 @@ const MEANINGFUL_WHEN_OFF: Record<string, Record<string, (ctx: OffStateContext) 
   // is an out-of-band DISABLE of transit encryption — unconditionally meaningful. Without this
   // gate the live `false` is dropped by isTrivialEmpty before the pin gate, hiding the disable.
   'AWS::MemoryDB::Cluster': { TLSEnabled: () => true },
+  // #1492: a Redshift ScheduledAction is created ENABLED — a fresh action that declares no
+  // Enable always reads back true (the KNOWN_DEFAULTS pin, live-confirmed 2026-07-12). There is
+  // no conditional clean-deploy shape that reads false undeclared (a user who wants it paused
+  // DECLARES Enable=false, compared in the declared loop). So an undeclared Enable=false is an
+  // out-of-band `modify-scheduled-action --disable` that silently stops the schedule — the live
+  // `false` would otherwise be dropped by isTrivialEmpty before the pin gate. Unconditional.
+  'AWS::Redshift::ScheduledAction': { Enable: () => true },
 };
 
 // #660 item 3: the NESTED twin of MEANINGFUL_WHEN_OFF. The table above gates TOP-LEVEL
@@ -310,6 +317,11 @@ const DEFAULT_SG_LIST_PATHS: Record<string, string> = {
   // The DocDB twin (corpus-baked FP surfaced by the measure-noise sweep on the same hunt):
   // same OOB-mutable `docdb modify-db-cluster --vpc-security-group-ids` surface.
   'AWS::DocDB::DBCluster': 'VpcSecurityGroupIds',
+  // 2026-07-12 hunt (#1492): a single-node Redshift Cluster that declares no VpcSecurityGroupIds
+  // is placed into the VPC default security group — the same #976 Neptune/RDS shape. OOB-mutable
+  // (`redshift modify-cluster --vpc-security-group-ids`), so the derived VPC-default-SG gate folds
+  // the single default and surfaces an append/swap. Keep in sync with gather.ts DEFAULT_SG_LIST_TYPES.
+  'AWS::Redshift::Cluster': 'VpcSecurityGroupIds',
   // #1266: an AmazonMQ Broker that declares no SecurityGroups reads back the VPC default SG — the
   // same single-SG AWS first-run default the ALB/ENI/Neptune cases fold. It is OOB-mutable
   // (`mq update-broker --security-groups`; SecurityGroups is NOT in the schema createOnlyProperties,

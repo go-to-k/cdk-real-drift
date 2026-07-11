@@ -68,7 +68,7 @@ function liveModelMap(reads: Map<string, ReadResult>): Map<string, Record<string
 // GroupSet) is gated in classify against the VPC-default SG ids — mirror of
 // typeNeedsManagedKeyResolution. When a stack declares one, prefetch the account/region default
 // SGs so the classifier can DERIVE-gate the fold (single default SG folds; an append/swap surfaces).
-const DEFAULT_SG_LIST_TYPES: ReadonlySet<string> = new Set([
+export const DEFAULT_SG_LIST_TYPES: ReadonlySet<string> = new Set([
   'AWS::ElasticLoadBalancingV2::LoadBalancer',
   'AWS::EC2::NetworkInterface',
   // #976: Neptune DBCluster's undeclared VpcSecurityGroupIds default is the VPC default SG —
@@ -80,6 +80,10 @@ const DEFAULT_SG_LIST_TYPES: ReadonlySet<string> = new Set([
   // #1269: RedshiftServerless Workgroup's undeclared SecurityGroupIds default is the default-VPC SG
   // — same gate, so the prefetch must fire when a workgroup is present too.
   'AWS::RedshiftServerless::Workgroup',
+  // #1492: a Redshift Cluster's undeclared VpcSecurityGroupIds default is the VPC default SG (the
+  // #976 Neptune shape) — registered in classify DEFAULT_SG_LIST_PATHS, so the prefetch must fire
+  // when a cluster is present or the OOB-swap gate loses its default-SG ids (detection silently lost).
+  'AWS::Redshift::Cluster',
 ]);
 
 // #1269: types whose undeclared SubnetIds default to ALL of the account's DEFAULT-VPC subnets —
