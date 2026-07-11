@@ -834,8 +834,8 @@ describe('sibling-managed inline Policies (IAM User / Group)', () => {
       { Effect: 'Allow', Action: ['s3:GetBucket*', 's3:GetObject*', 's3:List*'], Resource: '*' },
     ],
   };
-  // db2bq's real live shape: PolicyName === the sibling AWS::IAM::Policy's literal name.
-  const sibling = { PolicyName: 'DataTransferIamUserDefaultPolicy758350EB', PolicyDocument: DOC };
+  // a real app's live shape: PolicyName === the sibling AWS::IAM::Policy's literal name.
+  const sibling = { PolicyName: 'MyIamUserDefaultPolicy758350EB', PolicyDocument: DOC };
   const rogue = { PolicyName: 'rogue-inline', PolicyDocument: DOC };
   const principal = (
     resourceType: string,
@@ -852,7 +852,7 @@ describe('sibling-managed inline Policies (IAM User / Group)', () => {
   it('IAM User: Path:/ folds atDefault and the sibling-owned Policies entry is filtered out', () => {
     const t = tiers(
       classifyResource(
-        principal('AWS::IAM::User', ['DataTransferIamUserDefaultPolicy758350EB']),
+        principal('AWS::IAM::User', ['MyIamUserDefaultPolicy758350EB']),
         { Path: '/', Policies: [sibling] },
         noSchema
       )
@@ -864,7 +864,7 @@ describe('sibling-managed inline Policies (IAM User / Group)', () => {
   it('IAM Group: Path:/ folds atDefault and the sibling-owned Policies entry is filtered out', () => {
     const t = tiers(
       classifyResource(
-        principal('AWS::IAM::Group', ['DataTransferIamUserDefaultPolicy758350EB']),
+        principal('AWS::IAM::Group', ['MyIamUserDefaultPolicy758350EB']),
         { Path: '/', Policies: [sibling] },
         noSchema
       )
@@ -875,7 +875,7 @@ describe('sibling-managed inline Policies (IAM User / Group)', () => {
 
   it('IAM User: an out-of-band inline policy next to a sibling still surfaces as undeclared', () => {
     const findings = classifyResource(
-      principal('AWS::IAM::User', ['DataTransferIamUserDefaultPolicy758350EB']),
+      principal('AWS::IAM::User', ['MyIamUserDefaultPolicy758350EB']),
       { Policies: [sibling, rogue] },
       noSchema
     );
@@ -922,7 +922,7 @@ describe('ECS Cluster sibling capacity providers + ClusterSettings default (my-a
     declared: {},
     hasSiblingCapacityProviders,
   });
-  // the exact live model db2bq's cluster read back (key order as CC returned it)
+  // the exact live model a real app's cluster read back (key order as CC returned it)
   const live = {
     ClusterSettings: [{ Value: 'disabled', Name: 'containerInsights' }],
     CapacityProviders: ['FARGATE', 'FARGATE_SPOT'],
@@ -6387,7 +6387,7 @@ describe('classifyResource RDS version-track + dynamic-reference (R130)', () => 
 // AWS-ASSIGNED RDS values a user never declared: the KMS key, AZ placement, and randomly-
 // assigned maintenance/backup windows AWS picks at creation. Undeclared → AWS's choice, not
 // user intent → folded value-independent (atDefault). A DECLARED value is user intent →
-// compared in the declared loop (detected). Observed live on my-app-Rds / DbUsers-DB.
+// compared in the declared loop (detected). Observed live on two real apps' RDS instances.
 describe('RDS AWS-assigned values fold value-independent (KmsKeyId/AZ/windows)', () => {
   const bare: SchemaInfo = {
     readOnly: new Set(),
