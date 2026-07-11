@@ -1,3 +1,10 @@
+## [0.12.84](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.83...v0.12.84) (2026-07-11)
+
+
+### Bug Fixes
+
+* **diff:** account-level IMDS defaults overlay MetadataOptions constant — [#1070](https://github.com/go-to-k/cdk-real-drift/issues/1070) item 3 (last item) ([#1472](https://github.com/go-to-k/cdk-real-drift/issues/1472)) ([50ff1f4](https://github.com/go-to-k/cdk-real-drift/commit/50ff1f48d075d0d2293b8aa0106a703c086ab869))
+
 ## [0.12.83](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.82...v0.12.83) (2026-07-11)
 
 
