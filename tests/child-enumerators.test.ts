@@ -11,6 +11,7 @@ import {
   DescribeInternetGatewaysCommand,
   DescribeNetworkAclsCommand,
   DescribeRouteTablesCommand,
+  DescribeSecurityGroupsCommand,
   DescribeSubnetsCommand,
   DescribeVpcEndpointsCommand,
   DescribeVpcsCommand,
@@ -109,6 +110,8 @@ import {
   diffSubnetRouteTableAssociationChildren,
   diffVpcCidrBlockChildren,
   diffVpcChildren,
+  diffVpcSecurityGroupChildren,
+  isAwsManagedSecurityGroup,
   diffVpcEndpointChildren,
   diffVpcGatewayAttachmentChildren,
   diffVpcNaclChildren,
@@ -2708,6 +2711,74 @@ describe('diffVpcChildren (EC2 VPC subnets)', () => {
   });
 });
 
+describe('isAwsManagedSecurityGroup (AWS-service-created SG discriminator, #835)', () => {
+  it('recognizes an EKS cluster SG (aws:eks:cluster-name tag)', () => {
+    expect(
+      isAwsManagedSecurityGroup([
+        { Key: 'aws:eks:cluster-name', Value: 'my-cluster' },
+        { Key: 'kubernetes.io/cluster/my-cluster', Value: 'owned' },
+        { Key: 'Name', Value: 'eks-cluster-sg-my-cluster-abc' },
+      ])
+    ).toBe(true);
+  });
+  it('recognizes a Kubernetes cluster-owner tag alone', () => {
+    expect(isAwsManagedSecurityGroup([{ Key: 'kubernetes.io/cluster/x', Value: 'owned' }])).toBe(
+      true
+    );
+  });
+  it('recognizes any aws:-reserved tag (e.g. aws:cloudformation:*)', () => {
+    expect(isAwsManagedSecurityGroup([{ Key: 'aws:cloudformation:stack-name', Value: 's' }])).toBe(
+      true
+    );
+  });
+  it('a rogue human SG is untagged -> NOT AWS-managed', () => {
+    expect(isAwsManagedSecurityGroup(undefined)).toBe(false);
+    expect(isAwsManagedSecurityGroup([])).toBe(false);
+  });
+  it('a user tag (non-aws namespace) does NOT mark it AWS-managed', () => {
+    expect(isAwsManagedSecurityGroup([{ Key: 'Environment', Value: 'prod' }])).toBe(false);
+  });
+});
+
+describe('diffVpcSecurityGroupChildren (EC2 VPC security groups, #835)', () => {
+  const SG = (id: string) => `sg-${id}`;
+
+  it('surfaces an out-of-band security group as an added AWS::EC2::SecurityGroup', () => {
+    const added = diffVpcSecurityGroupChildren({
+      declaredSecurityGroupIds: [SG('declared')],
+      liveSecurityGroups: [
+        { id: SG('declared'), label: 'my-declared-sg' },
+        { id: SG('rogue'), label: 'cdkrd-rogue-sg' },
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::EC2::SecurityGroup',
+        identifier: SG('rogue'),
+        label: 'cdkrd-rogue-sg',
+        live: { Id: SG('rogue') },
+      },
+    ]);
+  });
+
+  it('identifier is the bare GroupId (CC primaryIdentifier + CFn physical id)', () => {
+    const added = diffVpcSecurityGroupChildren({
+      declaredSecurityGroupIds: [],
+      liveSecurityGroups: [{ id: SG('x') }],
+    });
+    expect(added[0]!.identifier).toBe(SG('x'));
+  });
+
+  it('no drift when every live SG is declared', () => {
+    expect(
+      diffVpcSecurityGroupChildren({
+        declaredSecurityGroupIds: [SG('a'), SG('b')],
+        liveSecurityGroups: [{ id: SG('a') }, { id: SG('b') }],
+      })
+    ).toEqual([]);
+  });
+});
+
 describe('diffVpcEndpointChildren (EC2 VPC endpoints) — #1045', () => {
   const EP = (id: string) => `vpce-${id}`;
 
@@ -3039,7 +3110,11 @@ describe('enumerateVpcChildren (EC2 VPC sub-resources, end-to-end) — #1315', (
       .on(DescribeVpcEndpointsCommand)
       .resolves({ VpcEndpoints: [] })
       .on(DescribeNetworkAclsCommand)
-      .resolves({ NetworkAcls: [] });
+      .resolves({ NetworkAcls: [] })
+      // The security-group dimension (#835) also calls DescribeSecurityGroups; default to none
+      // so the sub-resource (#1315) assertions below are unaffected.
+      .on(DescribeSecurityGroupsCommand)
+      .resolves({ SecurityGroups: [] });
     return ec2;
   };
 
@@ -3175,6 +3250,49 @@ describe('enumerateVpcChildren (EC2 VPC sub-resources, end-to-end) — #1315', (
     } as unknown as EnumeratorContext;
     const added = await enumerateVpcChildren(ctx);
     expect(added).toEqual([]);
+    ec2.restore();
+  });
+
+  it('security groups #835: surfaces a rogue SG, folds the default SG + AWS-managed (EKS) SG + declared SG', async () => {
+    const ec2 = baseEc2();
+    ec2
+      .on(DescribeRouteTablesCommand)
+      .resolves({ RouteTables: [] })
+      .on(DescribeInternetGatewaysCommand)
+      .resolves({ InternetGateways: [] })
+      .on(DescribeVpcsCommand)
+      .resolves({ Vpcs: [{ VpcId: 'vpc-1', CidrBlock: '10.0.0.0/16' }] })
+      .on(DescribeSecurityGroupsCommand)
+      .resolves({
+        SecurityGroups: [
+          { GroupId: 'sg-default', GroupName: 'default' }, // VPC default — folded
+          { GroupId: 'sg-declared', GroupName: 'my-declared' }, // declared — folded by GroupId
+          {
+            GroupId: 'sg-eks',
+            GroupName: 'eks-cluster-sg-c-1',
+            Tags: [{ Key: 'aws:eks:cluster-name', Value: 'c' }],
+          }, // AWS-managed — folded
+          { GroupId: 'sg-rogue', GroupName: 'cdkrd-rogue' }, // untagged, non-default — SURFACES
+        ],
+      });
+    const ctx = {
+      parent: { logicalId: 'Vpc', physicalId: 'vpc-1', declared: {} },
+      desired: {
+        resources: [
+          {
+            resourceType: 'AWS::EC2::SecurityGroup',
+            physicalId: 'sg-declared',
+            declared: { VpcId: 'vpc-1' },
+          },
+        ],
+        ctx: { liveAttrs: {} },
+      },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    const added = await enumerateVpcChildren(ctx);
+    expect(added.map((a) => `${a.resourceType} ${a.identifier}`)).toEqual([
+      'AWS::EC2::SecurityGroup sg-rogue',
+    ]);
     ec2.restore();
   });
 });

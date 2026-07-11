@@ -79,6 +79,7 @@ import {
   DescribeInternetGatewaysCommand,
   DescribeNetworkAclsCommand,
   DescribeRouteTablesCommand,
+  DescribeSecurityGroupsCommand,
   DescribeSubnetsCommand,
   DescribeVpcEndpointsCommand,
   DescribeVpcsCommand,
@@ -89,7 +90,9 @@ import {
   type Route as Ec2Route,
   type RouteTable as Ec2RouteTable,
   type RouteTableAssociation as Ec2RouteTableAssociation,
+  type SecurityGroup as Ec2SecurityGroup,
   type Subnet as Ec2Subnet,
+  type Tag as Ec2Tag,
   type Vpc as Ec2Vpc,
   type VpcEndpoint as Ec2VpcEndpoint,
 } from '@aws-sdk/client-ec2';
@@ -274,7 +277,9 @@ export type ChildEnumerator = (ctx: EnumeratorContext) => Promise<AddedChild[]>;
 // resource-policy statements #835) the fourth; EventBridge event buses (rules) the fifth;
 // Cognito User Pools (clients) the sixth; AppSync GraphQL APIs (data sources) the seventh;
 // CloudWatch Logs log groups (metric filters) the eighth; Elastic Load Balancing v2 load
-// balancers (listeners) the ninth; EC2 VPCs (subnets) the tenth; EC2 route tables
+// balancers (listeners) the ninth; EC2 VPCs (subnets, endpoints, route tables, NACLs, sub-resource
+// associations/attachments/CIDRs, plus an out-of-band `create-security-group` surfaced as an added
+// AWS::EC2::SecurityGroup, #835) the tenth; EC2 route tables
 // (routes) the eleventh; ECS clusters (services) the twelfth; KMS keys (aliases, plus an
 // out-of-band `create-grant` surfaced as a synthetic AWS::KMS::Grant — grants are not a CFn
 // type, #835) the thirteenth; AppConfig applications (environments) the fourteenth; Elastic Load Balancing
@@ -3896,6 +3901,73 @@ export function diffVpcCidrBlockChildren(input: VpcCidrBlockChildInput): AddedCh
   return added;
 }
 
+// Security groups (#835). A VPC owns SecurityGroups, each a separate CloudFormation resource.
+// A console / CLI `create-security-group` (someone stands up a NEW security group in a declared
+// VPC out of band — a rogue firewall a live instance/ENI can then attach, opening ingress that
+// no template describes) is invisible to cdk / CFn drift detection (they only compare
+// template-declared resources), and the VPC's own model does NOT reflect its groups. The CC
+// primaryIdentifier for AWS::EC2::SecurityGroup is the bare `Id` (the GroupId), which CC
+// GetResource / DeleteResource consume — so a clean CC DeleteResource revert, no SDK deleter.
+//
+// FP-safety — a VPC / AWS services materialize groups that are NOT template resources and must
+// never surface as `added`: (a) the VPC DEFAULT security group (`GroupName === 'default'`, one
+// per VPC, reserved and non-deletable); (b) AWS-SERVICE-created groups — an EKS cluster security
+// group (`eks-cluster-sg-…`, tagged `aws:eks:cluster-name` + `kubernetes.io/cluster/<name>`,
+// verified via AWS docs), an ElastiCache / Redshift / RDS / ELB managed group, etc. — which carry
+// an AWS-RESERVED tag (a key in the `aws:` namespace users cannot create) or a
+// `kubernetes.io/cluster/` owner tag. A genuine out-of-band `create-security-group` is untagged
+// (verified live). Declared groups (this stack) are matched by GroupId; a sibling-stack-managed
+// group is caught by the sibling-membership check (its GroupId IS the CFn physical id).
+
+// An AWS-service-created security group carries an AWS-reserved tag (the `aws:` namespace — e.g.
+// `aws:eks:cluster-name`, `aws:cloudformation:*`) or a Kubernetes cluster-owner tag. Users cannot
+// create `aws:`-prefixed tags, so this can never fold a user's genuine rogue group.
+export function isAwsManagedSecurityGroup(tags: Ec2Tag[] | undefined): boolean {
+  return (tags ?? []).some(
+    (t) =>
+      typeof t.Key === 'string' &&
+      (t.Key.startsWith('aws:') || t.Key.startsWith('kubernetes.io/cluster/'))
+  );
+}
+
+// Pure diff: declared SG ids + live inventory (the default SG + AWS-managed SGs already filtered
+// out upstream) -> the added security groups.
+export interface VpcSecurityGroupChildInput {
+  declaredSecurityGroupIds: string[]; // physical ids (GroupIds) of AWS::EC2::SecurityGroup on this VPC
+  liveSecurityGroups: { id: string; label?: string | undefined }[];
+}
+
+export function diffVpcSecurityGroupChildren(input: VpcSecurityGroupChildInput): AddedChild[] {
+  const declared = new Set(input.declaredSecurityGroupIds);
+  const added: AddedChild[] = [];
+  for (const g of input.liveSecurityGroups) {
+    if (declared.has(g.id)) continue;
+    added.push({
+      resourceType: 'AWS::EC2::SecurityGroup',
+      identifier: g.id, // Id (the GroupId) IS the CC primaryIdentifier
+      label: g.label ?? g.id,
+      live: { Id: g.id },
+    });
+  }
+  return added;
+}
+
+async function pageSecurityGroups(client: EC2Client, vpcId: string): Promise<Ec2SecurityGroup[]> {
+  const out: Ec2SecurityGroup[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(
+      new DescribeSecurityGroupsCommand({
+        Filters: [{ Name: 'vpc-id', Values: [vpcId] }],
+        NextToken: next,
+      })
+    );
+    out.push(...(res.SecurityGroups ?? []));
+    next = res.NextToken;
+  } while (next);
+  return out;
+}
+
 async function pageSubnets(client: EC2Client, vpcId: string): Promise<Ec2Subnet[]> {
   const out: Ec2Subnet[] = [];
   let next: string | undefined;
@@ -3996,6 +4068,7 @@ export async function enumerateVpcChildren(ctx: EnumeratorContext): Promise<Adde
   const declaredEndpointIds: string[] = [];
   const declaredRouteTableIds: string[] = [];
   const declaredNaclIds: string[] = [];
+  const declaredSecurityGroupIds: string[] = [];
   for (const r of desired.resources) {
     if (!parentRefMatches(r.declared.VpcId, vpcId) || !r.physicalId) continue;
     if (r.resourceType === 'AWS::EC2::Subnet') {
@@ -4006,6 +4079,8 @@ export async function enumerateVpcChildren(ctx: EnumeratorContext): Promise<Adde
       declaredRouteTableIds.push(r.physicalId);
     } else if (r.resourceType === 'AWS::EC2::NetworkAcl') {
       declaredNaclIds.push(r.physicalId);
+    } else if (r.resourceType === 'AWS::EC2::SecurityGroup') {
+      declaredSecurityGroupIds.push(r.physicalId);
     }
   }
 
@@ -4118,6 +4193,21 @@ export async function enumerateVpcChildren(ctx: EnumeratorContext): Promise<Adde
     liveCidrBlocks.push({ associationId: b.AssociationId, cidr: b.Ipv6CidrBlock });
   }
 
+  // Security groups (#835): filter the VPC DEFAULT group (`GroupName === 'default'`) and any
+  // AWS-service-created group (an `aws:`-reserved / Kubernetes owner tag) — both are non-template
+  // built-ins. A declared / sibling-managed group is excluded downstream by GroupId + the
+  // sibling-stack check. A remaining untagged, non-default, non-declared group is an out-of-band
+  // `create-security-group`.
+  const securityGroups = await pageSecurityGroups(client, vpcId);
+  const liveSecurityGroups = securityGroups
+    .filter(
+      (g): g is Ec2SecurityGroup & { GroupId: string } =>
+        typeof g.GroupId === 'string' &&
+        g.GroupName !== 'default' &&
+        !isAwsManagedSecurityGroup(g.Tags)
+    )
+    .map((g) => ({ id: g.GroupId, label: g.GroupName ?? g.GroupId }));
+
   return [
     ...diffVpcChildren({ declaredSubnetIds, liveSubnets }),
     ...diffVpcEndpointChildren({ declaredEndpointIds, liveEndpoints }),
@@ -4130,6 +4220,7 @@ export async function enumerateVpcChildren(ctx: EnumeratorContext): Promise<Adde
       liveInternetGatewayId,
     }),
     ...diffVpcCidrBlockChildren({ vpcId, declaredCidrs, liveCidrBlocks }),
+    ...diffVpcSecurityGroupChildren({ declaredSecurityGroupIds, liveSecurityGroups }),
   ];
 }
 
