@@ -1,3 +1,10 @@
+## [0.12.56](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.55...v0.12.56) (2026-07-11)
+
+
+### Bug Fixes
+
+* **revert:** ClientVpnEndpoint SessionTimeoutHours revert converges via set-default ([#1289](https://github.com/go-to-k/cdk-real-drift/issues/1289)) ([#1348](https://github.com/go-to-k/cdk-real-drift/issues/1348)) ([cfc4e34](https://github.com/go-to-k/cdk-real-drift/commit/cfc4e34a42b0b17827cf61fa16d282f4e4026d5a))
+
 ## [0.12.55](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.54...v0.12.55) (2026-07-11)
 
 
