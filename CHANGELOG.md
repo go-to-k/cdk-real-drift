@@ -1,3 +1,10 @@
+## [0.12.103](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.102...v0.12.103) (2026-07-11)
+
+
+### Bug Fixes
+
+* **noise:** minimal-deploy FP hunt — 14 fold-table additions across DMS/ECS/StackSet/MemoryDB/RDS/Batch/EC2 + 17 fixtures + 45 corpus cases ([#1507](https://github.com/go-to-k/cdk-real-drift/issues/1507)) ([e18c66f](https://github.com/go-to-k/cdk-real-drift/commit/e18c66fa27a4e690799ea7c8ad4802b60b92f418))
+
 ## [0.12.102](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.101...v0.12.102) (2026-07-11)
 
 
