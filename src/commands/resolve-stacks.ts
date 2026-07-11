@@ -185,6 +185,17 @@ export function assertNoStackErrors(
 }
 
 export async function resolveStacks(a: CommonArgs): Promise<ResolvedStack[]> {
+  // #1327: --all means "every stack the app defines" and SILENTLY discarded any positional
+  // names below (`if (a.all || a.stackNames.length === 0)`), so `cdkrd revert Prod --all --yes`
+  // — a plausible "revert all drift in Prod" scripted line — non-interactively targeted EVERY
+  // stack while the word `Prod` had zero effect. Fail loud, not silent (the #778 zero-match-glob
+  // throw principle): combining named stacks with --all is a contradiction, so error rather than
+  // pick one silently. Runs before discovery/synth — a bad invocation should not cost an app read.
+  if (a.all && a.stackNames.length > 0) {
+    throw new Error(
+      `--all cannot be combined with named stacks (${a.stackNames.join(', ')}): --all targets every stack the app defines. Drop --all to scope to the named stacks, or drop the names to target all.`
+    );
+  }
   const app = resolveApp(a.app);
   if (!app) {
     throw new Error(
