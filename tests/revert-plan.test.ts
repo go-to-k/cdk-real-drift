@@ -554,6 +554,79 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('#1366: undeclared EC2 VPC EnableDnsSupport -> add op writing the true KNOWN_DEFAULTS default', () => {
+    // Same #651 EC2 Modify*Attribute silent-no-op class: ModifyVpcAttribute leaves an
+    // omitted EnableDnsSupport unchanged, so a bare `remove` of an out-of-band `false` is a
+    // no-op. The `true` default is sourced from the top-level KNOWN_DEFAULTS.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::EC2::VPC',
+      path: 'EnableDnsSupport',
+      actual: false,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/EnableDnsSupport',
+      value: true,
+      prior: false,
+    });
+  });
+
+  it('#1366: undeclared EC2 NetworkInterface SourceDestCheck -> add op writing the true default (security)', () => {
+    // ModifyNetworkInterfaceAttribute one-attribute-per-call: a `remove` of an out-of-band
+    // `false` (turns the ENI into a forwarding/NAT pivot) is a silent no-op. Write the `true`
+    // KNOWN_DEFAULTS default explicitly so the security-relevant flip actually reverts.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::EC2::NetworkInterface',
+      path: 'SourceDestCheck',
+      actual: false,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/SourceDestCheck',
+      value: true,
+      prior: false,
+    });
+  });
+
+  it('#1366: undeclared EC2 Instance SourceDestCheck -> add op writing the true default (security)', () => {
+    // ModifyInstanceAttribute sibling of the ENI case — same one-attribute-per-call no-op.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::EC2::Instance',
+      path: 'SourceDestCheck',
+      actual: false,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/SourceDestCheck',
+      value: true,
+      prior: false,
+    });
+  });
+
+  it('#1366: undeclared EC2 Instance InstanceInitiatedShutdownBehavior -> add op writing the "stop" default', () => {
+    // ModifyInstanceAttribute leaves an omitted InstanceInitiatedShutdownBehavior unchanged;
+    // write the "stop" KNOWN_DEFAULTS default explicitly so an out-of-band "terminate" reverts.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::EC2::Instance',
+      path: 'InstanceInitiatedShutdownBehavior',
+      actual: 'terminate',
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/InstanceInitiatedShutdownBehavior',
+      value: 'stop',
+      prior: 'terminate',
+    });
+  });
+
   it('#912: undeclared ClientVpnEndpoint VpnPort -> add op writing the 443 KNOWN_DEFAULTS default, not a no-op remove', () => {
     // AWS::EC2::ClientVpnEndpoint VpnPort is a CLIENT_VPN_SCALAR_PARAMS writer prop: a bare
     // `remove` deletes the key from the desired model, the selective ModifyClientVpnEndpoint
