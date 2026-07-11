@@ -1,3 +1,10 @@
+## [0.12.61](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.60...v0.12.61) (2026-07-11)
+
+
+### Bug Fixes
+
+* **revert:** bar KinesisVideo uncovered-path revert as notRevertable (CC rejects any patch) ([#1313](https://github.com/go-to-k/cdk-real-drift/issues/1313)) ([#1425](https://github.com/go-to-k/cdk-real-drift/issues/1425)) ([1c3676a](https://github.com/go-to-k/cdk-real-drift/commit/1c3676a508a23ed1b40b9800103ab3f11933c6a2))
+
 ## [0.12.60](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.59...v0.12.60) (2026-07-11)
 
 
