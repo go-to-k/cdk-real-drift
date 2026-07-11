@@ -2555,6 +2555,31 @@ export function classifyResource(
       sfnDefinitionSubstitutions
     );
   }
+  // #1452: a ServiceCatalogAppRegistry AttributeGroupAssociation declares `Application` /
+  // `AttributeGroup` by NAME (the schema documents both as "the name or the id"), but Cloud
+  // Control echoes back the resource IDs — so a fresh, un-mutated deploy reports both as a
+  // permanent [CFn-Declared Drift] that `record` cannot accept (declared dimension). Both are
+  // createOnly (name→id can't change out of band without replacement), and the live id is the
+  // trailing segment of the association's OWN composite physical id
+  // (`<applicationArn>|<attributeGroupArn>`). Rewrite the declared name to that id, gated on the
+  // live value equalling the derived id (fold tier 2): a match folds the alias echo, and a
+  // genuine re-point is a replacement (new physical id → new derived id → still equal, still no
+  // false drift), while any mismatch leaves the declared name untouched and surfaces (fail-closed).
+  if (
+    resourceType === 'AWS::ServiceCatalogAppRegistry::AttributeGroupAssociation' &&
+    typeof physicalId === 'string'
+  ) {
+    const [appArn, attrArn] = physicalId.split('|');
+    const derivedIds: Record<string, string | undefined> = {
+      Application: appArn?.split('/').pop(),
+      AttributeGroup: attrArn?.split('/').pop(),
+    };
+    for (const [key, id] of Object.entries(derivedIds)) {
+      if (id && typeof declared[key] === 'string' && declared[key] !== id && live[key] === id) {
+        declared[key] = id;
+      }
+    }
+  }
 
   // Sibling-managed inline Policies (the CDK pattern: grants land in a sibling
   // AWS::IAM::Policy resource, which reflects into the role's live Policies). Drop
@@ -4274,6 +4299,22 @@ export function classifyResource(
       // #705: a Classic ELB's undeclared Policies folds atDefault ONLY when it is exactly the
       // AWS default SSL negotiation policy (by PolicyName); a downgrade / added policy surfaces.
       clbDefaultSslPoliciesAtDefault(resourceType, k, v)
+    ) {
+      findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
+      continue;
+    }
+    // #1453: an EC2 Subnet that declares NEITHER `AvailabilityZone` NOR `AvailabilityZoneId`
+    // lets AWS pick the AZ at creation, and CC echoes BOTH forms undeclared (e.g.
+    // AvailabilityZone="us-east-1e", AvailabilityZoneId="use1-az3"). Both are createOnly
+    // AWS-assigned placement values — value-independent (a user who cares DECLARES
+    // AvailabilityZone, then compared in the declared loop). Fold atDefault. When EITHER form IS
+    // declared, this is skipped and the CC_ALT_REPRESENTATION drop below handles the echoed
+    // sibling — so the CDK-typical subnet (declares AvailabilityZone via Fn::Select) is unchanged.
+    if (
+      resourceType === 'AWS::EC2::Subnet' &&
+      (k === 'AvailabilityZone' || k === 'AvailabilityZoneId') &&
+      !('AvailabilityZone' in declared) &&
+      !('AvailabilityZoneId' in declared)
     ) {
       findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
       continue;

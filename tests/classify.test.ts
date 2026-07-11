@@ -9397,19 +9397,23 @@ describe('Cloud Control field mis-echo / alternative-representation folds (VPC n
       classifyResource(r, live, bare).find((f) => f.path === 'AvailabilityZoneId')
     ).toBeUndefined();
   });
-  it('AWS::EC2::Subnet: AvailabilityZoneId still surfaces when AvailabilityZone is NOT declared', () => {
+  it('AWS::EC2::Subnet: undeclared AvailabilityZone + AvailabilityZoneId fold atDefault when NEITHER is declared (#1453)', () => {
     const r: DesiredResource = {
       logicalId: 'Subnet',
       resourceType: 'AWS::EC2::Subnet',
       physicalId: 'subnet-x',
-      declared: { CidrBlock: '10.0.0.0/24' },
+      declared: { CidrBlock: '10.61.0.0/26' },
     };
-    const f = classifyResource(
+    const findings = classifyResource(
       r,
-      { AvailabilityZoneId: 'apne1-az4', CidrBlock: '10.0.0.0/24' },
+      { AvailabilityZone: 'us-east-1e', AvailabilityZoneId: 'use1-az3', CidrBlock: '10.61.0.0/26' },
       bare
-    ).find((x) => x.path === 'AvailabilityZoneId');
-    expect(f?.tier).toBe('undeclared');
+    );
+    // Core invariant: a clean deploy of a raw-CFn subnet that omits the AZ shows ZERO
+    // [Potential Drift] — the AWS-assigned placement values fold, not surface.
+    expect(findings.find((f) => f.path === 'AvailabilityZone')?.tier).toBe('atDefault');
+    expect(findings.find((f) => f.path === 'AvailabilityZoneId')?.tier).toBe('atDefault');
+    expect(findings.some((f) => f.tier === 'undeclared')).toBe(false);
   });
 });
 
