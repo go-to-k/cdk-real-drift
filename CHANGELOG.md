@@ -1,3 +1,10 @@
+## [0.12.91](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.90...v0.12.91) (2026-07-11)
+
+
+### Bug Fixes
+
+* **noise:** CloudFront IPV6Enabled/OriginSSLProtocols + CustomErrorResponses reorder + Route53Resolver MutationProtection first-run folds ([#1479](https://github.com/go-to-k/cdk-real-drift/issues/1479)) ([223fdbb](https://github.com/go-to-k/cdk-real-drift/commit/223fdbb6ef2d30e5daa7adc207b5d9cba5c4f09f))
+
 ## [0.12.90](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.89...v0.12.90) (2026-07-11)
 
 
