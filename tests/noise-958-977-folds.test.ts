@@ -58,7 +58,7 @@ describe('#958 RedshiftServerless Workgroup placement + config parameters', () =
     expect(tier(f, 'undeclared')).not.toContain('SecurityGroupIds');
     expect(tier(f, 'undeclared')).not.toContain('SubnetIds');
   });
-  it('folds the undeclared default ConfigParameters set value-independent (tier 3)', () => {
+  it('folds each undeclared default ConfigParameter PER-ELEMENT (tier 2, #1272 superseded the tier-3 fold)', () => {
     const f = classifyResource(
       wg,
       {
@@ -70,8 +70,17 @@ describe('#958 RedshiftServerless Workgroup placement + config parameters', () =
       },
       emptySchema
     );
-    expect(tier(f, 'atDefault')).toContain('ConfigParameters');
-    expect(tier(f, 'undeclared')).not.toContain('ConfigParameters');
+    // #1272: ConfigParameters is no longer folded whole (value-independent); each element folds
+    // atDefault by ParameterKey against the harvested defaults, so an OOB change to a known key
+    // (require_ssl=false) surfaces while the defaults stay folded.
+    expect(tier(f, 'atDefault')).toEqual(
+      expect.arrayContaining([
+        'ConfigParameters[auto_mv]',
+        'ConfigParameters[datestyle]',
+        'ConfigParameters[enable_case_sensitive_identifier]',
+      ])
+    );
+    expect(tier(f, 'undeclared')).toHaveLength(0);
   });
 });
 
