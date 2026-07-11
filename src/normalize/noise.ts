@@ -1424,6 +1424,14 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::Rbin::Rule': {
     Status: 'available',
   },
+  // A FirewallRuleGroupAssociation that declares no MutationProtection reads back the
+  // documented service default "DISABLED" (associate-firewall-rule-group: "the default
+  // setting is Disabled") on the very first check (#1455, live-verified). Equality-gated
+  // — the property is MUTABLE (UpdateFirewallRuleGroupAssociation --mutation-protection),
+  // so a real out-of-band flip to "ENABLED" still surfaces.
+  'AWS::Route53Resolver::FirewallRuleGroupAssociation': {
+    MutationProtection: 'DISABLED',
+  },
   // RolesAnywhere service-filled constant SETS on create (observed live on hunt
   // 2026-07-03, #492): a trust anchor reads back the two-entry certificate-expiry
   // notification set, and a profile reads back the default x509 attribute-mapping rules,
@@ -1793,12 +1801,23 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     'Quota.Offset': 0,
   },
   'AWS::CloudFront::Distribution': {
+    // CloudFront enables IPv6 on a distribution by default when the template omits it
+    // (#1459, live-verified), so an undeclared live `true` folds to atDefault instead of
+    // surfacing as a first-run FP. (An out-of-band flip to `false` is swallowed by
+    // isTrivialEmpty before the pin gate — restoring its detection is the #660-class nested
+    // MEANINGFUL_WHEN_OFF follow-up; pinning here removes the FP without regressing it.)
+    'DistributionConfig.IPV6Enabled': true,
     'DistributionConfig.OriginGroups': { Quantity: 0, Items: [] },
     'DistributionConfig.Origins.*.ConnectionAttempts': 3,
     'DistributionConfig.Origins.*.ConnectionTimeout': 10,
     'DistributionConfig.Origins.*.CustomOriginConfig.HTTPPort': 80,
     'DistributionConfig.Origins.*.CustomOriginConfig.HTTPSPort': 443,
     'DistributionConfig.Origins.*.CustomOriginConfig.OriginKeepaliveTimeout': 5,
+    // A custom origin that pins no OriginSSLProtocols reads back the documented legacy
+    // default [SSLv3, TLSv1] (#1459, live-verified). Equality-gated, so tightening it
+    // out of band (e.g. to [TLSv1.2]) still surfaces. The L2 construct always emits this
+    // list, which is why existing corpus/fixture distributions kept it latent.
+    'DistributionConfig.Origins.*.CustomOriginConfig.OriginSSLProtocols': ['SSLv3', 'TLSv1'],
     'DistributionConfig.Origins.*.S3OriginConfig.OriginReadTimeout': 30,
     'DistributionConfig.Restrictions': {
       GeoRestriction: { Locations: [], RestrictionType: 'none' },
@@ -5540,7 +5559,16 @@ export const UNORDERED_NESTED_OBJECT_ARRAY_PATHS: Record<string, ReadonlySet<str
   // CloudFront returns it reordered relative to the template (declared [apex, wildcard]
   // reads back [wildcard, apex]), so a positional compare false-flags the identical
   // alias set as declared drift. Same nested-scalar-set treatment as CachePolicy Headers.
-  'AWS::CloudFront::Distribution': new Set(['DistributionConfig.Aliases']),
+  // `DistributionConfig.CustomErrorResponses` is a SET keyed by ErrorCode (CloudFront
+  // allows one entry per error code and echoes them SORTED by ErrorCode, not template
+  // order), so a distribution declaring them non-ascending (the natural SPA 500/403/404
+  // pattern) cascades into several bogus DECLARED drifts on every check (#1458). Sorting
+  // both sides by the ErrorCode identity (NESTED_OBJECT_ARRAY_IDENTITY below) aligns equal
+  // entries; a real out-of-band ResponsePagePath change stays a single aligned finding.
+  'AWS::CloudFront::Distribution': new Set([
+    'DistributionConfig.Aliases',
+    'DistributionConfig.CustomErrorResponses',
+  ]),
   // An IoT ThingType's `ThingTypeProperties.SearchableAttributes` is a nested SCALAR set
   // (attribute names) that IoT stores as a set and returns in its OWN sorted order —
   // declared ["serial","model"] reads back ["model","serial"], so a positional compare
@@ -5713,6 +5741,9 @@ export const UNORDERED_NESTED_OBJECT_ARRAY_PATHS: Record<string, ReadonlySet<str
 // identity need not be one of canonicalizeTagLists's five IDENTITY_FIELDS — these are
 // per-type (Type/Text/ContainerPort/SourceContainer/ConditionKey).
 export const NESTED_OBJECT_ARRAY_IDENTITY: Record<string, Record<string, string>> = {
+  'AWS::CloudFront::Distribution': {
+    'DistributionConfig.CustomErrorResponses': 'ErrorCode',
+  },
   'AWS::Bedrock::Guardrail': {
     'ContentPolicyConfig.FiltersConfig': 'Type',
     'TopicPolicyConfig.TopicsConfig': 'Name',
