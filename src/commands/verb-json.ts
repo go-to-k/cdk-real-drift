@@ -11,7 +11,10 @@ export interface RecordJson {
   recorded: number; // undeclared value(s) written into the baseline
   wrote: boolean; // a baseline file was actually written
   refused?: boolean; // a decision was required but the run was non-interactive without --yes
-  baseline?: string; // the baseline file path (when written)
+  // The baseline file path (when written). Named `baselinePath` — self-describing, and
+  // parallel to ignore's `config` path field — so it never collides with check's BOOLEAN
+  // `baseline` presence flag (#1095): one `--json` key, one type across verbs (#1336).
+  baselinePath?: string;
   error?: string; // set only on a pre-record failure / skip
 }
 

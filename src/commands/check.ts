@@ -744,7 +744,8 @@ export async function runCheck(args: string[]): Promise<number> {
         );
         const preDeployHeader = `${posPrefix}${stackName} (${region})`;
         // #755: in --json collect the stack's object (printed as one array at the end);
-        // in text mode render inline as before.
+        // in text mode render inline as before. No hasBaseline arg: --pre-deploy never
+        // consults the baseline, so the element OMITS the `baseline` flag (#1335).
         let preDeployCode: number;
         if (a.json) {
           const { json, code } = buildStackJson(preDeployReconciled, preDeployHeader);
@@ -840,12 +841,14 @@ export async function runCheck(args: string[]): Promise<number> {
         // #1095: pass baseline presence so the --json element carries a `baseline` flag —
         // a QUIET no-baseline stack (unwatched) is otherwise byte-identical to a
         // watched-clean one (`drifted: 0`, `findings: []`), so a consumer summing
-        // `drifted` cannot tell them apart. `baseline` is already undefined under
-        // --show-all (loaded that way above), so this correctly reports false there.
+        // `drifted` cannot tell them apart. Under --show-all the baseline is NOT
+        // consulted (loaded as undefined above by design), so pass undefined — the
+        // element then OMITS the flag instead of falsely claiming "never recorded"
+        // when a committed baseline may well exist (#1335).
         const { json, code: jsonCode } = buildStackJson(
           reconciled,
           reportHeader,
-          baseline !== undefined
+          a.showAll ? undefined : baseline !== undefined
         );
         jsonReports.push(json);
         code = jsonCode;

@@ -359,7 +359,9 @@ export interface StackJsonReport {
   // byte-identical `drifted: 0` of a watched-clean stack. A --json consumer summing
   // `drifted` cannot otherwise tell an UNWATCHED stack from a watched clean one — this
   // field is that distinguisher (false = never recorded / unwatched). Omitted on the
-  // error / deleted-stack shapes below (they were never reconciled against a baseline).
+  // error / deleted-stack shapes below (they were never reconciled against a baseline)
+  // AND on the baseline-not-consulted modes — --pre-deploy / --show-all never load the
+  // baseline, so they must not claim `false` ("never recorded") either (#1335).
   baseline?: boolean;
   // Present ONLY on a stack that ERRORED before it could be checked — so a --json
   // consumer sees WHICH stacks ran and which failed, rather than a silent omission (the
@@ -388,7 +390,9 @@ export function buildStackJson(
   // Whether this stack has a committed `.cdkrd` baseline (#1095). Threaded through so the
   // --json element carries a `baseline` presence flag — a consumer can then tell an
   // UNWATCHED (never-recorded) stack from a watched-clean one, which otherwise emit the
-  // byte-identical `drifted: 0`.
+  // byte-identical `drifted: 0`. `undefined` means the baseline was NOT consulted
+  // (--pre-deploy / --show-all / report()'s single-report json path) — the flag is then
+  // OMITTED, never emitted as a false "never recorded" claim (#1335).
   hasBaseline?: boolean
 ): { json: StackJsonReport; code: number } {
   // Annotate origin hints (diff/hints.ts) so the --json payload carries them exactly as
@@ -406,7 +410,15 @@ export function buildStackJson(
   // findings) is identical either way; every non-secret finding is returned unchanged.
   const redacted = findings.map((f) => redactFinding(f));
   return {
-    json: { stack: header, drifted, findings: redacted, baseline: hasBaseline === true },
+    json: {
+      stack: header,
+      drifted,
+      findings: redacted,
+      // #1335: omit (don't default to false) when the baseline was never consulted —
+      // an omitted arg used to coerce to `baseline: false`, which reads as "never
+      // recorded" even when a committed baseline exists.
+      ...(hasBaseline === undefined ? {} : { baseline: hasBaseline }),
+    },
     code: drifted === 0 ? 0 : 1,
   };
 }

@@ -100,7 +100,7 @@ export async function runRecord(args: string[]): Promise<number> {
           recorded: result.count ?? 0,
           wrote: result.wrote,
           ...(result.refused && { refused: true }),
-          ...(result.path !== undefined && { baseline: result.path }),
+          ...(result.path !== undefined && { baselinePath: result.path }),
         });
     } catch (e) {
       if (isStackNotDeployed(e)) {

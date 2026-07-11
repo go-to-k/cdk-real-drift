@@ -670,14 +670,19 @@ If the whole invocation fails before any stack is reached (bad config, an
 un-synthesizable app, or a zero-stack app), stdout is still a valid empty array
 `[]` (exit code non-zero, the reason on stderr) — never empty bytes.
 
-Every successfully-checked stack element carries a `"baseline": <bool>` flag —
+Every successfully-checked stack element of a baseline-consulting `check` carries a
+`"baseline": <bool>` flag —
 `true` when the stack has a committed `.cdkrd` baseline (its undeclared dimension is
 **watched**), `false` when it has never been recorded. Without a baseline the
 classification shifts: appeared-since-record out-of-band values read as `unrecorded`
 and are excluded from `drifted`, so a QUIET never-recorded stack emits the
 byte-identical `"drifted": 0` of a watched-clean one. A consumer summing `drifted`
 uses `baseline` to tell an UNWATCHED stack from a watched-clean one (#1095). It is
-omitted on the `error` / `stackDeleted` shapes (never reconciled against a baseline).
+omitted whenever the baseline was **not consulted**: on the `error` / `stackDeleted`
+shapes (never reconciled against a baseline), and on every element of a
+`--pre-deploy` or `--show-all` run (both are baseline-untouched modes, so they
+cannot claim `false` — a committed baseline may well exist; #1335). Absent means
+"not consulted"; `false` means "consulted, never recorded".
 
 Each stack element is `{ "stack": "<name> (<region>)", "drifted": <n>, "baseline": <bool>, "findings": [...] }`
 (`error` added only on a pre-check failure; `stackDeleted: true` only on a deleted
@@ -737,9 +742,10 @@ mode: a `record` / `ignore` that would need the selection prompt refuses without
 `--yes` (`"refused": true`), and `revert` refuses the AWS write without `--yes`
 (`"exit": 2`). Per-verb element:
 
-- `record` → `{ "stack", "recorded": <n>, "wrote": <bool>, "baseline"?: "<path>",
+- `record` → `{ "stack", "recorded": <n>, "wrote": <bool>, "baselinePath"?: "<path>",
 "refused"?: true, "error"?: "<reason>" }` — `recorded` is how many undeclared
-  value(s) were written.
+  value(s) were written; `baselinePath` is the baseline file written (a path string,
+  deliberately NOT named `baseline` — that key is check's boolean flag; #1336).
 - `ignore` → `{ "stack", "added": <n>, "wrote": <bool>, "config"?:
 ".cdkrd/ignore.yaml", "refused"?: true, "error"?: "<reason>" }` — `added` is how
   many new rules were appended.
