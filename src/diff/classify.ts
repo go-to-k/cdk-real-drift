@@ -237,6 +237,36 @@ const DEFAULT_SG_LIST_PATHS: Record<string, string> = {
   // unlike SubnetIds), so a value-independent fold would hide a rogue SG swap/append. Gate it
   // through the same derived VPC-default-SG check: fold a single default SG, surface an append/swap.
   'AWS::AmazonMQ::Broker': 'SecurityGroups',
+  // #1269: a RedshiftServerless Workgroup that declares no SecurityGroupIds is placed into the
+  // account's default VPC and reads back that VPC's default SG (a single SG, #958-live). It is
+  // OOB-mutable (`redshift-serverless update-workgroup --security-group-ids`; createOnlyProperties
+  // is NamespaceName/WorkgroupName only), so a value-independent fold hid a rogue SG swap/append.
+  // Same derived VPC-default-SG check: fold a single default SG, surface an append/swap.
+  'AWS::RedshiftServerless::Workgroup': 'SecurityGroupIds',
+};
+/** #1269 fold decision for an UNDECLARED default-SUBNET list (RedshiftServerless Workgroup
+ *  SubnetIds). Unlike the SG gate (which folds only a SINGLE default SG), a workgroup placed into
+ *  the default VPC reads back ALL of that VPC's subnets, so the clean-deploy list has MANY
+ *  elements — fold when EVERY element is a known default-VPC subnet; surface if ANY subnet is
+ *  outside the default VPC (an out-of-band re-placement, e.g. into a public subnet).
+ *   - `true`  → FOLD (atDefault): every live subnet is a default-VPC subnet, OR the prefetch is
+ *               unavailable (fail OPEN — no ec2:DescribeSubnets / lookup failed / empty).
+ *   - `false` → SURFACE (undeclared): at least one live subnet is NOT a default-VPC subnet.
+ *  Pure; `defaultSubnetIds` is the resolved set of default-VPC subnet ids (undefined/empty when
+ *  unresolved). */
+export function shouldFoldDefaultSubnetList(
+  resourceType: string,
+  key: string,
+  liveValue: unknown,
+  defaultSubnetIds?: ReadonlySet<string>
+): boolean {
+  if (DEFAULT_SUBNET_LIST_PATHS[resourceType] !== key) return false; // not a gated subnet-list path
+  if (!defaultSubnetIds || defaultSubnetIds.size === 0) return true; // fail OPEN (unchanged behavior)
+  if (!Array.isArray(liveValue)) return true;
+  return liveValue.every((s) => typeof s === 'string' && defaultSubnetIds.has(s));
+}
+const DEFAULT_SUBNET_LIST_PATHS: Record<string, string> = {
+  'AWS::RedshiftServerless::Workgroup': 'SubnetIds',
 };
 /** #889 fold decision for an UNDECLARED default-SG list (ALB SecurityGroups / ENI GroupSet).
  *  Returns whether the value-independent fold should still apply for this live value:
@@ -2042,6 +2072,12 @@ export function classifyResource(
     // DERIVED equality gate rather than a value-independent one: a single default SG folds, a
     // 2+-element APPEND or a single non-default SG SWAP surfaces. Undefined/empty → fail open (fold).
     defaultSgIds?: ReadonlySet<string>;
+    // #1269: the account/region DEFAULT-VPC subnet ids, prefetched by gather.ts so the UNDECLARED
+    // default-subnet-list fold (RedshiftServerless Workgroup SubnetIds) is a DERIVED gate: a
+    // workgroup that declares no SubnetIds is placed into the default VPC and reads back all its
+    // subnets, so fold when EVERY live subnet is a default-VPC subnet and surface an OOB
+    // re-placement into a subnet outside it. Undefined/empty → fail open (fold).
+    defaultSubnetIds?: ReadonlySet<string>;
     oaiCanonicalIds?: Record<string, string>; // OAI id -> S3CanonicalUserId, for CloudFront OAI principal match
     // Rules declared by SIBLING standalone AWS::EC2::SecurityGroupIngress/::SecurityGroupEgress
     // resources, keyed by the target SG's resolved GroupId (== the SG's physical id). Subtracted
@@ -3910,6 +3946,47 @@ export function classifyResource(
         tier: shouldFoldDefaultSgList(resourceType, k, v, opts.defaultSgIds)
           ? 'atDefault'
           : 'undeclared',
+        logicalId,
+        resourceType,
+        path: k,
+        actual: v,
+      });
+      continue;
+    }
+    // #1269: an UNDECLARED default-subnet list (RedshiftServerless Workgroup SubnetIds) — replaces
+    // the old value-independent fold, which hid an out-of-band subnet re-placement. Fold atDefault
+    // ONLY when every live subnet is a default-VPC subnet (the clean-deploy placement, or the
+    // prefetch is unavailable → fail open); any subnet outside the default VPC surfaces.
+    if (DEFAULT_SUBNET_LIST_PATHS[resourceType] === k && !isTrivialEmpty(v)) {
+      findings.push({
+        tier: shouldFoldDefaultSubnetList(resourceType, k, v, opts.defaultSubnetIds)
+          ? 'atDefault'
+          : 'undeclared',
+        logicalId,
+        resourceType,
+        path: k,
+        actual: v,
+      });
+      continue;
+    }
+    // #1280: AWS::EC2::TransitGateway Association/PropagationDefaultRouteTableId — at creation both
+    // point at the SAME AWS-minted default route table (equal). Replaces the old value-independent
+    // fold, which hid an out-of-band `modify-transit-gateway --options …DefaultRouteTableId=…` swap.
+    // Fold atDefault UNLESS both ids are present AND differ (a single-field swap re-segments future
+    // attachments and surfaces). A lone id (one of association/propagation disabled) folds fail-safe
+    // — it has no sibling to cross-check. RESIDUAL: a both-fields swap to the same NEW table stays
+    // equal and is not caught offline (needs a live DescribeTransitGatewayRouteTables).
+    if (
+      resourceType === 'AWS::EC2::TransitGateway' &&
+      (k === 'AssociationDefaultRouteTableId' || k === 'PropagationDefaultRouteTableId') &&
+      typeof v === 'string'
+    ) {
+      const assoc = live.AssociationDefaultRouteTableId;
+      const prop = live.PropagationDefaultRouteTableId;
+      const bothPresentAndDiffer =
+        typeof assoc === 'string' && typeof prop === 'string' && assoc !== prop;
+      findings.push({
+        tier: bothPresentAndDiffer ? 'undeclared' : 'atDefault',
         logicalId,
         resourceType,
         path: k,

@@ -6,7 +6,11 @@ import {
   DescribeStackResourcesCommand,
   ListStackResourcesCommand,
 } from '@aws-sdk/client-cloudformation';
-import { DescribeSecurityGroupsCommand, EC2Client } from '@aws-sdk/client-ec2';
+import {
+  DescribeSecurityGroupsCommand,
+  DescribeSubnetsCommand,
+  EC2Client,
+} from '@aws-sdk/client-ec2';
 import { DescribeOptionGroupOptionsCommand, RDSClient } from '@aws-sdk/client-rds';
 import { buildCorpusCase, CORPUS_DIR_ENV, recordCorpusCase } from '../corpus/record.js';
 import { type Desired, loadDesired } from '../desired/template-adapter.js';
@@ -57,6 +61,16 @@ const DEFAULT_SG_LIST_TYPES: ReadonlySet<string> = new Set([
   // #1266: AmazonMQ Broker's undeclared SecurityGroups default is the VPC default SG — same gate,
   // so the prefetch must fire when a broker is present too.
   'AWS::AmazonMQ::Broker',
+  // #1269: RedshiftServerless Workgroup's undeclared SecurityGroupIds default is the default-VPC SG
+  // — same gate, so the prefetch must fire when a workgroup is present too.
+  'AWS::RedshiftServerless::Workgroup',
+]);
+
+// #1269: types whose undeclared SubnetIds default to ALL of the account's DEFAULT-VPC subnets —
+// gated in classify against the prefetched default-VPC subnet ids so an OOB re-placement into a
+// non-default subnet surfaces. Distinct from DEFAULT_SG_LIST_TYPES (that is a single-SG gate).
+const DEFAULT_SUBNET_LIST_TYPES: ReadonlySet<string> = new Set([
+  'AWS::RedshiftServerless::Workgroup',
 ]);
 
 // #889: fetch the account/region VPC-default security-group ids — one `DescribeSecurityGroups`
@@ -90,6 +104,39 @@ async function fetchDefaultSgIds(region: string): Promise<Set<string>> {
     return ids;
   }
   defaultSgIdsCache.set(region, ids);
+  return ids;
+}
+
+// #1269: fetch the account/region DEFAULT-VPC subnet ids — one `DescribeSubnets` filtered by
+// `default-for-az=true` returns exactly the default VPC's subnets (one per AZ; a default VPC's
+// subnets ARE its default-for-az subnets). Mirrors fetchDefaultSgIds: cached per region, FAIL OPEN
+// (empty set on ANY error — missing ec2:DescribeSubnets, throttle, network) so classify keeps
+// folding the undeclared subnet list and a clean deploy never gains a first-run false positive.
+const defaultSubnetIdsCache = new Map<string, Set<string>>();
+async function fetchDefaultVpcSubnetIds(region: string): Promise<Set<string>> {
+  const cached = defaultSubnetIdsCache.get(region);
+  if (cached) return cached;
+  const ids = new Set<string>();
+  try {
+    const c = new EC2Client({ region, ...READ_RETRY });
+    let token: string | undefined;
+    do {
+      const r = await c.send(
+        new DescribeSubnetsCommand({
+          Filters: [{ Name: 'default-for-az', Values: ['true'] }],
+          NextToken: token,
+          MaxResults: 1000,
+        })
+      );
+      for (const s of r.Subnets ?? []) if (s.SubnetId) ids.add(s.SubnetId);
+      token = r.NextToken;
+    } while (token);
+  } catch {
+    // Fail open: leave the set empty so classify keeps folding (no new first-run false positive).
+    // Not cached on error, so the next stack in the region retries (mirrors the transient path).
+    return ids;
+  }
+  defaultSubnetIdsCache.set(region, ids);
   return ids;
 }
 
@@ -1270,12 +1317,20 @@ export async function gatherFindings(
   if (desired.resources.some((r) => DEFAULT_SG_LIST_TYPES.has(r.resourceType))) {
     defaultSgIds = await fetchDefaultSgIds(region);
   }
+  // #1269: prefetch the default-VPC subnet ids when the stack declares a RedshiftServerless
+  // Workgroup, so classify can DERIVE-gate the undeclared SubnetIds fold (fold when every live
+  // subnet is a default-VPC subnet, surface an OOB re-placement). Fail open, same as the SG prefetch.
+  let defaultSubnetIds: ReadonlySet<string> = new Set();
+  if (desired.resources.some((r) => DEFAULT_SUBNET_LIST_TYPES.has(r.resourceType))) {
+    defaultSubnetIds = await fetchDefaultVpcSubnetIds(region);
+  }
   const classifyOpts = {
     accountId: desired.accountId,
     region,
     kmsAliasTargets,
     stackTags: desired.stackTags ?? {},
     defaultSgIds,
+    defaultSubnetIds,
     oaiCanonicalIds,
     siblingSgRules: buildSiblingSgRules(desired),
     siblingEventBusPolicies: buildSiblingEventBusPolicies(desired),
@@ -1375,12 +1430,18 @@ export async function regatherTouched(
   if (targets.some((r) => DEFAULT_SG_LIST_TYPES.has(r.resourceType))) {
     defaultSgIds = await fetchDefaultSgIds(region);
   }
+  // #1269: mirror the default-VPC subnet prefetch on the regather (revert re-check) path too.
+  let defaultSubnetIds: ReadonlySet<string> = new Set();
+  if (targets.some((r) => DEFAULT_SUBNET_LIST_TYPES.has(r.resourceType))) {
+    defaultSubnetIds = await fetchDefaultVpcSubnetIds(region);
+  }
   const classifyOpts = {
     accountId: desired.accountId,
     region,
     kmsAliasTargets,
     stackTags: desired.stackTags ?? {},
     defaultSgIds,
+    defaultSubnetIds,
     oaiCanonicalIds,
     siblingSgRules: buildSiblingSgRules(desired),
     siblingEventBusPolicies: buildSiblingEventBusPolicies(desired),

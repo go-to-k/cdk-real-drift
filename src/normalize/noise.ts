@@ -3337,21 +3337,15 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //       never user intent. First-run FP on every clean dual-stack VPC (#684, live 2026-07-08);
   //       mirrors EIP `NetworkBorderGroup` / `PrivateIpAddress`.
   'AWS::EC2::VPCCidrBlock': new Set(['Ipv6CidrBlock', 'Ipv6CidrBlockNetworkBorderGroup']),
-  //   AWS::EC2::TransitGateway.AssociationDefaultRouteTableId / .PropagationDefaultRouteTableId — a
-  //   TGW that declares `DefaultRouteTableAssociation` / `DefaultRouteTablePropagation: "enable"` (the
-  //   switches, not the ids) reads back the id of the default route table AWS MINTS at creation
-  //   ("tgw-rtb-…", the same id in both fields). It is a per-resource AWS-assigned identifier — never a
-  //   constant we can pin, and effectively read-only (the default route table is created with the TGW
-  //   and cannot be swapped out of band without replacing the TGW), so a value-independent fold can
-  //   never hide a real change. The registry schema's readOnly list omits these two ids (only
-  //   EncryptionSupportState / Id / TransitGatewayArn are marked), so schema-strip never drops them.
-  //   Undeclared → whatever id AWS minted is not user intent; a real change to the association/
-  //   propagation POLICY surfaces on the declared `DefaultRouteTableAssociation` / `…Propagation`
-  //   switches in the declared loop. Corpus baked FP (#976).
-  'AWS::EC2::TransitGateway': new Set([
-    'AssociationDefaultRouteTableId',
-    'PropagationDefaultRouteTableId',
-  ]),
+  //   NOTE: AWS::EC2::TransitGateway.AssociationDefaultRouteTableId / .PropagationDefaultRouteTableId
+  //   were ALSO here (#976), justified as "effectively read-only, cannot be swapped out of band". That
+  //   premise is FALSE (#1280): `modify-transit-gateway --options AssociationDefaultRouteTableId=…,
+  //   PropagationDefaultRouteTableId=…` swaps them at will, silently re-segmenting which route table
+  //   every NEW attachment associates/propagates with. A value-independent fold hid that. They are now
+  //   CROSS-FIELD gated in classify: at creation both ids point at the SAME AWS-minted default route
+  //   table, so fold while they are equal and surface a single-field OOB swap (they then differ). The
+  //   registry schema's readOnly list omits these two ids (only EncryptionSupportState / Id /
+  //   TransitGatewayArn are marked), so schema-strip never drops them. Corpus baked FP (#976).
   //   AWS::Grafana::Workspace.GrafanaVersion — a workspace that pins no explicit version reads
   //   back the concrete Grafana version AWS provisioned ("10.4" today). AWS assigns the current
   //   GA default at creation, and that default moves over time (a fresh deploy next year reads a
@@ -3405,13 +3399,14 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   folded as an equality-gated tier-1 KNOWN_DEFAULTS entry instead — a real out-of-band EndTime
   //   timestamp then surfaces rather than folding to any value (#946). Live, hunt 2026-07-09 (#847).
   'AWS::AutoScaling::ScheduledAction': new Set(['StartTime']),
-  //   AWS::RedshiftServerless::Workgroup.SecurityGroupIds / .SubnetIds — a workgroup that
-  //   declares neither is placed by the service into the account's DEFAULT VPC: it reads back
-  //   the default VPC's default security group (["sg-…"]) and ALL of that VPC's subnets
-  //   (["subnet-…", …]). These are per-account AWS-assigned ids, not constants and not
-  //   derivable from the workgroup's own declared inputs. Undeclared → whatever placement AWS
-  //   chose is its default, never user intent; a user who cares about network placement
-  //   DECLARES SecurityGroupIds/SubnetIds, which is then compared in the declared loop.
+  //   NOTE: AWS::RedshiftServerless::Workgroup.SecurityGroupIds / .SubnetIds were ALSO here (#958),
+  //   for the default-VPC placement echo (default SG ["sg-…"] + ALL default-VPC subnets). But both
+  //   are MUTABLE out of band (`redshift-serverless update-workgroup --security-group-ids /
+  //   --subnet-ids`; createOnlyProperties is NamespaceName/WorkgroupName only), so a value-independent
+  //   fold hid an OOB SG swap/append or a subnet re-placement into a public subnet (#1269). They are
+  //   now DERIVE-gated in classify: SecurityGroupIds via the #889/#976 default-SG gate (single default
+  //   SG folds); SubnetIds via a default-VPC-subnet gate (fold only when EVERY live subnet is a
+  //   default-VPC subnet, surface any subnet outside it). Both fail open when the prefetch is absent.
   //   AWS::RedshiftServerless::Workgroup.ConfigParameters — a workgroup that declares no
   //   ConfigParameters reads back AWS's full default effective-parameter set
   //   ([{ParameterKey:"auto_mv",ParameterValue:"true"},{ParameterKey:"datestyle",…}, …]). The
@@ -3423,11 +3418,7 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   value-independent: undeclared, so the whole AWS default parameter set is its choice, not
   //   user intent (a user who pins a parameter DECLARES ConfigParameters, compared in the
   //   declared loop). Live-confirmed on a fresh minimal workgroup (2026-07-09, us-east-1; #958).
-  'AWS::RedshiftServerless::Workgroup': new Set([
-    'ConfigParameters',
-    'SecurityGroupIds',
-    'SubnetIds',
-  ]),
+  'AWS::RedshiftServerless::Workgroup': new Set(['ConfigParameters']),
   //   AWS::CloudFormation::Stack (the parent-side resource of every CDK `NestedStack`) is
   //   CC-read and returns the child stack's FULL live model, but the template's Stack resource
   //   declares only `TemplateURL` (an S3 asset URL) + `Parameters` + `Tags` — so three live
