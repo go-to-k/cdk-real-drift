@@ -1,3 +1,10 @@
+## [0.12.93](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.92...v0.12.93) (2026-07-11)
+
+
+### Bug Fixes
+
+* **noise:** EB Application ResourceLifecycleConfig ServiceRole residual folds so a reverted lifecycle no longer perpetually surfaces ([#1437](https://github.com/go-to-k/cdk-real-drift/issues/1437)) ([#1483](https://github.com/go-to-k/cdk-real-drift/issues/1483)) ([dffb1f0](https://github.com/go-to-k/cdk-real-drift/commit/dffb1f0a9f4058d8eadafbcae5f3803d5e08d1ed))
+
 ## [0.12.92](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.91...v0.12.92) (2026-07-11)
 
 
