@@ -1316,11 +1316,11 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   },
   // RedshiftServerless service defaults (observed live on hunt 2026-07-03, #492): a
   // namespace reads back the "admin" default admin username and the AWS-owned KMS key
-  // sentinel; a workgroup reads back the Redshift default Port, the "current" release
-  // track, and price-performance auto-scaling DISABLED. All equality-gated — a namespace
-  // that sets its own admin/KMS, or a workgroup on a pinned track / non-default port, no
-  // longer matches and surfaces. The Workgroup echo attribute (a full self-echo of the
-  // model) is handled separately (see the ECHO_HUSK_DEFAULTS note / #491).
+  // sentinel; a workgroup reads back the Redshift default Port and the "current" release
+  // track. All equality-gated — a namespace that sets its own admin/KMS, or a workgroup on
+  // a pinned track / non-default port, no longer matches and surfaces. The read-only
+  // Workgroup echo attribute (a full self-echo of the model) is stripped wholesale in
+  // schema-strip (SCHEMA_READONLY_SUPPLEMENTS, #1489), so it never reaches this fold.
   'AWS::RedshiftServerless::Namespace': {
     AdminUsername: 'admin',
     KmsKeyId: 'AWS_OWNED_KMS_KEY',
@@ -1332,15 +1332,16 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::RedshiftServerless::Workgroup': {
     Port: 5439,
     TrackName: 'current',
-    PricePerformanceTarget: { Status: 'DISABLED' },
-    // The Workgroup echo attribute is a full self-echo of the model; the schema marks only
-    // its LEAVES readOnly (WorkgroupId, NetworkInterfaceId, ...), so a strip residue "husk"
-    // survives: `{Endpoint:{VpcEndpoints:[{NetworkInterfaces:[{},{}]}]}, PricePerformanceTarget:
-    // {Status:"DISABLED"}}` (#491). matchesKnownDefault skips the trivially-empty `Endpoint`
-    // (the extended isTrivialEmpty folds the `[{},{}]` ENI husk regardless of per-deploy ENI
-    // count), so only the meaningful `PricePerformanceTarget` sub-key is matched here — a
-    // workgroup with price-performance ENABLED reads a non-matching value and surfaces.
-    Workgroup: { PricePerformanceTarget: { Status: 'DISABLED' } },
+    // A barest workgroup (declaring neither BaseCapacity nor a target) now materializes
+    // price-performance auto-scaling ENABLED at Level 50 (AWS default, observed live
+    // 2026-07-12 us-east-1, #1489 — superseding the DISABLED default the #492 hunt saw on
+    // 2026-07-03; AWS moved the creation default). Whole-object equality-gated: an
+    // out-of-band disable or a Level change reads a non-matching value and surfaces.
+    PricePerformanceTarget: { Status: 'ENABLED', Level: 50 },
+    // With price-performance auto-scaling managing capacity, AWS echoes the sentinel -1 for
+    // BaseCapacity (the "capacity is target-managed, not a fixed RPU" marker; #1489). Pinned
+    // as a constant — an out-of-band switch to a fixed RPU (e.g. 32) no longer matches and surfaces.
+    BaseCapacity: -1,
   },
   // Bedrock Agent service defaults (observed live on hunt 2026-07-03, #492): an agent
   // reads back multi-agent collaboration DISABLED and the DEFAULT orchestration type when

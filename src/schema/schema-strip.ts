@@ -190,10 +190,21 @@ export const OVERRIDE_READABLE_WRITEONLY: Record<string, readonly string[]> = {
 // (AVAILABLE/UPDATING/DELETING) and `CreatedAt` timestamp — provably an AWS oversight:
 // the sibling AWS::NetworkManager::Site marks the SAME pair readOnly
 // (readOnlyProperties = [SiteId, SiteArn, State, CreatedAt]). GlobalNetwork's schema has
-// readOnly = [Id, Arn] only (#495). Keep this table CURATED/minimal — the corpus scan
-// found no other currently-leaking type, so do NOT add speculative entries.
+// readOnly = [Id, Arn] only (#495). Keep this table CURATED/minimal — add ONLY a
+// live-proven leaking type (RedshiftServerless Workgroup's `Workgroup` echo, #1489), never a
+// speculative entry.
 export const SCHEMA_READONLY_SUPPLEMENTS: Record<string, readonly string[]> = {
   'AWS::NetworkManager::GlobalNetwork': ['/properties/State', '/properties/CreatedAt'],
+  // AWS::RedshiftServerless::Workgroup's read-only `Workgroup` attribute is a full self-echo of
+  // the resource model (endpoint, network interfaces, price-performance target, …). The registry
+  // schema marks only its nested LEAVES readOnly (/properties/Workgroup/WorkgroupId, .../
+  // NetworkInterfaces/*/NetworkInterfaceId, …) and FORGETS the array/object CONTAINERS plus at
+  // least one leaf (/properties/Workgroup/PricePerformanceTarget), so the readOnly strip leaves a
+  // husk (`{Endpoint:{VpcEndpoints:[{NetworkInterfaces:[{},{},{}]}]}, PricePerformanceTarget:{…}}`)
+  // that surfaces as first-run drift (#491/#1489). The whole attribute is an echo of the resource
+  // itself and can never be user intent, so strip it wholesale — this also covers any future leaf
+  // AWS forgets to mark, which the narrower per-leaf strip would keep leaking.
+  'AWS::RedshiftServerless::Workgroup': ['/properties/Workgroup'],
 };
 
 // Merge a type's readOnly supplement paths into readOnly (top-level set) + readOnlyPaths

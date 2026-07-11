@@ -3808,42 +3808,61 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
     });
   });
 
-  // #491: RedshiftServerless Workgroup's echo attribute is a full self-echo whose leaves
-  // are readOnly-stripped, leaving a `[{},{}]` husk (Endpoint) plus a constant default
-  // (PricePerformanceTarget). The extended isTrivialEmpty folds the ENI husk regardless of
-  // per-deploy count; matchesKnownDefault skips it and matches only the meaningful sub-key.
-  describe('RedshiftServerless Workgroup echo-attribute strip husk folds to atDefault (#491)', () => {
+  // #1489: a barest RedshiftServerless Workgroup (declaring neither BaseCapacity nor a target)
+  // now materializes price-performance auto-scaling ENABLED at Level 50 with the BaseCapacity
+  // sentinel -1 (AWS default, live 2026-07-12 — superseding the DISABLED default the #491/#492
+  // hunt saw on 2026-07-03; AWS moved the creation default). Both fold via top-level
+  // KNOWN_DEFAULTS. The read-only `Workgroup` echo attribute — a full self-echo whose leaves the
+  // schema forgets to fully mark readOnly (the #491 husk) — is now stripped WHOLESALE in
+  // schema-strip (SCHEMA_READONLY_SUPPLEMENTS `/properties/Workgroup`), so it never reaches
+  // classify (see noise-and-strip.test.ts for the strip coverage).
+  describe('RedshiftServerless Workgroup first-run defaults fold to atDefault (#1489)', () => {
     const T = 'AWS::RedshiftServerless::Workgroup';
-    const husk = (status: string, eniCount: number) => ({
-      Workgroup: {
-        Endpoint: {
-          VpcEndpoints: [{ NetworkInterfaces: Array.from({ length: eniCount }, () => ({})) }],
-        },
-        PricePerformanceTarget: { Status: status },
-      },
-    });
+    const cleanLive = {
+      Port: 5439,
+      TrackName: 'current',
+      BaseCapacity: -1,
+      PricePerformanceTarget: { Status: 'ENABLED', Level: 50 },
+    };
 
-    it('the [{},{}] husk + DISABLED price target folds (never drift, never recorded)', () => {
-      const t = tiers(
-        classifyResource(res(T, { WorkgroupName: 'wg' }), husk('DISABLED', 2), emptySchema)
-      );
-      expect(t.atDefault).toEqual(['Workgroup']);
+    it('folds the fresh-workgroup PricePerformanceTarget {ENABLED,50} + BaseCapacity -1 (zero drift)', () => {
+      const t = tiers(classifyResource(res(T, { WorkgroupName: 'wg' }), cleanLive, emptySchema));
       expect(t.undeclared).toEqual([]);
+      expect(t.atDefault).toContain('PricePerformanceTarget');
+      expect(t.atDefault).toContain('BaseCapacity');
     });
 
-    it('the fold is resilient to a per-deploy ENI-count change (no latent FP)', () => {
-      // a 3-ENI shape (AZ rebalance / capacity change) still folds — the shape is not pinned.
-      expect(
-        tiers(classifyResource(res(T, { WorkgroupName: 'wg' }), husk('DISABLED', 3), emptySchema))
-          .atDefault
-      ).toEqual(['Workgroup']);
+    it('surfaces an out-of-band price-performance disable (equality-gated)', () => {
+      const t = tiers(
+        classifyResource(
+          res(T, { WorkgroupName: 'wg' }),
+          { ...cleanLive, PricePerformanceTarget: { Status: 'DISABLED' } },
+          emptySchema
+        )
+      );
+      expect(t.undeclared).toContain('PricePerformanceTarget');
     });
 
-    it('a price-performance target ENABLED out of band still surfaces (equality-gated)', () => {
-      expect(
-        tiers(classifyResource(res(T, { WorkgroupName: 'wg' }), husk('ENABLED', 2), emptySchema))
-          .undeclared
-      ).toEqual(['Workgroup']);
+    it('surfaces an out-of-band price-performance Level change (equality-gated)', () => {
+      const t = tiers(
+        classifyResource(
+          res(T, { WorkgroupName: 'wg' }),
+          { ...cleanLive, PricePerformanceTarget: { Status: 'ENABLED', Level: 75 } },
+          emptySchema
+        )
+      );
+      expect(t.undeclared).toContain('PricePerformanceTarget');
+    });
+
+    it('surfaces an out-of-band fixed BaseCapacity (switch away from the -1 sentinel)', () => {
+      const t = tiers(
+        classifyResource(
+          res(T, { WorkgroupName: 'wg' }),
+          { ...cleanLive, BaseCapacity: 32 },
+          emptySchema
+        )
+      );
+      expect(t.undeclared).toContain('BaseCapacity');
     });
   });
 
