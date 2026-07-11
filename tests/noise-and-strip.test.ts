@@ -1612,6 +1612,33 @@ describe('parseSchema', () => {
     ]);
   });
 
+  it('supplementReadOnly strips the whole RedshiftServerless Workgroup echo attribute (#1489)', () => {
+    // The registry schema marks only the echo's nested LEAVES readOnly (WorkgroupId, …) and
+    // forgets the top-level `Workgroup` container + at least one leaf (PricePerformanceTarget),
+    // so a strip husk surfaced as first-run drift. The supplement folds the whole `Workgroup`
+    // attribute into readOnly so the strip removes it wholesale for every tier.
+    const raw = parseSchema(
+      JSON.stringify({
+        readOnlyProperties: ['/properties/Workgroup/WorkgroupId'],
+        properties: {
+          WorkgroupName: { type: 'string' },
+          BaseCapacity: { type: 'integer' },
+          Workgroup: { type: 'object' },
+        },
+      })
+    );
+    // Before the supplement: the top-level `Workgroup` container is NOT readOnly (only its leaf).
+    expect(raw.readOnly.has('Workgroup')).toBe(false);
+
+    const info = supplementReadOnly(raw, 'AWS::RedshiftServerless::Workgroup');
+    // After: the whole `Workgroup` attribute is readOnly (top-level set) so the strip drops it.
+    expect(info.readOnly.has('Workgroup')).toBe(true);
+    expect(info.readOnlyPaths).toContain('Workgroup');
+    expect(SCHEMA_READONLY_SUPPLEMENTS['AWS::RedshiftServerless::Workgroup']).toEqual([
+      '/properties/Workgroup',
+    ]);
+  });
+
   it('exemptOverrideReadable un-marks a writeOnly prop an SDK override can read (EC2 LaunchTemplate)', () => {
     // EC2 LaunchTemplate: LaunchTemplateData/VersionDescription/TagSpecifications are all
     // writeOnly, but the readEc2LaunchTemplate override reads LaunchTemplateData back.
