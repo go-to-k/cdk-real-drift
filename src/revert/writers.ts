@@ -210,6 +210,7 @@ import { partitionForRegion } from '../desired/template-adapter.js';
 import { NESTED_ARRAY_IDENTITY } from '../diff/classify.js';
 import { identityField } from '../normalize/noise.js';
 import { canonicalizeForCompare } from '../normalize/pipeline.js';
+import { pageResourceRecordSets, route53RecordSetIdentifier } from '../read/child-enumerators.js';
 import { CLIENT_TIMEOUTS } from '../read/client-config.js';
 import {
   DLM_DEFAULT_POLICY_SHORTHAND,
@@ -3078,6 +3079,40 @@ const deleteAppSyncApiKey: SdkDeleter = async (ctx) => {
   );
 };
 
+// AWS::Route53::RecordSet: NON_PROVISIONABLE — CC DeleteResource throws
+// UnsupportedActionException (#1312), so an out-of-band record found by the HostedZone child
+// enumerator is deleted via Route53 ChangeResourceRecordSets with Action DELETE (#1431). A
+// DELETE change must carry the record's EXACT current ResourceRecordSet (Name/Type/TTL + all
+// ResourceRecords / AliasTarget / routing fields) or Route53 rejects it, so re-read the zone's
+// live records and match the one whose reconstructed identifier equals the finding's — robust
+// against '_' in record names (`_dmarc.example.com`), which a split-based parse of the composite
+// identifier could not disambiguate. The zone id is the enumerating parent HostedZone's physical
+// id (parentPhysicalId, recovered at the stack-actions call site from the finding's synthesized
+// `${parentLogicalId}/${identifier}` logicalId). A record already gone (no match) is the delete
+// goal state — return without a change (applyRevertDeleteSdk treats it as success).
+const deleteRoute53RecordSet: SdkDeleter = async (ctx) => {
+  const zoneId = ctx.parentPhysicalId;
+  if (!zoneId) {
+    throw new Error('cannot resolve the parent HostedZone id for the Route53 RecordSet delete');
+  }
+  const client = new Route53Client({ region: ctx.region, ...CLIENT_TIMEOUTS });
+  const records = await pageResourceRecordSets(client, zoneId);
+  const target = records.find(
+    (r) =>
+      r.Name !== undefined &&
+      r.Type !== undefined &&
+      route53RecordSetIdentifier(zoneId, r.Name, r.Type, r.SetIdentifier) === ctx.physicalId
+  );
+  if (!target) return; // already gone — nothing to delete
+  await client.send(
+    new ChangeResourceRecordSetsCommand({
+      HostedZoneId: zoneId,
+      ChangeBatch: { Changes: [{ Action: 'DELETE', ResourceRecordSet: target }] },
+    })
+  );
+};
+
 export const SDK_DELETERS: Record<string, SdkDeleter> = {
   'AWS::AppSync::ApiKey': deleteAppSyncApiKey,
+  'AWS::Route53::RecordSet': deleteRoute53RecordSet,
 };

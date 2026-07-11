@@ -187,7 +187,7 @@ async function readAll(
 // (normalizeLiveModel) so a volatile readOnly field never reads as a false "changed
 // since record". Falls back to the enumerator's identity-only snippet when the CC
 // GetResource fails (so the resource is still reported, just not change-watchable).
-function addedFinding(
+export function addedFinding(
   parent: DesiredResource,
   c: AddedChild,
   read: { model: Record<string, unknown>; ok: boolean }
@@ -208,6 +208,16 @@ function addedFinding(
   };
 }
 
+// Added types whose Cloud Control GetResource is DOOMED — NON_PROVISIONABLE in the CC
+// registry, so `GetResource` throws `UnsupportedActionException` on every run (#1431). For
+// these the model read below would always fail, flag the finding `modelReadFailed`, and
+// `record`/`ignore` could never endorse the resource — it re-surfaced as `added` on every
+// `check` with no way to accept it. But the child ENUMERATOR already carries the full,
+// recordable model in its `live` snippet (a Route53 RecordSet's Name/Type/TTL/ResourceRecords/
+// AliasTarget), so use THAT as the recordable model instead of the doomed CC read. (Its real
+// delete goes through a type-specific SDK deleter, not CC — see revert/writers.ts SDK_DELETERS.)
+const CC_GET_UNSUPPORTED_ADDED_TYPES = new Set<string>(['AWS::Route53::RecordSet']);
+
 // Read the added child's FULL live model via Cloud Control GetResource (its
 // `identifier` is the CC composite, the same one revert's DeleteResource consumes) and
 // normalize it for record/compare. On any read/parse error return the enumerator's
@@ -216,24 +226,22 @@ function addedFinding(
 // partial model and applyBaseline never false-flags it as "changed" (a degraded snippet
 // vs a recorded full model would otherwise differ). `cfn` fetches the child type's schema
 // (readOnly/writeOnly strip); `schemas` is the shared cache.
-async function readAddedModel(
+export async function readAddedModel(
   cc: CloudControlClient,
   cfn: CloudFormationClient,
   c: AddedChild,
   schemas: Map<string, SchemaInfo>,
   oaiCanonicalIds: Record<string, string>
 ): Promise<{ model: Record<string, unknown>; ok: boolean }> {
-  try {
-    const g = await cc.send(
-      new GetResourceCommand({ TypeName: c.resourceType, Identifier: c.identifier })
-    );
-    const raw = JSON.parse(g.ResourceDescription?.Properties ?? '{}') as Record<string, unknown>;
-    // Reuse the per-run cache, else fetch. Only re-cache a SUCCESSFUL fetch: a DescribeType
-    // failure returns an EMPTY schema (#751 — schema-strip itself does not cache it), and
-    // caching that EMPTY in the per-run map would poison every later resource of this type
-    // (writeOnly reinclude drops declared write-only props, createOnly bars lost) even after
-    // the throttle clears — so leave the map unset on failure to let the next occurrence
-    // re-fetch (#1067). The EMPTY still drives THIS resource's normalize (degraded, no strip).
+  // Normalize a raw live model with the (cached) child-type schema. Only re-cache a SUCCESSFUL
+  // fetch: a DescribeType failure returns an EMPTY schema (#751 — schema-strip itself does not
+  // cache it), and caching that EMPTY in the per-run map would poison every later resource of
+  // this type (writeOnly reinclude drops declared write-only props, createOnly bars lost) even
+  // after the throttle clears — so leave the map unset on failure to let the next occurrence
+  // re-fetch (#1067). The EMPTY still drives THIS resource's normalize (degraded, no strip).
+  const normalizeWith = async (
+    raw: Record<string, unknown>
+  ): Promise<{ model: Record<string, unknown>; ok: true }> => {
     let schema = schemas.get(c.resourceType);
     if (!schema) {
       const res = await getSchemaInfoResult(cfn, c.resourceType);
@@ -244,6 +252,18 @@ async function readAddedModel(
       model: normalizeLiveModel(raw, schema, { oaiCanonicalIds, resourceType: c.resourceType }),
       ok: true,
     };
+  };
+  // #1431: a NON_PROVISIONABLE type's CC GetResource always fails — skip it and use the
+  // enumerator's full `live` snippet as the recordable model, so record/ignore can endorse it.
+  if (CC_GET_UNSUPPORTED_ADDED_TYPES.has(c.resourceType)) {
+    return normalizeWith(c.live);
+  }
+  try {
+    const g = await cc.send(
+      new GetResourceCommand({ TypeName: c.resourceType, Identifier: c.identifier })
+    );
+    const raw = JSON.parse(g.ResourceDescription?.Properties ?? '{}') as Record<string, unknown>;
+    return normalizeWith(raw);
   } catch {
     return { model: c.live, ok: false };
   }

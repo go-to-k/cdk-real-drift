@@ -1022,7 +1022,9 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
 `cloudcontrol:UpdateResource` (which resolves to each type's own update
 permissions), `cloudcontrol:DeleteResource` (to delete an out-of-band `added`
 resource; a type Cloud Control cannot delete goes through its own SDK action
-instead — `appsync:DeleteApiKey` for an out-of-band `AWS::AppSync::ApiKey`), and
+instead — `appsync:DeleteApiKey` for an out-of-band `AWS::AppSync::ApiKey`, or
+`route53:ChangeResourceRecordSets` (a DELETE change) for an out-of-band
+`AWS::Route53::RecordSet`), and
 `cloudcontrol:GetResourceRequestStatus` (to poll the async Cloud
 Control request to completion). Plus, for the SDK-written types:
 `s3:PutBucketPolicy` /
