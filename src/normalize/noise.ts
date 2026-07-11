@@ -2428,6 +2428,17 @@ export const DEFAULT_MANAGED_NAME_PATHS: Record<string, Record<string, RegExp>> 
   'AWS::Neptune::DBInstance': { DBParameterGroupName: /^default\./ },
   'AWS::Redshift::Cluster': { ClusterParameterGroupName: /^default\./ },
   'AWS::MemoryDB::Cluster': { ParameterGroupName: /^default\./ },
+  // #1284: a nested-stack Stack resource that declares no RoleARN reads back the CFn service role
+  // AWS/CDK attached — the CDK bootstrap cfn-exec-role, whose ARN is a DETERMINISTIC shape of the
+  // stack's own account/region: `arn:<partition>:iam::<acct>:role/cdk-<qualifier>-cfn-exec-role-
+  // <acct>-<region>`. Fold that (undeclared, AWS-assigned, not user intent). But RoleARN is MUTABLE
+  // out of band (`cloudformation update-stack --role-arn`, which CFn REMEMBERS for all future ops)
+  // and is a privilege boundary, so a value-independent fold would hide a rogue exec-role swap
+  // forever — an OOB RoleARN that does NOT match this shape (e.g. `role/attacker-admin-role`) does
+  // not match the pattern and surfaces as undeclared (recordable, then watched).
+  'AWS::CloudFormation::Stack': {
+    RoleARN: /^arn:aws[\w-]*:iam::\d{12}:role\/cdk-[a-z0-9]+-cfn-exec-role-\d{12}-[a-z0-9-]+$/,
+  },
 };
 
 // Top-level UNDECLARED keys that are ALWAYS a service-minted, AWS-managed generated
@@ -3216,13 +3227,18 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   back an AWS-assigned one as an OBJECT ({DayOfWeek, TimeOfDay, TimeZone}); value-independent
   //   folds the whole top-level property whatever its shape, so the assigned window is not first-
   //   run noise (a DECLARED window is compared in the declared loop).
-  //   AWS::AmazonMQ::Broker.SecurityGroups / .SubnetIds — a broker that declares neither reads back
-  //   a single-element default-VPC placement (an AWS-assigned sg-… / subnet-… id, not in the
-  //   broker's declared inputs and not derivable without a VPC lookup). Verbatim twin of the ELBv2
-  //   LoadBalancer.SecurityGroups fold above: undeclared, so whatever placement AWS chose is its
-  //   default, never user intent — a user who wants specific SGs/subnets DECLARES them, compared in
-  //   the declared loop. Corpus baked FP (#844).
-  'AWS::AmazonMQ::Broker': new Set(['MaintenanceWindowStartTime', 'SecurityGroups', 'SubnetIds']),
+  //   AWS::AmazonMQ::Broker.SubnetIds — a broker that declares no SubnetIds reads back a
+  //   single-element default-VPC placement (an AWS-assigned subnet-… id, not in the broker's
+  //   declared inputs and not derivable without a VPC lookup). SubnetIds is CREATE-ONLY (schema
+  //   createOnlyProperties), so a value-independent fold cannot hide an out-of-band swap — the
+  //   subnet cannot change without replacing the broker. Undeclared, so whatever placement AWS
+  //   chose is its default, never user intent. Corpus baked FP (#844).
+  //   NOTE: `.SecurityGroups` was ALSO here, but it is MUTABLE out of band
+  //   (`mq update-broker --security-groups`, NOT createOnly), so folding it value-independent hid
+  //   a rogue SG swap/append forever (#1266). It is now derive-gated in classify against the
+  //   prefetched VPC-default SG ids (DEFAULT_SG_LIST_PATHS, the #889/#976 ELBv2/Neptune gate): a
+  //   single default SG folds, a 2+-element append or a non-default swap surfaces.
+  'AWS::AmazonMQ::Broker': new Set(['MaintenanceWindowStartTime', 'SubnetIds']),
   //   Core VPC-networking types whose undeclared, AWS-ASSIGNED, CREATE-ONLY placement identifiers
   //   read back on every first run. Each is a per-resource value AWS picks at creation from the
   //   surrounding VPC/subnet/region — never a constant we can pin, and never user intent when
@@ -3422,16 +3438,19 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //       (cdkrd triggering a child-stack update to a stale template — a real hazard). Undeclared,
   //       unpinnable, moves per deploy → value-independent (a user who wants to compare the child
   //       compares the child stack itself; the parent never declares its body).
-  //     * `RoleARN` — the CloudFormation service role (the `cdk-hnb659fds-cfn-exec-role-…` CDK
-  //       bootstrap role) AWS/CDK attaches; undeclared on the Stack resource, per-account/region
-  //       AWS-assigned, not user intent when undeclared.
   //     * `Capabilities` — the capability set AWS records for the child (e.g.
   //       `["CAPABILITY_IAM","CAPABILITY_AUTO_EXPAND"]`); undeclared, AWS-assigned, and a plain
   //       reflection of what the child needs, not intent on the parent Stack resource.
-  //   All three are undeclared → whatever AWS assigned is its default, never user intent; a real
+  //   Both are undeclared → whatever AWS assigned is its default, never user intent; a real
   //   drift in the child's own resources surfaces when that child stack is checked directly.
   //   First-run FP on every nested-stack deploy (#723, live-repro'd on tests/integration/nested).
-  'AWS::CloudFormation::Stack': new Set(['TemplateBody', 'RoleARN', 'Capabilities']),
+  //   NOTE: `.RoleARN` was ALSO here, but it is MUTABLE out of band
+  //   (`cloudformation update-stack --role-arn`, which CFn then REMEMBERS for all future ops — a
+  //   privilege boundary), so folding it value-independent hid a rogue exec-role swap forever
+  //   (#1284). It is now pattern-gated in DEFAULT_MANAGED_NAME_PATHS against the deterministic CDK
+  //   cfn-exec-role ARN shape: the `cdk-<qualifier>-cfn-exec-role-<acct>-<region>` role folds, any
+  //   other RoleARN surfaces as undeclared (recordable, then watched).
+  'AWS::CloudFormation::Stack': new Set(['TemplateBody', 'Capabilities']),
 };
 
 // R142: true when `value` equals a `|`/`:`/`/`-separated SEGMENT of the physical id.
