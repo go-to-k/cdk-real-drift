@@ -12,6 +12,7 @@ import {
   EC2Client,
   GetDefaultCreditSpecificationCommand,
   GetEbsEncryptionByDefaultCommand,
+  GetInstanceMetadataDefaultsCommand,
   type UnlimitedSupportedInstanceFamily,
 } from '@aws-sdk/client-ec2';
 import { ECSClient, ListAccountSettingsCommand } from '@aws-sdk/client-ecs';
@@ -251,6 +252,38 @@ async function fetchRdsDefaultCaIdentifier(region: string): Promise<string | und
     const override = (r.Certificates ?? []).find((cert) => cert.CustomerOverride === true);
     const value = override?.CertificateIdentifier;
     rdsDefaultCaCache.set(region, value);
+    return value;
+  } catch {
+    return undefined;
+  }
+}
+
+// #1070 item 3: ec2:GetInstanceMetadataDefaults — the account-level IMDS defaults the owner set
+// (`ec2:modify-instance-metadata-defaults`). Returns only the SET fields among HttpTokens /
+// HttpPutResponseHopLimit / HttpEndpoint / InstanceMetadataTags (unset ones are absent / null);
+// `ManagedBy` is metadata, not a MetadataOptions field, so it is dropped. classify overlays these
+// onto the AL2023 MetadataOptions constant for an EC2::Instance that declares no MetadataOptions.
+// Undefined when nothing is set at account level → the constant stands. Cached per region, fail-open.
+const instanceMetadataDefaultsCache = new Map<
+  string,
+  Record<string, string | number> | undefined
+>();
+async function fetchInstanceMetadataDefaults(
+  region: string
+): Promise<Record<string, string | number> | undefined> {
+  if (instanceMetadataDefaultsCache.has(region)) return instanceMetadataDefaultsCache.get(region);
+  try {
+    const c = new EC2Client({ region, ...READ_RETRY });
+    const r = await c.send(new GetInstanceMetadataDefaultsCommand({}));
+    const al = r.AccountLevel;
+    const out: Record<string, string | number> = {};
+    if (al?.HttpTokens != null) out.HttpTokens = al.HttpTokens;
+    if (al?.HttpPutResponseHopLimit != null)
+      out.HttpPutResponseHopLimit = al.HttpPutResponseHopLimit;
+    if (al?.HttpEndpoint != null) out.HttpEndpoint = al.HttpEndpoint;
+    if (al?.InstanceMetadataTags != null) out.InstanceMetadataTags = al.InstanceMetadataTags;
+    const value = Object.keys(out).length > 0 ? out : undefined;
+    instanceMetadataDefaultsCache.set(region, value);
     return value;
   } catch {
     return undefined;
@@ -1505,6 +1538,13 @@ export async function gatherFindings(
       if (v !== undefined) map[fam] = v;
     }
     if (Object.keys(map).length > 0) accountDefaults.ec2FamilyCreditDefaults = map;
+  }
+  // #1070 item 3: prefetch the account-level IMDS defaults when the stack declares any EC2::Instance,
+  // so classify can overlay the account-SET fields onto the MetadataOptions constant. Undefined
+  // (nothing set at account level) → the constant stands.
+  if (desired.resources.some((r) => r.resourceType === 'AWS::EC2::Instance')) {
+    const v = await fetchInstanceMetadataDefaults(region);
+    if (v !== undefined) accountDefaults.instanceMetadataDefaults = v;
   }
   // #1070 item 5: prefetch the account's customer-override default CA identifier when the stack
   // declares an RDS or DocDB DBInstance. Undefined (no override) → classify keeps the constant.

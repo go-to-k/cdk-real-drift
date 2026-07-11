@@ -359,6 +359,13 @@ export interface AccountDefaults {
   // `CustomerOverride=true`), for an RDS/DocDB DBInstance that declares no CACertificateIdentifier.
   // Undefined when no override is set → fall back to the KNOWN_DEFAULTS system-default constant.
   rdsDefaultCaIdentifier?: string;
+  // ec2:GetInstanceMetadataDefaults — the account-level IMDS defaults the owner set
+  // (ec2:modify-instance-metadata-defaults): the SET fields among HttpTokens /
+  // HttpPutResponseHopLimit / HttpEndpoint / InstanceMetadataTags (unset fields are omitted). These
+  // OVERLAY the AL2023 MetadataOptions KNOWN_DEFAULTS constant for an EC2::Instance that declares no
+  // MetadataOptions — a hardened account (hop limit 1, tokens enforced, …) folds its clean deploy.
+  // Undefined when nothing is set at account level → the constant stands.
+  instanceMetadataDefaults?: Record<string, string | number>;
 }
 
 // #1070: for a handful of undeclared properties the value AWS assigns at creation is a function of
@@ -2996,6 +3003,21 @@ export function classifyResource(
     const creditDefault = acctDefault ?? factoryDefault;
     if (creditDefault !== undefined) {
       knownDef = { ...knownDef, CreditSpecification: { CPUCredits: creditDefault } };
+    }
+    // #1070 item 3: the IMDS defaults an instance reads back are also settable ACCOUNT-wide
+    // (`ec2:modify-instance-metadata-defaults` — HttpTokens / HttpPutResponseHopLimit / HttpEndpoint
+    // / InstanceMetadataTags), so a hardened account FPs the AL2023 MetadataOptions constant on every
+    // fresh launch. Overlay the account-SET fields (prefetched by gather.ts) onto the constant. Kept
+    // WHOLE-OBJECT equality-gated below: an overlay that is wrong for this instance — the account did
+    // not set a field, or the AMI's own default differs (#640 AMI variance, account-vs-AMI precedence)
+    // — simply does not match and SURFACES (recordable), never a false fold. Absent prefetch → the
+    // constant stands (today's behavior).
+    const imds = opts.accountDefaults?.instanceMetadataDefaults;
+    if (imds !== undefined && isNestedObject(knownDef.MetadataOptions)) {
+      knownDef = {
+        ...knownDef,
+        MetadataOptions: { ...(knownDef.MetadataOptions as Record<string, unknown>), ...imds },
+      };
     }
   }
   // #660: a LAMBDA target group's HealthCheckEnabled default is FALSE (health checks are
