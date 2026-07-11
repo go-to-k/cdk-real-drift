@@ -319,16 +319,6 @@ describe('buildRevertPlan', () => {
         { Name: 'Env', Value: 'prod' },
       ],
     };
-    const emptySchema: SchemaInfo = {
-      readOnly: new Set(),
-      writeOnly: new Set(),
-      createOnly: new Set(),
-      readOnlyPaths: [],
-      writeOnlyPaths: [],
-      createOnlyPaths: [],
-      defaults: {},
-      defaultPaths: {},
-    };
     const findings = classifyResource(
       {
         logicalId: 'Alarm',
@@ -337,11 +327,11 @@ describe('buildRevertPlan', () => {
         declared: { Dimensions: declaredDims },
       },
       liveRaw,
-      emptySchema
+      emptySchema()
     );
     const drift = findings.find((f) => f.tier === 'declared');
     expect(drift).toBeDefined();
-    // canonicalizeTagLists sorted by Name → [Env(0), QueueName(1)], so the finding's own path is
+    // canonicalizeTagLists sorted by Name -> [Env(0), QueueName(1)], so the finding's own path is
     // the SORTED index `Dimensions.1.Value` — which in the RAW model is Env, NOT QueueName. A
     // per-element patch here is exactly the corruption #1271 describes. The hoist saves it:
     expect(drift!.path).toBe('Dimensions.1.Value');
@@ -372,6 +362,81 @@ describe('buildRevertPlan', () => {
         { Name: 'Env', Value: 'prod' },
       ])
     );
+  });
+
+  const emptySchema = (): SchemaInfo => ({
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  });
+
+  it('#1306: a nested Guardrail FiltersConfig value drift reports ONE finding (identity-keyed sort) and hoists to a whole-NESTED-array revert', () => {
+    // FiltersConfig is a nested insertionOrder:false array keyed by Type. AWS reorders it and
+    // one filter's OutputStrength drifted out of band. The identity-keyed nested sort keeps the
+    // changed element aligned (ONE finding, not the canonical-JSON cascade), and the whole-array
+    // revert targets the NESTED array path — never the whole ContentPolicyConfig.
+    const declared = {
+      ContentPolicyConfig: {
+        FiltersConfig: [
+          { Type: 'HATE', InputStrength: 'HIGH', OutputStrength: 'HIGH' },
+          { Type: 'SEXUAL', InputStrength: 'HIGH', OutputStrength: 'HIGH' },
+        ],
+      },
+    };
+    const liveRaw = {
+      ContentPolicyConfig: {
+        FiltersConfig: [
+          // reordered by AWS, and SEXUAL.OutputStrength weakened out of band HIGH -> NONE.
+          { Type: 'SEXUAL', InputStrength: 'HIGH', OutputStrength: 'NONE' },
+          { Type: 'HATE', InputStrength: 'HIGH', OutputStrength: 'HIGH' },
+        ],
+      },
+    };
+    const findings = classifyResource(
+      { logicalId: 'Gr', resourceType: 'AWS::Bedrock::Guardrail', physicalId: 'gr', declared },
+      liveRaw,
+      emptySchema()
+    );
+    const declaredDrifts = findings.filter((f) => f.tier === 'declared');
+    // ONE finding — the identity-keyed nested sort prevents the canonical-JSON cascade.
+    expect(declaredDrifts).toHaveLength(1);
+    expect(declaredDrifts[0]!.wholeArrayRevert).toBeDefined();
+    expect(declaredDrifts[0]!.wholeArrayRevert!.path).toBe('ContentPolicyConfig.FiltersConfig');
+    const plan = buildRevertPlan(findings, undefined, {
+      liveByLogical: new Map([['Gr', liveRaw]]),
+    });
+    const ops = plan.items[0]!.ops;
+    expect(ops).toHaveLength(1);
+    expect(ops[0]!.path).toBe('/ContentPolicyConfig/FiltersConfig');
+    // The whole declared FiltersConfig is written — the SEXUAL filter reverts to HIGH and the
+    // untouched HATE filter is preserved (never corrupted by a misaligned per-element patch).
+    expect(ops[0]!.value).toEqual(
+      expect.arrayContaining([
+        { Type: 'SEXUAL', InputStrength: 'HIGH', OutputStrength: 'HIGH' },
+        { Type: 'HATE', InputStrength: 'HIGH', OutputStrength: 'HIGH' },
+      ])
+    );
+  });
+
+  it('#1306/#529 NEGATIVE: a SINGLE-element identity array cannot misalign, so it stays a surgical per-element revert', () => {
+    // One dimension -> sorting is a no-op -> the index is raw and addressable -> no whole-array
+    // hoist (the #529 single-entry principle: only a 2+-element sortable array can misalign).
+    const declared = { Dimensions: [{ Name: 'QueueName', Value: 'prod-queue' }] };
+    const liveRaw = { Dimensions: [{ Name: 'QueueName', Value: 'HACKED-queue' }] };
+    const findings = classifyResource(
+      { logicalId: 'Al', resourceType: 'AWS::CloudWatch::Alarm', physicalId: 'al', declared },
+      liveRaw,
+      emptySchema()
+    );
+    const drift = findings.find((f) => f.tier === 'declared');
+    expect(drift).toBeDefined();
+    expect(drift!.wholeArrayRevert).toBeUndefined();
+    expect(drift!.path).toBe('Dimensions.0.Value');
   });
 
   it('ManagedPolicy attachment detach -> SDK item, op carries the member on attributeKey', () => {
