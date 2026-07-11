@@ -879,12 +879,23 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // defaults. Equality-gated. Per-resource/random values the same read returns
   // (ParameterGroupName is engine-version-derived, Snapshot/MaintenanceWindow are
   // AWS-assigned) are deliberately NOT listed — they are genuine undeclared inventory.
+  // #1503: the memorydb-rich (redis) fixture DECLARED the engine-independent shape/backup/TLS
+  // props, so their undeclared-default path never ran until a BAREST valkey cluster deploy
+  // surfaced them on a first `check`. A single-shard, single-replica, no-backup, TLS-on
+  // cluster is what AWS creates when the template omits them — equality-gated, so a reshard
+  // (NumShards≠1), a replica change, a snapshot enable, or a TLS DISABLE still surfaces (the
+  // TLSEnabled truthy-bool disable via the AWS::MemoryDB::Cluster MEANINGFUL_WHEN_OFF gate in
+  // diff/classify.ts, so a live `false` is not swallowed by isTrivialEmpty).
   'AWS::MemoryDB::Cluster': {
     Port: 6379,
     AutoMinorVersionUpgrade: true,
     DataTiering: 'false',
     NetworkType: 'ipv4',
     IpDiscovery: 'ipv4',
+    NumShards: 1,
+    NumReplicasPerShard: 1,
+    SnapshotRetentionLimit: 0,
+    TLSEnabled: true,
   },
   'AWS::RDS::DBProxy': {
     TargetConnectionNetworkType: 'IPV4',
@@ -3356,7 +3367,13 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
     'EngineVersion',
   ]),
   'AWS::ElastiCache::ServerlessCache': new Set(['DailySnapshotTime']),
-  'AWS::MemoryDB::Cluster': new Set(['MaintenanceWindow', 'SnapshotWindow']),
+  //   AWS::MemoryDB::Cluster.EngineVersion — #1503: a cluster that declares no EngineVersion
+  //   reads back the current GA patch AWS auto-selected for the engine track (valkey "7.3"
+  //   today), which AWS moves over time as it ships new GA versions — not a constant we can
+  //   pin. Undeclared → whatever GA AWS assigned is its default, never user intent; a user
+  //   who pins a version DECLARES it and is then compared in the declared loop. The RDS /
+  //   DocDB / Neptune / ElastiCache::ReplicationGroup undeclared-EngineVersion twin.
+  'AWS::MemoryDB::Cluster': new Set(['MaintenanceWindow', 'SnapshotWindow', 'EngineVersion']),
   //   AWS::Redshift::Cluster.AvailabilityZone — AWS places an undeclared cluster in an AZ it picks
   //   (create-only, never user intent when undeclared), exactly like RDS AvailabilityZone above.
   //   OffPeakWindowOptions on an OpenSearch domain is the AWS-ASSIGNED off-peak maintenance window

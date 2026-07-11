@@ -544,6 +544,10 @@ describe('noise suppressors', () => {
       DataTiering: 'false',
       NetworkType: 'ipv4',
       IpDiscovery: 'ipv4',
+      NumShards: 1,
+      NumReplicasPerShard: 1,
+      SnapshotRetentionLimit: 0,
+      TLSEnabled: true,
     });
     expect(KNOWN_DEFAULTS['AWS::Config::ConfigRule']).toEqual({
       EvaluationModes: [{ Mode: 'DETECTIVE' }],
