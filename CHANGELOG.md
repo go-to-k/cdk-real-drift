@@ -1,3 +1,10 @@
+## [0.12.98](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.97...v0.12.98) (2026-07-11)
+
+
+### Bug Fixes
+
+* **read:** surface a rogue Security Group in a declared VPC as an added AWS::EC2::SecurityGroup ([#835](https://github.com/go-to-k/cdk-real-drift/issues/835)) ([#1502](https://github.com/go-to-k/cdk-real-drift/issues/1502)) ([4fdd37b](https://github.com/go-to-k/cdk-real-drift/commit/4fdd37bf47f250e240b0af1cc9a55a1abc3c2e0e))
+
 ## [0.12.97](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.96...v0.12.97) (2026-07-11)
 
 
