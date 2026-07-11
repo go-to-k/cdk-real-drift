@@ -104,6 +104,15 @@
       "tier": "atDefault",
       "logicalId": "LamTgA990B741",
       "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthCheckEnabled",
+      "actual": false,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-lam/623fa64bdebe4639",
+      "constructPath": "CdkRealDriftHunt0708iMisc/LamTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "LamTgA990B741",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
       "path": "IpAddressType",
       "actual": "ipv4",
       "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt0708i-lam/623fa64bdebe4639",

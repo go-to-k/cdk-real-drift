@@ -1420,14 +1420,12 @@ describe('KNOWN_DEFAULTS suppression (R66 — dogfood-observed service defaults)
       }).undeclared
     ).toEqual(['WarmThroughput']);
 
-    // ESM created enabled → folds. (Enabled:false is dropped upstream as trivially-empty,
-    // like the KMS Key Enabled case — neither undeclared nor atDefault.) #632 fixed the
-    // KMS/SQS twins of this via the curated MEANINGFUL_WHEN_OFF allowlist; ESM is left
-    // unchanged here pending a live confirm that an undeclared ESM Enabled=false is
-    // unconditionally a real out-of-band disable.
+    // ESM created enabled → folds. #660 (live-confirmed 2026-07-11): an undeclared
+    // Enabled=false is an out-of-band DISABLE — the MEANINGFUL_WHEN_OFF entry keeps it
+    // from being dropped as trivially-empty, so it SURFACES (the KMS/SQS #632 pattern).
     expect(t('AWS::Lambda::EventSourceMapping', { Enabled: true }).atDefault).toEqual(['Enabled']);
     const disabled = t('AWS::Lambda::EventSourceMapping', { Enabled: false });
-    expect(disabled.undeclared).toEqual([]);
+    expect(disabled.undeclared).toEqual(['Enabled']);
     expect(disabled.atDefault).toEqual([]);
 
     // AuthType is a derived, non-declarable read-back of the declared Type, so BOTH the
@@ -11791,6 +11789,89 @@ describe('#632 follow-up: unconditional boolean disables surface (undeclared)', 
       expect(tierOf(type, key, true)).toBe('atDefault');
     });
   }
+});
+
+// #660 (config-conditional slice, live-verified 2026-07-11 on Cdkrd660Verify): the two
+// CONDITIONAL members of the #632 blast radius.
+//   - Lambda ESM `Enabled`: created ENABLED for every source type; an undeclared false is an
+//     out-of-band disable that silently stops the pipeline — was swallowed by trivial-empty
+//     (check reported CLEAN on a live disabled mapping).
+//   - ELBv2 TargetGroup `HealthCheckEnabled`: the default is TargetType-DERIVED. A lambda TG
+//     reads false by default (health checks are opt-in there), every other type reads true
+//     and ModifyTargetGroup REJECTS disabling ("Health check enabled must be true for target
+//     groups with target type 'instance'"). So the pin flips to false for a declared-lambda
+//     TG (fold tier 2) and the off state is meaningful only for non-lambda types.
+describe('#660 conditional switches: ESM Enabled + TargetGroup HealthCheckEnabled', () => {
+  const bare: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const TG = 'AWS::ElasticLoadBalancingV2::TargetGroup';
+  // Full tier:path list (not a filtered subset) so a double-report or wrong tier fails loudly.
+  const list = (type: string, declared: Record<string, unknown>, live: Record<string, unknown>) =>
+    classifyResource({ logicalId: 'R', resourceType: type, physicalId: 'p', declared }, live, bare)
+      .map((f) => `${f.tier}:${f.path}`)
+      .sort();
+
+  it('ESM undeclared Enabled=false surfaces undeclared (out-of-band disable)', () => {
+    expect(list('AWS::Lambda::EventSourceMapping', {}, { Enabled: false })).toEqual([
+      'undeclared:Enabled',
+    ]);
+  });
+
+  it('ESM undeclared Enabled=true still folds atDefault (clean deploy, no FP)', () => {
+    expect(list('AWS::Lambda::EventSourceMapping', {}, { Enabled: true })).toEqual([
+      'atDefault:Enabled',
+    ]);
+  });
+
+  it('ESM declared Enabled=false vs live true is not masked by the husk fold (#929 twin)', () => {
+    expect(list('AWS::Lambda::EventSourceMapping', { Enabled: false }, { Enabled: true })).toEqual([
+      'declared:Enabled',
+    ]);
+  });
+
+  it('non-lambda TG undeclared HealthCheckEnabled=false surfaces (TargetType omitted)', () => {
+    expect(list(TG, {}, { HealthCheckEnabled: false })).toEqual(['undeclared:HealthCheckEnabled']);
+  });
+
+  it('non-lambda TG undeclared HealthCheckEnabled=false surfaces (TargetType declared ip)', () => {
+    expect(list(TG, { TargetType: 'ip' }, { TargetType: 'ip', HealthCheckEnabled: false })).toEqual(
+      ['undeclared:HealthCheckEnabled']
+    );
+  });
+
+  it('non-lambda TG undeclared HealthCheckEnabled=true still folds atDefault (clean deploy)', () => {
+    expect(list(TG, {}, { HealthCheckEnabled: true })).toEqual(['atDefault:HealthCheckEnabled']);
+  });
+
+  it('lambda TG undeclared HealthCheckEnabled=false folds atDefault (its real default — no FP)', () => {
+    expect(
+      list(TG, { TargetType: 'lambda' }, { TargetType: 'lambda', HealthCheckEnabled: false })
+    ).toEqual(['atDefault:HealthCheckEnabled']);
+  });
+
+  it('lambda TG undeclared HealthCheckEnabled=true surfaces (out-of-band ENABLE, was folded by the base pin)', () => {
+    expect(
+      list(TG, { TargetType: 'lambda' }, { TargetType: 'lambda', HealthCheckEnabled: true })
+    ).toEqual(['undeclared:HealthCheckEnabled']);
+  });
+
+  it('lambda TG declared HealthCheckEnabled=false vs live true surfaces as declared drift', () => {
+    expect(
+      list(
+        TG,
+        { TargetType: 'lambda', HealthCheckEnabled: false },
+        { TargetType: 'lambda', HealthCheckEnabled: true }
+      )
+    ).toEqual(['declared:HealthCheckEnabled']);
+  });
 });
 
 // #929: the DECLARED-side twin of #632. The declared trivially-empty husk fold
