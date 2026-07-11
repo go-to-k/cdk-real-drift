@@ -1468,13 +1468,14 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
           // identifier (e.g. AWS::ApiGateway::Stage `RestApiId|StageName`) the READ path
           // resolves — pass it so its GetResource/UpdateResource doesn't ValidationException
           // on the bare physical id. Falls back to the physical id when no adapter applies.
-          const identifier =
-            CC_IDENTIFIER_ADAPTERS[item.resourceType]?.(
-              item.physicalId,
-              res?.declared ?? {},
-              region,
-              gathered.desired.accountId
-            ) ?? item.physicalId;
+          // Await the adapter (MAY be async — #1317 EIP) BEFORE `?? physicalId`.
+          const adapted = await CC_IDENTIFIER_ADAPTERS[item.resourceType]?.(
+            item.physicalId,
+            res?.declared ?? {},
+            region,
+            gathered.desired.accountId
+          );
+          const identifier = adapted ?? item.physicalId;
           await writer(
             {
               physicalId: item.physicalId,
@@ -1493,13 +1494,14 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
       }, buildRetryOpts(item.displayId));
     } else {
       const res = resByLogical.get(item.logicalId);
-      const identifier =
-        CC_IDENTIFIER_ADAPTERS[item.resourceType]?.(
-          item.physicalId,
-          res?.declared ?? {},
-          region,
-          gathered.desired.accountId
-        ) ?? item.physicalId;
+      // Await the adapter (MAY be async — #1317 EIP) BEFORE `?? physicalId`.
+      const adapted = await CC_IDENTIFIER_ADAPTERS[item.resourceType]?.(
+        item.physicalId,
+        res?.declared ?? {},
+        region,
+        gathered.desired.accountId
+      );
+      const identifier = adapted ?? item.physicalId;
       // #760: item.ops are ALREADY augmented (tag-preserve / write-only-reinclude /
       // empty-strip) — the whole plan was run through `augment` before the confirm, so what
       // is sent here is exactly what was previewed / confirmed. No per-item re-augmentation.

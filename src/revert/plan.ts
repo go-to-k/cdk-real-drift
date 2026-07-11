@@ -65,9 +65,16 @@ const SYNTHETIC_READ_SIGNAL_PATHS: Record<string, readonly string[]> = {
 // writeOnly CognitoEvents (CC reads/updates every base property — AllowClassicFlow,
 // providers, … — fine). So base-property reverts route through CC UpdateResource as
 // normal; only the CognitoEvents path takes its dedicated SDK_PROP_WRITER.
+// AWS::EC2::EIP (#1317): CC reports it FULLY_MUTABLE; the readEc2Eip override exists only because
+// CC GetResource ValidationExceptions on EIP's composite `[PublicIp, AllocationId]` identifier, so
+// reads go via DescribeAddresses — a mere READ workaround, not an update gap. A CC UpdateResource
+// revert (e.g. an out-of-band Tags change) works once addressed by the composite id the
+// CC_IDENTIFIER_ADAPTERS EIP entry resolves. Verified live: `<PublicIp>|<AllocationId>` CC
+// UpdateResource of Tags converges.
 const CC_REVERTABLE_DESPITE_READ_OVERRIDE = new Set<string>([
   'AWS::Scheduler::Schedule',
   'AWS::Cognito::IdentityPool',
+  'AWS::EC2::EIP',
 ]);
 
 // Properties whose undeclared "appeared since record" revert must EXPLICITLY write the

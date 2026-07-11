@@ -652,6 +652,37 @@ const readEc2Eip: OverrideReader = async ({ physicalId, region }) => {
   return model;
 };
 
+// #1317: AWS::EC2::EIP is FULLY_MUTABLE in Cloud Control, but its primaryIdentifier is the
+// COMPOSITE `[PublicIp, AllocationId]` — a CC GetResource / UpdateResource on a bare allocation
+// id or public ip ValidationExceptions (verified live: only `<PublicIp>|<AllocationId>` reads;
+// the reverse order NotFounds). The CFn physical id is only ONE half (the allocation id for a VPC
+// EIP), so the revert path cannot form the composite from it alone. Resolve the missing half via
+// the same DescribeAddresses the read override uses and return the CC composite identifier, so a
+// CC UpdateResource revert (e.g. an out-of-band Tags change) addresses the resource. Returns
+// undefined when the address cannot be resolved (released out of band, or a classic EIP with no
+// AllocationId) — the caller then falls back to the bare physical id and CC reports an honest
+// ValidationException rather than writing to the wrong target. Failures are swallowed to undefined
+// so identifier resolution never throws into the revert loop.
+export const resolveEc2EipCcIdentifier = async (
+  physicalId: string,
+  region: string
+): Promise<string | undefined> => {
+  const id = str(physicalId);
+  if (!id || !region) return undefined;
+  try {
+    const c = new EC2Client({ region, ...READ_RETRY });
+    const input = id.startsWith('eipalloc-') ? { AllocationIds: [id] } : { PublicIps: [id] };
+    const r = await c.send(new DescribeAddressesCommand(input));
+    const addr = r.Addresses?.[0];
+    const publicIp = str(addr?.PublicIp);
+    const allocationId = str(addr?.AllocationId);
+    if (!publicIp || !allocationId) return undefined;
+    return `${publicIp}|${allocationId}`;
+  } catch {
+    return undefined;
+  }
+};
+
 // AWS::EC2::NetworkAclEntry — Cloud Control has no read handler for this type
 // (GetResource throws UnsupportedActionException), so every NACL entry was silently
 // `skipped`: a NACL rule changed out of band (a CidrBlock widened, an action flipped
