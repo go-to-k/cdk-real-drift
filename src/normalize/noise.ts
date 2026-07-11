@@ -1806,9 +1806,9 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
   'AWS::CloudFront::Distribution': {
     // CloudFront enables IPv6 on a distribution by default when the template omits it
     // (#1459, live-verified), so an undeclared live `true` folds to atDefault instead of
-    // surfacing as a first-run FP. (An out-of-band flip to `false` is swallowed by
-    // isTrivialEmpty before the pin gate — restoring its detection is the #660-class nested
-    // MEANINGFUL_WHEN_OFF follow-up; pinning here removes the FP without regressing it.)
+    // surfacing as a first-run FP. An out-of-band flip to `false` now surfaces via the nested
+    // MEANINGFUL_WHEN_OFF twin (#660 item 3, classify.ts MEANINGFUL_WHEN_OFF_NESTED) — it was
+    // previously swallowed by isTrivialEmpty before this pin gate.
     'DistributionConfig.IPV6Enabled': true,
     'DistributionConfig.OriginGroups': { Quantity: 0, Items: [] },
     'DistributionConfig.Origins.*.ConnectionAttempts': 3,
