@@ -1,3 +1,10 @@
+## [0.12.76](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.75...v0.12.76) (2026-07-11)
+
+
+### Bug Fixes
+
+* **read:** surface an out-of-band Lambda resource-policy statement as added ([#835](https://github.com/go-to-k/cdk-real-drift/issues/835)) ([#1450](https://github.com/go-to-k/cdk-real-drift/issues/1450)) ([349eff3](https://github.com/go-to-k/cdk-real-drift/commit/349eff3b5006818021210c7f468e833fd67eddfd))
+
 ## [0.12.75](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.74...v0.12.75) (2026-07-11)
 
 
