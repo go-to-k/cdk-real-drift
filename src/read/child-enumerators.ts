@@ -549,7 +549,15 @@ export async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<
   // matched against the live responses — suppress gateway-response added-reporting for this api
   // rather than false-flag a live DEFAULT_4XX/5XX as `added` with a DeleteResource offer (#1089).
   let gatewayResponseTypeUnresolved = false;
-  // Declared stages of THIS api. An AWS::ApiGateway::Stage's Ref/physical id IS its StageName.
+  // Fail-safe: a declared AWS::ApiGateway::Deployment whose StageName is UNRESOLVED implicitly
+  // declares a stage whose NAME we cannot know, so we cannot tell whether a live stage is that
+  // declared one — suppress stage added-reporting for the api rather than false-flag the
+  // CFn-managed stage `added` with a destructive DeleteResource offer (#1460, mirroring #1089).
+  let deploymentStageUnresolved = false;
+  // Declared stages of THIS api. An AWS::ApiGateway::Stage's Ref/physical id IS its StageName;
+  // an AWS::ApiGateway::Deployment's StageName ALSO implicitly creates/manages that stage as
+  // part of the Deployment's own CFn contract (deleting the Deployment deletes the stage), so a
+  // Deployment-declared stage is NOT out of band (#1460).
   const declaredStageNames: string[] = [];
   for (const r of desired.resources) {
     if (
@@ -585,6 +593,18 @@ export async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<
     ) {
       const name = typeof r.declared.StageName === 'string' ? r.declared.StageName : r.physicalId;
       if (name) declaredStageNames.push(name);
+    } else if (
+      r.resourceType === 'AWS::ApiGateway::Deployment' &&
+      parentRefMatches(r.declared.RestApiId, apiId)
+    ) {
+      // A Deployment declares its stage via StageName (or StageDescription, which also
+      // materializes the stage but carries no name of its own). A Deployment with NEITHER just
+      // creates a deployment snapshot with no stage, so it contributes nothing.
+      if (r.declared.StageName === UNRESOLVED || hasUnresolved(r.declared.StageName)) {
+        deploymentStageUnresolved = true;
+      } else if (typeof r.declared.StageName === 'string') {
+        declaredStageNames.push(r.declared.StageName);
+      }
     }
   }
 
@@ -688,7 +708,12 @@ export async function enumerateRestApiChildren(ctx: EnumeratorContext): Promise<
   const liveStages = stages
     .filter((s): s is ApiGwRestStage & { stageName: string } => typeof s.stageName === 'string')
     .map((s) => ({ name: s.stageName, label: s.stageName }));
-  const stageAdded = diffApiGatewayStages({ apiId, declaredStageNames, liveStages });
+  const stageAdded = diffApiGatewayStages({
+    apiId,
+    declaredStageNames,
+    liveStages,
+    unresolvedDeploymentStage: deploymentStageUnresolved,
+  });
 
   return [
     ...resourceAndMethodAdded,
@@ -708,8 +733,12 @@ export function diffApiGatewayStages(input: {
   apiId: string;
   declaredStageNames: string[];
   liveStages: { name: string; label?: string | undefined }[];
+  // #1460: a declared Deployment.StageName that is UNRESOLVED could name ANY live stage, so
+  // suppress stage added-reporting entirely rather than risk flagging the declared stage.
+  unresolvedDeploymentStage?: boolean | undefined;
 }): AddedChild[] {
   const { apiId, declaredStageNames, liveStages } = input;
+  if (input.unresolvedDeploymentStage) return [];
   const declared = new Set(declaredStageNames);
   const added: AddedChild[] = [];
   for (const s of liveStages) {
@@ -1244,8 +1273,12 @@ export function diffApiGatewayV2Stages(input: {
   // stay diffable (issue #960). Body-defined APIs do NOT materialize stages from the spec, so
   // stage diffing stays fully on for them (this flag is set for quick create only).
   quickCreate?: boolean | undefined;
+  // #1460: a declared Deployment.StageName that is UNRESOLVED could name ANY live stage, so
+  // suppress stage added-reporting entirely rather than risk flagging the declared stage.
+  unresolvedDeploymentStage?: boolean | undefined;
 }): AddedChild[] {
   const { apiId, declaredStageNames, liveStages, quickCreate } = input;
+  if (input.unresolvedDeploymentStage) return [];
   const declared = new Set(declaredStageNames);
   const added: AddedChild[] = [];
   for (const s of liveStages) {
@@ -1305,8 +1338,12 @@ async function enumerateHttpApiChildren(ctx: EnumeratorContext): Promise<AddedCh
   const declaredIntegrationIds: string[] = [];
   // Declared authorizers of THIS api. An Authorizer's physical id (Ref) IS its AuthorizerId.
   const declaredAuthorizerIds: string[] = [];
-  // Declared stages of THIS api. A Stage's physical id (Ref) IS its StageName.
+  // Declared stages of THIS api. A Stage's physical id (Ref) IS its StageName; an
+  // AWS::ApiGatewayV2::Deployment's StageName ALSO implicitly manages that stage as part of its
+  // own CFn contract (rarer for V2, where users usually declare Stage resources, but the same
+  // gap — #1460). An UNRESOLVED Deployment.StageName suppresses stage added-reporting (fail-safe).
   const declaredStageNames: string[] = [];
+  let deploymentStageUnresolved = false;
   for (const r of desired.resources) {
     if (!parentRefMatches(r.declared.ApiId, apiId)) continue;
     if (r.resourceType === 'AWS::ApiGatewayV2::Route' && r.physicalId) {
@@ -1318,6 +1355,12 @@ async function enumerateHttpApiChildren(ctx: EnumeratorContext): Promise<AddedCh
     } else if (r.resourceType === 'AWS::ApiGatewayV2::Stage') {
       const name = r.physicalId ?? (r.declared.StageName as string | undefined);
       if (name) declaredStageNames.push(name);
+    } else if (r.resourceType === 'AWS::ApiGatewayV2::Deployment') {
+      if (r.declared.StageName === UNRESOLVED || hasUnresolved(r.declared.StageName)) {
+        deploymentStageUnresolved = true;
+      } else if (typeof r.declared.StageName === 'string') {
+        declaredStageNames.push(r.declared.StageName);
+      }
     }
   }
 
@@ -1367,6 +1410,7 @@ async function enumerateHttpApiChildren(ctx: EnumeratorContext): Promise<AddedCh
     declaredStageNames,
     liveStages,
     quickCreate,
+    unresolvedDeploymentStage: deploymentStageUnresolved,
   });
   return added.concat(authorizerAdded, stageAdded);
 }

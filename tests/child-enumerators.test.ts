@@ -588,6 +588,45 @@ describe('Body-defined RestApi suppresses spec-materialized children (#1324)', (
     ]);
     apigw.restore();
   });
+
+  // #1460: a REST stage created the raw-CFn way — AWS::ApiGateway::Deployment with StageName and
+  // NO explicit AWS::ApiGateway::Stage resource — is CFn-managed, not out of band. The enumerator
+  // must treat Deployment.StageName as declaring the stage (else it flags the api's only stage
+  // `added` and offers a destructive DeleteResource).
+  it('a Deployment.StageName-declared stage is NOT flagged added; a genuine 2nd stage is (#1460)', async () => {
+    const apigw = mockClient(APIGatewayClient);
+    apigw
+      .on(GetResourcesCommand)
+      .resolves({ items: [{ id: 'root0', path: '/' }] })
+      .on(GetRestStagesCommand)
+      .resolves({ item: [{ stageName: 'hunt' }, { stageName: 'rogue' }] })
+      .on(GetAuthorizersCommand)
+      .resolves({ items: [] })
+      .on(GetModelsCommand)
+      .resolves({ items: [] })
+      .on(GetRequestValidatorsCommand)
+      .resolves({ items: [] })
+      .on(GetGatewayResponsesCommand)
+      .resolves({ items: [] });
+    const ctx = {
+      parent: { logicalId: 'Api', physicalId: 'hl2qjpw0hj', declared: { Name: 'x' } },
+      desired: {
+        resources: [
+          {
+            resourceType: 'AWS::ApiGateway::Deployment',
+            physicalId: 'f8phbg',
+            declared: { RestApiId: 'hl2qjpw0hj', StageName: 'hunt' },
+          },
+        ],
+        ctx: { liveAttrs: { Api: { RootResourceId: 'root0' } } },
+      },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    const added = await enumerateRestApiChildren(ctx);
+    // 'hunt' (Deployment-declared) is excluded; only the genuinely out-of-band 'rogue' surfaces.
+    expect(added.map((a) => a.identifier)).toEqual(['hl2qjpw0hj|rogue']);
+    apigw.restore();
+  });
 });
 
 describe('diffApiGatewayV2Children (HTTP / WebSocket API)', () => {
@@ -795,6 +834,31 @@ describe('diffApiGatewayStages (REST API stages, #1044)', () => {
     });
     expect(added[0]!.label).toBe('stageX');
   });
+
+  it('a Deployment-declared StageName is not out of band (#1460)', () => {
+    // enumerateRestApiChildren pushes a Deployment.StageName into declaredStageNames, so the
+    // CFn-managed implicit stage is excluded here — no destructive DeleteResource offer.
+    expect(
+      diffApiGatewayStages({
+        apiId: API,
+        declaredStageNames: ['hunt'], // from AWS::ApiGateway::Deployment.StageName
+        liveStages: [{ name: 'hunt' }],
+      })
+    ).toEqual([]);
+  });
+
+  it('an UNRESOLVED Deployment.StageName suppresses ALL stage added-reporting (#1460 fail-safe)', () => {
+    // The Deployment's StageName is a Ref we could not resolve, so any live stage MIGHT be the
+    // declared one — suppress rather than risk flagging a CFn-managed stage `added`.
+    expect(
+      diffApiGatewayStages({
+        apiId: API,
+        declaredStageNames: [],
+        liveStages: [{ name: 'prod' }, { name: 'anything' }],
+        unresolvedDeploymentStage: true,
+      })
+    ).toEqual([]);
+  });
 });
 
 describe('diffApiGatewayV2Stages (HTTP / WebSocket API stages)', () => {
@@ -875,6 +939,17 @@ describe('diffApiGatewayV2Stages (HTTP / WebSocket API stages)', () => {
         live: { StageName: 'roguestage', ApiId: APIV2 },
       },
     ]);
+  });
+
+  it('an UNRESOLVED V2 Deployment.StageName suppresses ALL stage added-reporting (#1460 fail-safe)', () => {
+    expect(
+      diffApiGatewayV2Stages({
+        apiId: APIV2,
+        declaredStageNames: [],
+        liveStages: [{ name: 'prod' }, { name: 'anything' }],
+        unresolvedDeploymentStage: true,
+      })
+    ).toEqual([]);
   });
 });
 
