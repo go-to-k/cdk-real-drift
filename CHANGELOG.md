@@ -1,3 +1,10 @@
+## [0.12.87](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.86...v0.12.87) (2026-07-11)
+
+
+### Bug Fixes
+
+* **read:** surface out-of-band S3 bucket policy as `added` (part of [#835](https://github.com/go-to-k/cdk-real-drift/issues/835)) ([#1476](https://github.com/go-to-k/cdk-real-drift/issues/1476)) ([fdcce7a](https://github.com/go-to-k/cdk-real-drift/commit/fdcce7a94395bd4b61b286be2820c5c86a0e589d))
+
 ## [0.12.86](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.85...v0.12.86) (2026-07-11)
 
 
