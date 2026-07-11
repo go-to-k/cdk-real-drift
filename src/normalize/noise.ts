@@ -2490,6 +2490,15 @@ export const GENERATED_TOPLEVEL_PATHS: Record<string, ReadonlySet<string>> = {
   // or a lambda TargetType). classify folds `Targets` via the sibling-derived registrar gate
   // (opts.siblingTargetGroupRegistrars) and SURFACES a non-empty membership no registrar explains;
   // an EMPTY live `Targets: []` is dropped by the shared trivial-empty rule either way.
+  // A TargetGroup whose `Name` the template omits reads back CloudFormation's generated
+  // `<stackName>-<logicalId>-<random>` name, TRUNCATED to the 32-char TG-name cap (e.g.
+  // "Cdkrd1-Insta-MCQ3G4BOIKE6"). When the deployed template carries no `aws:cdk:path` metadata
+  // (raw-CFn / stripped), isCfnGeneratedName has no stack name to validate the truncation against
+  // and misses it, so it floods the first run. `Name` is createOnly — an undeclared value is
+  // always the AWS-minted identity, never user intent (a user who pins a Name DECLARES it and it
+  // is compared in the declared loop), so fold it value-independently (same class as the
+  // SecretsManager Secret.Name entry above). Live, #1473 (found while verifying #1451).
+  'AWS::ElasticLoadBalancingV2::TargetGroup': new Set(['Name']),
   // An Application Auto Scaling policy attached to a target via ScalingTargetId (the CDK
   // pattern) reads back the target's ResourceId / ServiceNamespace / ScalableDimension,
   // which AWS derives from the target and the template never declares. They echo the
