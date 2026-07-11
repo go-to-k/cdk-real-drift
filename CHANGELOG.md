@@ -1,3 +1,12 @@
+## [0.12.83](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.82...v0.12.83) (2026-07-11)
+
+
+### Bug Fixes
+
+* **diff:** AppRegistry AttributeGroupAssociation name-echoes-id + EC2 Subnet undeclared AZ first-run FPs ([#1452](https://github.com/go-to-k/cdk-real-drift/issues/1452), [#1453](https://github.com/go-to-k/cdk-real-drift/issues/1453)) ([#1469](https://github.com/go-to-k/cdk-real-drift/issues/1469)) ([e9e2659](https://github.com/go-to-k/cdk-real-drift/commit/e9e2659d14f94ec5d48d9752dc6b130b14c9c807))
+* **noise:** first-run FP folds — ELBv2 TargetGroup TargetType/stickiness + lowercase-identifier case-fold family ([#1451](https://github.com/go-to-k/cdk-real-drift/issues/1451), [#1457](https://github.com/go-to-k/cdk-real-drift/issues/1457)) ([#1468](https://github.com/go-to-k/cdk-real-drift/issues/1468)) ([f90a72e](https://github.com/go-to-k/cdk-real-drift/commit/f90a72e77b4d9da7abb773da59dbe5797125c784))
+* **read:** readEc2NetworkAclEntry skips entries omitting optional Egress — default to schema false ([#1456](https://github.com/go-to-k/cdk-real-drift/issues/1456)) ([#1466](https://github.com/go-to-k/cdk-real-drift/issues/1466)) ([f6c75e9](https://github.com/go-to-k/cdk-real-drift/commit/f6c75e9f02417a1d74732452e875d3501b3eca47))
+
 ## [0.12.82](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.81...v0.12.82) (2026-07-11)
 
 
