@@ -86,9 +86,14 @@ deploy, and `/hunt-bugs` arms per-stack owners. Release only after §1–3 show 
 AUTOARM="autoarm-$(printf '%s' "${CLAUDE_CODE_SESSION_ID:-shared}" | sed 's#[^A-Za-z0-9._-]#_#g')"
 CDKRD_BUGHUNT_OWNER="$AUTOARM" .claude/skills/hunt-bugs/bughunt-track.sh verify --region "$REGION"
 CDKRD_BUGHUNT_OWNER="$AUTOARM" .claude/skills/hunt-bugs/bughunt-track.sh clear
-# any per-owner hunt tracking (run verify + clear from the SAME worktree that armed):
-.claude/skills/hunt-bugs/bughunt-track.sh verify --region "$REGION"
-.claude/skills/hunt-bugs/bughunt-track.sh clear
+# this session's per-session hunt owner (the one /hunt-bugs' `add` uses — #1409):
+SESSION_OWNER="session-${CLAUDE_CODE_SESSION_ID:-shared}"
+CDKRD_BUGHUNT_OWNER="$SESSION_OWNER" .claude/skills/hunt-bugs/bughunt-track.sh verify --region "$REGION"
+CDKRD_BUGHUNT_OWNER="$SESSION_OWNER" .claude/skills/hunt-bugs/bughunt-track.sh clear
+# only if a hunt armed the DEFAULT (main-root) owner and it holds NO peer's stacks
+# (else NEVER clear it — a shared clear drops a peer's pending tracking, #1409):
+.claude/skills/hunt-bugs/bughunt-track.sh list        # inspect first
+# .claude/skills/hunt-bugs/bughunt-track.sh verify --region "$REGION" && clear   # only if peer-free
 ```
 
 `verify` re-runs `sweep-orphans.sh`; `clear` REFUSES without a passing verify stamp, so

@@ -234,6 +234,17 @@ pending-deletion, any `cdkrd:ephemeral`-tagged type), verifies `SWEEP CLEAN`, an
 releases the gate (`bughunt-track verify` + `clear`, incl. this session's
 `autoarm-<session>` owner). Confirm the stacks are gone.
 
+If you also `bughunt-track add` your live-test stacks explicitly (clearer gate
+message than the autoarm backstop), **scope the `add` to this session** —
+`CDKRD_BUGHUNT_OWNER="session-$CLAUDE_CODE_SESSION_ID" … add <stacks>` — so a
+parallel agent's stacks never mix into the shared main-root owner (#1409). An
+unscoped `add` run from the main checkout shares ONE owner file with every other
+session, and a `clear` empties the whole file — dropping a peer's still-pending
+tracking. If you inadvertently shared it, NEVER `clear` the shared owner while it
+lists a peer's stacks; release only your `autoarm-<session>` token and merge from a
+worktree cwd (the merge gate scopes by the committing worktree owner + your
+`autoarm`, not the shared main-root owner).
+
 `/verify-pr` sets the `check` + `docs` + `verify-pr` markers, which unblock
 `gh pr merge`. Docs/tooling-only PRs (no `src/**`) are EXEMPT from the live-test —
 `check` + `docs` suffice.
