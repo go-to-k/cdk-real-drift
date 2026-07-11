@@ -1,3 +1,10 @@
+## [0.12.85](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.84...v0.12.85) (2026-07-11)
+
+
+### Bug Fixes
+
+* **noise:** fold ELBv2 TargetGroup generated Name value-independently — first-run FP ([#1473](https://github.com/go-to-k/cdk-real-drift/issues/1473)) ([#1474](https://github.com/go-to-k/cdk-real-drift/issues/1474)) ([2b84ecb](https://github.com/go-to-k/cdk-real-drift/commit/2b84ecbf54a1f9bcb90cb14f40d464e331d1c97e))
+
 ## [0.12.84](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.83...v0.12.84) (2026-07-11)
 
 
