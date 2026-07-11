@@ -1135,6 +1135,27 @@ export function buildRevertPlan(
       });
       continue;
     }
+    // A type whose Cloud Control UpdateResource rejects ANY patch (CC_UPDATE_REJECTED_TYPES —
+    // e.g. KinesisVideo Stream / SignalingChannel, whose Tags schema has minItems:1 so a CC PUT
+    // never validates) but that DOES have an update handler (so the #908/#1091 bar above did not
+    // fire): a cc-kind revert of a path NOT covered by a type-specific SDK writer would emit a
+    // patch that always fails at apply with a raw error. Bar it up front, EXEMPT for a
+    // writer-covered path (SDK_WRITERS / prop- / nested-scoped) exactly like the bars above. (#1313)
+    if (
+      CC_UPDATE_REJECTED_TYPES.has(f.resourceType) &&
+      !SDK_WRITERS[f.resourceType] &&
+      !propScoped &&
+      !nestedScoped
+    ) {
+      notRevertable.push({
+        displayId,
+        resourceType: f.resourceType,
+        path: f.path,
+        reason:
+          'type rejects any Cloud Control patch (Tags minItems:1) — no SDK writer for this path, detect/record only',
+      });
+      continue;
+    }
     const kind: RevertItem['kind'] =
       SDK_WRITERS[f.resourceType] || propScoped || nestedScoped ? 'sdk' : 'cc';
 
@@ -1501,6 +1522,18 @@ export function tagPreservingOps(
 // echoes `TargetAccountIds: []` inside EACH Distributions[i].AmiDistributionConfiguration,
 // out of reach of a static object-only pointer). Each `*` fans the pointer out to one
 // concrete pointer per live index.
+// Resource types whose Cloud Control UpdateResource REJECTS ANY patch (e.g. a Tags schema
+// with minItems:1 means a CC PUT can never validate), yet the registry schema HAS an update
+// handler (so the #908/#1091 no-update-handler bar does not fire). A cc-kind revert of a path
+// NOT covered by a type-specific SDK writer would emit a patch that always fails at apply with
+// a raw error — bar it as notRevertable up front instead. KinesisVideo Stream / SignalingChannel
+// are the known members; the 3 writer-covered paths (DataRetentionInHours / MessageTtlSeconds /
+// StreamStorageConfiguration) stay revertable via their SDK writers (the exemption below). (#1313)
+const CC_UPDATE_REJECTED_TYPES = new Set<string>([
+  'AWS::KinesisVideo::Stream',
+  'AWS::KinesisVideo::SignalingChannel',
+]);
+
 export const CC_UPDATE_REJECTED_EMPTY_PATHS: Record<string, readonly string[]> = {
   'AWS::VpcLattice::Rule': ['/Match/HttpMatch/HeaderMatches'],
   // ImageBuilder folds its own read-back state into UpdateDistributionConfiguration, and
