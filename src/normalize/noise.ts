@@ -1603,6 +1603,19 @@ export const KNOWN_DEFAULT_ONE_OF: Record<string, Record<string, readonly unknow
   'AWS::ApiGatewayV2::Integration': {
     TimeoutInMillis: [29000, 30000],
   },
+  // #1486: a SecurityHub Hub materializes ControlFindingGenerator at creation, and the value is
+  // ERA-dependent (the S3 TransitionDefaultMinimumObjectSize class, #1249): a hub enabled after
+  // consolidated control findings GA (2023-02) reads "SECURITY_CONTROL", one enabled before that
+  // never opted in reads "STANDARD_CONTROL". Both are stable constants, but the discriminator —
+  // the account's enablement era — is off the resource's own model, so a single KNOWN_DEFAULTS
+  // constant would first-run-FP on the other era (the same-template asymmetry ONE_OF exists for).
+  // Folding {SECURITY_CONTROL, STANDARD_CONTROL} keeps a clean hub of either era at zero first-run
+  // drift while equality-gating preserves detection: a user who DECLARES it is compared in the
+  // declared dimension (never folded), and any THIRD value still surfaces. ONE_OF tradeoff — an
+  // out-of-band flip between the two folds silently, accepted only because the value is undeclared.
+  'AWS::SecurityHub::Hub': {
+    ControlFindingGenerator: ['SECURITY_CONTROL', 'STANDARD_CONTROL'],
+  },
 };
 
 // The NESTED-path twin of KNOWN_DEFAULT_ONE_OF (#979): a nested undeclared value whose AWS
