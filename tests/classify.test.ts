@@ -12614,3 +12614,64 @@ describe('EB Application ResourceLifecycleConfig ServiceRole residual (#1437)', 
     expect(t.generated).toEqual(['ResourceLifecycleConfig.ServiceRole']);
   });
 });
+
+// #1486: SecurityHub Hub ControlFindingGenerator is an era-dependent creation default folded via
+// the top-level KNOWN_DEFAULT_ONE_OF {SECURITY_CONTROL, STANDARD_CONTROL}. A fresh hub (harvested
+// live 2026-07-12) reads SECURITY_CONTROL; a pre-2023 hub reads STANDARD_CONTROL. Either folds to
+// atDefault (zero first-run drift); a third value or a declared value still surfaces.
+describe('#1486 SecurityHub::Hub ControlFindingGenerator era-dependent ONE_OF default', () => {
+  const emptySchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const hub = (declared: Record<string, unknown>): DesiredResource => ({
+    logicalId: 'HuntHub',
+    resourceType: 'AWS::SecurityHub::Hub',
+    physicalId: 'arn:aws:securityhub:us-east-1:123456789012:hub/default',
+    declared,
+  });
+  // The full live model of a fresh hub, harvested 2026-07-12 (issue #1486). SubscribedAt / ARN
+  // are already stripped/folded elsewhere; AutoEnableControls did not surface.
+  const cleanLive = { ControlFindingGenerator: 'SECURITY_CONTROL', AutoEnableControls: false };
+
+  it('folds the fresh-hub ControlFindingGenerator=SECURITY_CONTROL to atDefault (zero drift)', () => {
+    const t = tiers(classifyResource(hub({}), cleanLive, emptySchema));
+    expect(t.atDefault).toContain('ControlFindingGenerator');
+    expect(t.undeclared).not.toContain('ControlFindingGenerator');
+  });
+
+  it('folds the pre-2023 era default ControlFindingGenerator=STANDARD_CONTROL too', () => {
+    const t = tiers(
+      classifyResource(hub({}), { ControlFindingGenerator: 'STANDARD_CONTROL' }, emptySchema)
+    );
+    expect(t.atDefault).toContain('ControlFindingGenerator');
+    expect(t.undeclared).not.toContain('ControlFindingGenerator');
+  });
+
+  it('surfaces a THIRD, non-default ControlFindingGenerator value (detection preserved)', () => {
+    const t = tiers(
+      classifyResource(hub({}), { ControlFindingGenerator: 'SOMETHING_ELSE' }, emptySchema)
+    );
+    expect(t.undeclared).toContain('ControlFindingGenerator');
+    expect(t.atDefault).not.toContain('ControlFindingGenerator');
+  });
+
+  it('does not fold the same value on an UNLISTED resource type', () => {
+    const other: DesiredResource = {
+      logicalId: 'X',
+      resourceType: 'AWS::Other::Thing',
+      physicalId: 'x',
+      declared: {},
+    };
+    const t = tiers(
+      classifyResource(other, { ControlFindingGenerator: 'SECURITY_CONTROL' }, emptySchema)
+    );
+    expect(t.undeclared).toContain('ControlFindingGenerator');
+  });
+});
