@@ -1,3 +1,10 @@
+## [0.12.65](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.64...v0.12.65) (2026-07-11)
+
+
+### Bug Fixes
+
+* **revert:** route EB Application ResourceLifecycleConfig through UpdateApplicationResourceLifecycle ([#1295](https://github.com/go-to-k/cdk-real-drift/issues/1295)) ([#1436](https://github.com/go-to-k/cdk-real-drift/issues/1436)) ([64bcca4](https://github.com/go-to-k/cdk-real-drift/commit/64bcca46d3d05eeba45afe936bf43b3de17c86a4))
+
 ## [0.12.64](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.63...v0.12.64) (2026-07-11)
 
 
