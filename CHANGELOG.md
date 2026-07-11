@@ -1,3 +1,10 @@
+## [0.12.69](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.68...v0.12.69) (2026-07-11)
+
+
+### Bug Fixes
+
+* **revert:** whole-array revert for ALL identity-sorted object arrays, not just {Key,Value} tags ([#1271](https://github.com/go-to-k/cdk-real-drift/issues/1271)) ([#1440](https://github.com/go-to-k/cdk-real-drift/issues/1440)) ([25c9eaf](https://github.com/go-to-k/cdk-real-drift/commit/25c9eafcd289ebc6294189d53b542e33a11e9e9d))
+
 ## [0.12.68](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.67...v0.12.68) (2026-07-11)
 
 
