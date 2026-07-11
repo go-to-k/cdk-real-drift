@@ -487,6 +487,12 @@ before deploying. As a pipeline gate:
 `--pre-deploy` reports **declared** drift only (the undeclared tier is defined
 against the _deployed_ template) and never touches the baseline.
 
+One caveat on template **parameters**: for an existing parameter a plain
+`cdk deploy` keeps the deployed value (`UsePreviousValue`), so drift previewed
+from a **changed local `Default`** is applied only if you pass
+`--parameters <key>=<value>` / `--no-previous-parameters` — `check` prints a
+stderr note naming each such parameter and both values.
+
 ### Ignoring externally-managed properties
 
 Some properties are _legitimately_ rewritten by another system, such as Application
