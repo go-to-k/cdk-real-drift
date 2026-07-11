@@ -1,3 +1,11 @@
+## [0.12.97](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.96...v0.12.97) (2026-07-11)
+
+
+### Bug Fixes
+
+* **diff:** fold ON_DEMAND Kinesis stream undeclared ShardCount ([#1487](https://github.com/go-to-k/cdk-real-drift/issues/1487)) ([#1497](https://github.com/go-to-k/cdk-real-drift/issues/1497)) ([981bd75](https://github.com/go-to-k/cdk-real-drift/commit/981bd75f511ce84abc54dd8b3d7f5417ac9a8b8c))
+* **read:** surface an out-of-band KMS grant as a synthetic added AWS::KMS::Grant ([#835](https://github.com/go-to-k/cdk-real-drift/issues/835)) ([#1496](https://github.com/go-to-k/cdk-real-drift/issues/1496)) ([4b681f2](https://github.com/go-to-k/cdk-real-drift/commit/4b681f2f415a86f08026d4bcd776f2196f01220f))
+
 ## [0.12.96](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.95...v0.12.96) (2026-07-11)
 
 
