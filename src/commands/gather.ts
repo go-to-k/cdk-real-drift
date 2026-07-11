@@ -377,10 +377,16 @@ export function addedFinding(
 // GetResource keyed on the secret ARN the enumerator carries would fail. The enumerator's `live`
 // snippet ({ SecretId, ResourcePolicy }) IS the recordable model; use it. (Its real delete goes
 // through the `deleteSecretsManagerResourcePolicy` SDK deleter — DeleteResourcePolicy — not CC.)
+// AWS::SNS::TopicPolicy (#835): same generated-`Id` primaryIdentifier situation — an out-of-band
+// `set-topic-attributes Policy=…` produces no CFn `Id`, so a CC GetResource keyed on the topic ARN
+// the enumerator carries would fail. The enumerator's `live` snippet ({ Topics, PolicyDocument }) IS
+// the recordable model; use it. (Its real delete goes through the `deleteSnsTopicPolicy` SDK deleter
+// — SetTopicAttributes back to the AWS-default policy — not CC.)
 const CC_GET_UNSUPPORTED_ADDED_TYPES = new Set<string>([
   'AWS::Route53::RecordSet',
   'AWS::SQS::QueuePolicy',
   'AWS::SecretsManager::ResourcePolicy',
+  'AWS::SNS::TopicPolicy',
 ]);
 
 // Read the added child's FULL live model via Cloud Control GetResource (its

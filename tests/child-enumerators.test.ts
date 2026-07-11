@@ -35,7 +35,11 @@ import {
   GetResourcePolicyCommand as SecretsGetResourcePolicyCommand,
   SecretsManagerClient,
 } from '@aws-sdk/client-secrets-manager';
-import { ListSubscriptionsByTopicCommand, SNSClient } from '@aws-sdk/client-sns';
+import {
+  GetTopicAttributesCommand,
+  ListSubscriptionsByTopicCommand,
+  SNSClient,
+} from '@aws-sdk/client-sns';
 import { GetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { mockClient } from 'aws-sdk-client-mock';
 import { describe, expect, it } from 'vite-plus/test';
@@ -87,6 +91,8 @@ import {
   diffS3BucketPolicy,
   diffSecretsManagerResourcePolicy,
   diffSnsTopicChildren,
+  diffSnsTopicPolicy,
+  isDefaultSnsTopicPolicy,
   diffSqsQueuePolicy,
   diffUserPoolChildren,
   diffUserPoolGroups,
@@ -1064,6 +1070,150 @@ describe('diffSnsTopicChildren (SNS Topic subscriptions)', () => {
       ],
     });
     expect(added.map((a) => a.identifier)).toEqual([SUB('webhook')]);
+  });
+});
+
+// The AWS-default SNS topic access policy, captured live — every fresh topic carries this.
+const defaultSnsPolicy = (topicArn: string, account: string): Record<string, unknown> => ({
+  Version: '2008-10-17',
+  Id: '__default_policy_ID',
+  Statement: [
+    {
+      Sid: '__default_statement_ID',
+      Effect: 'Allow',
+      Principal: { AWS: '*' },
+      Action: [
+        'SNS:GetTopicAttributes',
+        'SNS:SetTopicAttributes',
+        'SNS:AddPermission',
+        'SNS:RemovePermission',
+        'SNS:DeleteTopic',
+        'SNS:Subscribe',
+        'SNS:ListSubscriptionsByTopic',
+        'SNS:Publish',
+      ],
+      Resource: topicArn,
+      Condition: { StringEquals: { 'AWS:SourceOwner': account } },
+    },
+  ],
+});
+
+describe('isDefaultSnsTopicPolicy (discriminate AWS-default from custom/OOB)', () => {
+  const ARN = 'arn:aws:sns:us-east-1:111122223333:my-topic';
+
+  it('recognizes the exact AWS-default policy as default', () => {
+    expect(isDefaultSnsTopicPolicy(defaultSnsPolicy(ARN, '111122223333'), ARN)).toBe(true);
+  });
+
+  it('is order-insensitive on the Action list', () => {
+    const p = defaultSnsPolicy(ARN, '111122223333');
+    (p.Statement as Record<string, unknown>[])[0]!.Action = [
+      'SNS:Publish',
+      'SNS:Subscribe',
+      'SNS:GetTopicAttributes',
+      'SNS:SetTopicAttributes',
+      'SNS:AddPermission',
+      'SNS:RemovePermission',
+      'SNS:DeleteTopic',
+      'SNS:ListSubscriptionsByTopic',
+    ];
+    expect(isDefaultSnsTopicPolicy(p, ARN)).toBe(true);
+  });
+
+  it('undefined policy is not the default', () => {
+    expect(isDefaultSnsTopicPolicy(undefined, ARN)).toBe(false);
+  });
+
+  it('a custom policy (narrowed actions) is NOT the default', () => {
+    const p = defaultSnsPolicy(ARN, '111122223333');
+    (p.Statement as Record<string, unknown>[])[0]!.Action = ['SNS:Publish'];
+    expect(isDefaultSnsTopicPolicy(p, ARN)).toBe(false);
+  });
+
+  it('an extra statement (rogue grant) is NOT the default', () => {
+    const p = defaultSnsPolicy(ARN, '111122223333');
+    (p.Statement as Record<string, unknown>[]).push({
+      Sid: 'rogue',
+      Effect: 'Allow',
+      Principal: { AWS: 'arn:aws:iam::999999999999:root' },
+      Action: 'SNS:Publish',
+      Resource: ARN,
+    });
+    expect(isDefaultSnsTopicPolicy(p, ARN)).toBe(false);
+  });
+
+  it('a different SourceOwner (cross-account) is NOT the default', () => {
+    const p = defaultSnsPolicy(ARN, '999999999999');
+    expect(isDefaultSnsTopicPolicy(p, ARN)).toBe(false);
+  });
+
+  it('a wide-open policy without the SourceOwner condition is NOT the default', () => {
+    const p = defaultSnsPolicy(ARN, '111122223333');
+    delete (p.Statement as Record<string, unknown>[])[0]!.Condition;
+    expect(isDefaultSnsTopicPolicy(p, ARN)).toBe(false);
+  });
+
+  it('a different Resource (wrong topic) is NOT the default', () => {
+    const p = defaultSnsPolicy(ARN, '111122223333');
+    (p.Statement as Record<string, unknown>[])[0]!.Resource =
+      'arn:aws:sns:us-east-1:111122223333:other-topic';
+    expect(isDefaultSnsTopicPolicy(p, ARN)).toBe(false);
+  });
+});
+
+describe('diffSnsTopicPolicy (SNS Topic access policy, #835)', () => {
+  const ARN = 'arn:aws:sns:us-east-1:111122223333:my-topic';
+
+  it('folds the AWS-default policy — a clean topic shows NO drift (zero first-run FP)', () => {
+    expect(
+      diffSnsTopicPolicy({
+        topicArn: ARN,
+        hasDeclaredPolicy: false,
+        livePolicy: defaultSnsPolicy(ARN, '111122223333'),
+      })
+    ).toEqual([]);
+  });
+
+  it('surfaces an out-of-band custom policy as an added AWS::SNS::TopicPolicy', () => {
+    const custom = {
+      Version: '2008-10-17',
+      Statement: [
+        {
+          Sid: 'rogue',
+          Effect: 'Allow',
+          Principal: { AWS: '*' },
+          Action: 'SNS:Publish',
+          Resource: ARN,
+        },
+      ],
+    };
+    const added = diffSnsTopicPolicy({
+      topicArn: ARN,
+      hasDeclaredPolicy: false,
+      livePolicy: custom,
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::SNS::TopicPolicy',
+        identifier: ARN,
+        siblingLookupId: ARN,
+        label: `topic policy ${ARN}`,
+        live: { Topics: [ARN], PolicyDocument: custom },
+      },
+    ]);
+  });
+
+  it('suppresses when a declared TopicPolicy covers the topic (declared-tier diff)', () => {
+    const custom = { Version: '2008-10-17', Statement: [{ Effect: 'Allow' }] };
+    expect(
+      diffSnsTopicPolicy({ topicArn: ARN, hasDeclaredPolicy: true, livePolicy: custom })
+    ).toEqual([]);
+  });
+
+  it('no live policy at all -> nothing (fail-safe)', () => {
+    expect(
+      diffSnsTopicPolicy({ topicArn: ARN, hasDeclaredPolicy: false, livePolicy: undefined })
+    ).toEqual([]);
   });
 });
 
@@ -3586,12 +3736,18 @@ describe('child enumerators fail safe on an UNRESOLVED parent-ref (#962)', () =>
   it('SNS subscription: an UNRESOLVED TopicArn is NOT flagged added (defect 2)', async () => {
     const subArn =
       'arn:aws:sns:us-east-1:111122223333:my-topic:00000000-1111-2222-3333-444444444444';
+    const topicArn = 'arn:aws:sns:us-east-1:111122223333:my-topic';
     const sns = mockClient(SNSClient);
     sns.on(ListSubscriptionsByTopicCommand).resolves({
       Subscriptions: [{ SubscriptionArn: subArn, Protocol: 'sqs', Endpoint: 'q' }],
     });
+    // The topic-policy dimension (#835) also calls GetTopicAttributes: return the AWS-default
+    // policy so no spurious `added AWS::SNS::TopicPolicy` surfaces in this subscription-only test.
+    sns.on(GetTopicAttributesCommand).resolves({
+      Attributes: { Policy: JSON.stringify(defaultSnsPolicy(topicArn, '111122223333')) },
+    });
     const ctx = {
-      parent: { physicalId: 'arn:aws:sns:us-east-1:111122223333:my-topic', logicalId: 'Topic' },
+      parent: { physicalId: topicArn, logicalId: 'Topic' },
       desired: {
         // The declared subscription targets this topic, but its TopicArn is UNRESOLVED
         // (e.g. a `Ref` to a no-default Parameter). Its physical id IS the SubscriptionArn.
@@ -3608,6 +3764,89 @@ describe('child enumerators fail safe on an UNRESOLVED parent-ref (#962)', () =>
     } as unknown as EnumeratorContext;
     const added = await enumerateSnsTopicChildren(ctx);
     expect(added).toEqual([]);
+    sns.restore();
+  });
+
+  it('SNS topic policy #835: an out-of-band custom policy surfaces as added AWS::SNS::TopicPolicy', async () => {
+    const topicArn = 'arn:aws:sns:us-east-1:111122223333:my-topic';
+    const custom = {
+      Version: '2008-10-17',
+      Statement: [
+        {
+          Sid: 'rogue',
+          Effect: 'Allow',
+          Principal: { AWS: '*' },
+          Action: 'SNS:Publish',
+          Resource: topicArn,
+        },
+      ],
+    };
+    const sns = mockClient(SNSClient);
+    sns.on(ListSubscriptionsByTopicCommand).resolves({ Subscriptions: [] });
+    sns.on(GetTopicAttributesCommand).resolves({ Attributes: { Policy: JSON.stringify(custom) } });
+    const ctx = {
+      parent: { physicalId: topicArn, logicalId: 'Topic' },
+      desired: { resources: [], ctx: { liveAttrs: {} } },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    const added = await enumerateSnsTopicChildren(ctx);
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::SNS::TopicPolicy',
+        identifier: topicArn,
+        siblingLookupId: topicArn,
+        label: `topic policy ${topicArn}`,
+        live: { Topics: [topicArn], PolicyDocument: custom },
+      },
+    ]);
+    sns.restore();
+  });
+
+  it('SNS topic policy #835: the AWS-default policy folds — a clean topic is CLEAN (zero FP)', async () => {
+    const topicArn = 'arn:aws:sns:us-east-1:111122223333:my-topic';
+    const sns = mockClient(SNSClient);
+    sns.on(ListSubscriptionsByTopicCommand).resolves({ Subscriptions: [] });
+    sns.on(GetTopicAttributesCommand).resolves({
+      Attributes: { Policy: JSON.stringify(defaultSnsPolicy(topicArn, '111122223333')) },
+    });
+    const ctx = {
+      parent: { physicalId: topicArn, logicalId: 'Topic' },
+      desired: { resources: [], ctx: { liveAttrs: {} } },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    expect(await enumerateSnsTopicChildren(ctx)).toEqual([]);
+    sns.restore();
+  });
+
+  it('SNS topic policy #835: a declared TopicPolicy suppresses the added finding', async () => {
+    const topicArn = 'arn:aws:sns:us-east-1:111122223333:my-topic';
+    const custom = { Version: '2008-10-17', Statement: [{ Sid: 'x', Effect: 'Allow' }] };
+    const sns = mockClient(SNSClient);
+    sns.on(ListSubscriptionsByTopicCommand).resolves({ Subscriptions: [] });
+    sns.on(GetTopicAttributesCommand).resolves({ Attributes: { Policy: JSON.stringify(custom) } });
+    const ctx = {
+      parent: { physicalId: topicArn, logicalId: 'Topic' },
+      desired: {
+        resources: [{ resourceType: 'AWS::SNS::TopicPolicy', declared: { Topics: [topicArn] } }],
+        ctx: { liveAttrs: {} },
+      },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    expect(await enumerateSnsTopicChildren(ctx)).toEqual([]);
+    sns.restore();
+  });
+
+  it('SNS topic policy #835: a GetTopicAttributes error PROPAGATES (parent skipped, no false added)', async () => {
+    const topicArn = 'arn:aws:sns:us-east-1:111122223333:my-topic';
+    const sns = mockClient(SNSClient);
+    sns.on(ListSubscriptionsByTopicCommand).resolves({ Subscriptions: [] });
+    sns.on(GetTopicAttributesCommand).rejects(new Error('AccessDenied'));
+    const ctx = {
+      parent: { physicalId: topicArn, logicalId: 'Topic' },
+      desired: { resources: [], ctx: { liveAttrs: {} } },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    await expect(enumerateSnsTopicChildren(ctx)).rejects.toThrow('AccessDenied');
     sns.restore();
   });
 });

@@ -3181,9 +3181,58 @@ const deleteSecretsManagerResourcePolicy: SdkDeleter = async (ctx) => {
   );
 };
 
+// AWS::SNS::TopicPolicy: CC has no usable delete for an out-of-band policy (its primaryIdentifier
+// is a service-generated `Id` the `set-topic-attributes Policy=…` never produces), so an added
+// topic policy found by the SNS child enumerator (#835) is reverted via SetTopicAttributes. UNLIKE
+// SQS (whose empty-Policy set removes it) SNS REJECTS an empty Policy (`InvalidParameter: Policy is
+// empty`, verified live) and a topic ALWAYS carries a policy — so the "delete" here RESTORES the
+// AWS-DEFAULT access policy (the one every fresh topic gets: the owner granted the eight default
+// actions gated on `AWS:SourceOwner`, Resource = the topic ARN). This is the exact state a clean
+// topic is in, so a subsequent `check` folds it (isDefaultSnsTopicPolicy) and reports CLEAN. The
+// finding carries the TOPIC ARN as its physicalId (the enumerator identity), from which the owner
+// account is parsed to rebuild the default. Re-setting an already-default policy is idempotent
+// (the delete goal state; applyRevertDeleteSdk treats it as success).
+const deleteSnsTopicPolicy: SdkDeleter = async (ctx) => {
+  const topicArn = ctx.physicalId;
+  const seg = topicArn.split(':');
+  const account = seg.length >= 6 ? seg[4] : undefined;
+  if (!account) throw new Error('cannot resolve the owner account for the SNS TopicPolicy revert');
+  const defaultPolicy = JSON.stringify({
+    Version: '2008-10-17',
+    Id: '__default_policy_ID',
+    Statement: [
+      {
+        Sid: '__default_statement_ID',
+        Effect: 'Allow',
+        Principal: { AWS: '*' },
+        Action: [
+          'SNS:GetTopicAttributes',
+          'SNS:SetTopicAttributes',
+          'SNS:AddPermission',
+          'SNS:RemovePermission',
+          'SNS:DeleteTopic',
+          'SNS:Subscribe',
+          'SNS:ListSubscriptionsByTopic',
+          'SNS:Publish',
+        ],
+        Resource: topicArn,
+        Condition: { StringEquals: { 'AWS:SourceOwner': account } },
+      },
+    ],
+  });
+  await new SNSClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
+    new SetTopicAttributesCommand({
+      TopicArn: topicArn,
+      AttributeName: 'Policy',
+      AttributeValue: defaultPolicy,
+    })
+  );
+};
+
 export const SDK_DELETERS: Record<string, SdkDeleter> = {
   'AWS::AppSync::ApiKey': deleteAppSyncApiKey,
   'AWS::Route53::RecordSet': deleteRoute53RecordSet,
   'AWS::SQS::QueuePolicy': deleteSqsQueuePolicy,
   'AWS::SecretsManager::ResourcePolicy': deleteSecretsManagerResourcePolicy,
+  'AWS::SNS::TopicPolicy': deleteSnsTopicPolicy,
 };

@@ -146,6 +146,7 @@ import {
   SecretsManagerClient,
 } from '@aws-sdk/client-secrets-manager';
 import {
+  GetTopicAttributesCommand,
   ListSubscriptionsByTopicCommand,
   SNSClient,
   type Subscription as SnsSubscription,
@@ -261,7 +262,8 @@ export type ChildEnumerator = (ctx: EnumeratorContext) => Promise<AddedChild[]>;
 
 // Registry: declared parent TYPE -> child enumerator. Grown one type at a time,
 // exactly like SDK_OVERRIDES. API Gateway REST APIs were the first member; API Gateway
-// V2 (HTTP / WebSocket) APIs the second; SNS Topics (subscriptions) the third; Lambda
+// V2 (HTTP / WebSocket) APIs the second; SNS Topics (subscriptions, plus an out-of-band
+// access policy set with no declared AWS::SNS::TopicPolicy, #835) the third; Lambda
 // Functions (event source mappings, function URLs, aliases, versions, and out-of-band
 // resource-policy statements #835) the fourth; EventBridge event buses (rules) the fifth;
 // Cognito User Pools (clients) the sixth; AppSync GraphQL APIs (data sources) the seventh;
@@ -1511,6 +1513,22 @@ export async function enumerateSnsTopicChildren(ctx: EnumeratorContext): Promise
     }
   }
 
+  // A declared AWS::SNS::TopicPolicy covers this topic iff one of its (gather-resolved) `Topics`
+  // equals this topic's ARN (the declared override reader `readSnsTopicPolicy` handles it). A
+  // declared TopicPolicy whose `Topics` is UNRESOLVED is conservatively treated as covering this
+  // topic — a false `added` on a clean deploy is worse than a missed rogue.
+  let hasDeclaredPolicy = false;
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::SNS::TopicPolicy') continue;
+    const topics = r.declared.Topics;
+    if (Array.isArray(topics)) {
+      if (topics.some((t) => t === topicArn)) hasDeclaredPolicy = true;
+      else if (topics.some((t) => hasUnresolved(t))) hasDeclaredPolicy = true;
+    } else if (topics !== undefined && hasUnresolved(topics)) {
+      hasDeclaredPolicy = true;
+    }
+  }
+
   const client = new SNSClient({ region, ...READ_RETRY });
   const subs = await pageSubscriptions(client, topicArn);
   const liveSubscriptions = subs
@@ -1528,7 +1546,143 @@ export async function enumerateSnsTopicChildren(ctx: EnumeratorContext): Promise
       owner: s.Owner, // owning account — foreign-scope signal for the sibling-stack check (#1322)
     }));
 
-  return diffSnsTopicChildren({ declaredSubscriptionArns, liveSubscriptions });
+  // The topic's access policy is the second out-of-band dimension (#835): an out-of-band
+  // `set-topic-attributes Policy=…` on a topic with no declared AWS::SNS::TopicPolicy. Unlike
+  // subscriptions, every topic ALWAYS carries a (default) policy, so the diff folds the derived
+  // default and only surfaces a divergent one.
+  const livePolicy = await readSnsTopicPolicyDocument(client, topicArn);
+
+  return diffSnsTopicChildren({ declaredSubscriptionArns, liveSubscriptions }).concat(
+    diffSnsTopicPolicy({ topicArn, hasDeclaredPolicy, livePolicy })
+  );
+}
+
+// The AWS-default SNS topic access policy — every topic ALWAYS carries one at creation, so
+// (unlike S3/SQS/Secrets, which have NO default policy) "a policy is present" is NOT drift.
+// The default is a DERIVED default (fold tier 2): a deterministic function of the topic ARN
+// (its `Resource`) + the owner account (`AWS:SourceOwner` + parsed from the ARN). We rebuild
+// it and structurally compare; only a policy that DIFFERS from this derived default surfaces
+// as an out-of-band change — a change back to (or matching) the AWS default never false-flags
+// on a first `check`. The exact default was captured live: `Version` 2008-10-17,
+// `Id` __default_policy_ID, a single statement Sid __default_statement_ID granting the owner
+// the eight default topic actions gated on `AWS:SourceOwner` = the account.
+const SNS_DEFAULT_POLICY_ACTIONS = [
+  'SNS:GetTopicAttributes',
+  'SNS:SetTopicAttributes',
+  'SNS:AddPermission',
+  'SNS:RemovePermission',
+  'SNS:DeleteTopic',
+  'SNS:Subscribe',
+  'SNS:ListSubscriptionsByTopic',
+  'SNS:Publish',
+];
+
+// Parse the owner account id from a topic ARN (arn:PARTITION:sns:REGION:ACCOUNT:NAME).
+function accountFromTopicArn(topicArn: string): string | undefined {
+  const seg = topicArn.split(':');
+  return seg.length >= 6 && seg[4] ? seg[4] : undefined;
+}
+
+// Does the live topic policy EQUAL the AWS-assigned default for this topic? Structural,
+// order-insensitive on the Action list (AWS returns it as an array in a fixed order, but be
+// robust). A single statement matching the default shape (owner principal, the eight default
+// actions, Resource = the topic ARN, SourceOwner = the account) IS the default. Anything else
+// — an extra statement, a different principal/action/condition, a narrowed/broadened grant —
+// is a custom or out-of-band policy that must surface.
+export function isDefaultSnsTopicPolicy(
+  policy: Record<string, unknown> | undefined,
+  topicArn: string
+): boolean {
+  if (!policy) return false; // no policy at all is not the "default present" case
+  const account = accountFromTopicArn(topicArn);
+  if (!account) return false; // cannot derive the default -> treat as non-default (surface)
+  const rawStmts = policy.Statement;
+  const stmts = Array.isArray(rawStmts) ? rawStmts : rawStmts !== undefined ? [rawStmts] : [];
+  if (stmts.length !== 1) return false;
+  const s = stmts[0];
+  if (typeof s !== 'object' || s === null || Array.isArray(s)) return false;
+  const st = s as Record<string, unknown>;
+  if (st.Effect !== 'Allow') return false;
+  // Principal { AWS: '*' } — the default is world-open, GATED by the SourceOwner condition.
+  const principal = st.Principal;
+  if (typeof principal !== 'object' || principal === null || Array.isArray(principal)) return false;
+  if ((principal as Record<string, unknown>).AWS !== '*') return false;
+  // Actions — exactly the eight default actions (order-insensitive).
+  const actions = Array.isArray(st.Action) ? st.Action : st.Action !== undefined ? [st.Action] : [];
+  if (actions.length !== SNS_DEFAULT_POLICY_ACTIONS.length) return false;
+  const wantActions = new Set(SNS_DEFAULT_POLICY_ACTIONS);
+  if (!actions.every((a) => typeof a === 'string' && wantActions.has(a))) return false;
+  // Resource — the topic ARN (a scalar or a one-element list).
+  const resources = Array.isArray(st.Resource)
+    ? st.Resource
+    : st.Resource !== undefined
+      ? [st.Resource]
+      : [];
+  if (resources.length !== 1 || resources[0] !== topicArn) return false;
+  // Condition StringEquals AWS:SourceOwner = the owner account.
+  const cond = st.Condition;
+  if (typeof cond !== 'object' || cond === null || Array.isArray(cond)) return false;
+  const strEq = (cond as Record<string, unknown>).StringEquals;
+  if (typeof strEq !== 'object' || strEq === null || Array.isArray(strEq)) return false;
+  const condKeys = Object.keys(strEq as Record<string, unknown>);
+  if (condKeys.length !== 1) return false;
+  if ((strEq as Record<string, unknown>)['AWS:SourceOwner'] !== account) return false;
+  // The statement matched the default in every field; ignore the sentinel Id/Sid (cosmetic).
+  return true;
+}
+
+// Pure diff: whether a declared TopicPolicy covers this topic + the live policy document ->
+// the added TopicPolicy (if any). Unlike S3/SQS/Secrets, a topic ALWAYS has a policy, so the
+// AWS-default (derived from the topic ARN + owner account) is folded — only a divergent policy
+// is surfaced. Separated from the SDK call so the matching logic is unit-tested offline.
+export function diffSnsTopicPolicy(input: {
+  topicArn: string; // the Topic's physical id (ARN) — the SDK-deleter target + the finding identity
+  // A declared AWS::SNS::TopicPolicy targets this topic (so the declared override reader already
+  // handles it) OR the stack declares one whose `Topics` is UNRESOLVED (conservatively covered).
+  hasDeclaredPolicy: boolean;
+  livePolicy: Record<string, unknown> | undefined; // parsed live topic access policy, or undefined
+}): AddedChild[] {
+  // A declared TopicPolicy already covers this topic's policy (declared-tier diff).
+  if (input.hasDeclaredPolicy) return [];
+  // No live policy at all -> nothing to report (should not happen for a real topic, but safe).
+  if (!input.livePolicy) return [];
+  // The AWS-assigned DEFAULT policy is NOT drift (every clean topic carries it) — fold it.
+  if (isDefaultSnsTopicPolicy(input.livePolicy, input.topicArn)) return [];
+  return [
+    {
+      resourceType: 'AWS::SNS::TopicPolicy',
+      // The CC primaryIdentifier is a generated `Id` unavailable for an out-of-band policy;
+      // carry the topic ARN as the identity — the SDK deleter's SetTopicAttributes target,
+      // and (type-gated) the sibling-stack membership lookup key.
+      identifier: input.topicArn,
+      siblingLookupId: input.topicArn,
+      label: `topic policy ${input.topicArn}`,
+      live: { Topics: [input.topicArn], PolicyDocument: input.livePolicy },
+    },
+  ];
+}
+
+// Read the topic's live access policy document via GetTopicAttributes. A topic ALWAYS has a
+// `Policy` attribute (the AWS default), so a genuinely absent one maps to `undefined` (folded
+// downstream). A `Policy` present but not parseable as a JSON object is treated as absent. Any
+// error (throttle, AccessDenied, NotFound) is left to propagate: gather turns it into a
+// `skipped` finding on the parent (coverage-incomplete), never a false `added`.
+async function readSnsTopicPolicyDocument(
+  client: SNSClient,
+  topicArn: string
+): Promise<Record<string, unknown> | undefined> {
+  const res = await client.send(new GetTopicAttributesCommand({ TopicArn: topicArn }));
+  const policyJson = res.Attributes?.Policy;
+  if (!policyJson) return undefined;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(policyJson);
+  } catch {
+    return undefined;
+  }
+  return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+    ? (parsed as Record<string, unknown>)
+    : undefined;
 }
 
 // ── Lambda ───────────────────────────────────────────────────────────────────
