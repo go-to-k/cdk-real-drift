@@ -1,3 +1,11 @@
+## [0.12.96](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.95...v0.12.96) (2026-07-11)
+
+
+### Bug Fixes
+
+* **diff:** GuardDuty Detector Features first-run FP returns as AWS ships new protections OFF by default ([#1485](https://github.com/go-to-k/cdk-real-drift/issues/1485)) ([#1493](https://github.com/go-to-k/cdk-real-drift/issues/1493)) ([128571a](https://github.com/go-to-k/cdk-real-drift/commit/128571aac5be2122191e3b3779f5450e492de9f8))
+* **noise:** fold SecurityHub Hub era-dependent ControlFindingGenerator default ([#1486](https://github.com/go-to-k/cdk-real-drift/issues/1486)) ([#1494](https://github.com/go-to-k/cdk-real-drift/issues/1494)) ([1c19245](https://github.com/go-to-k/cdk-real-drift/commit/1c192452c23d290ec73d23aceb3e53de48f711be))
+
 ## [0.12.95](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.94...v0.12.95) (2026-07-11)
 
 
