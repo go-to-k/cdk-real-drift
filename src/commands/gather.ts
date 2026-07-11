@@ -671,6 +671,7 @@ interface ClassifyOpts {
   siblingManagedPolicyAttachments: Record<string, string[]>;
   siblingUserGroups: Record<string, string[]>;
   siblingEipAssociations: Set<string>;
+  siblingSubnetCidrBlocks: Set<string>;
   siblingTargetGroupRegistrars: Set<string>;
   bucketNotificationManaged: Set<string>;
   // #1283: per managed-bucket physical id, the CR's DECLARED NotificationConfiguration (S3 API
@@ -1045,6 +1046,50 @@ export function buildSiblingEipAssociations(desired: Desired): Set<string> {
     }
   }
   return associated;
+}
+
+// #1498: the set of Subnet identities (logicalId + physicalId) whose IPv6 CIDR is assigned by a
+// sibling AWS::EC2::SubnetCidrBlock (the normal dual-stack CDK shape). The Subnet's own live model
+// echoes an undeclared Ipv6CidrBlock/Ipv6CidrBlocks that the SubnetCidrBlock sibling declares — so
+// classify drops that reflected echo when a sibling targets THIS subnet (mirrors the
+// siblingEipAssociations reflection drop). With NO sibling the echo is KEPT and surfaces: an
+// out-of-band associate-subnet-cidr-block that silently opened an IPv6 surface.
+export function buildSiblingSubnetCidrBlocks(desired: Desired): Set<string> {
+  // Map every Subnet's logicalId to its identities so a sibling referencing the subnet by
+  // `{Ref: <subnetLogicalId>}`/`{Fn::GetAtt}` (unresolved) OR by its resolved physical id (the
+  // deployed-template form) resolves to the identities classify looks the Subnet up by.
+  const subnetIdentities = new Map<string, string[]>();
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::EC2::Subnet') continue;
+    const ids = [r.logicalId];
+    if (r.physicalId) ids.push(r.physicalId);
+    subnetIdentities.set(r.logicalId, ids);
+  }
+  const withSibling = new Set<string>();
+  const markSubnet = (ref: unknown): void => {
+    let subnetLogicalId: string | undefined;
+    if (ref && typeof ref === 'object') {
+      if ('Ref' in ref && typeof (ref as { Ref: unknown }).Ref === 'string') {
+        subnetLogicalId = (ref as { Ref: string }).Ref;
+      } else if ('Fn::GetAtt' in ref) {
+        const g = (ref as { 'Fn::GetAtt': unknown })['Fn::GetAtt'];
+        if (Array.isArray(g) && typeof g[0] === 'string') subnetLogicalId = g[0];
+      }
+    }
+    if (subnetLogicalId !== undefined) {
+      const ids = subnetIdentities.get(subnetLogicalId);
+      if (ids) for (const id of ids) withSibling.add(id);
+      return;
+    }
+    // A resolved physical subnet id string (the deployed-template form) — mark it directly.
+    if (typeof ref === 'string' && ref) withSibling.add(ref);
+  };
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::EC2::SubnetCidrBlock') continue;
+    const decl = r.declared;
+    if (decl && typeof decl === 'object') markSubnet((decl as Record<string, unknown>).SubnetId);
+  }
+  return withSibling;
 }
 
 // An AWS::ElasticLoadBalancingV2::TargetGroup's live `Targets` reflects whatever is REGISTERED into
@@ -1711,6 +1756,7 @@ export async function gatherFindings(
     siblingLifecycleHooks: buildSiblingLifecycleHooks(desired),
     siblingListenerPorts: buildSiblingListenerPorts(desired),
     siblingEipAssociations: buildSiblingEipAssociations(desired),
+    siblingSubnetCidrBlocks: buildSiblingSubnetCidrBlocks(desired),
     siblingTargetGroupRegistrars: buildSiblingTargetGroupRegistrars(desired),
     bucketNotificationManaged: buildBucketNotificationManaged(desired),
     bucketNotificationConfigs: buildBucketNotificationConfigs(desired),
@@ -1823,6 +1869,7 @@ export async function regatherTouched(
     siblingLifecycleHooks: buildSiblingLifecycleHooks(desired),
     siblingListenerPorts: buildSiblingListenerPorts(desired),
     siblingEipAssociations: buildSiblingEipAssociations(desired),
+    siblingSubnetCidrBlocks: buildSiblingSubnetCidrBlocks(desired),
     siblingTargetGroupRegistrars: buildSiblingTargetGroupRegistrars(desired),
     bucketNotificationManaged: buildBucketNotificationManaged(desired),
     bucketNotificationConfigs: buildBucketNotificationConfigs(desired),

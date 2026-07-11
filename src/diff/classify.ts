@@ -2516,6 +2516,12 @@ export function classifyResource(
     // `associate-address` HIJACK of the static IP and SURFACES (#892). The ENI value is AWS-assigned
     // at association time, so the fold is presence-gated (a declaring sibling explains any binding).
     siblingEipAssociations?: Set<string>;
+    // #1498: identities (logicalId + physicalId) of every AWS::EC2::Subnet whose IPv6 CIDR is
+    // assigned by a DECLARED sibling AWS::EC2::SubnetCidrBlock (see buildSiblingSubnetCidrBlocks). The
+    // Subnet's live model echoes an undeclared Ipv6CidrBlock/Ipv6CidrBlocks the sibling declares; a
+    // sibling-explained echo is dropped (the assignment is IaC intent, tracked on the sibling), but an
+    // IPv6 CIDR with NO declaring sibling is an out-of-band associate-subnet-cidr-block and SURFACES.
+    siblingSubnetCidrBlocks?: Set<string>;
     // Identities (logicalId + physicalId == the TG ARN) of every AWS::ElasticLoadBalancingV2::
     // TargetGroup a DECLARED sibling dynamically registers into — an AWS::ECS::Service
     // (LoadBalancers[].TargetGroupArn), an AWS::AutoScaling::AutoScalingGroup (TargetGroupARNs), or
@@ -2702,6 +2708,24 @@ export function classifyResource(
     const selfDeclared =
       declaresTarget(declared.InstanceId) || declaresTarget(declared.NetworkInterfaceId);
     if (explained || selfDeclared) delete live.NetworkInterfaceId;
+  }
+  // #1498: a Subnet whose IPv6 CIDR is assigned by a sibling AWS::EC2::SubnetCidrBlock echoes an
+  // undeclared Ipv6CidrBlock (and the plural Ipv6CidrBlocks) on its OWN live model. The assignment is
+  // IaC intent — the SubnetCidrBlock is tracked + compared as its own resource (its declared
+  // Ipv6CidrBlock carries detection; here it was an Fn::cidr → unresolved) — so drop the reflected
+  // echo when a sibling targets THIS subnet (keyed by physical/logical id in
+  // opts.siblingSubnetCidrBlocks). Only drop when the Subnet does not declare the value itself (a
+  // self-declared IPv6 CIDR is compared in the declared loop). With NO sibling the echo is KEPT and
+  // surfaces: an out-of-band `associate-subnet-cidr-block` on a subnet no sibling explains silently
+  // opened an IPv6 surface — the exact real drift a blanket value-independent fold would hide.
+  if (resourceType === 'AWS::EC2::Subnet') {
+    const explained =
+      (physicalId !== undefined && opts.siblingSubnetCidrBlocks?.has(physicalId)) ||
+      opts.siblingSubnetCidrBlocks?.has(logicalId);
+    if (explained) {
+      if (!('Ipv6CidrBlock' in declared)) delete live.Ipv6CidrBlock;
+      if (!('Ipv6CidrBlocks' in declared)) delete live.Ipv6CidrBlocks;
+    }
   }
   // A bucket whose notifications are managed by a Custom::S3BucketNotifications CR reflects
   // the CR-applied NotificationConfiguration it never declares itself (CDK renders
