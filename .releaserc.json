@@ -6,7 +6,7 @@
       {
         "preset": "angular",
         "parserOpts": {
-          "headerPattern": "^(\\w*)(?:\\(([^)]+)\\))?(!)?: (.+)$",
+          "headerPattern": "^(\\w*)(?:\\((.+?)\\))?(!)?: (.+)$",
           "headerCorrespondence": ["type", "scope", "breaking", "subject"],
           "noteKeywords": ["BREAKING CHANGE", "BREAKING CHANGES", "BREAKING"]
         },
