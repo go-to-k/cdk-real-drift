@@ -1750,6 +1750,73 @@ function substituteLeaf(obj: unknown, leafName: string, coerced: number | string
   return { ...rec, [leafName]: coerced };
 }
 
+// Read the sub-value at a dotted path within a value tree (numeric segments index arrays).
+// Returns `undefined` if any segment is missing. Twin of `resolveParentObject`, but returns the
+// value AT the path rather than its parent. (#1298)
+function valueAtDottedPath(root: unknown, dottedPath: string): unknown {
+  let node: unknown = root;
+  for (const seg of dottedPath.split('.')) {
+    if (node == null || typeof node !== 'object') return undefined;
+    node = (node as Record<string, unknown>)[seg];
+  }
+  return node;
+}
+
+// #1298: honor a registry-schema `propertyTransform` that is keyed at an ANCESTOR of the drift
+// path. A schema can key its transform at a parent object (e.g. AWS::Config::ConfigRule keys the
+// transform at `Source`, an expression of the shape `$ ~> |$.Source|...|` that returns the whole
+// transformed ROOT). When the service materializes an extra element into a CHILD of that ancestor
+// (a CUSTOM_LAMBDA rule's `Source.SourceDetails` gains an `OversizedConfigurationItemChangeNotification`
+// entry), `calculateResourceDrift` reports the divergence at the CHILD path `Source.SourceDetails` —
+// where no transform is keyed — so the exact/`*`-form lookup at the drift path misses and the finding
+// is a permanent declared False Positive (and `revert` would strip the service-required detail →
+// non-convergence loop). CloudFormation's own drift detection folds this: apply transform(declared)
+// and compare to the read value at the ancestor.
+//
+// So when NO transform matched at the drift path, walk UP its ancestor dotted paths (nearest parent
+// first, up to the root). For each ancestor `A` that carries a transform (exact or `*`-normalized
+// key), evaluate the transform on the declared ROOT scope, extract the sub-value at `A` from BOTH
+// the transform OUTPUT and the LIVE model, and fold only when they DEEP-EQUAL. STRICTLY equality-
+// gated + FAIL-OPEN: on any parse/eval/extract error, or when the ancestor sub-values differ, it
+// returns false and the finding surfaces unchanged — so it can ONLY fold a declared FP the service
+// transform reproduces at the ancestor EXACTLY, and can NEVER hide real drift.
+function matchesAncestorPropertyTransform(
+  propertyTransforms: Record<string, string>,
+  driftPath: string,
+  declaredRoot: unknown,
+  liveRoot: unknown
+): boolean {
+  const segs = driftPath.split('.');
+  // Nearest parent up to (and including) the root's top-level key; skip the drift path itself
+  // (already tried by the exact/`*` lookup at the call site).
+  for (let end = segs.length - 1; end >= 1; end--) {
+    const ancestor = segs.slice(0, end).join('.');
+    const transformExpr =
+      propertyTransforms[ancestor] ?? propertyTransforms[ancestor.replace(/\.\d+(?=\.|$)/g, '.*')];
+    if (transformExpr === undefined) continue;
+    const liveAtAncestor = valueAtDottedPath(liveRoot, ancestor);
+    if (liveAtAncestor === undefined) continue;
+    for (const alt of transformExpr.split(' $OR ')) {
+      const expr = alt.trim();
+      if (!expr) continue;
+      const compiled = compileTransform(expr);
+      if (!compiled) continue;
+      try {
+        // The ancestor transform (`$ ~> |$.Source|...|`) transforms and returns the whole ROOT,
+        // so evaluate it on the declared root and read the sub-value back out at the ancestor.
+        const out = compiled.evaluate(declaredRoot as unknown);
+        if (out === undefined) continue;
+        const transformedAtAncestor = valueAtDottedPath(out, ancestor);
+        if (transformedAtAncestor !== undefined && deepEqual(transformedAtAncestor, liveAtAncestor))
+          return true;
+      } catch {
+        // eval error on this alternative — try the next (fail-open)
+      }
+    }
+  }
+  return false;
+}
+
 // Resolve the PARENT object of a dotted drift path within a value tree. `PartitionKeyColumns.0.
 // ColumnType` → the element object at index 0; `MaintenanceWindowStartTime.DayOfWeek` → the
 // MaintenanceWindowStartTime object; `StartingPositionTimestamp` (top-level) → the root itself.
@@ -3550,6 +3617,17 @@ export function classifyResource(
           d.awsValue,
           d.path.split('.').at(-1) ?? d.path
         )
+      )
+        continue;
+      // #1298: no transform is keyed AT the drift path, but a schema can key its transform at an
+      // ANCESTOR path (Config::ConfigRule keys it at `Source`; the divergence surfaces at the child
+      // `Source.SourceDetails`). Walk up the ancestor paths and, for any that carries a transform,
+      // fold when transform(declaredRoot)==live AT the ancestor — exactly what CloudFormation folds.
+      // Equality-gated + fail-open, so it can only fold a declared FP, never hide real drift.
+      if (
+        schema.propertyTransforms !== undefined &&
+        transformExpr === undefined &&
+        matchesAncestorPropertyTransform(schema.propertyTransforms, d.path, declared, live)
       )
         continue;
       // A per-element drift INSIDE a `{Key,Value}` tag list (#750): canonicalizeTagLists
