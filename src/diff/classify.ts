@@ -189,6 +189,12 @@ const MEANINGFUL_WHEN_OFF: Record<string, Record<string, (ctx: OffStateContext) 
   'AWS::ElasticLoadBalancingV2::TargetGroup': {
     HealthCheckEnabled: ({ declared }) => declared['TargetType'] !== 'lambda',
   },
+  // #1503: a MemoryDB cluster is created with in-transit encryption ON — a fresh cluster that
+  // declares no TLSEnabled always reads back true (the KNOWN_DEFAULTS pin). A user who wants
+  // TLS off DECLARES TLSEnabled=false (compared in the declared loop), so an UNDECLARED false
+  // is an out-of-band DISABLE of transit encryption — unconditionally meaningful. Without this
+  // gate the live `false` is dropped by isTrivialEmpty before the pin gate, hiding the disable.
+  'AWS::MemoryDB::Cluster': { TLSEnabled: () => true },
 };
 
 // #660 item 3: the NESTED twin of MEANINGFUL_WHEN_OFF. The table above gates TOP-LEVEL
