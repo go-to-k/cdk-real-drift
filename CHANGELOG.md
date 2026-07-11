@@ -1,3 +1,10 @@
+## [0.12.106](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.105...v0.12.106) (2026-07-11)
+
+
+### Bug Fixes
+
+* **noise:** Redshift Cluster default-SG + ScheduledAction Enable first-run FPs ([#1492](https://github.com/go-to-k/cdk-real-drift/issues/1492)) ([#1511](https://github.com/go-to-k/cdk-real-drift/issues/1511)) ([d80c2c6](https://github.com/go-to-k/cdk-real-drift/commit/d80c2c6626e6592dbe6b1f95adbcc05430edae92))
+
 ## [0.12.105](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.104...v0.12.105) (2026-07-11)
 
 
