@@ -225,6 +225,18 @@ export interface AddedChild {
   // misses and a sibling-managed rule is falsely reported `added` (#895). Only the sibling
   // lookup id changes; the CC read / DeleteResource path still uses `identifier`.
   siblingLookupId?: string | undefined;
+  // Extra foreign-scope signals that OVERRIDE the identifier-ARN scope parse for the
+  // sibling-stack membership check (#1322). `isDefinitiveNotManaged` decides whether a
+  // `ValidationError` from the run's own (account+region-scoped) DescribeStackResources is a
+  // DEFINITIVE not-managed by parsing the child's physical-id ARN's account+region. That parse
+  // LIES for an AWS::SNS::Subscription: its physical id is `<topicArn>:<uuid>`, always minted
+  // under the TOPIC's (= this check's) account+region, so it always looks LOCAL even when a
+  // FOREIGN subscriber stack owns it (the canonical cross-account / cross-region fan-out) —
+  // making the ValidationError a false definitive not-managed and offering a DESTRUCTIVE
+  // DeleteResource on another stack's resource. These carry the child's TRUE scope so that
+  // signal wins: a foreign owner / endpoint ARN downgrades the ValidationError to `unverified`.
+  ownerAccountId?: string | undefined; // the child's OWNING account (SNS subscription `Owner`)
+  scopeArns?: string[] | undefined; // extra ARNs carrying the child's true account/region (SNS `Endpoint` when an ARN)
 }
 
 export interface EnumeratorContext {
@@ -1185,7 +1197,12 @@ const CHATBOT_SUBSCRIPTION_ENDPOINT = 'https://global.sns-api.chatbot.amazonaws.
 // Pure diff: declared subscription arns + live inventory -> the added subscriptions.
 export interface SnsTopicChildInput {
   declaredSubscriptionArns: string[]; // physical ids of AWS::SNS::Subscription in the template
-  liveSubscriptions: { arn: string; label?: string | undefined; endpoint?: string | undefined }[];
+  liveSubscriptions: {
+    arn: string;
+    label?: string | undefined;
+    endpoint?: string | undefined;
+    owner?: string | undefined; // the subscription's owning account (SNS `Owner`)
+  }[];
 }
 
 export function diffSnsTopicChildren(input: SnsTopicChildInput): AddedChild[] {
@@ -1199,6 +1216,13 @@ export function diffSnsTopicChildren(input: SnsTopicChildInput): AddedChild[] {
       identifier: s.arn, // SubscriptionArn IS the CC primaryIdentifier
       label: s.label ?? s.arn,
       live: { SubscriptionArn: s.arn },
+      // Foreign-scope signals for the sibling-stack check (#1322): a subscription's physical id
+      // is always local to the topic, so its `Owner` (owning account) and an ARN `Endpoint`
+      // (subscriber's account+region for a cross-account / cross-region fan-out) are the only
+      // hints that a FOREIGN stack manages it — carry them so a ValidationError downgrades to
+      // `unverified` rather than a destructive `notManaged` delete.
+      ownerAccountId: s.owner,
+      scopeArns: s.endpoint?.startsWith('arn:') ? [s.endpoint] : undefined,
     });
   }
   return added;
@@ -1249,6 +1273,7 @@ export async function enumerateSnsTopicChildren(ctx: EnumeratorContext): Promise
       arn: s.SubscriptionArn,
       label: s.Protocol ? `${s.Protocol} ${s.Endpoint ?? ''}`.trim() : s.SubscriptionArn,
       endpoint: s.Endpoint,
+      owner: s.Owner, // owning account — foreign-scope signal for the sibling-stack check (#1322)
     }));
 
   return diffSnsTopicChildren({ declaredSubscriptionArns, liveSubscriptions });
