@@ -17,6 +17,7 @@ import {
 import type { Desired } from '../desired/template-adapter.js';
 import { isInteractive, parseCommonArgs } from '../cli-args.js';
 import { applyIgnores, loadConfig } from '../config/config-file.js';
+import { createAccountGate } from './account-gate.js';
 import { resolveStacks } from './resolve-stacks.js';
 import { gatherFindings } from './gather.js';
 import { gatherWithProgress, progressLabel } from './progress.js';
@@ -72,7 +73,13 @@ export async function runIgnore(args: string[]): Promise<number> {
   let wroteAny = false;
   // gather-phase spinner (see gatherWithProgress) — text mode + TTY only.
   const showProgress = !a.json && isInteractive();
-  for (const [idx, { stackName, region, template }] of stacks.entries()) {
+  // #1309: the #740 cross-account mismatch gate (previously check-only). Without it, a
+  // stack env-pinned to another account either misreported "not deployed yet" or — with
+  // a same-named stack in the reachable account — appended ignore rules scoped to the
+  // WRONG accountId (and offered the wrong account's drift to pick from). Skip (not
+  // error), mirroring check: a multi-account app is operated one account at a time.
+  const accountGate = createAccountGate('ignore');
+  for (const [idx, { stackName, region, account, template }] of stacks.entries()) {
     if (!region) {
       const msg =
         'no region — set env on the stack, pass --region, or set a region for the AWS profile';
@@ -82,11 +89,41 @@ export async function runIgnore(args: string[]): Promise<number> {
       continue;
     }
     try {
+      // #1309 pre-read gate: a proven mismatch skips BEFORE any live read, so the wrong
+      // account is never even queried (same placement as check's gate).
+      const mismatch = await accountGate.preRead(account, region);
+      if (mismatch.skip) {
+        console.error(`note: ${stackName}: ${mismatch.message}`);
+        if (a.json)
+          jsonReports.push({
+            stack: stackLabel(stackName, region),
+            added: 0,
+            wrote: false,
+            error: mismatch.message,
+          });
+        continue;
+      }
       const { desired, findings } = await gatherWithProgress(
         showProgress,
         progressLabel(idx, stacks.length, stackName, region),
         () => gatherFindings(stackName, region, undefined, template)
       );
+      // #1309 post-read guard (belt-and-suspenders, mirrors check's #740 case 2): if STS
+      // could not resolve the caller, the pre-read gate let the read proceed — a
+      // SAME-NAMED stack in the reachable account means the state just read is the wrong
+      // account's. Never derive ignore rules from it.
+      const readMismatch = accountGate.postRead(account, desired.accountId);
+      if (readMismatch.skip) {
+        console.error(`note: ${stackName}: ${readMismatch.message}`);
+        if (a.json)
+          jsonReports.push({
+            stack: stackLabel(stackName, region),
+            added: 0,
+            wrote: false,
+            error: readMismatch.message,
+          });
+        continue;
+      }
       // #786: surface the mid-operation / failed-state warning the same way check does —
       // an in-flux stack's drift may be transient, so ignoring it could bake in a rule for
       // a value that settles on its own once the deploy completes.

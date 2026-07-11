@@ -778,10 +778,11 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   `DescribeType`; `DescribeStackResources` (the sibling-ownership check for the
   `added` tier — see the `added`-tier entry below); `ListExports` (only for
   templates using `Fn::ImportValue`)
-- `sts:GetCallerIdentity` (resolves the current account so `check` can tell a stack
-  never deployed in THIS account from one deleted out of band, under the
-  multi-account baseline pattern — allowed for any valid credentials, so no policy
-  statement is normally required)
+- `sts:GetCallerIdentity` (resolves the current account so every verb can tell a
+  stack never deployed in THIS account from one deleted out of band, under the
+  multi-account baseline pattern — `check`/`record`/`ignore` skip a stack pinned
+  to a different account and `revert` refuses to write to it; allowed for any
+  valid credentials, so no policy statement is normally required)
 - `cloudcontrol:GetResource`: Cloud Control invokes each type's own read handler,
   so it needs that type's read permissions (this is why `ReadOnlyAccess` is the
   simple answer). `revert` additionally uses `cloudcontrol:UpdateResource` /

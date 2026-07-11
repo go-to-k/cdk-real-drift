@@ -8,7 +8,6 @@
 // stacks.
 import { readdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { GetCallerIdentityCommand, STSClient } from '@aws-sdk/client-sts';
 import { isStackNotDeployed, StackNotCheckableError } from '../aws-errors.js';
 import {
   applyBaseline,
@@ -36,10 +35,14 @@ import {
 } from '../report/report.js';
 import { style } from '../report/style.js';
 import { UNRESOLVED } from '../normalize/intrinsic-resolver.js';
-import { CLIENT_TIMEOUTS } from '../read/client-config.js';
 import { resolveApp } from '../synth/resolve-app.js';
 import { synthApp } from '../synth/synth.js';
 import type { DesiredResource, Finding } from '../types.js';
+import {
+  classifyAccountMismatch,
+  classifyReadAccountMismatch,
+  resolveCallerAccount,
+} from './account-gate.js';
 import { resolveStacks } from './resolve-stacks.js';
 import { gatherFindings } from './gather.js';
 import {
@@ -367,57 +370,11 @@ export function hasBaselineForStack(
   });
 }
 
-/**
- * #1046: resolve the CURRENT account (region-free `sts:GetCallerIdentity`, a zero-permission
- * call) so `hasBaselineForStack` can pin the baseline filename's account segment. Returns
- * `undefined` on ANY failure (expired creds, blocked STS, network) so the caller falls back
- * to today's account-wildcard rather than erroring — a `check` that reached the not-deployed
- * catch already has working creds, so the STS call almost always succeeds. `--profile` is
- * already in `process.env.AWS_PROFILE` (set by the verb entry points), so the default
- * credential chain resolves it. Exported for unit tests.
- */
-export async function resolveCallerAccount(region: string): Promise<string | undefined> {
-  try {
-    const sts = new STSClient({ region, ...CLIENT_TIMEOUTS });
-    const id = await sts.send(new GetCallerIdentityCommand({}));
-    return id.Account;
-  } catch {
-    return undefined;
-  }
-}
-
-/**
- * #740: decide whether a stack must be SKIPPED because it is pinned (via `env.account`) to a
- * different AWS account than the active credentials are for.
- *
- * A CDK app with dev+prod stacks in DIFFERENT accounts (the CDK Pipelines / multi-env staple)
- * is checked one account at a time — the caller runs `check --all` per account with that
- * account's credentials. A stack whose `env.account` names an OTHER account cannot be read
- * with the current creds: `DescribeStacks` throws "does not exist" (the stack IS deployed, just
- * in its own account), which `isStackNotDeployed` mistakes for "never deployed yet — skipped"
- * — a misleading green pass that hides an UNCHECKED stack. Worse, if a SAME-NAMED stack happens
- * to exist in the reachable account, cdkrd would silently compare intent against the WRONG
- * account's live resources. Detecting the mismatch UP FRONT lets check skip accurately without
- * reading the wrong account.
- *
- * Rule: skip ONLY when BOTH accounts are known (concrete) AND they differ — a proven mismatch.
- * When either is undefined (an env-agnostic stack with no account pin, or STS could not resolve
- * the caller) we CANNOT prove a mismatch, so we do NOT skip — behavior is identical to today
- * (the stack is read; a real "not deployed" still surfaces as before). Pure (no AWS) + exported
- * for unit tests.
- */
-export function classifyAccountMismatch(
-  declaredAccount: string | undefined,
-  callerAccount: string | undefined
-): { skip: boolean; message: string } {
-  if (declaredAccount && callerAccount && declaredAccount !== callerAccount) {
-    return {
-      skip: true,
-      message: `stack is pinned to account ${declaredAccount} but the active credentials are for account ${callerAccount} — skipped (run with account-${declaredAccount} credentials to check it)`,
-    };
-  }
-  return { skip: false, message: '' };
-}
+// #1309: the #740 cross-account mismatch gate now lives in account-gate.ts, shared with
+// record / ignore / revert (which previously ran ungated — revert could WRITE to the wrong
+// account's same-named stack). Re-exported so check's public surface (pinned by the #740 /
+// #1046 unit tests and this file's historical import path) is unchanged.
+export { classifyAccountMismatch, resolveCallerAccount };
 
 // #1060 — the top-level `--json` emit runs AFTER the per-stack loop, OUTSIDE any
 // try/catch, so a non-serializable finding value (a BigInt, a circular reference)
@@ -664,11 +621,11 @@ export async function runCheck(args: string[]): Promise<number> {
       // After the read we KNOW the deployed stack's account (desired.accountId); if this stack
       // is pinned to a concrete account that differs, the live state we just read is the wrong
       // account's — skip rather than trust it. Defense-in-depth; the pre-read gate covers the
-      // common case where the caller account IS known.
-      if (account && desired.accountId !== account) {
-        const msg = `compared against account ${desired.accountId} but the stack is pinned to ${account} — skipped (run with account-${account} credentials to check it)`;
-        console.error(`note: ${stackName}: ${msg}`);
-        jsonError(stackName, region, msg);
+      // common case where the caller account IS known. Shared with record/ignore/revert (#1309).
+      const readMismatch = classifyReadAccountMismatch(account, desired.accountId);
+      if (readMismatch.skip) {
+        console.error(`note: ${stackName}: ${readMismatch.message}`);
+        jsonError(stackName, region, readMismatch.message);
         worst = Math.max(worst, a.strict ? 1 : 0);
         continue;
       }

@@ -13,6 +13,7 @@ import {
 } from '../baseline/baseline-file.js';
 import { isInteractive, parseCommonArgs } from '../cli-args.js';
 import { loadConfig } from '../config/config-file.js';
+import { createAccountGate } from './account-gate.js';
 import { gatherFindings } from './gather.js';
 import { gatherWithProgress, progressLabel } from './progress.js';
 import { resolveStacks } from './resolve-stacks.js';
@@ -52,7 +53,15 @@ export async function runRevert(args: string[]): Promise<number> {
   // gather-phase spinner (see gatherWithProgress) — text mode + TTY only. The revert
   // confirm prompt fires AFTER the gather, so the spinner never overlaps it.
   const showProgress = !a.json && isInteractive();
-  for (const [idx, { stackName, region, template }] of stacks.entries()) {
+  // #1309: the #740 cross-account mismatch gate (previously check-only), and revert is
+  // where it matters MOST — this is the one AWS-mutating verb. With account-B credentials
+  // and a same-named stack deployed in B, an ungated revert planned A-intent vs B-live and
+  // WROTE the confirmed ops onto account B's resources (checkBaselineAccount cannot catch
+  // it: no baseline exists for B). Unlike check/record/ignore, a proven mismatch here is a
+  // per-stack ERROR (exit 2), not a skip — the user explicitly asked to MUTATE this stack,
+  // so silently doing nothing would read as "nothing to revert".
+  const accountGate = createAccountGate('revert');
+  for (const [idx, { stackName, region, account, template }] of stacks.entries()) {
     if (!region) {
       const msg =
         'no region — set env on the stack, pass --region, or set a region for the AWS profile';
@@ -70,6 +79,23 @@ export async function runRevert(args: string[]): Promise<number> {
       continue;
     }
     try {
+      // #1309 pre-read gate: a proven mismatch refuses BEFORE any live read, so the wrong
+      // account is never even queried — let alone written to.
+      const mismatch = await accountGate.preRead(account, region);
+      if (mismatch.skip) {
+        console.error(`error: ${stackName}: ${mismatch.message}`);
+        if (a.json)
+          jsonReports.push({
+            stack: stackLabel(stackName, region),
+            reverted: 0,
+            failed: 0,
+            aborted: false,
+            exit: 2,
+            error: mismatch.message,
+          });
+        worst = Math.max(worst, 2);
+        continue;
+      }
       // gather FIRST: the baseline filename embeds the accountId, which only the
       // gather (DescribeStackResources) resolves. (R21 — was load-then-gather.)
       // `template` (synth) recovers GetTemplate's `?`-masked non-ASCII literals so a
@@ -79,6 +105,25 @@ export async function runRevert(args: string[]): Promise<number> {
         progressLabel(idx, stacks.length, stackName, region),
         () => gatherFindings(stackName, region, undefined, template)
       );
+      // #1309 post-read guard (belt-and-suspenders, mirrors check's #740 case 2): if STS
+      // could not resolve the caller, the pre-read gate let the read proceed — a SAME-NAMED
+      // stack in the reachable account means the state just read (and any plan built on it)
+      // is the wrong account's. Refuse before the plan / confirm / write path runs.
+      const readMismatch = accountGate.postRead(account, gathered.desired.accountId);
+      if (readMismatch.skip) {
+        console.error(`error: ${stackName}: ${readMismatch.message}`);
+        if (a.json)
+          jsonReports.push({
+            stack: stackLabel(stackName, region),
+            reverted: 0,
+            failed: 0,
+            aborted: false,
+            exit: 2,
+            error: readMismatch.message,
+          });
+        worst = Math.max(worst, 2);
+        continue;
+      }
       const baseline: BaselineFile | undefined = await loadBaseline(
         stackName,
         gathered.desired.accountId,
