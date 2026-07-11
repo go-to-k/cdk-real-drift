@@ -1,3 +1,10 @@
+## [0.12.71](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.70...v0.12.71) (2026-07-11)
+
+
+### Bug Fixes
+
+* **revert:** extend the identity-sorted whole-array revert to NESTED arrays + identity-keyed nested sort ([#1306](https://github.com/go-to-k/cdk-real-drift/issues/1306)) ([#1442](https://github.com/go-to-k/cdk-real-drift/issues/1442)) ([7efaf5c](https://github.com/go-to-k/cdk-real-drift/commit/7efaf5c44cdeec6508a7f5e14a90d843f3433d5a))
+
 ## [0.12.70](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.69...v0.12.70) (2026-07-11)
 
 
