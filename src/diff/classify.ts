@@ -3069,6 +3069,14 @@ export function classifyResource(
     if (volumeType === 'gp2' && typeof size === 'number') {
       knownDef = { ...knownDef, Iops: Math.min(16000, Math.max(100, 3 * size)) };
     }
+    // #1471: a gp3 EBS Volume that declares no Iops/Throughput reads back AWS's gp3 BASELINE —
+    // a fixed 3000 IOPS + 125 MiB/s, SIZE-INDEPENDENT (unlike gp2's size-derived Iops). Pin both,
+    // equality-gated (fold tier 2): a user who provisions above the baseline (declared) is compared
+    // in the declared loop, and an out-of-band bump away from the baseline still surfaces. #640
+    // covered only gp2 Iops; a gp3 volume left both undeclared as first-run [Potential Drift].
+    if (volumeType === 'gp3') {
+      knownDef = { ...knownDef, Iops: 3000, Throughput: 125 };
+    }
   }
   // #640: an EC2 NetworkInterface that declares a PrivateIpAddresses list reads back an
   // undeclared SecondaryPrivateIpAddressCount = all-but-the-primary of that list, i.e.
