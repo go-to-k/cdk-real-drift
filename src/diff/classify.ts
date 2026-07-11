@@ -214,18 +214,40 @@ const MEANINGFUL_WHEN_OFF_NESTED: Record<
   'AWS::CloudFront::Distribution': { 'DistributionConfig.IPV6Enabled': () => true },
 };
 
-// #1092: GuardDuty protection Features whose new-detector default Status is DISABLED (not the
-// ENABLED norm) — a newer/preview protection AWS ships OFF by default. Its DISABLED state on a
-// clean detector is the default (folds), so only these names are exempt from the "ENABLED is the
-// default" rule below. Extend as AWS ships more OFF-by-default features.
-const GUARDDUTY_DEFAULT_DISABLED_FEATURES: ReadonlySet<string> = new Set(['AI_ANALYST']);
-// True when every GuardDuty Feature (and every nested AdditionalConfiguration entry) is at its
-// per-name default Status — ENABLED for every protection except the known OFF-by-default set.
-// Name-independent for UNKNOWN names (a brand-new protection AWS ships ENABLED still folds), but
-// an out-of-band disable of a protection whose default is ENABLED (RUNTIME_MONITORING,
-// RDS_LOGIN_EVENTS, LAMBDA_NETWORK_LOGS — none have a legacy DataSources mirror) surfaces. Errs
-// toward VISIBILITY: a future OFF-by-default feature not yet in the set surfaces (a recordable FP)
-// rather than hiding a real security downgrade.
+// #1092/#1485: GuardDuty protection Features (and their nested AdditionalConfiguration members)
+// whose new-detector creation-default Status is NOT the ENABLED norm — a newer/preview protection
+// AWS ships OFF by default. Keyed by feature Name → the acceptable creation Status(es); a name
+// absent here defaults to ['ENABLED']. A single-element list preserves detection in BOTH
+// directions (an out-of-band flip away from the default surfaces). A TWO-element list is the
+// era-dependent ONE_OF case (#1486-class): AWS moved the creation default between eras, so either
+// value is a valid clean-deploy default and folds — this LOSES out-of-band detection on that one
+// feature, accepted only because the value is undeclared (a user who cares declares it, and the
+// declared loop then compares it).
+//
+// #1485: a fresh `Enable: true`-only detector today (2026-07, us-east-1) materializes AI_ANALYST,
+// RUNTIME_MONITORING, and EKS_RUNTIME_MONITORING (plus the latter two's AdditionalConfiguration
+// agent-management members) DISABLED at creation — the #1092 all-ENABLED assumption no longer
+// holds and the whole Features array first-run-FP'd. RUNTIME_MONITORING / EKS_RUNTIME_MONITORING
+// are ONE_OF because #1092's own live run observed them ENABLED at creation in its era (the
+// runtime-monitoring family's default moved ENABLED→DISABLED); folding either avoids a first-run
+// FP on a detector created in either era. AI_ANALYST (2026-new, only ever OFF) and the granular
+// agent-management members (a modern-era-only construct materialized OFF) stay single-status
+// DISABLED, so an out-of-band ENABLE — a billable protection turned on later — still surfaces.
+const GUARDDUTY_FEATURE_CREATION_STATUS: Record<string, readonly string[]> = {
+  AI_ANALYST: ['DISABLED'],
+  RUNTIME_MONITORING: ['DISABLED', 'ENABLED'],
+  EKS_RUNTIME_MONITORING: ['DISABLED', 'ENABLED'],
+  EKS_ADDON_MANAGEMENT: ['DISABLED'],
+  ECS_FARGATE_AGENT_MANAGEMENT: ['DISABLED'],
+  EC2_AGENT_MANAGEMENT: ['DISABLED'],
+};
+// True when every GuardDuty Feature (and every nested AdditionalConfiguration entry) is at one of
+// its per-name creation-default Status(es) — ENABLED for every protection except the OFF-by-default
+// / era-moved names in GUARDDUTY_FEATURE_CREATION_STATUS. Name-independent for UNKNOWN names (a
+// brand-new protection AWS ships ENABLED still folds), but an out-of-band disable of a
+// default-ENABLED protection (RDS_LOGIN_EVENTS, LAMBDA_NETWORK_LOGS, …) surfaces. Errs toward
+// VISIBILITY: a future OFF-by-default feature not yet in the map surfaces (a recordable FP) rather
+// than hiding a real security downgrade.
 function guardDutyFeaturesAllAtDefault(features: unknown[]): boolean {
   const atDefault = (node: unknown): boolean => {
     if (Array.isArray(node)) return node.every(atDefault);
@@ -233,10 +255,8 @@ function guardDutyFeaturesAllAtDefault(features: unknown[]): boolean {
       const rec = node as Record<string, unknown>;
       if ('Status' in rec) {
         const name = typeof rec['Name'] === 'string' ? rec['Name'] : '';
-        const defaultStatus = GUARDDUTY_DEFAULT_DISABLED_FEATURES.has(name)
-          ? 'DISABLED'
-          : 'ENABLED';
-        if (rec['Status'] !== defaultStatus) return false;
+        const defaults = GUARDDUTY_FEATURE_CREATION_STATUS[name] ?? ['ENABLED'];
+        if (typeof rec['Status'] !== 'string' || !defaults.includes(rec['Status'])) return false;
       }
       return Object.values(rec).every(atDefault);
     }
@@ -4325,10 +4345,10 @@ export function classifyResource(
       }
       continue;
     }
-    // #1092: GuardDuty Detector Features — fold atDefault ONLY when EVERY protection is
-    // ENABLED (the new-detector default). Replaces the old value-independent fold, which hid
-    // an out-of-band disable of a Features-only protection (a real security downgrade that
-    // never even got recorded). Name-independent, Status-gated (see guardDutyFeaturesAllEnabled).
+    // #1092/#1485: GuardDuty Detector Features — fold atDefault ONLY when EVERY protection is at
+    // its per-name creation-default Status (see guardDutyFeaturesAllAtDefault). Replaces the old
+    // value-independent fold, which hid an out-of-band disable of a Features-only protection (a
+    // real security downgrade that never even got recorded).
     if (resourceType === 'AWS::GuardDuty::Detector' && k === 'Features' && Array.isArray(v)) {
       findings.push({
         tier: guardDutyFeaturesAllAtDefault(v) ? 'atDefault' : 'undeclared',

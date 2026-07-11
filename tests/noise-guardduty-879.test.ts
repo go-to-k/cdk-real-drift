@@ -124,13 +124,16 @@ describe('#879 GuardDuty::Detector undeclared first-run defaults', () => {
   });
 
   // #1092: the security FNs the old value-independent Features fold + the trivial-empty drop hid.
-  it('#1092: surfaces an out-of-band disable of a Features-only protection (RUNTIME_MONITORING)', () => {
+  // #1485: RUNTIME_MONITORING's creation default moved ENABLED->DISABLED across eras, so it is now
+  // ONE_OF (a DISABLED runtime monitor is a valid clean-deploy default and no longer surfaces).
+  // The #1092 FN-protection intent — an out-of-band disable of a still-default-ENABLED protection
+  // surfaces — is re-expressed on RDS_LOGIN_EVENTS (unchanged ENABLED default).
+  it('#1092/#1485: surfaces an out-of-band disable of a default-ENABLED protection (RDS_LOGIN_EVENTS)', () => {
     const changed = {
       ...cleanLive,
       Features: [
         ...defaultFeatures,
-        { Status: 'ENABLED', Name: 'RDS_LOGIN_EVENTS' },
-        { Status: 'DISABLED', Name: 'RUNTIME_MONITORING' }, // ENABLED-by-default -> disable surfaces
+        { Status: 'DISABLED', Name: 'RDS_LOGIN_EVENTS' }, // ENABLED-by-default -> disable surfaces
       ],
     };
     const f = classifyResource(res, changed, emptySchema);
@@ -138,15 +141,19 @@ describe('#879 GuardDuty::Detector undeclared first-run defaults', () => {
     expect(pathsByTier(f, 'atDefault')).not.toContain('Features');
   });
 
-  it('#1092: surfaces a disable nested in a feature AdditionalConfiguration', () => {
+  // #1485: the granular AdditionalConfiguration agent-management members are DISABLED at creation,
+  // so an out-of-band ENABLE (a billable protection turned on later) is the meaningful drift that
+  // must surface — the nested-detection intent of the original #1092 test, updated for the moved
+  // default.
+  it('#1092/#1485: surfaces an out-of-band enable nested in a feature AdditionalConfiguration', () => {
     const changed = {
       ...cleanLive,
       Features: [
         ...defaultFeatures,
         {
-          Status: 'ENABLED',
+          Status: 'DISABLED',
           Name: 'RUNTIME_MONITORING',
-          AdditionalConfiguration: [{ Status: 'DISABLED', Name: 'EKS_ADDON_MANAGEMENT' }],
+          AdditionalConfiguration: [{ Status: 'ENABLED', Name: 'EKS_ADDON_MANAGEMENT' }],
         },
       ],
     };
@@ -166,5 +173,106 @@ describe('#879 GuardDuty::Detector undeclared first-run defaults', () => {
     const f = classifyResource(res, changed, emptySchema);
     expect(pathsByTier(f, 'undeclared')).toContain('DataSources');
     expect(pathsByTier(f, 'atDefault')).not.toContain('DataSources');
+  });
+});
+
+// #1485: a fresh `Enable: true`-only detector now (2026-07, us-east-1) materializes THREE features
+// DISABLED at creation (AI_ANALYST / RUNTIME_MONITORING / EKS_RUNTIME_MONITORING, plus the latter
+// two's AdditionalConfiguration agent-management members), breaking #1092's all-ENABLED gate and
+// re-surfacing the whole Features array as first-run [Potential Drift]. The per-name creation-Status
+// map must fold the clean model to atDefault while still surfacing an out-of-band ENABLE of an
+// OFF-by-default protection.
+describe('#1485 GuardDuty::Detector Features — new-era OFF-by-default protections', () => {
+  const res: DesiredResource = {
+    logicalId: 'HuntDetector',
+    resourceType: 'AWS::GuardDuty::Detector',
+    physicalId: '2fbe7ac257dc491d9992398365731fc9',
+    declared: { Enable: true },
+  };
+  // The full live Features list of a fresh detector, harvested 2026-07-12 (issue #1485).
+  const cleanFeatures = [
+    { Status: 'DISABLED', Name: 'AI_ANALYST' },
+    { Status: 'ENABLED', Name: 'CLOUD_TRAIL' },
+    { Status: 'ENABLED', Name: 'DNS_LOGS' },
+    { Status: 'ENABLED', Name: 'FLOW_LOGS' },
+    { Status: 'ENABLED', Name: 'S3_DATA_EVENTS' },
+    { Status: 'ENABLED', Name: 'EKS_AUDIT_LOGS' },
+    { Status: 'ENABLED', Name: 'EBS_MALWARE_PROTECTION' },
+    { Status: 'ENABLED', Name: 'RDS_LOGIN_EVENTS' },
+    { Status: 'ENABLED', Name: 'LAMBDA_NETWORK_LOGS' },
+    {
+      Status: 'DISABLED',
+      Name: 'EKS_RUNTIME_MONITORING',
+      AdditionalConfiguration: [{ Status: 'DISABLED', Name: 'EKS_ADDON_MANAGEMENT' }],
+    },
+    {
+      Status: 'DISABLED',
+      Name: 'RUNTIME_MONITORING',
+      AdditionalConfiguration: [
+        { Status: 'DISABLED', Name: 'EKS_ADDON_MANAGEMENT' },
+        { Status: 'DISABLED', Name: 'ECS_FARGATE_AGENT_MANAGEMENT' },
+        { Status: 'DISABLED', Name: 'EC2_AGENT_MANAGEMENT' },
+      ],
+    },
+  ];
+  const cleanLive = {
+    Enable: true,
+    FindingPublishingFrequency: 'SIX_HOURS',
+    Features: cleanFeatures,
+  };
+
+  it('folds the fresh-detector Features (three OFF-by-default protections) to atDefault', () => {
+    const f = classifyResource(res, cleanLive, emptySchema);
+    expect(pathsByTier(f, 'atDefault')).toContain('Features');
+    expect(pathsByTier(f, 'undeclared')).not.toContain('Features');
+  });
+
+  it('produces ZERO potential drift on the clean 2026 detector', () => {
+    const f = classifyResource(res, cleanLive, emptySchema);
+    expect(pathsByTier(f, 'undeclared')).toEqual([]);
+  });
+
+  it('surfaces an out-of-band ENABLE of AI_ANALYST (default DISABLED, billable enable)', () => {
+    const changed = {
+      ...cleanLive,
+      Features: cleanFeatures.map((x) =>
+        x.Name === 'AI_ANALYST' ? { ...x, Status: 'ENABLED' } : x
+      ),
+    };
+    const f = classifyResource(res, changed, emptySchema);
+    expect(pathsByTier(f, 'undeclared')).toContain('Features');
+    expect(pathsByTier(f, 'atDefault')).not.toContain('Features');
+  });
+
+  it('surfaces an out-of-band ENABLE of a nested agent-management member (EC2_AGENT_MANAGEMENT)', () => {
+    const changed = {
+      ...cleanLive,
+      Features: cleanFeatures.map((x) =>
+        x.Name === 'RUNTIME_MONITORING'
+          ? {
+              ...x,
+              AdditionalConfiguration: (x.AdditionalConfiguration ?? []).map((m) =>
+                m.Name === 'EC2_AGENT_MANAGEMENT' ? { ...m, Status: 'ENABLED' } : m
+              ),
+            }
+          : x
+      ),
+    };
+    const f = classifyResource(res, changed, emptySchema);
+    expect(pathsByTier(f, 'undeclared')).toContain('Features');
+  });
+
+  it('folds RUNTIME_MONITORING=ENABLED too (era ONE_OF — a detector created when it was ON-by-default)', () => {
+    const olderEra = {
+      ...cleanLive,
+      Features: cleanFeatures.map((x) =>
+        x.Name === 'RUNTIME_MONITORING' || x.Name === 'EKS_RUNTIME_MONITORING'
+          ? { Status: 'ENABLED', Name: x.Name }
+          : x
+      ),
+    };
+    const f = classifyResource(res, olderEra, emptySchema);
+    expect(pathsByTier(f, 'atDefault')).toContain('Features');
+    expect(pathsByTier(f, 'undeclared')).not.toContain('Features');
   });
 });
