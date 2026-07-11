@@ -3407,18 +3407,13 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   now DERIVE-gated in classify: SecurityGroupIds via the #889/#976 default-SG gate (single default
   //   SG folds); SubnetIds via a default-VPC-subnet gate (fold only when EVERY live subnet is a
   //   default-VPC subnet, surface any subnet outside it). Both fail open when the prefetch is absent.
-  //   AWS::RedshiftServerless::Workgroup.ConfigParameters — a workgroup that declares no
-  //   ConfigParameters reads back AWS's full default effective-parameter set
-  //   ([{ParameterKey:"auto_mv",ParameterValue:"true"},{ParameterKey:"datestyle",…}, …]). The
-  //   documented default set is not fully enumerated in the evidence and AWS extends it over
-  //   time (a pinned whole-array constant would rot into a false positive the moment AWS adds a
-  //   parameter — the #653 recursive-subset lesson). A per-element equality gate (keyed by
-  //   ParameterKey) would preserve out-of-band-parameter detection but needs an
-  //   IDENTITY_KEYED_SUBSET_ARRAYS registration in classify.ts; until that follow-up lands, fold
-  //   value-independent: undeclared, so the whole AWS default parameter set is its choice, not
-  //   user intent (a user who pins a parameter DECLARES ConfigParameters, compared in the
-  //   declared loop). Live-confirmed on a fresh minimal workgroup (2026-07-09, us-east-1; #958).
-  'AWS::RedshiftServerless::Workgroup': new Set(['ConfigParameters']),
+  //   NOTE: AWS::RedshiftServerless::Workgroup.ConfigParameters was ALSO here (#958) — a workgroup
+  //   that declares none reads back AWS's full default effective-parameter set. But it is MUTABLE out
+  //   of band (`update-workgroup --config-parameters`) and carries security-load-bearing keys
+  //   (require_ssl, enable_user_activity_logging), so a value-independent fold hid an OOB
+  //   require_ssl=false / audit-off change (#1272). It is now PER-ELEMENT gated in classify against
+  //   the live-harvested defaults (RS_WORKGROUP_CONFIG_PARAM_DEFAULTS): a known key at its default
+  //   folds, a changed known key surfaces, an unknown new key still folds (AWS extends the set, #653).
   //   AWS::CloudFormation::Stack (the parent-side resource of every CDK `NestedStack`) is
   //   CC-read and returns the child stack's FULL live model, but the template's Stack resource
   //   declares only `TemplateURL` (an S3 asset URL) + `Parameters` + `Tags` — so three live

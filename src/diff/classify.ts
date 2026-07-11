@@ -268,6 +268,22 @@ export function shouldFoldDefaultSubnetList(
 const DEFAULT_SUBNET_LIST_PATHS: Record<string, string> = {
   'AWS::RedshiftServerless::Workgroup': 'SubnetIds',
 };
+// #1272: the AWS default effective ConfigParameters a RedshiftServerless Workgroup reads back when
+// it declares none (harvested live from a fresh us-east-1 workgroup, 2026-07-11). Keyed by
+// ParameterKey → default ParameterValue (all serialized as strings by the service). A known key at
+// its default folds atDefault; a known key CHANGED (e.g. require_ssl "false", audit-logging off)
+// surfaces; an UNKNOWN new key still folds (AWS extends the set over time — #653).
+const RS_WORKGROUP_CONFIG_PARAM_DEFAULTS: Record<string, string> = {
+  auto_mv: 'true',
+  datestyle: 'ISO, MDY',
+  enable_case_sensitive_identifier: 'false',
+  enable_user_activity_logging: 'true',
+  query_group: 'default',
+  require_ssl: 'true',
+  search_path: '$user, public',
+  use_fips_ssl: 'false',
+  max_query_execution_time: '14400',
+};
 /** #889 fold decision for an UNDECLARED default-SG list (ALB SecurityGroups / ENI GroupSet).
  *  Returns whether the value-independent fold should still apply for this live value:
  *   - `true`  → FOLD (atDefault): the live list is a single VPC-default SG id, OR the prefetch is
@@ -3992,6 +4008,42 @@ export function classifyResource(
         path: k,
         actual: v,
       });
+      continue;
+    }
+    // #1272: a RedshiftServerless Workgroup that declares no ConfigParameters reads back AWS's full
+    // default effective-parameter set. Replaces the old value-independent fold, which hid an OOB
+    // `update-workgroup --config-parameters` change to a security-load-bearing key (require_ssl=false
+    // plaintext, enable_user_activity_logging=false audit-off). Per-element equality gate keyed by
+    // ParameterKey against the live-harvested defaults: a known key at its default folds; a known key
+    // CHANGED away from its default surfaces; an UNKNOWN new key still folds (AWS extends the set over
+    // time — the #653 recursive-subset lesson).
+    if (
+      resourceType === 'AWS::RedshiftServerless::Workgroup' &&
+      k === 'ConfigParameters' &&
+      Array.isArray(v)
+    ) {
+      for (const el of v) {
+        if (!el || typeof el !== 'object') continue;
+        const e = el as Record<string, unknown>;
+        const pk = e.ParameterKey ?? e.parameterKey;
+        const pv = e.ParameterValue ?? e.parameterValue;
+        if (typeof pk !== 'string') continue;
+        const def = RS_WORKGROUP_CONFIG_PARAM_DEFAULTS[pk];
+        // Unknown key (AWS extended the set) → fold; known key equal to its default → fold; a known
+        // key CHANGED away from its default surfaces (the out-of-band edit #1272 targets). The live
+        // values are strings ("true"/"14400"), so a plain string compare handles them; the
+        // isStringlyEqualScalar arm additionally tolerates a boolean/number live value vs the string
+        // default (isStringlyEqualScalar returns false for string-vs-string).
+        const isDefault = def === undefined || pv === def || isStringlyEqualScalar(pv, def);
+        findings.push({
+          tier: isDefault ? 'atDefault' : 'undeclared',
+          logicalId,
+          resourceType,
+          path: `${k}[${pk}]`,
+          actual: pv,
+          nested: true,
+        });
+      }
       continue;
     }
     // NOTE: no `schema.writeOnly.has(k)` guard — a top-level write-only key was
