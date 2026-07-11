@@ -386,6 +386,27 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
   // prop (a Ref to the detector, resolvable). Verified live (#878, stack CdkrdHuntUGd,
   // us-east-1): `<DetectorId>|<FilterName>` reads; the reverse order returns NotFound.
   'AWS::GuardDuty::Filter': compositeWith('DetectorId'),
+  // GuardDuty IPSet / ThreatIntelSet / ThreatEntitySet / TrustedEntitySet each have a
+  // COMPOSITE primaryIdentifier `[Id, DetectorId]` (CHILD-first — the child Id before the
+  // parent DetectorId), but their CFn physical id (Ref) is only the bare child Id, so a
+  // bare-id CC GetResource ValidationException-skips them (read-gap) on every check — an
+  // out-of-band Location repoint / Activate flip / deactivation stays invisible and survives
+  // `record`. Same mechanism as their sibling Filter (#878), only child-first, so it uses
+  // the child-first `compositeChildFirstWith('DetectorId')` → `<Id>|<DetectorId>`. DetectorId
+  // is a required createOnly declared prop (a Ref to the detector, resolvable); an unresolved
+  // DetectorId → bare-id honest skip (fail-safe, no regression). Order per the authoritative
+  // registry primaryIdentifier `[/properties/Id, /properties/DetectorId]` (#1333).
+  'AWS::GuardDuty::IPSet': compositeChildFirstWith('DetectorId'),
+  'AWS::GuardDuty::ThreatIntelSet': compositeChildFirstWith('DetectorId'),
+  'AWS::GuardDuty::ThreatEntitySet': compositeChildFirstWith('DetectorId'),
+  'AWS::GuardDuty::TrustedEntitySet': compositeChildFirstWith('DetectorId'),
+  // GuardDuty PublishingDestination primaryIdentifier is `[DetectorId, Id]` — PARENT-first,
+  // the same shape as Filter — so it uses `compositeWith('DetectorId')` → `<DetectorId>|<Id>`.
+  // The CFn physical id is only the bare Id; DetectorId is a required createOnly declared Ref.
+  // Without this the bare id CC GetResource ValidationException-skips it (read-gap) — an
+  // out-of-band DestinationProperties / KMS-key change is invisible. Order per the registry
+  // primaryIdentifier `[/properties/DetectorId, /properties/Id]` (#1333).
+  'AWS::GuardDuty::PublishingDestination': compositeWith('DetectorId'),
   // Events::Rule on a CUSTOM event bus has the CFn physical id `<busName>|<ruleName>`
   // (child-enumerators.ts:1306-1317 confirms the composite shape), but the CC
   // primaryIdentifier is the single-segment rule ARN (`/properties/Arn`). Passing the
@@ -460,6 +481,20 @@ function compositeWith(
     if (pid.includes('|')) return pid;
     const parent = declared[parentKey];
     return typeof parent === 'string' && parent.length > 0 ? `${parent}|${pid}` : undefined;
+  };
+}
+
+// The CHILD-first twin of `compositeWith`: builds `${physicalId}|${declared[parentKey]}`
+// (child id first, then the parent Ref), for types whose primaryIdentifier lists the
+// child id BEFORE the parent (e.g. GuardDuty *Set types: pi [Id, DetectorId]). undefined
+// when the parent ref did not resolve (→ honest skip). Never double-suffixes a composite.
+function compositeChildFirstWith(
+  parentKey: string
+): (pid: string, declared: Record<string, unknown>) => string | undefined {
+  return (pid, declared) => {
+    if (pid.includes('|')) return pid;
+    const parent = declared[parentKey];
+    return typeof parent === 'string' && parent.length > 0 ? `${pid}|${parent}` : undefined;
   };
 }
 

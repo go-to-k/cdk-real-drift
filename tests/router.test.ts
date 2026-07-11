@@ -538,6 +538,73 @@ describe('readLive (CC identifier adapters, R74)', () => {
     expect(sent()).toBe('my-filter');
   });
 
+  for (const type of [
+    'AWS::GuardDuty::IPSet',
+    'AWS::GuardDuty::ThreatIntelSet',
+    'AWS::GuardDuty::ThreatEntitySet',
+    'AWS::GuardDuty::TrustedEntitySet',
+  ]) {
+    it(`GuardDuty ${type.split('::').pop()}: builds the Id|DetectorId composite — CHILD first (#1333)`, async () => {
+      cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+      await readLive(
+        cc as unknown as CloudControlClient,
+        res({
+          resourceType: type,
+          physicalId: 'set-abc123',
+          declared: { DetectorId: 'abc123detector' },
+        }),
+        'us-east-1',
+        '1'
+      );
+      expect(sent()).toBe('set-abc123|abc123detector');
+    });
+
+    it(`GuardDuty ${type.split('::').pop()}: an unresolved DetectorId falls back to the raw physical id (#1333)`, async () => {
+      cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+      await readLive(
+        cc as unknown as CloudControlClient,
+        res({
+          resourceType: type,
+          physicalId: 'set-abc123',
+          declared: {},
+        }),
+        'us-east-1',
+        '1'
+      );
+      expect(sent()).toBe('set-abc123');
+    });
+  }
+
+  it('GuardDuty PublishingDestination: builds the DetectorId|Id composite — PARENT first (#1333)', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::GuardDuty::PublishingDestination',
+        physicalId: 'dest-abc123',
+        declared: { DetectorId: 'abc123detector' },
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('abc123detector|dest-abc123');
+  });
+
+  it('GuardDuty PublishingDestination: an unresolved DetectorId falls back to the raw physical id (#1333)', async () => {
+    cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
+    await readLive(
+      cc as unknown as CloudControlClient,
+      res({
+        resourceType: 'AWS::GuardDuty::PublishingDestination',
+        physicalId: 'dest-abc123',
+        declared: {},
+      }),
+      'us-east-1',
+      '1'
+    );
+    expect(sent()).toBe('dest-abc123');
+  });
+
   it('AutoScaling ScheduledAction: builds the ScheduledActionName|AutoScalingGroupName composite — CHILD first (reverse of LifecycleHook)', async () => {
     cc.on(GetResourceCommand).resolves({ ResourceDescription: { Properties: '{}' } });
     await readLive(
