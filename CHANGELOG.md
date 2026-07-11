@@ -1,3 +1,10 @@
+## [0.12.70](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.69...v0.12.70) (2026-07-11)
+
+
+### Bug Fixes
+
+* **diff:** per-element gate for RedshiftServerless Workgroup ConfigParameters ([#1272](https://github.com/go-to-k/cdk-real-drift/issues/1272)) ([#1441](https://github.com/go-to-k/cdk-real-drift/issues/1441)) ([87d9b20](https://github.com/go-to-k/cdk-real-drift/commit/87d9b205511b5671c7b6b15477edc3b7c05cd442))
+
 ## [0.12.69](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.68...v0.12.69) (2026-07-11)
 
 
