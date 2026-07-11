@@ -183,8 +183,8 @@ resource_gone() {
       # arn:aws:ec2:<region>:<acct>:vpc-endpoint/vpce-<id> — the second type observed
       # lingering in the RGT index after deletion (2026-07-10): DescribeVpcEndpoints
       # returned InvalidVpcEndpointId.NotFound while the tag filter still listed it,
-      # keeping an unrelated agent's gate RED. Probed subtypes: vpc-endpoint and
-      # instance; every other ec2 resource stays fail-safe (return 1 → ORPHAN stays RED).
+      # keeping an unrelated agent's gate RED. Probed subtypes: vpc-endpoint, instance,
+      # and volume; every other ec2 resource stays fail-safe (return 1 → ORPHAN stays RED).
       case "$arn" in
         *:vpc-endpoint/vpce-*)
           id="${arn##*/}"
@@ -209,6 +209,18 @@ resource_gone() {
           fi
           state="$(printf '%s' "$out" | tr -d '[:space:]')"
           { [ -z "$state" ] || [ "$state" = "terminated" ]; } && return 0
+          return 1
+          ;;
+        *:volume/vol-*)
+          # arn:aws:ec2:<region>:<acct>:volume/vol-<id> — the fourth RGT-lag subtype
+          # (2026-07-11, #1463): a just-deleted EBS volume lingers in the tag index for
+          # minutes after DeleteVolume. DescribeVolumes answers InvalidVolume.NotFound once
+          # it is gone. Only NotFound counts as gone — a volume that still exists in ANY
+          # state (available / in-use / deleting) keeps the ORPHAN RED (fail-safe), mirroring
+          # the vpc-endpoint arm.
+          id="${arn##*/}"
+          err="$(aws ec2 describe-volumes --volume-ids "$id" --region "$REGION" 2>&1 >/dev/null)" && return 1
+          printf '%s' "$err" | grep -q 'InvalidVolume.NotFound' && return 0
           return 1
           ;;
         *) return 1 ;;
