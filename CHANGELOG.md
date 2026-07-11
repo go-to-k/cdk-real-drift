@@ -1,3 +1,10 @@
+## [0.12.81](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.80...v0.12.81) (2026-07-11)
+
+
+### Bug Fixes
+
+* **diff:** account-level default overrides — EC2 credit-spec + RDS/DocDB default CA ([#1070](https://github.com/go-to-k/cdk-real-drift/issues/1070) items 4-5) ([#1465](https://github.com/go-to-k/cdk-real-drift/issues/1465)) ([9242917](https://github.com/go-to-k/cdk-real-drift/commit/9242917f7d3d533a745a021232a6711fe5c12113))
+
 ## [0.12.80](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.79...v0.12.80) (2026-07-11)
 
 
