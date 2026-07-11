@@ -223,6 +223,72 @@ resource_gone() {
           printf '%s' "$err" | grep -q 'InvalidVolume.NotFound' && return 0
           return 1
           ;;
+        *:subnet/subnet-*)
+          # arn:aws:ec2:<region>:<acct>:subnet/subnet-<id> — the fifth RGT-lag subtype
+          # (2026-07-12 hunt): a subnet deleted with its stack lingered in the tag index
+          # while DescribeSubnets answered InvalidSubnetID.NotFound. Only NotFound counts
+          # as gone (fail-safe, mirrors the volume arm).
+          id="${arn##*/}"
+          err="$(aws ec2 describe-subnets --subnet-ids "$id" --region "$REGION" 2>&1 >/dev/null)" && return 1
+          printf '%s' "$err" | grep -q 'InvalidSubnetID.NotFound' && return 0
+          return 1
+          ;;
+        *) return 1 ;;
+      esac
+      ;;
+    ecs)
+      # ECS keeps deregistered/deleted resources visible as INACTIVE (by design), and the
+      # RGT index returns them under the tag filter long after the stack is gone
+      # (observed 2026-07-12: task-definition revisions CFn deregistered, a deleted
+      # service, both INACTIVE). Nothing deletable remains in the INACTIVE state, so it
+      # counts as gone; a MissingException/NotFound answer counts too. Any ACTIVE/
+      # DRAINING answer (or an ambiguous error) keeps the ORPHAN RED (fail-safe).
+      case "$arn" in
+        *:task-definition/*)
+          local st
+          st="$(aws ecs describe-task-definition --task-definition "${arn##*task-definition/}" \
+            --region "$REGION" --query 'taskDefinition.status' --output text 2>/dev/null)" || return 0
+          [ "$st" = "INACTIVE" ] && return 0
+          return 1
+          ;;
+        *:service/*)
+          # arn:aws:ecs:<region>:<acct>:service/<cluster>/<service>
+          local rest cluster service out
+          rest="${arn##*:service/}"; cluster="${rest%%/*}"; service="${rest#*/}"
+          [ -n "$cluster" ] && [ -n "$service" ] || return 1
+          out="$(aws ecs describe-services --cluster "$cluster" --services "$service" \
+            --region "$REGION" --query 'services[0].status' --output text 2>/dev/null)" || return 0
+          { [ "$out" = "INACTIVE" ] || [ "$out" = "None" ]; } && return 0
+          return 1
+          ;;
+        *:cluster/*)
+          local cst
+          cst="$(aws ecs describe-clusters --clusters "${arn##*/}" --region "$REGION" \
+            --query 'clusters[0].status' --output text 2>/dev/null)" || return 0
+          { [ "$cst" = "INACTIVE" ] || [ "$cst" = "None" ]; } && return 0
+          return 1
+          ;;
+        *) return 1 ;;
+      esac
+      ;;
+    kms)
+      # arn:aws:kms:<region>:<acct>:key/<id> — a key already SCHEDULED FOR DELETION
+      # (PendingDeletion / PendingReplicaDeletion) is self-resolving debris: nothing
+      # deletable remains (deletion is scheduled; cancelling would be a restore, not a
+      # sweep), yet it stays in the tag index for the whole 7-30-day window, which
+      # deadlocked the bughunt-clean gate (2026-07-12 hunt: two rollback-orphaned CMKs).
+      # An Enabled/Disabled key stays RED — a real orphan that needs schedule-key-deletion.
+      case "$arn" in
+        *:key/*)
+          local kst
+          kst="$(aws kms describe-key --key-id "${arn##*/}" --region "$REGION" \
+            --query 'KeyMetadata.KeyState' --output text 2>/dev/null)" || {
+              # NotFoundException = fully gone
+              return 0
+            }
+          { [ "$kst" = "PendingDeletion" ] || [ "$kst" = "PendingReplicaDeletion" ]; } && return 0
+          return 1
+          ;;
         *) return 1 ;;
       esac
       ;;
