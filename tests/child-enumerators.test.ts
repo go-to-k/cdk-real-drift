@@ -30,6 +30,7 @@ import {
   RDSClient,
 } from '@aws-sdk/client-rds';
 import { ListResourceRecordSetsCommand, Route53Client } from '@aws-sdk/client-route-53';
+import { GetBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
 import { ListSubscriptionsByTopicCommand, SNSClient } from '@aws-sdk/client-sns';
 import { mockClient } from 'aws-sdk-client-mock';
 import { describe, expect, it } from 'vite-plus/test';
@@ -41,6 +42,7 @@ import {
   enumerateRdsClusterChildren,
   enumerateRestApiChildren,
   enumerateRoute53HostedZoneChildren,
+  enumerateS3BucketChildren,
   enumerateSnsTopicChildren,
   enumerateVpcChildren,
   diffApiGatewayAuthorizers,
@@ -75,6 +77,7 @@ import {
   diffRdsClusterChildren,
   diffRoute53HostedZoneChildren,
   diffRouteTableChildren,
+  diffS3BucketPolicy,
   diffSnsTopicChildren,
   diffUserPoolChildren,
   diffUserPoolGroups,
@@ -1369,6 +1372,62 @@ describe('diffLambdaResourcePolicy (Lambda resource-policy statements, #835)', (
         declaredPermissionSids: [],
         // A statement with no Sid — no CFn physical id / CC identifier to build.
         liveStatements: [{ Effect: 'Allow', Action: 'lambda:InvokeFunction' }],
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffS3BucketPolicy (S3 out-of-band bucket policy, #835)', () => {
+  const BUCKET = 'my-bucket-abc123';
+  const publicPolicy = {
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Sid: 'PublicRead',
+        Effect: 'Allow',
+        Principal: '*',
+        Action: 's3:GetObject',
+        Resource: `arn:aws:s3:::${BUCKET}/*`,
+      },
+    ],
+  };
+
+  it('flags an out-of-band policy on a bucket with no declared BucketPolicy', () => {
+    const added = diffS3BucketPolicy({
+      bucketName: BUCKET,
+      hasDeclaredPolicy: false,
+      livePolicy: publicPolicy,
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::S3::BucketPolicy',
+        // CC primaryIdentifier / CFn physical id are BOTH the bucket name.
+        identifier: BUCKET,
+        siblingLookupId: BUCKET,
+        label: `bucket policy ${BUCKET}`,
+        live: { Bucket: BUCKET, PolicyDocument: publicPolicy },
+      },
+    ]);
+  });
+
+  it('suppresses when a declared AWS::S3::BucketPolicy already covers the bucket', () => {
+    // The declared override reader diffs the declared BucketPolicy's content, so the
+    // out-of-band edit surfaces there — no duplicate `added`.
+    expect(
+      diffS3BucketPolicy({
+        bucketName: BUCKET,
+        hasDeclaredPolicy: true,
+        livePolicy: publicPolicy,
+      })
+    ).toEqual([]);
+  });
+
+  it('no drift when the bucket has no live policy (zero first-run FP)', () => {
+    expect(
+      diffS3BucketPolicy({
+        bucketName: BUCKET,
+        hasDeclaredPolicy: false,
+        livePolicy: undefined,
       })
     ).toEqual([]);
   });
@@ -3828,6 +3887,89 @@ describe('enumerateLambdaFunctionChildren resource-policy statements (#835)', ()
     // NOT be swallowed into a false-clean read, so the enumerator re-throws.
     await expect(enumerateLambdaFunctionChildren(ctx)).rejects.toThrow('denied');
     lambda.restore();
+  });
+});
+
+describe('enumerateS3BucketChildren out-of-band bucket policy (#835)', () => {
+  const BUCKET = 'my-bucket-abc123';
+  const policyJson = JSON.stringify({
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Sid: 'PublicRead',
+        Effect: 'Allow',
+        Principal: '*',
+        Action: 's3:GetObject',
+        Resource: `arn:aws:s3:::${BUCKET}/*`,
+      },
+    ],
+  });
+  const ctxFor = (resources: unknown[]) =>
+    ({
+      parent: { physicalId: BUCKET, logicalId: 'Bucket' },
+      desired: { resources },
+      region: 'us-east-1',
+    }) as unknown as EnumeratorContext;
+
+  it('flags an out-of-band policy on a bucket with no declared BucketPolicy', async () => {
+    const s3 = mockClient(S3Client);
+    s3.on(GetBucketPolicyCommand).resolves({ Policy: policyJson });
+    const added = await enumerateS3BucketChildren(ctxFor([]));
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::S3::BucketPolicy',
+        identifier: BUCKET,
+        siblingLookupId: BUCKET,
+        label: `bucket policy ${BUCKET}`,
+        live: {
+          Bucket: BUCKET,
+          PolicyDocument: {
+            Version: '2012-10-17',
+            Statement: [
+              {
+                Sid: 'PublicRead',
+                Effect: 'Allow',
+                Principal: '*',
+                Action: 's3:GetObject',
+                Resource: `arn:aws:s3:::${BUCKET}/*`,
+              },
+            ],
+          },
+        },
+      },
+    ]);
+    s3.restore();
+  });
+
+  it('suppresses when a declared AWS::S3::BucketPolicy targets the bucket (resolved Bucket)', async () => {
+    const s3 = mockClient(S3Client);
+    s3.on(GetBucketPolicyCommand).resolves({ Policy: policyJson });
+    // gather resolves the declared BucketPolicy's `{ Ref: Bucket }` to the bucket name.
+    const added = await enumerateS3BucketChildren(
+      ctxFor([
+        { resourceType: 'AWS::S3::BucketPolicy', physicalId: BUCKET, declared: { Bucket: BUCKET } },
+      ])
+    );
+    expect(added).toEqual([]);
+    s3.restore();
+  });
+
+  it('a bucket with NO policy (NoSuchBucketPolicy) surfaces nothing', async () => {
+    const s3 = mockClient(S3Client);
+    s3.on(GetBucketPolicyCommand).rejects(
+      Object.assign(new Error('none'), { name: 'NoSuchBucketPolicy' })
+    );
+    expect(await enumerateS3BucketChildren(ctxFor([]))).toEqual([]);
+    s3.restore();
+  });
+
+  it('a NON-NoSuchBucketPolicy error propagates (parent coverage gap, not a false added)', async () => {
+    const s3 = mockClient(S3Client);
+    s3.on(GetBucketPolicyCommand).rejects(
+      Object.assign(new Error('denied'), { name: 'AccessDenied' })
+    );
+    await expect(enumerateS3BucketChildren(ctxFor([]))).rejects.toThrow('denied');
+    s3.restore();
   });
 });
 
