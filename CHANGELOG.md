@@ -1,3 +1,10 @@
+## [0.12.95](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.94...v0.12.95) (2026-07-11)
+
+
+### Bug Fixes
+
+* **read:** surface an out-of-band SNS topic access policy as an added AWS::SNS::TopicPolicy ([#835](https://github.com/go-to-k/cdk-real-drift/issues/835)) ([#1488](https://github.com/go-to-k/cdk-real-drift/issues/1488)) ([b683677](https://github.com/go-to-k/cdk-real-drift/commit/b68367735be783b2af6647e5acae8be400bd864b))
+
 ## [0.12.94](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.93...v0.12.94) (2026-07-11)
 
 
