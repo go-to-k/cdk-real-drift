@@ -278,7 +278,9 @@ needs `--remove-unrecorded`).
 - **API Gateway REST**: resources, methods, authorizers, models, request
   validators, gateway responses, stages
 - **API Gateway V2** (HTTP / WebSocket): routes, integrations, authorizers, stages
-- **SNS**: topic subscriptions
+- **SNS**: topic subscriptions, topic access policies (an out-of-band
+  `set-topic-attributes Policy` on a topic with no declared `AWS::SNS::TopicPolicy` —
+  the AWS-default policy every topic carries is folded, so only a custom policy surfaces)
 - **Lambda**: event source mappings, function URLs, aliases, versions,
   resource-policy statements (an out-of-band `add-permission`)
 - **EventBridge**: bus rules
@@ -988,7 +990,13 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
     `GetRequestValidators` / `GetGatewayResponses`; HTTP `GetRoutes` /
     `GetIntegrations` / `GetAuthorizers` / `GetStages` — every API Gateway read
     resolves to the single `apigateway:GET` action)
-  - `AWS::SNS::Topic`: `sns:ListSubscriptionsByTopic`
+  - `AWS::SNS::Topic`: `sns:ListSubscriptionsByTopic`, `sns:GetTopicAttributes`
+    (the same action listed as an SDK override-reader permission above — here it
+    also enumerates a topic's out-of-band access policy as a child
+    `AWS::SNS::TopicPolicy`; the AWS-default policy every topic carries is folded, so
+    only a custom policy surfaces). Reverting a detected one also needs
+    `sns:SetTopicAttributes` (the SDK deleter restores the AWS-default policy — SNS
+    rejects an empty `Policy`, so it re-sets the default rather than clearing).
   - `AWS::Lambda::Function`: `lambda:ListEventSourceMappings`,
     `lambda:ListFunctionUrlConfigs`, `lambda:ListAliases`,
     `lambda:ListVersionsByFunction`
