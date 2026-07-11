@@ -3593,6 +3593,36 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
     });
   });
 
+  // #1361: Route53 stores/returns record names lowercased, so a raw-CFn / L1 record
+  // declared with a mixed-case `Name` reads back lowercase — a case-only difference on
+  // the same DNS-name class as the already-folded sibling `AliasTarget.DNSName`. The
+  // reader aligns the trailing dot to the declared value, so case is the only residual.
+  describe('case-insensitive scalar path (Route53 RecordSet Name, #1361)', () => {
+    const T = 'AWS::Route53::RecordSet';
+
+    it('mixed-case declared Name vs lowercase live Name is NOT drift', () => {
+      expect(
+        classifyResource(
+          res(T, { Name: 'MyApp.Example.Com.' }),
+          { Name: 'myapp.example.com.' },
+          emptySchema
+        )
+      ).toEqual([]);
+    });
+
+    it('a genuinely different record name is still drift', () => {
+      expect(
+        tiers(
+          classifyResource(
+            res(T, { Name: 'MyApp.Example.Com.' }),
+            { Name: 'other.example.com.' },
+            emptySchema
+          )
+        ).declared
+      ).toEqual(['Name']);
+    });
+  });
+
   // #502: ECR RepositoryCreationTemplate declares `Prefix: "cdkrd-hunt/"` (S3-prefix
   // habit) but the service stores `"cdkrd-hunt"` — after the CC_IDENTIFIER_ADAPTERS
   // read succeeds, the residual Prefix diff is pure trailing-slash noise.
@@ -6292,6 +6322,27 @@ describe('classifyResource RDS version-track + dynamic-reference (R130)', () => 
     // a genuine version change still differs
     expect(
       declaredPaths('AWS::DocDB::DBCluster', { EngineVersion: '4.0' }, { EngineVersion: '5.0.0' })
+    ).toEqual(['EngineVersion']);
+  });
+
+  // #1360: Aurora GlobalCluster is the same Aurora partial->concrete family and is CC-read-
+  // native + FULLY_MUTABLE, so a declared partial "8.0" reads back the concrete provisioned
+  // patch and false-drifts on every clean deploy without the VERSION_PREFIX_PATHS entry.
+  it('RDS GlobalCluster EngineVersion "8.0" resolved to live "8.0.mysql_aurora.3.08.0" is NOT declared drift', () => {
+    expect(
+      declaredPaths(
+        'AWS::RDS::GlobalCluster',
+        { EngineVersion: '8.0' },
+        { EngineVersion: '8.0.mysql_aurora.3.08.0' }
+      )
+    ).toEqual([]);
+    // a genuine track change still differs
+    expect(
+      declaredPaths(
+        'AWS::RDS::GlobalCluster',
+        { EngineVersion: '5.7' },
+        { EngineVersion: '8.0.mysql_aurora.3.08.0' }
+      )
     ).toEqual(['EngineVersion']);
   });
 

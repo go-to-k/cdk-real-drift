@@ -3918,7 +3918,14 @@ export const JSON_STRING_DEFAULT_FILLS: Record<string, Record<string, Record<str
 // case-insensitive). Observed-only entries. The drift path is the dotted path
 // from calculateResourceDrift (e.g. `AliasTarget.DNSName`).
 export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
-  'AWS::Route53::RecordSet': new Set(['AliasTarget.DNSName']),
+  // `Name` alongside `AliasTarget.DNSName`: Route53 stores/returns record names
+  // lowercased, but a raw-CFn / L1 record can declare a mixed-case `Name`
+  // (`MyApp.Example.Com.`). The reader already aligns the trailing dot to the
+  // declared value, so the only remaining difference is case — DNS names are
+  // case-insensitive, so the fold masks no real drift (a genuinely different name
+  // still differs after case-fold). The sibling `AliasTarget.DNSName` on this same
+  // type was case-folded for the identical reason.
+  'AWS::Route53::RecordSet': new Set(['Name', 'AliasTarget.DNSName']),
   // Batch ComputeEnvironment `Type` — CDK's `FargateComputeEnvironment` /
   // `ManagedComputeEnvironment` emits the value LOWERCASE (`managed`) in the
   // template, but the Batch API accepts it case-insensitively and the live read
@@ -4423,6 +4430,12 @@ export const VERSION_PREFIX_PATHS: Record<string, ReadonlySet<string>> = {
   // Aurora clusters resolve a partial track the same way (declared `"8.0"` /
   // `"5.7.mysql_aurora.2"` reads back the full provisioned patch version).
   'AWS::RDS::DBCluster': new Set(['EngineVersion']),
+  // Aurora GlobalCluster is the same partial->concrete Aurora family: it is
+  // FULLY_MUTABLE and CC-read-native (`rds:DescribeGlobalClusters`), and a declared
+  // partial `EngineVersion` (`"8.0"` / `"5.7.mysql_aurora.2"`) provisions and reads
+  // back the concrete patch version, false-drifting on every clean deploy without the
+  // fold. A genuine track change still differs (the leading-run check fails).
+  'AWS::RDS::GlobalCluster': new Set(['EngineVersion']),
   // Live-observed on a fresh neptune-rich deploy: Neptune accepts a major.minor
   // EngineVersion (declared `"1.3"`) and provisions the latest patch in that track,
   // reading back the concrete 4-segment version (`"1.3.5.0"`) — the same partial->
