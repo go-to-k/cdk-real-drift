@@ -31,6 +31,10 @@ import {
 } from '@aws-sdk/client-rds';
 import { ListResourceRecordSetsCommand, Route53Client } from '@aws-sdk/client-route-53';
 import { GetBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  GetResourcePolicyCommand as SecretsGetResourcePolicyCommand,
+  SecretsManagerClient,
+} from '@aws-sdk/client-secrets-manager';
 import { ListSubscriptionsByTopicCommand, SNSClient } from '@aws-sdk/client-sns';
 import { GetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { mockClient } from 'aws-sdk-client-mock';
@@ -44,6 +48,7 @@ import {
   enumerateRestApiChildren,
   enumerateRoute53HostedZoneChildren,
   enumerateS3BucketChildren,
+  enumerateSecretsManagerSecretChildren,
   enumerateSnsTopicChildren,
   enumerateSqsQueueChildren,
   enumerateVpcChildren,
@@ -80,6 +85,7 @@ import {
   diffRoute53HostedZoneChildren,
   diffRouteTableChildren,
   diffS3BucketPolicy,
+  diffSecretsManagerResourcePolicy,
   diffSnsTopicChildren,
   diffSqsQueuePolicy,
   diffUserPoolChildren,
@@ -1483,6 +1489,60 @@ describe('diffSqsQueuePolicy (SQS out-of-band queue policy, #835)', () => {
     expect(
       diffSqsQueuePolicy({
         queueUrl: QURL,
+        hasDeclaredPolicy: false,
+        livePolicy: undefined,
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffSecretsManagerResourcePolicy (Secrets Manager out-of-band resource policy, #835)', () => {
+  const ARN = 'arn:aws:secretsmanager:us-east-1:111122223333:secret:my-secret-AbCdEf';
+  const crossAcctPolicy = {
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Sid: 'RogueCrossAccountRead',
+        Effect: 'Allow',
+        Principal: { AWS: 'arn:aws:iam::999988887777:root' },
+        Action: 'secretsmanager:GetSecretValue',
+        Resource: '*',
+      },
+    ],
+  };
+
+  it('flags an out-of-band policy on a secret with no declared ResourcePolicy', () => {
+    const added = diffSecretsManagerResourcePolicy({
+      secretId: ARN,
+      hasDeclaredPolicy: false,
+      livePolicy: crossAcctPolicy,
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::SecretsManager::ResourcePolicy',
+        // CC primaryIdentifier is a generated Id; the finding carries the secret ARN instead.
+        identifier: ARN,
+        siblingLookupId: ARN,
+        label: `secret resource policy ${ARN}`,
+        live: { SecretId: ARN, ResourcePolicy: crossAcctPolicy },
+      },
+    ]);
+  });
+
+  it('suppresses when a declared AWS::SecretsManager::ResourcePolicy already covers the secret', () => {
+    expect(
+      diffSecretsManagerResourcePolicy({
+        secretId: ARN,
+        hasDeclaredPolicy: true,
+        livePolicy: crossAcctPolicy,
+      })
+    ).toEqual([]);
+  });
+
+  it('no drift when the secret has no live policy (zero first-run FP)', () => {
+    expect(
+      diffSecretsManagerResourcePolicy({
+        secretId: ARN,
         hasDeclaredPolicy: false,
         livePolicy: undefined,
       })
@@ -4112,6 +4172,91 @@ describe('enumerateSqsQueueChildren out-of-band queue policy (#835)', () => {
       .rejects(Object.assign(new Error('denied'), { name: 'AccessDenied' }));
     await expect(enumerateSqsQueueChildren(ctxFor([]))).rejects.toThrow('denied');
     sqs.restore();
+  });
+});
+
+describe('enumerateSecretsManagerSecretChildren out-of-band resource policy (#835)', () => {
+  const ARN = 'arn:aws:secretsmanager:us-east-1:111122223333:secret:my-secret-AbCdEf';
+  const policyJson = JSON.stringify({
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Sid: 'RogueCrossAccountRead',
+        Effect: 'Allow',
+        Principal: { AWS: 'arn:aws:iam::999988887777:root' },
+        Action: 'secretsmanager:GetSecretValue',
+        Resource: '*',
+      },
+    ],
+  });
+  const ctxFor = (resources: unknown[]) =>
+    ({
+      parent: { physicalId: ARN, logicalId: 'Secret' },
+      desired: { resources },
+      region: 'us-east-1',
+    }) as unknown as EnumeratorContext;
+
+  it('flags an out-of-band policy on a secret with no declared ResourcePolicy', async () => {
+    const sm = mockClient(SecretsManagerClient);
+    sm.on(SecretsGetResourcePolicyCommand).resolves({ ResourcePolicy: policyJson });
+    const added = await enumerateSecretsManagerSecretChildren(ctxFor([]));
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::SecretsManager::ResourcePolicy',
+        identifier: ARN,
+        siblingLookupId: ARN,
+        label: `secret resource policy ${ARN}`,
+        live: {
+          SecretId: ARN,
+          ResourcePolicy: {
+            Version: '2012-10-17',
+            Statement: [
+              {
+                Sid: 'RogueCrossAccountRead',
+                Effect: 'Allow',
+                Principal: { AWS: 'arn:aws:iam::999988887777:root' },
+                Action: 'secretsmanager:GetSecretValue',
+                Resource: '*',
+              },
+            ],
+          },
+        },
+      },
+    ]);
+    sm.restore();
+  });
+
+  it('suppresses when a declared AWS::SecretsManager::ResourcePolicy targets the secret (resolved SecretId)', async () => {
+    const sm = mockClient(SecretsManagerClient);
+    sm.on(SecretsGetResourcePolicyCommand).resolves({ ResourcePolicy: policyJson });
+    // gather resolves the declared ResourcePolicy's `{ Ref: Secret }` SecretId to the secret ARN.
+    const added = await enumerateSecretsManagerSecretChildren(
+      ctxFor([
+        {
+          resourceType: 'AWS::SecretsManager::ResourcePolicy',
+          physicalId: 'gen-id',
+          declared: { SecretId: ARN },
+        },
+      ])
+    );
+    expect(added).toEqual([]);
+    sm.restore();
+  });
+
+  it('a secret with NO resource policy surfaces nothing (zero first-run FP)', async () => {
+    const sm = mockClient(SecretsManagerClient);
+    sm.on(SecretsGetResourcePolicyCommand).resolves({ ResourcePolicy: undefined });
+    expect(await enumerateSecretsManagerSecretChildren(ctxFor([]))).toEqual([]);
+    sm.restore();
+  });
+
+  it('a GetResourcePolicy error propagates (parent coverage gap, not a false added)', async () => {
+    const sm = mockClient(SecretsManagerClient);
+    sm.on(SecretsGetResourcePolicyCommand).rejects(
+      Object.assign(new Error('denied'), { name: 'AccessDeniedException' })
+    );
+    await expect(enumerateSecretsManagerSecretChildren(ctxFor([]))).rejects.toThrow('denied');
+    sm.restore();
   });
 });
 
