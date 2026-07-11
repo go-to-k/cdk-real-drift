@@ -4696,14 +4696,22 @@ export function canonicalizeIdArraysDeep(v: unknown): unknown {
 // spelling compares equal, while a GENUINELY different CIDR (`2001:db8::/32` vs
 // `2001:dead::/32`) still lands on distinct canonical forms and surfaces.
 //
-// FP-safety: this only transforms a string that passes a STRICT IPv6-CIDR parse gate
-// (`canonicalIpv6Cidr` returns undefined otherwise) — an IPv4 CIDR, an ARN (colon-
-// heavy but not a valid hextet structure), or any arbitrary string passes through
-// UNCHANGED. The embedded-IPv4 tail form (`::ffff:1.2.3.4`) is handled
-// conservatively: `parseIpv6Groups` rejects it (an IPv4 dotted tail is not a hextet),
-// so it is left unchanged. Because the gate is a strict parse, this is FP-safe to
-// apply UNSCOPED (deep over the whole model), exactly like the other deep
-// canonicalizers — no path table needed.
+// This folds BOTH the CIDR form (`<addr>/<prefix>`, via `canonicalIpv6Cidr`) AND the
+// BARE-ADDRESS form (no prefix, via `canonicalIpv6Address`) — #1273. Bare IPv6
+// addresses appear in `AWS::EC2::Instance.Ipv6Addresses[].Ipv6Address`,
+// `AWS::EC2::NetworkInterface.Ipv6Addresses[].Ipv6Address`, and Route53 AAAA
+// `ResourceRecords`, and AWS echoes them RFC 5952-canonical too, so the CIDR-only
+// fold left them false-drifting exactly like CIDRs did before #981.
+//
+// FP-safety: this only transforms a string that passes the STRICT `parseIpv6Groups`
+// gate (both `canonicalIpv6Cidr` and `canonicalIpv6Address` return undefined
+// otherwise) — an IPv4 CIDR, an ARN (colon-heavy but not a valid hextet structure),
+// a MAC, a plain word, or any arbitrary string passes through UNCHANGED. The gate
+// rejects embedded-IPv4 tails (`::ffff:1.2.3.4`), non-hex groups, the wrong group
+// count, multiple `::`, and a `::` that elides zero groups, so it only ever matches
+// an unambiguous 8-group IPv6 address. Because the gate is a strict parse, BOTH the
+// CIDR and bare-address folds are FP-safe to apply UNSCOPED (deep over the whole
+// model), exactly like the other deep canonicalizers — no path table needed.
 
 // Parse an IPv6 address literal into its 8 16-bit groups, or undefined if it is not a
 // valid, unambiguous IPv6 address. Rejects: embedded-IPv4 tails, non-hex groups,
@@ -4753,19 +4761,12 @@ function parseIpv6Groups(addr: string): number[] | undefined {
   return [...headGroups, ...new Array(missing).fill(0), ...tailGroups];
 }
 
-// RFC 5952-canonicalize an IPv6 CIDR string (`<addr>/<prefix>`), or undefined if it is
-// not a valid IPv6 CIDR. Lowercase hex, strip leading zeros per group, compress the
-// LONGEST run of ≥1 all-zero groups to `::` (leftmost on ties), reattach `/prefix`.
-export function canonicalIpv6Cidr(s: string): string | undefined {
-  const slash = s.indexOf('/');
-  if (slash === -1) return undefined; // must be a CIDR, not a bare address
-  const addr = s.slice(0, slash);
-  const prefixStr = s.slice(slash + 1);
-  if (!/^\d{1,3}$/.test(prefixStr)) return undefined;
-  const prefix = Number.parseInt(prefixStr, 10);
-  if (prefix < 0 || prefix > 128) return undefined;
-  const groups = parseIpv6Groups(addr);
-  if (!groups) return undefined;
+// RFC 5952-format an already-parsed IPv6 address (its 8 16-bit groups) into the one
+// canonical string: lowercase hex, leading zeros stripped per group, the LONGEST run
+// of ≥2 all-zero groups compressed to `::` (leftmost on ties). No prefix — callers
+// reattach `/prefix` for CIDRs. Shared by `canonicalIpv6Cidr` and
+// `canonicalIpv6Address` so both emit identical formatting.
+function formatCanonicalIpv6(groups: number[]): string {
   // Find the longest run of consecutive all-zero groups (length ≥ 2 to compress).
   let bestStart = -1;
   let bestLen = 0;
@@ -4785,23 +4786,48 @@ export function canonicalIpv6Cidr(s: string): string | undefined {
     }
   }
   const hex = groups.map((g) => g.toString(16));
-  let addrOut: string;
   if (bestLen >= 2) {
     const before = hex.slice(0, bestStart).join(':');
     const after = hex.slice(bestStart + bestLen).join(':');
-    addrOut = `${before}::${after}`;
-  } else {
-    addrOut = hex.join(':');
+    return `${before}::${after}`;
   }
-  return `${addrOut}/${prefix}`;
+  return hex.join(':');
+}
+
+// RFC 5952-canonicalize an IPv6 CIDR string (`<addr>/<prefix>`), or undefined if it is
+// not a valid IPv6 CIDR. Lowercase hex, strip leading zeros per group, compress the
+// LONGEST run of ≥1 all-zero groups to `::` (leftmost on ties), reattach `/prefix`.
+export function canonicalIpv6Cidr(s: string): string | undefined {
+  const slash = s.indexOf('/');
+  if (slash === -1) return undefined; // must be a CIDR, not a bare address
+  const addr = s.slice(0, slash);
+  const prefixStr = s.slice(slash + 1);
+  if (!/^\d{1,3}$/.test(prefixStr)) return undefined;
+  const prefix = Number.parseInt(prefixStr, 10);
+  if (prefix < 0 || prefix > 128) return undefined;
+  const groups = parseIpv6Groups(addr);
+  if (!groups) return undefined;
+  return `${formatCanonicalIpv6(groups)}/${prefix}`;
+}
+
+// RFC 5952-canonicalize a BARE IPv6 address (no `/prefix`), or undefined if it is not a
+// valid IPv6 address — the bare-address twin of `canonicalIpv6Cidr` (#1273). Returns
+// undefined for a CIDR (that carries a `/`, handled by `canonicalIpv6Cidr`), then runs
+// the same STRICT `parseIpv6Groups` gate, so an IPv4 dotted address, an ARN, a MAC, or
+// any arbitrary string passes through unchanged — FP-safe to apply unscoped.
+export function canonicalIpv6Address(s: string): string | undefined {
+  if (s.includes('/')) return undefined; // a CIDR — handled by canonicalIpv6Cidr
+  const groups = parseIpv6Groups(s);
+  if (!groups) return undefined;
+  return formatCanonicalIpv6(groups);
 }
 
 // Deep-walk every string value, RFC 5952-canonicalizing any that unambiguously parses
-// as an IPv6 CIDR and passing everything else through unchanged (see block comment
-// above). Applied to BOTH compare sides in `canonicalizeForCompare` so equivalent
-// spellings fold, mirroring `canonicalizeIdArraysDeep`'s structure.
+// as an IPv6 CIDR or a bare IPv6 address and passing everything else through unchanged
+// (see block comment above). Applied to BOTH compare sides in `canonicalizeForCompare`
+// so equivalent spellings fold, mirroring `canonicalizeIdArraysDeep`'s structure.
 export function canonicalizeIpv6CidrsDeep(v: unknown): unknown {
-  if (typeof v === 'string') return canonicalIpv6Cidr(v) ?? v;
+  if (typeof v === 'string') return canonicalIpv6Cidr(v) ?? canonicalIpv6Address(v) ?? v;
   if (Array.isArray(v)) return v.map(canonicalizeIpv6CidrsDeep);
   if (v && typeof v === 'object') {
     const out: Record<string, unknown> = {};
