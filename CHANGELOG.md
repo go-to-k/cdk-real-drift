@@ -1,3 +1,10 @@
+## [0.12.104](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.103...v0.12.104) (2026-07-11)
+
+
+### Bug Fixes
+
+* **diff:** ElastiCache RG cluster-mode derived fold keys on pre-strip declared inputs ([#1500](https://github.com/go-to-k/cdk-real-drift/issues/1500)) ([#1509](https://github.com/go-to-k/cdk-real-drift/issues/1509)) ([bd5591c](https://github.com/go-to-k/cdk-real-drift/commit/bd5591c32ef9c3d681e6b07e8e5537e47a6c1839))
+
 ## [0.12.103](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.102...v0.12.103) (2026-07-11)
 
 
