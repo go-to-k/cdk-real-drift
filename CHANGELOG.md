@@ -1,3 +1,10 @@
+## [0.12.49](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.48...v0.12.49) (2026-07-11)
+
+
+### Bug Fixes
+
+* **report:** --json baseline flag omitted when not consulted; record's path field renamed baselinePath ([#1335](https://github.com/go-to-k/cdk-real-drift/issues/1335), [#1336](https://github.com/go-to-k/cdk-real-drift/issues/1336)) ([#1415](https://github.com/go-to-k/cdk-real-drift/issues/1415)) ([3fc8fe3](https://github.com/go-to-k/cdk-real-drift/commit/3fc8fe30465c4572b635beda980b5ad9a9faf275))
+
 ## [0.12.48](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.47...v0.12.48) (2026-07-11)
 
 
