@@ -964,7 +964,11 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   - `AWS::ElasticLoadBalancingV2::LoadBalancer` + `::Listener`:
     `elasticloadbalancing:DescribeListeners`, `elasticloadbalancing:DescribeRules`
   - `AWS::EC2::VPC` + `AWS::EC2::RouteTable`: `ec2:DescribeSubnets`,
-    `ec2:DescribeRouteTables`
+    `ec2:DescribeRouteTables` (plus `ec2:DescribeInternetGateways` and
+    `ec2:DescribeVpcs` for the VPC's out-of-band IGW attachment and secondary
+    CIDR sub-resources)
+  - `AWS::EC2::NetworkAcl`: `ec2:DescribeNetworkAcls` (enumerates a declared
+    NACL's out-of-band entries — a rogue `AWS::EC2::NetworkAclEntry`)
   - `AWS::ECS::Cluster`: `ecs:ListServices` (distinct from the
     `ecs:DescribeServices` override reader listed above)
   - `AWS::KMS::Key`: `kms:ListAliases` (the same action listed as optional
