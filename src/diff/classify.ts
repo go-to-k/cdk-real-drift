@@ -298,6 +298,17 @@ const DEFAULT_SG_LIST_PATHS: Record<string, string> = {
   // hide an out-of-band SG swap/append (the exact security FN #889 fixed). Gate it through the
   // same derived VPC-default-SG check: fold a single default SG, surface an append or a swap.
   'AWS::Neptune::DBCluster': 'VpcSecurityGroupIds',
+  // 2026-07-12 hunt (aurora-pg-min / rds-postgres-min): the RDS twins of the #976 Neptune
+  // entry above — a barest cluster/instance that declares no security groups reads back the
+  // default VPC's default SG. Both are OOB-mutable (`rds modify-db-cluster` /
+  // `modify-db-instance --vpc-security-group-ids`), so value-independent would hide a rogue
+  // swap/append; the derived VPC-default-SG gate folds the single default and surfaces the
+  // rest. Note the DBInstance path is the API's legacy plural `VPCSecurityGroups`.
+  'AWS::RDS::DBCluster': 'VpcSecurityGroupIds',
+  'AWS::RDS::DBInstance': 'VPCSecurityGroups',
+  // The DocDB twin (corpus-baked FP surfaced by the measure-noise sweep on the same hunt):
+  // same OOB-mutable `docdb modify-db-cluster --vpc-security-group-ids` surface.
+  'AWS::DocDB::DBCluster': 'VpcSecurityGroupIds',
   // #1266: an AmazonMQ Broker that declares no SecurityGroups reads back the VPC default SG — the
   // same single-SG AWS first-run default the ALB/ENI/Neptune cases fold. It is OOB-mutable
   // (`mq update-broker --security-groups`; SecurityGroups is NOT in the schema createOnlyProperties,

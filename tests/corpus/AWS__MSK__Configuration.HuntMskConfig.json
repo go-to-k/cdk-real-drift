@@ -1,0 +1,48 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntMskConfig",
+    "resourceType": "AWS::MSK::Configuration",
+    "physicalId": "arn:aws:kafka:us-east-1:111111111111:configuration/cdkrd-hunt-msk-config/af98036c-0eaf-476f-a6e8-9c6484825ccc-11",
+    "constructPath": "CdkRealDriftIntegFreeMiscMin/HuntMskConfig",
+    "declared": {
+      "Name": "cdkrd-hunt-msk-config",
+      "ServerProperties": "auto.create.topics.enable=false\nlog.retention.hours=168\n"
+    }
+  },
+  "liveRaw": {
+    "LatestRevision": {
+      "Revision": 1,
+      "CreationTime": "2026-07-11T17:18:17.987Z"
+    },
+    "KafkaVersionsList": [],
+    "Arn": "arn:aws:kafka:us-east-1:111111111111:configuration/cdkrd-hunt-msk-config/af98036c-0eaf-476f-a6e8-9c6484825ccc-11",
+    "Name": "cdkrd-hunt-msk-config",
+    "ServerProperties": "auto.create.topics.enable=false\nlog.retention.hours=168\n"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["KafkaVersionsList", "Name"],
+    "readOnlyPaths": [
+      "Arn",
+      "LatestRevision.CreationTime",
+      "LatestRevision.Description",
+      "LatestRevision.Revision"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["KafkaVersionsList", "Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["KafkaVersionsList"],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

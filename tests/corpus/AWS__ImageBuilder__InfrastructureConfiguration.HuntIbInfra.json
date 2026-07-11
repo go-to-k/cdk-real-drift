@@ -1,0 +1,61 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntIbInfra",
+    "resourceType": "AWS::ImageBuilder::InfrastructureConfiguration",
+    "physicalId": "arn:aws:imagebuilder:us-east-1:111111111111:infrastructure-configuration/cdkrd-hunt-ib-infra",
+    "constructPath": "CdkRealDriftIntegFreeMiscMin/HuntIbInfra",
+    "declared": {
+      "InstanceProfileName": "cdkrd-hunt-ib-profile",
+      "Name": "cdkrd-hunt-ib-infra",
+      "Tags": {
+        "cdkrd:ephemeral": "1"
+      }
+    }
+  },
+  "liveRaw": {
+    "Logging": {
+      "S3Logs": {}
+    },
+    "InstanceProfileName": "cdkrd-hunt-ib-profile",
+    "ResourceTags": {},
+    "TerminateInstanceOnFailure": true,
+    "InstanceTypes": [],
+    "Arn": "arn:aws:imagebuilder:us-east-1:111111111111:infrastructure-configuration/cdkrd-hunt-ib-infra",
+    "SecurityGroupIds": [],
+    "Tags": {
+      "cdkrd:ephemeral": "1"
+    },
+    "Name": "cdkrd-hunt-ib-infra"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["SecurityGroupIds"],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": ["ResourceTags"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntIbInfra",
+      "resourceType": "AWS::ImageBuilder::InfrastructureConfiguration",
+      "path": "TerminateInstanceOnFailure",
+      "actual": true,
+      "physicalId": "arn:aws:imagebuilder:us-east-1:111111111111:infrastructure-configuration/cdkrd-hunt-ib-infra",
+      "constructPath": "CdkRealDriftIntegFreeMiscMin/HuntIbInfra"
+    }
+  ]
+}

@@ -1,0 +1,170 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntEc2Service",
+    "resourceType": "AWS::ECS::Service",
+    "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/cdkrd-hunt-ec2svc-cluster/CdkRealDriftIntegEcsEc2ServiceMin-HuntEc2Service-I6NPHSZtV91c",
+    "constructPath": "CdkRealDriftIntegEcsEc2ServiceMin/HuntEc2Service",
+    "declared": {
+      "Cluster": "cdkrd-hunt-ec2svc-cluster",
+      "DesiredCount": 0,
+      "LaunchType": "EC2",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "TaskDefinition": "arn:aws:ecs:us-east-1:111111111111:task-definition/cdkrd-hunt-ec2svc-td:1"
+    }
+  },
+  "liveRaw": {
+    "HealthCheckGracePeriodSeconds": 0,
+    "EnableECSManagedTags": false,
+    "EnableExecuteCommand": false,
+    "PlacementConstraints": [],
+    "Cluster": "cdkrd-hunt-ec2svc-cluster",
+    "ServiceArn": "arn:aws:ecs:us-east-1:111111111111:service/cdkrd-hunt-ec2svc-cluster/CdkRealDriftIntegEcsEc2ServiceMin-HuntEc2Service-I6NPHSZtV91c",
+    "DesiredCount": 0,
+    "PlacementStrategies": [],
+    "DeploymentController": {
+      "Type": "ECS"
+    },
+    "LaunchType": "EC2",
+    "Name": "CdkRealDriftIntegEcsEc2ServiceMin-HuntEc2Service-I6NPHSZtV91c",
+    "AvailabilityZoneRebalancing": "ENABLED",
+    "SchedulingStrategy": "REPLICA",
+    "TaskDefinition": "arn:aws:ecs:us-east-1:111111111111:task-definition/cdkrd-hunt-ec2svc-td:1",
+    "ServiceName": "CdkRealDriftIntegEcsEc2ServiceMin-HuntEc2Service-I6NPHSZtV91c",
+    "DeploymentConfiguration": {
+      "BakeTimeInMinutes": 0,
+      "Strategy": "ROLLING",
+      "DeploymentCircuitBreaker": {
+        "ThresholdConfiguration": {
+          "Type": "BOUNDED_PERCENT",
+          "Value": 50
+        },
+        "Enable": false,
+        "ResetOnHealthyTask": true,
+        "Rollback": false
+      },
+      "MaximumPercent": 200,
+      "MinimumHealthyPercent": 100
+    },
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Name", "ServiceArn"],
+    "writeOnly": ["ForceNewDeployment", "Monitoring"],
+    "createOnly": ["Cluster", "Role", "SchedulingStrategy", "ServiceName"],
+    "readOnlyPaths": ["Name", "ServiceArn"],
+    "writeOnlyPaths": ["ForceNewDeployment", "Monitoring"],
+    "createOnlyPaths": ["Cluster", "Role", "SchedulingStrategy", "ServiceName"],
+    "defaults": {
+      "PlatformVersion": "LATEST",
+      "AvailabilityZoneRebalancing": "ENABLED"
+    },
+    "defaultPaths": {
+      "PlatformVersion": "LATEST",
+      "AvailabilityZoneRebalancing": "ENABLED"
+    },
+    "unorderedScalarPaths": [
+      "NetworkConfiguration.AwsvpcConfiguration.SecurityGroups",
+      "NetworkConfiguration.AwsvpcConfiguration.Subnets"
+    ],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": ["ServiceConnectConfiguration.LogConfiguration.Options"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEc2Service",
+      "resourceType": "AWS::ECS::Service",
+      "path": "AvailabilityZoneRebalancing",
+      "actual": "ENABLED",
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/cdkrd-hunt-ec2svc-cluster/CdkRealDriftIntegEcsEc2ServiceMin-HuntEc2Service-I6NPHSZtV91c",
+      "constructPath": "CdkRealDriftIntegEcsEc2ServiceMin/HuntEc2Service"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEc2Service",
+      "resourceType": "AWS::ECS::Service",
+      "path": "DeploymentConfiguration",
+      "actual": {
+        "BakeTimeInMinutes": 0,
+        "Strategy": "ROLLING",
+        "DeploymentCircuitBreaker": {
+          "ThresholdConfiguration": {
+            "Type": "BOUNDED_PERCENT",
+            "Value": 50
+          },
+          "Enable": false,
+          "ResetOnHealthyTask": true,
+          "Rollback": false
+        },
+        "MaximumPercent": 200,
+        "MinimumHealthyPercent": 100
+      },
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/cdkrd-hunt-ec2svc-cluster/CdkRealDriftIntegEcsEc2ServiceMin-HuntEc2Service-I6NPHSZtV91c",
+      "constructPath": "CdkRealDriftIntegEcsEc2ServiceMin/HuntEc2Service"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEc2Service",
+      "resourceType": "AWS::ECS::Service",
+      "path": "DeploymentController",
+      "actual": {
+        "Type": "ECS"
+      },
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/cdkrd-hunt-ec2svc-cluster/CdkRealDriftIntegEcsEc2ServiceMin-HuntEc2Service-I6NPHSZtV91c",
+      "constructPath": "CdkRealDriftIntegEcsEc2ServiceMin/HuntEc2Service"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEc2Service",
+      "resourceType": "AWS::ECS::Service",
+      "path": "EnableExecuteCommand",
+      "actual": false,
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/cdkrd-hunt-ec2svc-cluster/CdkRealDriftIntegEcsEc2ServiceMin-HuntEc2Service-I6NPHSZtV91c",
+      "constructPath": "CdkRealDriftIntegEcsEc2ServiceMin/HuntEc2Service"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEc2Service",
+      "resourceType": "AWS::ECS::Service",
+      "path": "HealthCheckGracePeriodSeconds",
+      "actual": 0,
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/cdkrd-hunt-ec2svc-cluster/CdkRealDriftIntegEcsEc2ServiceMin-HuntEc2Service-I6NPHSZtV91c",
+      "constructPath": "CdkRealDriftIntegEcsEc2ServiceMin/HuntEc2Service"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEc2Service",
+      "resourceType": "AWS::ECS::Service",
+      "path": "SchedulingStrategy",
+      "actual": "REPLICA",
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/cdkrd-hunt-ec2svc-cluster/CdkRealDriftIntegEcsEc2ServiceMin-HuntEc2Service-I6NPHSZtV91c",
+      "constructPath": "CdkRealDriftIntegEcsEc2ServiceMin/HuntEc2Service"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "HuntEc2Service",
+      "resourceType": "AWS::ECS::Service",
+      "path": "ServiceName",
+      "actual": "CdkRealDriftIntegEcsEc2ServiceMin-HuntEc2Service-I6NPHSZtV91c",
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/cdkrd-hunt-ec2svc-cluster/CdkRealDriftIntegEcsEc2ServiceMin-HuntEc2Service-I6NPHSZtV91c",
+      "constructPath": "CdkRealDriftIntegEcsEc2ServiceMin/HuntEc2Service"
+    }
+  ]
+}

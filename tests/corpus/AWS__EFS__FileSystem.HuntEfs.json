@@ -1,0 +1,132 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntEfs",
+    "resourceType": "AWS::EFS::FileSystem",
+    "physicalId": "fs-06b891adc73d57473",
+    "constructPath": "CdkRealDriftIntegReorderProbesMin/HuntEfs",
+    "declared": {
+      "FileSystemTags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "LifecyclePolicies": [
+        {
+          "TransitionToPrimaryStorageClass": "AFTER_1_ACCESS"
+        },
+        {
+          "TransitionToArchive": "AFTER_90_DAYS"
+        },
+        {
+          "TransitionToIA": "AFTER_30_DAYS"
+        }
+      ],
+      "ThroughputMode": "elastic"
+    }
+  },
+  "liveRaw": {
+    "PerformanceMode": "generalPurpose",
+    "Encrypted": false,
+    "FileSystemTags": [
+      {
+        "Value": "HuntEfs",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegReorderProbesMin/e6337560-7d4a-11f1-a1a9-0e48750aef13",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegReorderProbesMin",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "FileSystemId": "fs-06b891adc73d57473",
+    "FileSystemProtection": {
+      "ReplicationOverwriteProtection": "ENABLED"
+    },
+    "LifecyclePolicies": [
+      {
+        "TransitionToPrimaryStorageClass": "AFTER_1_ACCESS"
+      },
+      {
+        "TransitionToArchive": "AFTER_90_DAYS"
+      },
+      {
+        "TransitionToIA": "AFTER_30_DAYS"
+      }
+    ],
+    "Arn": "arn:aws:elasticfilesystem:us-east-1:111111111111:file-system/fs-06b891adc73d57473",
+    "ThroughputMode": "elastic",
+    "BackupPolicy": {
+      "Status": "DISABLED"
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn", "FileSystemId"],
+    "writeOnly": ["BypassPolicyLockoutSafetyCheck"],
+    "createOnly": ["AvailabilityZoneName", "Encrypted", "KmsKeyId", "PerformanceMode"],
+    "readOnlyPaths": [
+      "Arn",
+      "FileSystemId",
+      "ReplicationConfiguration.Destinations.*.Status",
+      "ReplicationConfiguration.Destinations.*.StatusMessage"
+    ],
+    "writeOnlyPaths": [
+      "BypassPolicyLockoutSafetyCheck",
+      "ReplicationConfiguration.Destinations.*.AvailabilityZoneName",
+      "ReplicationConfiguration.Destinations.*.KmsKeyId"
+    ],
+    "createOnlyPaths": ["AvailabilityZoneName", "Encrypted", "KmsKeyId", "PerformanceMode"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEfs",
+      "resourceType": "AWS::EFS::FileSystem",
+      "path": "BackupPolicy",
+      "actual": {
+        "Status": "DISABLED"
+      },
+      "physicalId": "fs-06b891adc73d57473",
+      "constructPath": "CdkRealDriftIntegReorderProbesMin/HuntEfs"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEfs",
+      "resourceType": "AWS::EFS::FileSystem",
+      "path": "FileSystemProtection",
+      "actual": {
+        "ReplicationOverwriteProtection": "ENABLED"
+      },
+      "physicalId": "fs-06b891adc73d57473",
+      "constructPath": "CdkRealDriftIntegReorderProbesMin/HuntEfs"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEfs",
+      "resourceType": "AWS::EFS::FileSystem",
+      "path": "PerformanceMode",
+      "actual": "generalPurpose",
+      "physicalId": "fs-06b891adc73d57473",
+      "constructPath": "CdkRealDriftIntegReorderProbesMin/HuntEfs"
+    }
+  ]
+}

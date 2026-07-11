@@ -81,6 +81,23 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // undeclared drift. Observed live on a fresh events-apidest-rich ApiDestination
   // (2026-07-08).
   'AWS::Events::ApiDestination': { InvocationRateLimitPerSecond: 300 },
+  // A DMS endpoint that declares no SslMode reads back "none" — the constant service
+  // default for every engine. Equality-gated: an out-of-band hardening (or loosening)
+  // to require / verify-ca / verify-full no longer matches and re-surfaces as real
+  // undeclared drift. Observed live on a fresh minimal mysql source endpoint
+  // (case-idents-min, 2026-07-12; #1490).
+  'AWS::DMS::Endpoint': { SslMode: 'none' },
+  // A SELF_MANAGED StackSet that declares no ExecutionRoleName reads back the documented
+  // conventional default. Equality-gated: an out-of-band switch to a custom execution
+  // role no longer matches and re-surfaces. (The AdministrationRoleARN sibling is
+  // ACCOUNT-derived, so it folds via CONTEXT_ARN_DEFAULTS instead.) Observed live
+  // on a fresh zero-instance SELF_MANAGED StackSet (freemisc-min, 2026-07-12; #1495).
+  'AWS::CloudFormation::StackSet': { ExecutionRoleName: 'AWSCloudFormationStackSetExecutionRole' },
+  // A MANAGED Batch ComputeEnvironment that declares no State reads back "ENABLED" — the
+  // constant service default. Equality-gated: an out-of-band DISABLE (a real operational
+  // change) no longer matches and re-surfaces. Observed live on a fresh minimal EC2 CE
+  // (s3kms-ddb-batch-min, 2026-07-12).
+  'AWS::Batch::ComputeEnvironment': { State: 'ENABLED' },
   // An Elastic Beanstalk Application that declares no ResourceLifecycleConfig reads back
   // the constant service default: a version-lifecycle policy carrying both rules present
   // but DISABLED (Enabled:false, MaxCount 200 / MaxAgeInDays 180, DeleteSourceFromS3:false).
@@ -921,6 +938,13 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     AutoMinorVersionUpgrade: true,
     BackupTarget: 'region',
     DatabaseInsightsMode: 'standard',
+    // An instance that declares no DBSubnetGroupName is placed into the account's
+    // literal "default" subnet group (the default VPC). Equality-gated: a custom group
+    // is DECLARED (compared in the declared loop), and an out-of-band re-placement no
+    // longer matches "default" and re-surfaces. Observed live on a fresh minimal
+    // postgres instance + aurora-postgresql cluster (rds-postgres-min / aurora-pg-min,
+    // 2026-07-12).
+    DBSubnetGroupName: 'default',
     // EngineLifecycleSupport is NOT a constant default. Its value is set by the resource's
     // ORIGINAL creation era (a pre-RDS-Extended-Support lineage reads `-disabled`, a newer one
     // the `-extended-support` default), but a RESTORE resets the readable `ClusterCreateTime`
@@ -964,6 +988,9 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     // era behind the restore-date ClusterCreateTime, so it is not a constant KNOWN_DEFAULTS value.
     NetworkType: 'IPV4',
     EngineMode: 'provisioned', // default; serverless/parallelquery are explicit opt-ins
+    // Same "default" subnet-group placement as the DBInstance twin above (aurora-pg-min,
+    // 2026-07-12).
+    DBSubnetGroupName: 'default',
     // Aurora's documented default backup retention (1 day) — surfaced as undeclared
     // first-run noise whenever a template omits it. The twin AWS::DocDB::DBCluster folds
     // the same BackupRetentionPeriod: 1. Equality-gated: a longer retention the user sets
@@ -1663,6 +1690,18 @@ export const KNOWN_DEFAULT_ONE_OF_PATHS: Record<string, Record<string, readonly 
       'varies_by_storage_class',
     ],
   },
+  // An EC2 MANAGED Batch ComputeEnvironment that declares no Ec2Configuration reads back
+  // the era default image type — ECS_AL2023 for CEs created after Batch's AL2023 default
+  // switch (live-observed on a fresh minimal EC2 CE, s3kms-ddb-batch-min 2026-07-12),
+  // ECS_AL2 for older-era environments (the documented prior default). Both are
+  // AWS-assigned, never user intent when undeclared; a value outside the set (e.g. an
+  // out-of-band switch to ECS_AL2_NVIDIA) still surfaces.
+  'AWS::Batch::ComputeEnvironment': {
+    'ComputeResources.Ec2Configuration': [
+      [{ ImageType: 'ECS_AL2023' }],
+      [{ ImageType: 'ECS_AL2' }],
+    ],
+  },
 };
 
 // R108: nested service defaults — the NESTED-path twin of KNOWN_DEFAULTS. The
@@ -2348,6 +2387,16 @@ export const CONTEXT_ARN_DEFAULTS: Record<string, Record<string, string | string
     ServiceLinkedRoleARN:
       'arn:{partition}:iam::{accountId}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling',
   },
+  // A SELF_MANAGED StackSet that declares no AdministrationRoleARN reads back the
+  // conventional default admin role in the STACK SET'S OWN ACCOUNT — f(partition,
+  // accountId), the same own-account-role shape as the SLR folds around it.
+  // Equality-gated with placeholder substitution, so a CUSTOM admin role (or a
+  // cross-account one) still surfaces. Observed live on a fresh zero-instance
+  // SELF_MANAGED StackSet (freemisc-min, 2026-07-12; #1495).
+  'AWS::CloudFormation::StackSet': {
+    AdministrationRoleARN:
+      'arn:{partition}:iam::{accountId}:role/AWSCloudFormationStackSetAdministrationRole',
+  },
   // A Batch ComputeEnvironment that declares no ServiceRole reads back the account's
   // AWS-managed Batch service-linked role ARN — f(partition, accountId) (IAM ARNs carry no
   // region). Verbatim twin of the ASG ServiceLinkedRoleARN SLR fold: a user who passes a
@@ -2432,6 +2481,11 @@ export const ENGINE_DEFAULTS: Record<string, Record<string, (engine: string) => 
     AllocatedStorage: (e) => (e.startsWith('aurora') ? 1 : undefined),
     Port: rdsDefaultPort,
     LicenseModel: rdsDefaultLicense,
+    // SQL Server materializes its default collation when none is declared — live-confirmed
+    // "SQL_Latin1_General_CP1_CI_AS" on a fresh minimal sqlserver-ex (rds-sqlserver-min,
+    // 2026-07-12). CharacterSetName is create-only; a user-chosen collation is DECLARED and
+    // compared in the declared loop. Other engines expose no such echo → undefined.
+    CharacterSetName: (e) => (/sqlserver/.test(e) ? 'SQL_Latin1_General_CP1_CI_AS' : undefined),
   },
   'AWS::RDS::DBCluster': {
     StorageType: (e) => (e.startsWith('aurora') ? 'aurora' : undefined),
@@ -2469,11 +2523,15 @@ function rdsDefaultPort(engine: string): number | undefined {
 }
 
 // RDS engine-family default LicenseModel. MySQL/MariaDB/Aurora-MySQL read back
-// "general-public-license"; Postgres/Aurora-Postgres "postgresql-license". Oracle/SQLServer
-// carry BYOL/license-included with no single default, so they return undefined (no fold).
+// "general-public-license"; Postgres/Aurora-Postgres "postgresql-license". SQL Server on
+// RDS offers License Included ONLY (no BYOL), so every sqlserver-* engine reads back
+// "license-included" — live-confirmed on a fresh minimal sqlserver-ex (rds-sqlserver-min,
+// 2026-07-12). Oracle carries BYOL/license-included with no single default → undefined
+// (no fold).
 function rdsDefaultLicense(engine: string): string | undefined {
   if (/postgres/.test(engine)) return 'postgresql-license';
   if (/mysql|maria/.test(engine)) return 'general-public-license';
+  if (/sqlserver/.test(engine)) return 'license-included';
   return undefined;
 }
 
@@ -2498,6 +2556,11 @@ export const DEFAULT_MANAGED_NAME_PATHS: Record<string, Record<string, RegExp>> 
   // pinnable constant), so it is regex-matched — a CUSTOM group name a user attached does not
   // start with `default.` and still surfaces. Undeclared-only, like the RDS precedent. Found by
   // the offline first-run-noise sweep across the corpus.
+  // #1477's DBInstance entry above missed the CLUSTER twin: a barest aurora-postgresql
+  // DBCluster reads back DBClusterParameterGroupName "default.aurora-postgresql17" — the
+  // same AWS-managed default-group family the DocDB/Neptune cluster entries below fold.
+  // Observed live on a fresh minimal aurora-postgresql cluster (aurora-pg-min, 2026-07-12).
+  'AWS::RDS::DBCluster': { DBClusterParameterGroupName: /^default\./ },
   'AWS::ElastiCache::CacheCluster': { CacheParameterGroupName: /^default\./ },
   'AWS::DocDB::DBCluster': { DBClusterParameterGroupName: /^default\./ },
   'AWS::Neptune::DBCluster': { DBClusterParameterGroupName: /^default\./ },
@@ -3217,6 +3280,13 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   is compared in the declared loop with VERSION_PREFIX_PATHS partial-track matching (detected).
   //   Live-confirmed on a fresh minimal mysql DBInstance (2026-07-11) — the standalone provisioned
   //   DBInstance was missed while the Aurora/DBCluster corpus drove the existing folds.
+  //   AWS::DMS::Endpoint.KmsKeyId — an endpoint that declares no KMS key reads back the
+  //   AWS-managed `aws/dms` key ARN materialized at creation (create-only for the endpoint's
+  //   storage encryption): the exact twin of the #533 RDS / OpenSearch / EC2-Volume
+  //   AWS-assigned-KmsKeyId class. Never user intent when undeclared; a user who pins a CMK
+  //   DECLARES KmsKeyId and is compared in the declared loop. Observed live on a fresh
+  //   minimal endpoint (case-idents-min, 2026-07-12; #1490).
+  'AWS::DMS::Endpoint': new Set(['KmsKeyId']),
   'AWS::RDS::DBCluster': new Set([
     'KmsKeyId',
     'EngineVersion',
@@ -3406,6 +3476,19 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   prefetched VPC-default SG ids (DEFAULT_SG_LIST_PATHS, the #889/#976 ELBv2/Neptune gate): a
   //   single default SG folds, a 2+-element append or a non-default swap surfaces.
   'AWS::AmazonMQ::Broker': new Set(['MaintenanceWindowStartTime', 'SubnetIds']),
+  //   AWS::EC2::InstanceConnectEndpoint.SecurityGroupIds — an ICE that declares no security
+  //   groups is placed into its VPC's default SG (single-element list). CREATE-ONLY (schema
+  //   createOnlyProperties), so the fold can never hide an out-of-band change — the SGs
+  //   physically cannot move without replacing the endpoint. A user who pins SGs DECLARES
+  //   them (declared loop). Observed live first-run (vpc-attach-min, 2026-07-12).
+  'AWS::EC2::InstanceConnectEndpoint': new Set(['SecurityGroupIds']),
+  //   AWS::EC2::EIPAssociation.PrivateIpAddress / .EIP — an association that declares only
+  //   AllocationId + NetworkInterfaceId reads back the ENI's AWS-allocated primary private IP
+  //   and the EIP's public IP (the legacy public-IP path). Both CREATE-ONLY per-resource
+  //   AWS-assigned addresses (the association identity is already carried by the DECLARED
+  //   AllocationId/NetworkInterfaceId, compared in the declared loop). Observed live
+  //   first-run (vpc-attach-min, 2026-07-12).
+  'AWS::EC2::EIPAssociation': new Set(['PrivateIpAddress', 'EIP']),
   //   Core VPC-networking types whose undeclared, AWS-ASSIGNED, CREATE-ONLY placement identifiers
   //   read back on every first run. Each is a per-resource value AWS picks at creation from the
   //   surrounding VPC/subnet/region — never a constant we can pin, and never user intent when
@@ -4208,7 +4291,13 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
   // `EndpointType` is effectively immutable (source<->target can't be flipped out
   // of band) and the two valid values differ beyond case, so case-insensitive
   // equality hides no real drift. Observed live on a fresh DMS Endpoint deploy.
-  'AWS::DMS::Endpoint': new Set(['EndpointType']),
+  // `EndpointIdentifier` — DMS stores the identifier LOWERCASED (the same identifier
+  // family as ReplicationInstanceIdentifier / ReplicationSubnetGroupIdentifier above):
+  // a template declaring "CdkrdHunt-Mixed-DMS-EP" reads back "cdkrdhunt-mixed-dms-ep",
+  // a declared-tier FP that survives record on every check of an untouched endpoint.
+  // Two identifiers differing beyond case are a genuine replacement and still surface.
+  // Observed live on a fresh mixed-case endpoint (case-idents-min, 2026-07-12; #1490).
+  'AWS::DMS::Endpoint': new Set(['EndpointType', 'EndpointIdentifier']),
   // A WAFv2 LoggingConfiguration's RedactedFields SingleHeader.Name is stored/echoed
   // LOWERCASED (HTTP header names are case-insensitive per RFC 9110), so a template that
   // declares `Authorization` / `Cookie` false-flags declared drift against the live
@@ -5196,6 +5285,15 @@ export const UNORDERED_ARRAY_PROPS: Record<string, ReadonlySet<string>> = {
   // EnabledMfas — UsernameAttributes / AutoVerifiedAttributes / AliasAttributes are genuine
   // stored-list create-params that were live-proven ORDER-PRESERVING and are NOT folded.
   'AWS::Cognito::UserPool': new Set(['EnabledMfas']),
+  // Live-observed on a fresh reorder-probes-min deploy (#1491): ECS stores a cluster's
+  // CapacityProviders attachments as a SET and reads them back sorted — declared
+  // ["FARGATE_SPOT","FARGATE"] reads back ["FARGATE","FARGATE_SPOT"], a declared-tier FP
+  // with identical elements that survives record. The values (FARGATE / FARGATE_SPOT /
+  // custom CP names) are not id/ARN-shaped, so the generic id-array sort does not cover
+  // them. Set-semantic (a provider is attached-or-not); a genuine attach/detach still
+  // changes the multiset. DefaultCapacityProviderStrategy order was live-proven PRESERVED
+  // in the same probe and is deliberately NOT folded.
+  'AWS::ECS::Cluster': new Set(['CapacityProviders']),
   'AWS::Cognito::UserPoolClient': new Set([
     'AllowedOAuthFlows',
     'AllowedOAuthScopes',

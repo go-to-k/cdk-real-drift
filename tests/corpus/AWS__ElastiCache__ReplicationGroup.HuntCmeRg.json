@@ -1,0 +1,280 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntCmeRg",
+    "resourceType": "AWS::ElastiCache::ReplicationGroup",
+    "physicalId": "cdh1logc9nwhco4c",
+    "constructPath": "CdkRealDriftIntegElastiCacheCmeMin/HuntCmeRg",
+    "declared": {
+      "CacheNodeType": "cache.t4g.micro",
+      "Engine": "redis",
+      "NumNodeGroups": 2,
+      "ReplicasPerNodeGroup": 0,
+      "ReplicationGroupDescription": "cdkrd hunt minimal cluster-mode-enabled rg",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "ReadEndPoint": {},
+    "ClusterMode": "enabled",
+    "ConfigurationEndPoint": {
+      "Address": "cdh1logc9nwhco4c.jzgy0l.clustercfg.use1.cache.amazonaws.com",
+      "Port": "6379"
+    },
+    "AtRestEncryptionEnabled": false,
+    "ReaderEndPoint": {},
+    "AutoMinorVersionUpgrade": true,
+    "AutomaticFailoverEnabled": true,
+    "ReplicasPerNodeGroup": 0,
+    "ReplicationGroupDescription": "cdkrd hunt minimal cluster-mode-enabled rg",
+    "SnapshotWindow": "08:30-09:30",
+    "CacheNodeType": "cache.t4g.micro",
+    "SnapshotRetentionLimit": 0,
+    "MultiAZEnabled": false,
+    "TransitEncryptionEnabled": false,
+    "NetworkType": "ipv4",
+    "UserGroupIds": [],
+    "IpDiscovery": "ipv4",
+    "ReplicationGroupId": "cdh1logc9nwhco4c",
+    "DataTieringEnabled": false,
+    "LogDeliveryConfigurations": [],
+    "PrimaryEndPoint": {},
+    "Engine": "redis",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "NumCacheClusters": 2,
+    "PreferredMaintenanceWindow": "sat:07:00-sat:08:00",
+    "EngineVersion": "7.1.0"
+  },
+  "schema": {
+    "readOnly": [
+      "ConfigurationEndPoint",
+      "EffectiveDurability",
+      "PrimaryEndPoint",
+      "ReadEndPoint",
+      "ReaderEndPoint"
+    ],
+    "writeOnly": [
+      "AuthToken",
+      "CacheParameterGroupName",
+      "CacheSecurityGroupNames",
+      "CacheSubnetGroupName",
+      "KmsKeyId",
+      "NodeGroupConfiguration",
+      "NumNodeGroups",
+      "PreferredCacheClusterAZs",
+      "PrimaryClusterId",
+      "SecurityGroupIds",
+      "SnapshotArns",
+      "SnapshotName"
+    ],
+    "createOnly": [
+      "AtRestEncryptionEnabled",
+      "CacheSubnetGroupName",
+      "DataTieringEnabled",
+      "GlobalReplicationGroupId",
+      "KmsKeyId",
+      "NetworkType",
+      "Port",
+      "PreferredCacheClusterAZs",
+      "ReplicationGroupId",
+      "SnapshotArns",
+      "SnapshotName"
+    ],
+    "readOnlyPaths": [
+      "ConfigurationEndPoint",
+      "ConfigurationEndPoint.Address",
+      "ConfigurationEndPoint.Port",
+      "EffectiveDurability",
+      "PrimaryEndPoint",
+      "PrimaryEndPoint.Address",
+      "PrimaryEndPoint.Port",
+      "ReadEndPoint",
+      "ReadEndPoint.Addresses",
+      "ReadEndPoint.AddressesList",
+      "ReadEndPoint.Ports",
+      "ReadEndPoint.PortsList",
+      "ReaderEndPoint",
+      "ReaderEndPoint.Address",
+      "ReaderEndPoint.Port"
+    ],
+    "writeOnlyPaths": [
+      "AuthToken",
+      "CacheParameterGroupName",
+      "CacheSecurityGroupNames",
+      "CacheSubnetGroupName",
+      "KmsKeyId",
+      "NodeGroupConfiguration",
+      "NumNodeGroups",
+      "PreferredCacheClusterAZs",
+      "PrimaryClusterId",
+      "SecurityGroupIds",
+      "SnapshotArns",
+      "SnapshotName"
+    ],
+    "createOnlyPaths": [
+      "AtRestEncryptionEnabled",
+      "CacheSubnetGroupName",
+      "DataTieringEnabled",
+      "GlobalReplicationGroupId",
+      "KmsKeyId",
+      "NetworkType",
+      "Port",
+      "PreferredCacheClusterAZs",
+      "ReplicationGroupId",
+      "SnapshotArns",
+      "SnapshotName"
+    ],
+    "defaults": {
+      "NumNodeGroups": 1,
+      "AutomaticFailoverEnabled": false,
+      "TransitEncryptionEnabled": false,
+      "AtRestEncryptionEnabled": false,
+      "SnapshotRetentionLimit": 0
+    },
+    "defaultPaths": {
+      "NumNodeGroups": 1,
+      "AutomaticFailoverEnabled": false,
+      "TransitEncryptionEnabled": false,
+      "AtRestEncryptionEnabled": false,
+      "SnapshotRetentionLimit": 0
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntCmeRg",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "AtRestEncryptionEnabled",
+      "actual": false,
+      "physicalId": "cdh1logc9nwhco4c",
+      "constructPath": "CdkRealDriftIntegElastiCacheCmeMin/HuntCmeRg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntCmeRg",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "AutoMinorVersionUpgrade",
+      "actual": true,
+      "physicalId": "cdh1logc9nwhco4c",
+      "constructPath": "CdkRealDriftIntegElastiCacheCmeMin/HuntCmeRg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntCmeRg",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "EngineVersion",
+      "actual": "7.1.0",
+      "physicalId": "cdh1logc9nwhco4c",
+      "constructPath": "CdkRealDriftIntegElastiCacheCmeMin/HuntCmeRg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntCmeRg",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "IpDiscovery",
+      "actual": "ipv4",
+      "physicalId": "cdh1logc9nwhco4c",
+      "constructPath": "CdkRealDriftIntegElastiCacheCmeMin/HuntCmeRg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntCmeRg",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "NetworkType",
+      "actual": "ipv4",
+      "physicalId": "cdh1logc9nwhco4c",
+      "constructPath": "CdkRealDriftIntegElastiCacheCmeMin/HuntCmeRg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntCmeRg",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "PreferredMaintenanceWindow",
+      "actual": "sat:07:00-sat:08:00",
+      "physicalId": "cdh1logc9nwhco4c",
+      "constructPath": "CdkRealDriftIntegElastiCacheCmeMin/HuntCmeRg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntCmeRg",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "SnapshotRetentionLimit",
+      "actual": 0,
+      "physicalId": "cdh1logc9nwhco4c",
+      "constructPath": "CdkRealDriftIntegElastiCacheCmeMin/HuntCmeRg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntCmeRg",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "SnapshotWindow",
+      "actual": "08:30-09:30",
+      "physicalId": "cdh1logc9nwhco4c",
+      "constructPath": "CdkRealDriftIntegElastiCacheCmeMin/HuntCmeRg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntCmeRg",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "TransitEncryptionEnabled",
+      "actual": false,
+      "physicalId": "cdh1logc9nwhco4c",
+      "constructPath": "CdkRealDriftIntegElastiCacheCmeMin/HuntCmeRg"
+    },
+    {
+      "tier": "readGap",
+      "logicalId": "HuntCmeRg",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "NumNodeGroups",
+      "note": "write-only — cannot be read back",
+      "physicalId": "cdh1logc9nwhco4c",
+      "constructPath": "CdkRealDriftIntegElastiCacheCmeMin/HuntCmeRg"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "HuntCmeRg",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "AutomaticFailoverEnabled",
+      "actual": true,
+      "physicalId": "cdh1logc9nwhco4c",
+      "constructPath": "CdkRealDriftIntegElastiCacheCmeMin/HuntCmeRg"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "HuntCmeRg",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "ClusterMode",
+      "actual": "enabled",
+      "physicalId": "cdh1logc9nwhco4c",
+      "constructPath": "CdkRealDriftIntegElastiCacheCmeMin/HuntCmeRg"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "HuntCmeRg",
+      "resourceType": "AWS::ElastiCache::ReplicationGroup",
+      "path": "NumCacheClusters",
+      "actual": 2,
+      "physicalId": "cdh1logc9nwhco4c",
+      "constructPath": "CdkRealDriftIntegElastiCacheCmeMin/HuntCmeRg"
+    }
+  ]
+}

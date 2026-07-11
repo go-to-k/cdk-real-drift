@@ -1,0 +1,114 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntOg",
+    "resourceType": "AWS::RDS::OptionGroup",
+    "physicalId": "cdkrdhunt-mixed-og",
+    "constructPath": "CdkRealDriftIntegCaseIdentsMin/HuntOg",
+    "declared": {
+      "EngineName": "mysql",
+      "MajorEngineVersion": "8.0",
+      "OptionConfigurations": [],
+      "OptionGroupDescription": "cdkrd hunt mixed-case option group",
+      "OptionGroupName": "CdkrdHunt-Mixed-OG",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "OptionGroupDescription": "cdkrd hunt mixed-case option group",
+    "OptionGroupName": "cdkrdhunt-mixed-og",
+    "OptionConfigurations": [],
+    "MajorEngineVersion": "8.0",
+    "EngineName": "mysql",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegCaseIdentsMin",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntOg",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegCaseIdentsMin/09209c20-7d4a-11f1-b021-12e64a14fec7",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["EngineName", "MajorEngineVersion", "OptionGroupDescription", "OptionGroupName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "EngineName",
+      "MajorEngineVersion",
+      "OptionGroupDescription",
+      "OptionGroupName"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["OptionConfigurations"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "rdsOptionSettingDefaults": {
+      "cdkrdhunt-mixed-og": {
+        "MARIADB_AUDIT_PLUGIN": {
+          "SERVER_AUDIT_INCL_USERS": null,
+          "SERVER_AUDIT_EXCL_USERS": null,
+          "SERVER_AUDIT_QUERY_LOG_LIMIT": "1024",
+          "SERVER_AUDIT_FILE_ROTATE_SIZE": null,
+          "SERVER_AUDIT_FILE_ROTATIONS": null,
+          "SERVER_AUDIT_LOGGING": "ON",
+          "SERVER_AUDIT_FILE_PATH": "/rdsdbdata/log/audit/",
+          "SERVER_AUDIT": "FORCE_PLUS_PERMANENT",
+          "SERVER_AUDIT_EVENTS": "CONNECT,QUERY"
+        },
+        "MEMCACHED": {
+          "CHUNK_SIZE": "48",
+          "CHUNK_SIZE_GROWTH_FACTOR": "1.25",
+          "ERROR_ON_MEMORY_EXHAUSTED": "0",
+          "DAEMON_MEMCACHED_R_BATCH_SIZE": "1",
+          "DAEMON_MEMCACHED_W_BATCH_SIZE": "1",
+          "INNODB_API_BK_COMMIT_INTERVAL": "5",
+          "INNODB_API_DISABLE_ROWLOCK": "0",
+          "INNODB_API_ENABLE_MDL": "0",
+          "INNODB_API_TRX_LEVEL": "0",
+          "BINDING_PROTOCOL": "auto",
+          "BACKLOG_QUEUE_LIMIT": "1024",
+          "CAS_DISABLED": "0",
+          "MAX_SIMULTANEOUS_CONNECTIONS": "1024",
+          "VERBOSITY": "v"
+        }
+      }
+    }
+  },
+  "expected": [
+    {
+      "tier": "declared",
+      "logicalId": "HuntOg",
+      "resourceType": "AWS::RDS::OptionGroup",
+      "path": "OptionGroupName",
+      "desired": "CdkrdHunt-Mixed-OG",
+      "actual": "cdkrdhunt-mixed-og",
+      "physicalId": "cdkrdhunt-mixed-og",
+      "constructPath": "CdkRealDriftIntegCaseIdentsMin/HuntOg"
+    }
+  ]
+}

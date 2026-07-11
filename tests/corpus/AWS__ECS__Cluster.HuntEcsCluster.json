@@ -1,0 +1,106 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntEcsCluster",
+    "resourceType": "AWS::ECS::Cluster",
+    "physicalId": "cdkrd-hunt-reorder-cluster",
+    "constructPath": "CdkRealDriftIntegReorderProbesMin/HuntEcsCluster",
+    "declared": {
+      "CapacityProviders": ["FARGATE_SPOT", "FARGATE"],
+      "ClusterName": "cdkrd-hunt-reorder-cluster",
+      "DefaultCapacityProviderStrategy": [
+        {
+          "CapacityProvider": "FARGATE_SPOT",
+          "Weight": 2
+        },
+        {
+          "Base": 1,
+          "CapacityProvider": "FARGATE",
+          "Weight": 1
+        }
+      ],
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "ClusterSettings": [
+      {
+        "Value": "disabled",
+        "Name": "containerInsights"
+      }
+    ],
+    "DefaultCapacityProviderStrategy": [
+      {
+        "CapacityProvider": "FARGATE_SPOT",
+        "Weight": 2,
+        "Base": 0
+      },
+      {
+        "CapacityProvider": "FARGATE",
+        "Weight": 1,
+        "Base": 1
+      }
+    ],
+    "CapacityProviders": ["FARGATE", "FARGATE_SPOT"],
+    "ClusterName": "cdkrd-hunt-reorder-cluster",
+    "Arn": "arn:aws:ecs:us-east-1:111111111111:cluster/cdkrd-hunt-reorder-cluster",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegReorderProbesMin",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntEcsCluster",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegReorderProbesMin/e6337560-7d4a-11f1-a1a9-0e48750aef13",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": ["ServiceConnectDefaults"],
+    "createOnly": ["ClusterName"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": ["ServiceConnectDefaults"],
+    "createOnlyPaths": ["ClusterName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEcsCluster",
+      "resourceType": "AWS::ECS::Cluster",
+      "path": "ClusterSettings",
+      "actual": [
+        {
+          "Value": "disabled",
+          "Name": "containerInsights"
+        }
+      ],
+      "physicalId": "cdkrd-hunt-reorder-cluster",
+      "constructPath": "CdkRealDriftIntegReorderProbesMin/HuntEcsCluster"
+    }
+  ]
+}

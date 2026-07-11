@@ -1,0 +1,95 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntComponent",
+    "resourceType": "AWS::ImageBuilder::Component",
+    "physicalId": "arn:aws:imagebuilder:us-east-1:111111111111:component/cdkrd-hunt-component/1.0.0/1",
+    "constructPath": "CdkRealDriftIntegFreeMiscMin/HuntComponent",
+    "declared": {
+      "Data": "name: cdkrd-hunt-noop\ndescription: cdkrd hunt noop component\nschemaVersion: 1.0\nphases:\n  - name: build\n    steps:\n      - name: Noop\n        action: ExecuteBash\n        inputs:\n          commands:\n            - echo noop\n",
+      "Name": "cdkrd-hunt-component",
+      "Platform": "Linux",
+      "Tags": {
+        "cdkrd:ephemeral": "1"
+      },
+      "Version": "1.0.0"
+    }
+  },
+  "liveRaw": {
+    "Type": "BUILD",
+    "SupportedOsVersions": [],
+    "Platform": "Linux",
+    "Version": "1.0.0",
+    "LatestVersion": {
+      "Major": "arn:aws:imagebuilder:us-east-1:111111111111:component/cdkrd-hunt-component/1.x.x",
+      "Minor": "arn:aws:imagebuilder:us-east-1:111111111111:component/cdkrd-hunt-component/1.0.x",
+      "Arn": "arn:aws:imagebuilder:us-east-1:111111111111:component/cdkrd-hunt-component/x.x.x",
+      "Patch": "arn:aws:imagebuilder:us-east-1:111111111111:component/cdkrd-hunt-component/1.0.0"
+    },
+    "Encrypted": true,
+    "Arn": "arn:aws:imagebuilder:us-east-1:111111111111:component/cdkrd-hunt-component/1.0.0/1",
+    "Tags": {
+      "cdkrd:ephemeral": "1"
+    },
+    "Name": "cdkrd-hunt-component"
+  },
+  "schema": {
+    "readOnly": ["Arn", "Encrypted", "LatestVersion", "Type"],
+    "writeOnly": ["Data", "Uri"],
+    "createOnly": [
+      "ChangeDescription",
+      "Data",
+      "Description",
+      "KmsKeyId",
+      "Name",
+      "Platform",
+      "SupportedOsVersions",
+      "Uri",
+      "Version"
+    ],
+    "readOnlyPaths": [
+      "Arn",
+      "Encrypted",
+      "LatestVersion",
+      "LatestVersion.Arn",
+      "LatestVersion.Major",
+      "LatestVersion.Minor",
+      "LatestVersion.Patch",
+      "Type"
+    ],
+    "writeOnlyPaths": ["Data", "Uri"],
+    "createOnlyPaths": [
+      "ChangeDescription",
+      "Data",
+      "Description",
+      "KmsKeyId",
+      "Name",
+      "Platform",
+      "SupportedOsVersions",
+      "Uri",
+      "Version"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["SupportedOsVersions"],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "HuntComponent",
+      "resourceType": "AWS::ImageBuilder::Component",
+      "path": "Data",
+      "note": "write-only — cannot be read back",
+      "physicalId": "arn:aws:imagebuilder:us-east-1:111111111111:component/cdkrd-hunt-component/1.0.0/1",
+      "constructPath": "CdkRealDriftIntegFreeMiscMin/HuntComponent"
+    }
+  ]
+}

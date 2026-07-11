@@ -1,0 +1,89 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntEip",
+    "resourceType": "AWS::EC2::EIP",
+    "physicalId": "18.215.93.30",
+    "constructPath": "CdkRealDriftIntegVpcAttachMin/HuntEip",
+    "declared": {
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Domain": "vpc",
+    "NetworkBorderGroup": "us-east-1",
+    "PublicIp": "18.215.93.30",
+    "PublicIpv4Pool": "amazon",
+    "Tags": [
+      {
+        "Key": "cdkrd:ephemeral",
+        "Value": "1"
+      },
+      {
+        "Key": "aws:cloudformation:stack-name",
+        "Value": "CdkRealDriftIntegVpcAttachMin"
+      },
+      {
+        "Key": "aws:cloudformation:logical-id",
+        "Value": "HuntEip"
+      },
+      {
+        "Key": "aws:cloudformation:stack-id",
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegVpcAttachMin/44135ef0-7d4d-11f1-86fa-0ee6188a468b"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["AllocationId", "PublicIp"],
+    "writeOnly": ["Address", "IpamPoolId", "TransferAddress"],
+    "createOnly": ["Address", "IpamPoolId", "NetworkBorderGroup", "TransferAddress"],
+    "readOnlyPaths": ["AllocationId", "PublicIp"],
+    "writeOnlyPaths": ["Address", "IpamPoolId", "TransferAddress"],
+    "createOnlyPaths": ["Address", "IpamPoolId", "NetworkBorderGroup", "TransferAddress"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEip",
+      "resourceType": "AWS::EC2::EIP",
+      "path": "Domain",
+      "actual": "vpc",
+      "physicalId": "18.215.93.30",
+      "constructPath": "CdkRealDriftIntegVpcAttachMin/HuntEip"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEip",
+      "resourceType": "AWS::EC2::EIP",
+      "path": "NetworkBorderGroup",
+      "actual": "us-east-1",
+      "physicalId": "18.215.93.30",
+      "constructPath": "CdkRealDriftIntegVpcAttachMin/HuntEip"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEip",
+      "resourceType": "AWS::EC2::EIP",
+      "path": "PublicIpv4Pool",
+      "actual": "amazon",
+      "physicalId": "18.215.93.30",
+      "constructPath": "CdkRealDriftIntegVpcAttachMin/HuntEip"
+    }
+  ]
+}

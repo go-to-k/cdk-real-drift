@@ -1,0 +1,67 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntStatefulRg",
+    "resourceType": "AWS::NetworkFirewall::RuleGroup",
+    "physicalId": "arn:aws:network-firewall:us-east-1:111111111111:stateful-rulegroup/cdkrd-hunt-stateful-rg",
+    "constructPath": "CdkRealDriftIntegNetFwMin/HuntStatefulRg",
+    "declared": {
+      "Capacity": 10,
+      "RuleGroup": {
+        "RulesSource": {
+          "RulesString": "pass tcp any any -> any 443 (msg:\"cdkrd hunt allow tls\"; sid:1000001; rev:1;)"
+        }
+      },
+      "RuleGroupName": "cdkrd-hunt-stateful-rg",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "Type": "STATEFUL"
+    }
+  },
+  "liveRaw": {
+    "Type": "STATEFUL",
+    "RuleGroupId": "649a6980-5fc5-4bbe-a696-dcc01f8a1750",
+    "Capacity": 10,
+    "RuleGroupName": "cdkrd-hunt-stateful-rg",
+    "RuleGroupArn": "arn:aws:network-firewall:us-east-1:111111111111:stateful-rulegroup/cdkrd-hunt-stateful-rg",
+    "RuleGroup": {
+      "RulesSource": {
+        "RulesString": "pass tcp any any -> any 443 (msg:\"cdkrd hunt allow tls\"; sid:1000001; rev:1;)"
+      }
+    },
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["RuleGroupArn", "RuleGroupId"],
+    "writeOnly": [],
+    "createOnly": ["Capacity", "RuleGroupName", "Type"],
+    "readOnlyPaths": ["RuleGroupArn", "RuleGroupId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Capacity", "RuleGroupName", "Type"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": [
+      "RuleGroup.ReferenceSets.IPSetReferences",
+      "RuleGroup.RuleVariables.IPSets",
+      "RuleGroup.RuleVariables.PortSets"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

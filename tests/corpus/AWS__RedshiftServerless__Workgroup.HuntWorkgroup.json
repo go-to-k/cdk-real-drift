@@ -1,0 +1,442 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntWorkgroup",
+    "resourceType": "AWS::RedshiftServerless::Workgroup",
+    "physicalId": "cdkrd-hunt-wg",
+    "constructPath": "CdkRealDriftIntegRedshiftSlMin/HuntWorkgroup",
+    "declared": {
+      "NamespaceName": "cdkrd-hunt-ns",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "WorkgroupName": "cdkrd-hunt-wg"
+    }
+  },
+  "liveRaw": {
+    "NamespaceName": "cdkrd-hunt-ns",
+    "Port": 5439,
+    "WorkgroupName": "cdkrd-hunt-wg",
+    "TrackName": "current",
+    "BaseCapacity": -1,
+    "EnhancedVpcRouting": false,
+    "PubliclyAccessible": false,
+    "PricePerformanceTarget": {
+      "Status": "ENABLED",
+      "Level": 50
+    },
+    "Workgroup": {
+      "Status": "AVAILABLE",
+      "CreationDate": "2026-07-11T16:56:24.005Z",
+      "WorkgroupName": "cdkrd-hunt-wg",
+      "WorkgroupArn": "arn:aws:redshift-serverless:us-east-1:111111111111:workgroup/0a0152ba-c730-4ab3-91ed-5cc3eda8549e",
+      "BaseCapacity": -1,
+      "EnhancedVpcRouting": false,
+      "WorkgroupId": "0a0152ba-c730-4ab3-91ed-5cc3eda8549e",
+      "SecurityGroupIds": ["sg-0a26e23e2310ee0c9"],
+      "SubnetIds": [
+        "subnet-0839f35959eaf9126",
+        "subnet-0db5f5bc4e364ba95",
+        "subnet-0ddbb00e7c1d5b679",
+        "subnet-0f4c1fe007d650275",
+        "subnet-03e44b544889aefe3",
+        "subnet-00c21350a74a112b8"
+      ],
+      "NamespaceName": "cdkrd-hunt-ns",
+      "Endpoint": {
+        "Address": "cdkrd-hunt-wg.111111111111.us-east-1.redshift-serverless.amazonaws.com",
+        "VpcEndpoints": [
+          {
+            "VpcId": "vpc-08cae0035717deb9d",
+            "NetworkInterfaces": [
+              {
+                "PrivateIpAddress": "172.31.14.10",
+                "AvailabilityZone": "us-east-1a",
+                "SubnetId": "subnet-0839f35959eaf9126",
+                "NetworkInterfaceId": "eni-0661522cf8cd89c08"
+              },
+              {
+                "PrivateIpAddress": "172.31.17.122",
+                "AvailabilityZone": "us-east-1c",
+                "SubnetId": "subnet-03e44b544889aefe3",
+                "NetworkInterfaceId": "eni-0d0381c674026c963"
+              },
+              {
+                "PrivateIpAddress": "172.31.95.235",
+                "AvailabilityZone": "us-east-1b",
+                "SubnetId": "subnet-0db5f5bc4e364ba95",
+                "NetworkInterfaceId": "eni-0e14994c613f1d691"
+              }
+            ],
+            "VpcEndpointId": "vpce-0fc44db9132b6dad0"
+          }
+        ],
+        "Port": 5439
+      },
+      "ConfigParameters": [
+        {
+          "ParameterValue": "ISO, MDY",
+          "ParameterKey": "datestyle"
+        },
+        {
+          "ParameterValue": "default",
+          "ParameterKey": "query_group"
+        },
+        {
+          "ParameterValue": "14400",
+          "ParameterKey": "max_query_execution_time"
+        },
+        {
+          "ParameterValue": "false",
+          "ParameterKey": "enable_case_sensitive_identifier"
+        },
+        {
+          "ParameterValue": "true",
+          "ParameterKey": "enable_user_activity_logging"
+        },
+        {
+          "ParameterValue": "$user, public",
+          "ParameterKey": "search_path"
+        },
+        {
+          "ParameterValue": "true",
+          "ParameterKey": "require_ssl"
+        },
+        {
+          "ParameterValue": "false",
+          "ParameterKey": "use_fips_ssl"
+        },
+        {
+          "ParameterValue": "true",
+          "ParameterKey": "auto_mv"
+        }
+      ],
+      "TrackName": "current",
+      "PubliclyAccessible": false,
+      "PricePerformanceTarget": {
+        "Status": "ENABLED",
+        "Level": 50
+      }
+    },
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegRedshiftSlMin",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntWorkgroup",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegRedshiftSlMin/6a6cb5f0-7d49-11f1-acd0-0e7116711003",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "ConfigParameters": [
+      {
+        "ParameterKey": "auto_mv",
+        "ParameterValue": "true"
+      },
+      {
+        "ParameterKey": "datestyle",
+        "ParameterValue": "ISO, MDY"
+      },
+      {
+        "ParameterKey": "enable_case_sensitive_identifier",
+        "ParameterValue": "false"
+      },
+      {
+        "ParameterKey": "enable_user_activity_logging",
+        "ParameterValue": "true"
+      },
+      {
+        "ParameterKey": "query_group",
+        "ParameterValue": "default"
+      },
+      {
+        "ParameterKey": "require_ssl",
+        "ParameterValue": "true"
+      },
+      {
+        "ParameterKey": "search_path",
+        "ParameterValue": "$user, public"
+      },
+      {
+        "ParameterKey": "use_fips_ssl",
+        "ParameterValue": "false"
+      },
+      {
+        "ParameterKey": "max_query_execution_time",
+        "ParameterValue": "14400"
+      }
+    ],
+    "SecurityGroupIds": ["sg-0a26e23e2310ee0c9"],
+    "SubnetIds": [
+      "subnet-0839f35959eaf9126",
+      "subnet-0db5f5bc4e364ba95",
+      "subnet-0ddbb00e7c1d5b679",
+      "subnet-0f4c1fe007d650275",
+      "subnet-03e44b544889aefe3",
+      "subnet-00c21350a74a112b8"
+    ]
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": ["RecoveryPointId", "SnapshotArn", "SnapshotName", "SnapshotOwnerAccount"],
+    "createOnly": ["NamespaceName", "WorkgroupName"],
+    "readOnlyPaths": [
+      "Workgroup.BaseCapacity",
+      "Workgroup.ConfigParameters",
+      "Workgroup.CreationDate",
+      "Workgroup.Endpoint.Address",
+      "Workgroup.Endpoint.Port",
+      "Workgroup.Endpoint.VpcEndpoints.*.NetworkInterfaces.*.AvailabilityZone",
+      "Workgroup.Endpoint.VpcEndpoints.*.NetworkInterfaces.*.NetworkInterfaceId",
+      "Workgroup.Endpoint.VpcEndpoints.*.NetworkInterfaces.*.PrivateIpAddress",
+      "Workgroup.Endpoint.VpcEndpoints.*.NetworkInterfaces.*.SubnetId",
+      "Workgroup.Endpoint.VpcEndpoints.*.VpcEndpointId",
+      "Workgroup.Endpoint.VpcEndpoints.*.VpcId",
+      "Workgroup.EnhancedVpcRouting",
+      "Workgroup.MaxCapacity",
+      "Workgroup.NamespaceName",
+      "Workgroup.PubliclyAccessible",
+      "Workgroup.SecurityGroupIds",
+      "Workgroup.Status",
+      "Workgroup.SubnetIds",
+      "Workgroup.TrackName",
+      "Workgroup.WorkgroupArn",
+      "Workgroup.WorkgroupId",
+      "Workgroup.WorkgroupName"
+    ],
+    "writeOnlyPaths": ["RecoveryPointId", "SnapshotArn", "SnapshotName", "SnapshotOwnerAccount"],
+    "createOnlyPaths": ["NamespaceName", "WorkgroupName"],
+    "defaults": {
+      "EnhancedVpcRouting": false,
+      "PubliclyAccessible": false
+    },
+    "defaultPaths": {
+      "EnhancedVpcRouting": false,
+      "PubliclyAccessible": false
+    },
+    "unorderedScalarPaths": [
+      "SecurityGroupIds",
+      "SubnetIds",
+      "Workgroup.SecurityGroupIds",
+      "Workgroup.SubnetIds"
+    ],
+    "unorderedObjectArrayPaths": [
+      "ConfigParameters",
+      "Workgroup.ConfigParameters",
+      "Workgroup.Endpoint.VpcEndpoints"
+    ],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntWorkgroup",
+      "resourceType": "AWS::RedshiftServerless::Workgroup",
+      "path": "BaseCapacity",
+      "actual": -1,
+      "physicalId": "cdkrd-hunt-wg",
+      "constructPath": "CdkRealDriftIntegRedshiftSlMin/HuntWorkgroup"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntWorkgroup",
+      "resourceType": "AWS::RedshiftServerless::Workgroup",
+      "path": "ConfigParameters[auto_mv]",
+      "actual": "true",
+      "nested": true,
+      "physicalId": "cdkrd-hunt-wg",
+      "constructPath": "CdkRealDriftIntegRedshiftSlMin/HuntWorkgroup"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntWorkgroup",
+      "resourceType": "AWS::RedshiftServerless::Workgroup",
+      "path": "ConfigParameters[datestyle]",
+      "actual": "ISO, MDY",
+      "nested": true,
+      "physicalId": "cdkrd-hunt-wg",
+      "constructPath": "CdkRealDriftIntegRedshiftSlMin/HuntWorkgroup"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntWorkgroup",
+      "resourceType": "AWS::RedshiftServerless::Workgroup",
+      "path": "ConfigParameters[enable_case_sensitive_identifier]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "cdkrd-hunt-wg",
+      "constructPath": "CdkRealDriftIntegRedshiftSlMin/HuntWorkgroup"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntWorkgroup",
+      "resourceType": "AWS::RedshiftServerless::Workgroup",
+      "path": "ConfigParameters[enable_user_activity_logging]",
+      "actual": "true",
+      "nested": true,
+      "physicalId": "cdkrd-hunt-wg",
+      "constructPath": "CdkRealDriftIntegRedshiftSlMin/HuntWorkgroup"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntWorkgroup",
+      "resourceType": "AWS::RedshiftServerless::Workgroup",
+      "path": "ConfigParameters[max_query_execution_time]",
+      "actual": "14400",
+      "nested": true,
+      "physicalId": "cdkrd-hunt-wg",
+      "constructPath": "CdkRealDriftIntegRedshiftSlMin/HuntWorkgroup"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntWorkgroup",
+      "resourceType": "AWS::RedshiftServerless::Workgroup",
+      "path": "ConfigParameters[query_group]",
+      "actual": "default",
+      "nested": true,
+      "physicalId": "cdkrd-hunt-wg",
+      "constructPath": "CdkRealDriftIntegRedshiftSlMin/HuntWorkgroup"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntWorkgroup",
+      "resourceType": "AWS::RedshiftServerless::Workgroup",
+      "path": "ConfigParameters[require_ssl]",
+      "actual": "true",
+      "nested": true,
+      "physicalId": "cdkrd-hunt-wg",
+      "constructPath": "CdkRealDriftIntegRedshiftSlMin/HuntWorkgroup"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntWorkgroup",
+      "resourceType": "AWS::RedshiftServerless::Workgroup",
+      "path": "ConfigParameters[search_path]",
+      "actual": "$user, public",
+      "nested": true,
+      "physicalId": "cdkrd-hunt-wg",
+      "constructPath": "CdkRealDriftIntegRedshiftSlMin/HuntWorkgroup"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntWorkgroup",
+      "resourceType": "AWS::RedshiftServerless::Workgroup",
+      "path": "ConfigParameters[use_fips_ssl]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "cdkrd-hunt-wg",
+      "constructPath": "CdkRealDriftIntegRedshiftSlMin/HuntWorkgroup"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntWorkgroup",
+      "resourceType": "AWS::RedshiftServerless::Workgroup",
+      "path": "EnhancedVpcRouting",
+      "actual": false,
+      "physicalId": "cdkrd-hunt-wg",
+      "constructPath": "CdkRealDriftIntegRedshiftSlMin/HuntWorkgroup"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntWorkgroup",
+      "resourceType": "AWS::RedshiftServerless::Workgroup",
+      "path": "Port",
+      "actual": 5439,
+      "physicalId": "cdkrd-hunt-wg",
+      "constructPath": "CdkRealDriftIntegRedshiftSlMin/HuntWorkgroup"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntWorkgroup",
+      "resourceType": "AWS::RedshiftServerless::Workgroup",
+      "path": "PricePerformanceTarget",
+      "actual": {
+        "Status": "ENABLED",
+        "Level": 50
+      },
+      "physicalId": "cdkrd-hunt-wg",
+      "constructPath": "CdkRealDriftIntegRedshiftSlMin/HuntWorkgroup"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntWorkgroup",
+      "resourceType": "AWS::RedshiftServerless::Workgroup",
+      "path": "PubliclyAccessible",
+      "actual": false,
+      "physicalId": "cdkrd-hunt-wg",
+      "constructPath": "CdkRealDriftIntegRedshiftSlMin/HuntWorkgroup"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntWorkgroup",
+      "resourceType": "AWS::RedshiftServerless::Workgroup",
+      "path": "SecurityGroupIds",
+      "actual": ["sg-0a26e23e2310ee0c9"],
+      "physicalId": "cdkrd-hunt-wg",
+      "constructPath": "CdkRealDriftIntegRedshiftSlMin/HuntWorkgroup"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntWorkgroup",
+      "resourceType": "AWS::RedshiftServerless::Workgroup",
+      "path": "SubnetIds",
+      "actual": [
+        "subnet-00c21350a74a112b8",
+        "subnet-03e44b544889aefe3",
+        "subnet-0839f35959eaf9126",
+        "subnet-0db5f5bc4e364ba95",
+        "subnet-0ddbb00e7c1d5b679",
+        "subnet-0f4c1fe007d650275"
+      ],
+      "physicalId": "cdkrd-hunt-wg",
+      "constructPath": "CdkRealDriftIntegRedshiftSlMin/HuntWorkgroup"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntWorkgroup",
+      "resourceType": "AWS::RedshiftServerless::Workgroup",
+      "path": "TrackName",
+      "actual": "current",
+      "physicalId": "cdkrd-hunt-wg",
+      "constructPath": "CdkRealDriftIntegRedshiftSlMin/HuntWorkgroup"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "HuntWorkgroup",
+      "resourceType": "AWS::RedshiftServerless::Workgroup",
+      "path": "Workgroup",
+      "actual": {
+        "Endpoint": {
+          "VpcEndpoints": [
+            {
+              "NetworkInterfaces": [{}, {}, {}]
+            }
+          ]
+        },
+        "PricePerformanceTarget": {
+          "Status": "ENABLED",
+          "Level": 50
+        }
+      },
+      "physicalId": "cdkrd-hunt-wg",
+      "constructPath": "CdkRealDriftIntegRedshiftSlMin/HuntWorkgroup"
+    }
+  ]
+}

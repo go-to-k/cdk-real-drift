@@ -1,0 +1,80 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntCronRule",
+    "resourceType": "AWS::Events::Rule",
+    "physicalId": "CdkRealDriftIntegStreamFifoMin-HuntCronRule-ze460vjwvIT7",
+    "constructPath": "CdkRealDriftIntegStreamFifoMin/HuntCronRule",
+    "declared": {
+      "ScheduleExpression": "cron(0 12 * * ? *)",
+      "State": "DISABLED",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "EventBusName": "default",
+    "ScheduleExpression": "cron(0 12 * * ? *)",
+    "State": "DISABLED",
+    "Targets": [],
+    "Id": "CdkRealDriftIntegStreamFifoMin-HuntCronRule-ze460vjwvIT7",
+    "Arn": "arn:aws:events:us-east-1:111111111111:rule/CdkRealDriftIntegStreamFifoMin-HuntCronRule-ze460vjwvIT7",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegStreamFifoMin",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntCronRule",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegStreamFifoMin/6b5b0d90-7d49-11f1-89c5-12787c3aadc7",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "Name": "CdkRealDriftIntegStreamFifoMin-HuntCronRule-ze460vjwvIT7"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": [
+      "Targets.*.HttpParameters.HeaderParameters",
+      "Targets.*.HttpParameters.QueryStringParameters",
+      "Targets.*.InputTransformer.InputPathsMap"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntCronRule",
+      "resourceType": "AWS::Events::Rule",
+      "path": "EventBusName",
+      "actual": "default",
+      "physicalId": "CdkRealDriftIntegStreamFifoMin-HuntCronRule-ze460vjwvIT7",
+      "constructPath": "CdkRealDriftIntegStreamFifoMin/HuntCronRule"
+    }
+  ]
+}

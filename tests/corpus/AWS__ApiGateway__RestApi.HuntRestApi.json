@@ -1,0 +1,117 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntRestApi",
+    "resourceType": "AWS::ApiGateway::RestApi",
+    "physicalId": "ob75xj2l77",
+    "constructPath": "CdkRealDriftIntegReorderProbesMin/HuntRestApi",
+    "declared": {
+      "BinaryMediaTypes": ["image/webp", "application/octet-stream", "image/avif"],
+      "Name": "cdkrd-hunt-reorder-restapi",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "RootResourceId": "ilaekj8ga1",
+    "SecurityPolicy": "TLS_1_0",
+    "RestApiId": "ob75xj2l77",
+    "ApiKeySourceType": "HEADER",
+    "EndpointConfiguration": {
+      "IpAddressType": "ipv4",
+      "Types": ["EDGE"]
+    },
+    "DisableExecuteApiEndpoint": false,
+    "Tags": [
+      {
+        "Value": "HuntRestApi",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegReorderProbesMin/e6337560-7d4a-11f1-a1a9-0e48750aef13",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegReorderProbesMin",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "BinaryMediaTypes": ["image/webp", "application/octet-stream", "image/avif"],
+    "Name": "cdkrd-hunt-reorder-restapi"
+  },
+  "schema": {
+    "readOnly": ["RestApiId", "RootResourceId"],
+    "writeOnly": ["Body", "BodyS3Location", "CloneFrom", "FailOnWarnings", "Mode", "Parameters"],
+    "createOnly": [],
+    "readOnlyPaths": ["RestApiId", "RootResourceId"],
+    "writeOnlyPaths": [
+      "Body",
+      "BodyS3Location",
+      "CloneFrom",
+      "FailOnWarnings",
+      "Mode",
+      "Parameters"
+    ],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntRestApi",
+      "resourceType": "AWS::ApiGateway::RestApi",
+      "path": "ApiKeySourceType",
+      "actual": "HEADER",
+      "physicalId": "ob75xj2l77",
+      "constructPath": "CdkRealDriftIntegReorderProbesMin/HuntRestApi"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntRestApi",
+      "resourceType": "AWS::ApiGateway::RestApi",
+      "path": "DisableExecuteApiEndpoint",
+      "actual": false,
+      "physicalId": "ob75xj2l77",
+      "constructPath": "CdkRealDriftIntegReorderProbesMin/HuntRestApi"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntRestApi",
+      "resourceType": "AWS::ApiGateway::RestApi",
+      "path": "EndpointConfiguration",
+      "actual": {
+        "IpAddressType": "ipv4",
+        "Types": ["EDGE"]
+      },
+      "physicalId": "ob75xj2l77",
+      "constructPath": "CdkRealDriftIntegReorderProbesMin/HuntRestApi"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntRestApi",
+      "resourceType": "AWS::ApiGateway::RestApi",
+      "path": "SecurityPolicy",
+      "actual": "TLS_1_0",
+      "physicalId": "ob75xj2l77",
+      "constructPath": "CdkRealDriftIntegReorderProbesMin/HuntRestApi"
+    }
+  ]
+}

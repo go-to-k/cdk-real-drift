@@ -1,0 +1,213 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntJavaFn1CE75A4C",
+    "resourceType": "AWS::Lambda::Function",
+    "physicalId": "CdkRealDriftIntegLambdaJavaMin-HuntJavaFn1CE75A4C-VtREvvLX57TV",
+    "constructPath": "CdkRealDriftIntegLambdaJavaMin/HuntJavaFn",
+    "declared": {
+      "Code": {
+        "S3Bucket": "cdk-hnb659fds-assets-111111111111-us-east-1",
+        "S3Key": "ac6e6b9b6b63b7135a3a51cd6fb9a4f29815e6aceb41e48d65ee9391886f7629.zip"
+      },
+      "Handler": "example.Handler::handleRequest",
+      "Role": "arn:aws:iam::111111111111:role/CdkRealDriftIntegLambdaJa-HuntJavaFnServiceRoleAA77-ZmBqw5Q1DnwM",
+      "Runtime": "java21",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "MemorySize": 128,
+    "Description": "",
+    "TracingConfig": {
+      "Mode": "PassThrough"
+    },
+    "Timeout": 3,
+    "RuntimeManagementConfig": {
+      "UpdateRuntimeOn": "Auto"
+    },
+    "Handler": "example.Handler::handleRequest",
+    "SnapStartResponse": {
+      "OptimizationStatus": "Off",
+      "ApplyOn": "None"
+    },
+    "Code": {},
+    "Role": "arn:aws:iam::111111111111:role/CdkRealDriftIntegLambdaJa-HuntJavaFnServiceRoleAA77-ZmBqw5Q1DnwM",
+    "FileSystemConfigs": [],
+    "FunctionName": "CdkRealDriftIntegLambdaJavaMin-HuntJavaFn1CE75A4C-VtREvvLX57TV",
+    "Runtime": "java21",
+    "PackageType": "Zip",
+    "LoggingConfig": {
+      "LogFormat": "Text",
+      "LogGroup": "/aws/lambda/CdkRealDriftIntegLambdaJavaMin-HuntJavaFn1CE75A4C-VtREvvLX57TV"
+    },
+    "RecursiveLoop": "Terminate",
+    "Arn": "arn:aws:lambda:us-east-1:111111111111:function:CdkRealDriftIntegLambdaJavaMin-HuntJavaFn1CE75A4C-VtREvvLX57TV",
+    "EphemeralStorage": {
+      "Size": 512
+    },
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegLambdaJavaMin/6d113720-7d4b-11f1-a4bd-0affffd37699",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "HuntJavaFn1CE75A4C",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "CdkRealDriftIntegLambdaJavaMin",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ],
+    "Architectures": ["x86_64"],
+    "CodeSha256": "sFSjQhQ7zsKdyAGuo2dyz2U13OWqcy1WIE4wRKtUIg8="
+  },
+  "schema": {
+    "readOnly": ["Arn", "SnapStartResponse"],
+    "writeOnly": ["PublishToLatestPublished", "SnapStart"],
+    "createOnly": ["FunctionName", "PackageType", "TenancyConfig"],
+    "readOnlyPaths": [
+      "Arn",
+      "SnapStartResponse",
+      "SnapStartResponse.ApplyOn",
+      "SnapStartResponse.OptimizationStatus"
+    ],
+    "writeOnlyPaths": [
+      "Code.ImageUri",
+      "Code.S3Bucket",
+      "Code.S3Key",
+      "Code.S3ObjectStorageMode",
+      "Code.S3ObjectVersion",
+      "Code.SourceKMSKeyArn",
+      "Code.ZipFile",
+      "PublishToLatestPublished",
+      "SnapStart",
+      "SnapStart.ApplyOn"
+    ],
+    "createOnlyPaths": ["FunctionName", "PackageType", "TenancyConfig"],
+    "defaults": {},
+    "defaultPaths": {
+      "DurableConfig.RetentionPeriodInDays": 14
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": ["Environment.Variables"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntJavaFn1CE75A4C",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "Architectures",
+      "actual": ["x86_64"],
+      "physicalId": "CdkRealDriftIntegLambdaJavaMin-HuntJavaFn1CE75A4C-VtREvvLX57TV",
+      "constructPath": "CdkRealDriftIntegLambdaJavaMin/HuntJavaFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntJavaFn1CE75A4C",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "EphemeralStorage",
+      "actual": {
+        "Size": 512
+      },
+      "physicalId": "CdkRealDriftIntegLambdaJavaMin-HuntJavaFn1CE75A4C-VtREvvLX57TV",
+      "constructPath": "CdkRealDriftIntegLambdaJavaMin/HuntJavaFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntJavaFn1CE75A4C",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "MemorySize",
+      "actual": 128,
+      "physicalId": "CdkRealDriftIntegLambdaJavaMin-HuntJavaFn1CE75A4C-VtREvvLX57TV",
+      "constructPath": "CdkRealDriftIntegLambdaJavaMin/HuntJavaFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntJavaFn1CE75A4C",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "PackageType",
+      "actual": "Zip",
+      "physicalId": "CdkRealDriftIntegLambdaJavaMin-HuntJavaFn1CE75A4C-VtREvvLX57TV",
+      "constructPath": "CdkRealDriftIntegLambdaJavaMin/HuntJavaFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntJavaFn1CE75A4C",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "RecursiveLoop",
+      "actual": "Terminate",
+      "physicalId": "CdkRealDriftIntegLambdaJavaMin-HuntJavaFn1CE75A4C-VtREvvLX57TV",
+      "constructPath": "CdkRealDriftIntegLambdaJavaMin/HuntJavaFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntJavaFn1CE75A4C",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "RuntimeManagementConfig",
+      "actual": {
+        "UpdateRuntimeOn": "Auto"
+      },
+      "physicalId": "CdkRealDriftIntegLambdaJavaMin-HuntJavaFn1CE75A4C-VtREvvLX57TV",
+      "constructPath": "CdkRealDriftIntegLambdaJavaMin/HuntJavaFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntJavaFn1CE75A4C",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "Timeout",
+      "actual": 3,
+      "physicalId": "CdkRealDriftIntegLambdaJavaMin-HuntJavaFn1CE75A4C-VtREvvLX57TV",
+      "constructPath": "CdkRealDriftIntegLambdaJavaMin/HuntJavaFn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntJavaFn1CE75A4C",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "TracingConfig",
+      "actual": {
+        "Mode": "PassThrough"
+      },
+      "physicalId": "CdkRealDriftIntegLambdaJavaMin-HuntJavaFn1CE75A4C-VtREvvLX57TV",
+      "constructPath": "CdkRealDriftIntegLambdaJavaMin/HuntJavaFn"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "HuntJavaFn1CE75A4C",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "CodeSha256",
+      "actual": "sFSjQhQ7zsKdyAGuo2dyz2U13OWqcy1WIE4wRKtUIg8=",
+      "physicalId": "CdkRealDriftIntegLambdaJavaMin-HuntJavaFn1CE75A4C-VtREvvLX57TV",
+      "constructPath": "CdkRealDriftIntegLambdaJavaMin/HuntJavaFn"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "HuntJavaFn1CE75A4C",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "LoggingConfig",
+      "actual": {
+        "LogFormat": "Text",
+        "LogGroup": "/aws/lambda/CdkRealDriftIntegLambdaJavaMin-HuntJavaFn1CE75A4C-VtREvvLX57TV"
+      },
+      "physicalId": "CdkRealDriftIntegLambdaJavaMin-HuntJavaFn1CE75A4C-VtREvvLX57TV",
+      "constructPath": "CdkRealDriftIntegLambdaJavaMin/HuntJavaFn"
+    }
+  ]
+}

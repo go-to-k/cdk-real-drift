@@ -1,0 +1,201 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntCorsBucketFF1953AB",
+    "resourceType": "AWS::S3::Bucket",
+    "physicalId": "cdkrealdriftintegcaseidents-huntcorsbucketff1953ab-dyzhrhltr1sy",
+    "constructPath": "CdkRealDriftIntegCaseIdentsMin/HuntCorsBucket",
+    "declared": {
+      "CorsConfiguration": {
+        "CorsRules": [
+          {
+            "AllowedHeaders": ["X-Custom-Header", "Content-Type"],
+            "AllowedMethods": ["GET", "PUT"],
+            "AllowedOrigins": ["https://hunt.example.org"],
+            "ExposedHeaders": ["ETag", "x-amz-request-id"]
+          }
+        ]
+      },
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "AbacStatus": "Disabled",
+    "PublicAccessBlockConfiguration": {
+      "RestrictPublicBuckets": true,
+      "BlockPublicPolicy": true,
+      "BlockPublicAcls": true,
+      "IgnorePublicAcls": true
+    },
+    "BucketName": "cdkrealdriftintegcaseidents-huntcorsbucketff1953ab-dyzhrhltr1sy",
+    "CorsConfiguration": {
+      "CorsRules": [
+        {
+          "ExposedHeaders": ["ETag", "x-amz-request-id"],
+          "AllowedMethods": ["GET", "PUT"],
+          "AllowedOrigins": ["https://hunt.example.org"],
+          "AllowedHeaders": ["X-Custom-Header", "Content-Type"],
+          "MaxAge": 0
+        }
+      ]
+    },
+    "RegionalDomainName": "cdkrealdriftintegcaseidents-huntcorsbucketff1953ab-dyzhrhltr1sy.s3.us-east-1.amazonaws.com",
+    "OwnershipControls": {
+      "Rules": [
+        {
+          "ObjectOwnership": "BucketOwnerEnforced"
+        }
+      ]
+    },
+    "DomainName": "cdkrealdriftintegcaseidents-huntcorsbucketff1953ab-dyzhrhltr1sy.s3.amazonaws.com",
+    "BucketEncryption": {
+      "ServerSideEncryptionConfiguration": [
+        {
+          "BucketKeyEnabled": false,
+          "BlockedEncryptionTypes": {
+            "EncryptionType": ["SSE-C"]
+          },
+          "ServerSideEncryptionByDefault": {
+            "SSEAlgorithm": "AES256"
+          }
+        }
+      ]
+    },
+    "WebsiteURL": "http://cdkrealdriftintegcaseidents-huntcorsbucketff1953ab-dyzhrhltr1sy.s3-website-us-east-1.amazonaws.com",
+    "DualStackDomainName": "cdkrealdriftintegcaseidents-huntcorsbucketff1953ab-dyzhrhltr1sy.s3.dualstack.us-east-1.amazonaws.com",
+    "Arn": "arn:aws:s3:::cdkrealdriftintegcaseidents-huntcorsbucketff1953ab-dyzhrhltr1sy",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegCaseIdentsMin",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntCorsBucketFF1953AB",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegCaseIdentsMin/09209c20-7d4a-11f1-b021-12e64a14fec7",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "DomainName", "DualStackDomainName", "RegionalDomainName", "WebsiteURL"],
+    "writeOnly": ["AccessControl", "BucketNamePrefix", "BucketNamespace"],
+    "createOnly": ["BucketName", "BucketNamePrefix", "BucketNamespace"],
+    "readOnlyPaths": [
+      "Arn",
+      "DomainName",
+      "DualStackDomainName",
+      "MetadataConfiguration.AnnotationTableConfiguration.TableArn",
+      "MetadataConfiguration.AnnotationTableConfiguration.TableName",
+      "MetadataConfiguration.Destination",
+      "MetadataConfiguration.InventoryTableConfiguration.TableArn",
+      "MetadataConfiguration.InventoryTableConfiguration.TableName",
+      "MetadataConfiguration.JournalTableConfiguration.TableArn",
+      "MetadataConfiguration.JournalTableConfiguration.TableName",
+      "MetadataTableConfiguration.S3TablesDestination.TableArn",
+      "MetadataTableConfiguration.S3TablesDestination.TableNamespace",
+      "RegionalDomainName",
+      "WebsiteURL"
+    ],
+    "writeOnlyPaths": [
+      "AccessControl",
+      "BucketNamePrefix",
+      "BucketNamespace",
+      "LifecycleConfiguration.Rules.*.ExpiredObjectDeleteMarker",
+      "LifecycleConfiguration.Rules.*.NoncurrentVersionExpirationInDays",
+      "LifecycleConfiguration.Rules.*.NoncurrentVersionTransition",
+      "LifecycleConfiguration.Rules.*.Transition",
+      "MetadataConfiguration.AnnotationTableConfiguration.EncryptionConfiguration",
+      "MetadataConfiguration.InventoryTableConfiguration.EncryptionConfiguration",
+      "MetadataConfiguration.JournalTableConfiguration.EncryptionConfiguration",
+      "ReplicationConfiguration.Rules.*.Prefix"
+    ],
+    "createOnlyPaths": ["BucketName", "BucketNamePrefix", "BucketNamespace"],
+    "defaults": {},
+    "defaultPaths": {
+      "NotificationConfiguration.EventBridgeConfiguration.EventBridgeEnabled": "true",
+      "VersioningConfiguration.Status": "Suspended"
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntCorsBucketFF1953AB",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "AbacStatus",
+      "actual": "Disabled",
+      "physicalId": "cdkrealdriftintegcaseidents-huntcorsbucketff1953ab-dyzhrhltr1sy",
+      "constructPath": "CdkRealDriftIntegCaseIdentsMin/HuntCorsBucket"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntCorsBucketFF1953AB",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "BucketEncryption",
+      "actual": {
+        "ServerSideEncryptionConfiguration": [
+          {
+            "BucketKeyEnabled": false,
+            "BlockedEncryptionTypes": {
+              "EncryptionType": ["SSE-C"]
+            },
+            "ServerSideEncryptionByDefault": {
+              "SSEAlgorithm": "AES256"
+            }
+          }
+        ]
+      },
+      "physicalId": "cdkrealdriftintegcaseidents-huntcorsbucketff1953ab-dyzhrhltr1sy",
+      "constructPath": "CdkRealDriftIntegCaseIdentsMin/HuntCorsBucket"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntCorsBucketFF1953AB",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "OwnershipControls",
+      "actual": {
+        "Rules": [
+          {
+            "ObjectOwnership": "BucketOwnerEnforced"
+          }
+        ]
+      },
+      "physicalId": "cdkrealdriftintegcaseidents-huntcorsbucketff1953ab-dyzhrhltr1sy",
+      "constructPath": "CdkRealDriftIntegCaseIdentsMin/HuntCorsBucket"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntCorsBucketFF1953AB",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "PublicAccessBlockConfiguration",
+      "actual": {
+        "RestrictPublicBuckets": true,
+        "BlockPublicPolicy": true,
+        "BlockPublicAcls": true,
+        "IgnorePublicAcls": true
+      },
+      "physicalId": "cdkrealdriftintegcaseidents-huntcorsbucketff1953ab-dyzhrhltr1sy",
+      "constructPath": "CdkRealDriftIntegCaseIdentsMin/HuntCorsBucket"
+    }
+  ]
+}
