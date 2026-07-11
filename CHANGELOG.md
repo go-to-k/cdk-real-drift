@@ -1,3 +1,10 @@
+## [0.12.88](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.87...v0.12.88) (2026-07-11)
+
+
+### Bug Fixes
+
+* **diff:** reach zero first-check on a real EC2+RDS workload — EC2::Instance SG/Volumes/BDM/NIC/AZ + RDS::DBInstance defaults ([#1477](https://github.com/go-to-k/cdk-real-drift/issues/1477)) ([5fcf3c0](https://github.com/go-to-k/cdk-real-drift/commit/5fcf3c063cb9658c24ba832e34aecc51bd0f54a5))
+
 ## [0.12.87](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.86...v0.12.87) (2026-07-11)
 
 
