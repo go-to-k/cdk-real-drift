@@ -3045,6 +3045,14 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
     'PreferredBackupWindow',
     'EngineLifecycleSupport',
   ]),
+  // Aurora GlobalCluster carries the SAME `EngineLifecycleSupport` RDS Extended Support
+  // enrollment as its DBCluster/DBInstance siblings above, with the identical creation-era-
+  // dependent, restore-resets-the-timestamp non-reconstructability (see the full note above) —
+  // so it folds value-independent too. Live-observed first-run on a fresh headless GlobalCluster
+  // (`open-source-rds-extended-support`, #1406). A DECLARED enrollment is compared in the
+  // declared loop (detected). GlobalCluster has no KmsKeyId / AZ / window props of its own
+  // (those live on the member cluster), so this is the only value-independent entry it needs.
+  'AWS::RDS::GlobalCluster': new Set(['EngineLifecycleSupport']),
   //   AWS::EKS::AccessEntry.Username is NO LONGER value-independent (#890): the undeclared
   //   default is a DETERMINISTIC transform of the declared PrincipalArn, so it is folded by a
   //   tier-2 derived equality gate in classify.ts (which STILL surfaces an out-of-band RBAC
