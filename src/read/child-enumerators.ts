@@ -117,6 +117,7 @@ import {
   type EventSourceMappingConfiguration,
   type FunctionConfiguration as LambdaVersionConfiguration,
   type FunctionUrlConfig,
+  GetPolicyCommand as LambdaGetPolicyCommand,
   LambdaClient,
   ListAliasesCommand as ListLambdaAliasesCommand,
   ListEventSourceMappingsCommand,
@@ -255,7 +256,8 @@ export type ChildEnumerator = (ctx: EnumeratorContext) => Promise<AddedChild[]>;
 // Registry: declared parent TYPE -> child enumerator. Grown one type at a time,
 // exactly like SDK_OVERRIDES. API Gateway REST APIs were the first member; API Gateway
 // V2 (HTTP / WebSocket) APIs the second; SNS Topics (subscriptions) the third; Lambda
-// Functions (event source mappings) the fourth; EventBridge event buses (rules) the fifth;
+// Functions (event source mappings, function URLs, aliases, versions, and out-of-band
+// resource-policy statements #835) the fourth; EventBridge event buses (rules) the fifth;
 // Cognito User Pools (clients) the sixth; AppSync GraphQL APIs (data sources) the seventh;
 // CloudWatch Logs log groups (metric filters) the eighth; Elastic Load Balancing v2 load
 // balancers (listeners) the ninth; EC2 VPCs (subnets) the tenth; EC2 route tables
@@ -1646,6 +1648,125 @@ async function pageLambdaVersions(
   return out;
 }
 
+// A Function ALSO carries a RESOURCE POLICY — the aggregate of its
+// AWS::Lambda::Permission statements (each `aws lambda add-permission` / declared
+// AWS::Lambda::Permission adds one). Unlike the children above it is NOT a distinct CC
+// resource in the Function's own model: the Function's Cloud Control model has no
+// resource-policy field, and the declared-Permission override reader (readLambdaPermission)
+// reads back only the statements it can MATCH to a declared AWS::Lambda::Permission by Sid.
+// An out-of-band `add-permission` that adds a statement with a Sid matching NO declared
+// Permission is therefore invisible to both mechanisms — a silent false negative (#835), and
+// exactly the security-critical drift a drift detector exists to catch (a rogue
+// `lambda:InvokeFunction` principal, a cross-account grant, a public function-URL flip). We
+// close it here: read the live resource policy (GetPolicy) and surface any statement whose Sid
+// is not among the declared Permission Sids as an `added` AWS::Lambda::Permission. The CFn
+// physical id of an AWS::Lambda::Permission IS its statement Sid, and its CC primaryIdentifier
+// is the composite `["/properties/FunctionName","/properties/Id"]` (Id = the Sid), so the CC
+// `identifier` is `<functionName>|<Sid>` (what GetResource / DeleteResource consume) while the
+// sibling-stack membership check uses the bare Sid (`siblingLookupId`).
+
+// Lambda resource-policy statement `Principal` -> CFn Principal shape, mirroring the
+// readLambdaPermission override reader: AWS stores it as {Service:"x"} / {AWS:"x"}; CFn
+// declares the bare string. Anything else (a plain string, `"*"`, or a multi-key object) is
+// returned unchanged.
+function normalizeStatementPrincipal(p: unknown): unknown {
+  if (p && typeof p === 'object') {
+    const o = p as Record<string, unknown>;
+    if (typeof o.Service === 'string') return o.Service;
+    if (typeof o.AWS === 'string') return o.AWS;
+  }
+  return p;
+}
+
+// Project a live policy statement into a compact, report-friendly `AWS::Lambda::Permission`
+// shape for the `added` finding's `live` snippet (the CC GetResource full-model read is the
+// authoritative model; this is the fallback and the human-readable summary). Only the
+// security-meaningful fields are projected.
+function projectLambdaStatement(stmt: Record<string, unknown>): Record<string, unknown> {
+  const cond = stmt.Condition as
+    | { ArnLike?: Record<string, unknown>; StringEquals?: Record<string, unknown> }
+    | undefined;
+  const sourceArn = cond?.ArnLike?.['AWS:SourceArn'];
+  const sourceAccount = cond?.StringEquals?.['AWS:SourceAccount'];
+  const principalOrgId = cond?.StringEquals?.['aws:PrincipalOrgID'];
+  const functionUrlAuthType = cond?.StringEquals?.['lambda:FunctionUrlAuthType'];
+  return {
+    ...(stmt.Sid !== undefined && { Id: stmt.Sid }),
+    ...(stmt.Action !== undefined && { Action: stmt.Action }),
+    ...(stmt.Principal !== undefined && {
+      Principal: normalizeStatementPrincipal(stmt.Principal),
+    }),
+    ...(sourceArn !== undefined && { SourceArn: sourceArn }),
+    ...(sourceAccount !== undefined && { SourceAccount: sourceAccount }),
+    ...(principalOrgId !== undefined && { PrincipalOrgID: principalOrgId }),
+    ...(functionUrlAuthType !== undefined && { FunctionUrlAuthType: functionUrlAuthType }),
+  };
+}
+
+// Pure diff: declared Permission Sids + live policy statements -> the added statements.
+// Separated from the SDK call so the matching logic is unit-tested offline.
+export interface LambdaResourcePolicyInput {
+  functionName: string; // the Function's physical id (name) — first element of the CC identifier
+  declaredPermissionSids: string[]; // Sids (= CFn physical ids) of declared AWS::Lambda::Permission targeting this function
+  liveStatements: Record<string, unknown>[]; // the live resource policy's `Statement` array
+}
+
+export function diffLambdaResourcePolicy(input: LambdaResourcePolicyInput): AddedChild[] {
+  const declared = new Set(input.declaredPermissionSids);
+  const added: AddedChild[] = [];
+  for (const stmt of input.liveStatements) {
+    const sid = typeof stmt.Sid === 'string' && stmt.Sid !== '' ? stmt.Sid : undefined;
+    // A statement with no Sid can neither be matched against a declared Permission (whose CFn
+    // physical id IS its Sid) nor addressed for a CC GetResource / DeleteResource (identifier
+    // `FunctionName|Id`), so it is skipped. An `aws lambda add-permission` ALWAYS requires a
+    // StatementId, so every out-of-band statement carries a Sid — skipping the Sid-less case
+    // cannot hide a real add-permission, and it protects the zero-first-run invariant against
+    // any AWS-minted Sid-less statement we could neither key nor safely delete.
+    if (!sid) continue;
+    if (declared.has(sid)) continue;
+    added.push({
+      resourceType: 'AWS::Lambda::Permission',
+      identifier: `${input.functionName}|${sid}`, // CC primaryIdentifier [FunctionName, Id]
+      siblingLookupId: sid, // the CFn physical id of an AWS::Lambda::Permission IS its Sid
+      label: `permission ${sid}`,
+      live: projectLambdaStatement(stmt),
+    });
+  }
+  return added;
+}
+
+// Read the Function's live resource policy and return its statements. GetPolicy throws
+// ResourceNotFoundException when the function has NO resource policy at all (nothing to
+// enumerate) — that is the NORMAL clean-function case, so it maps to an empty list rather than
+// a coverage-gap `skipped` on the parent. Any OTHER error (throttle, AccessDenied) is left to
+// propagate: gather turns it into a `skipped` finding on the parent (coverage-incomplete),
+// never a false `added`.
+async function readLambdaResourcePolicyStatements(
+  client: LambdaClient,
+  functionName: string
+): Promise<Record<string, unknown>[]> {
+  let policyJson: string | undefined;
+  try {
+    const res = await client.send(new LambdaGetPolicyCommand({ FunctionName: functionName }));
+    policyJson = res?.Policy;
+  } catch (e) {
+    if ((e as { name?: string }).name === 'ResourceNotFoundException') return [];
+    throw e;
+  }
+  if (!policyJson) return [];
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(policyJson);
+  } catch {
+    return [];
+  }
+  const stmts = (parsed as { Statement?: unknown })?.Statement;
+  if (!Array.isArray(stmts)) return [];
+  return stmts.filter(
+    (s): s is Record<string, unknown> => typeof s === 'object' && s !== null && !Array.isArray(s)
+  );
+}
+
 export async function enumerateLambdaFunctionChildren(
   ctx: EnumeratorContext
 ): Promise<AddedChild[]> {
@@ -1769,7 +1890,29 @@ export async function enumerateLambdaFunctionChildren(
 
   const versionAdded = diffLambdaFunctionVersions({ declaredVersionArns, liveVersions });
 
-  return [...esmAdded, ...urlAdded, ...aliasAdded, ...versionAdded];
+  // Declared resource-policy statement Sids — the CFn physical id of an AWS::Lambda::Permission
+  // IS its live statement `Sid`, so a declared Permission's physicalId is the Sid to exclude.
+  // Match on the same unqualified function identity as the ESM/URL/alias/version paths so a
+  // Permission whose declared FunctionName is a partial ARN or qualified ref still counts as
+  // targeting this parent (#1281, #803). A Permission targeting an ALIAS (qualified FunctionName)
+  // has its statement in the alias's SEPARATE policy, not this unqualified GetPolicy — including
+  // its Sid here is harmless (it simply never matches a live statement).
+  const declaredPermissionSids: string[] = [];
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::Lambda::Permission' || !r.physicalId) continue;
+    if (lambdaFunctionRefMatches(r.declared.FunctionName, functionName, fnArn)) {
+      declaredPermissionSids.push(r.physicalId);
+    }
+  }
+
+  const liveStatements = await readLambdaResourcePolicyStatements(client, functionName);
+  const policyAdded = diffLambdaResourcePolicy({
+    functionName,
+    declaredPermissionSids,
+    liveStatements,
+  });
+
+  return [...esmAdded, ...urlAdded, ...aliasAdded, ...versionAdded, ...policyAdded];
 }
 
 // ── EventBridge ────────────────────────────────────────────────────────────────

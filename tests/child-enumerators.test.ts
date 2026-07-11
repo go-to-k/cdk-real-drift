@@ -17,6 +17,7 @@ import {
   EC2Client,
 } from '@aws-sdk/client-ec2';
 import {
+  GetPolicyCommand as LambdaGetPolicyCommand,
   LambdaClient,
   ListAliasesCommand,
   ListEventSourceMappingsCommand,
@@ -65,6 +66,7 @@ import {
   diffLambdaFunctionChildren,
   diffLambdaFunctionUrls,
   diffLambdaFunctionVersions,
+  diffLambdaResourcePolicy,
   diffListenerChildren,
   diffLoadBalancerChildren,
   diffLogGroupChildren,
@@ -1210,6 +1212,88 @@ describe('diffLambdaFunctionVersions (Lambda versions)', () => {
           { arn: ARN('1'), label: 'v1' },
           { arn: ARN('2'), label: 'v2' },
         ],
+      })
+    ).toEqual([]);
+  });
+});
+
+// #835: an out-of-band `aws lambda add-permission` adds a resource-policy statement whose Sid
+// matches NO declared AWS::Lambda::Permission — invisible to both the Function's own CC model
+// (no resource-policy field) and the declared-Permission override reader (Sid-matched), a
+// silent false-negative. Surface any such live statement as an `added` AWS::Lambda::Permission.
+describe('diffLambdaResourcePolicy (Lambda resource-policy statements, #835)', () => {
+  const FN = 'my-fn';
+  const stmt = (Sid: string, extra: Record<string, unknown> = {}) => ({
+    Sid,
+    Effect: 'Allow',
+    Action: 'lambda:InvokeFunction',
+    Resource: `arn:aws:lambda:us-east-1:111122223333:function:${FN}`,
+    ...extra,
+  });
+
+  it('flags an out-of-band statement whose Sid matches no declared Permission', () => {
+    const added = diffLambdaResourcePolicy({
+      functionName: FN,
+      declaredPermissionSids: ['DeclaredApiGwInvoke'],
+      liveStatements: [
+        stmt('DeclaredApiGwInvoke', { Principal: { Service: 'apigateway.amazonaws.com' } }),
+        stmt('rogue-backdoor', { Principal: { AWS: '999988887777' } }),
+      ],
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::Lambda::Permission',
+        // CC primaryIdentifier is [FunctionName, Id] -> `<functionName>|<Sid>`.
+        identifier: 'my-fn|rogue-backdoor',
+        // The sibling-stack membership check uses the bare Sid (= the CFn physical id).
+        siblingLookupId: 'rogue-backdoor',
+        label: 'permission rogue-backdoor',
+        // The statement Principal `{AWS:"x"}` is normalized to the bare CFn string.
+        live: { Id: 'rogue-backdoor', Action: 'lambda:InvokeFunction', Principal: '999988887777' },
+      },
+    ]);
+  });
+
+  it('no drift when every live statement is a declared Permission (zero first-run FP)', () => {
+    expect(
+      diffLambdaResourcePolicy({
+        functionName: FN,
+        declaredPermissionSids: ['A', 'B'],
+        liveStatements: [stmt('A'), stmt('B')],
+      })
+    ).toEqual([]);
+  });
+
+  it('projects a Service principal and the security-scoping conditions', () => {
+    const added = diffLambdaResourcePolicy({
+      functionName: FN,
+      declaredPermissionSids: [],
+      liveStatements: [
+        stmt('s3-notify', {
+          Principal: { Service: 's3.amazonaws.com' },
+          Condition: {
+            ArnLike: { 'AWS:SourceArn': 'arn:aws:s3:::my-bucket' },
+            StringEquals: { 'AWS:SourceAccount': '111122223333' },
+          },
+        }),
+      ],
+    });
+    expect(added[0]!.live).toEqual({
+      Id: 's3-notify',
+      Action: 'lambda:InvokeFunction',
+      Principal: 's3.amazonaws.com',
+      SourceArn: 'arn:aws:s3:::my-bucket',
+      SourceAccount: '111122223333',
+    });
+  });
+
+  it('skips a Sid-less statement (can neither key nor safely delete it)', () => {
+    expect(
+      diffLambdaResourcePolicy({
+        functionName: FN,
+        declaredPermissionSids: [],
+        // A statement with no Sid — no CFn physical id / CC identifier to build.
+        liveStatements: [{ Effect: 'Allow', Action: 'lambda:InvokeFunction' }],
       })
     ).toEqual([]);
   });
@@ -3571,6 +3655,103 @@ describe('Lambda children match on the partial-ARN FunctionName form (#1281)', (
     } as unknown as EnumeratorContext;
     const added = await enumerateLambdaFunctionChildren(ctx);
     expect(added.map((a) => a.identifier)).toEqual([rogueArn]);
+    lambda.restore();
+  });
+});
+
+// #835: end-to-end through enumerateLambdaFunctionChildren — the resource-policy read
+// (GetPolicy) plus the declared-Permission Sid exclusion sourced from desired.resources.
+describe('enumerateLambdaFunctionChildren resource-policy statements (#835)', () => {
+  const emptyLists = (lambda: ReturnType<typeof mockClient>) =>
+    lambda
+      .on(ListEventSourceMappingsCommand)
+      .resolves({ EventSourceMappings: [] })
+      .on(ListFunctionUrlConfigsCommand)
+      .resolves({ FunctionUrlConfigs: [] })
+      .on(ListAliasesCommand)
+      .resolves({ Aliases: [] })
+      .on(ListVersionsByFunctionCommand)
+      .resolves({ Versions: [] });
+
+  const policyDoc = (sids: { Sid: string; Principal?: unknown }[]) =>
+    JSON.stringify({
+      Version: '2012-10-17',
+      Statement: sids.map((s) => ({
+        Sid: s.Sid,
+        Effect: 'Allow',
+        Action: 'lambda:InvokeFunction',
+        Principal: s.Principal ?? { Service: 'events.amazonaws.com' },
+        Resource: 'arn:aws:lambda:us-east-1:111122223333:function:my-fn',
+      })),
+    });
+
+  it('flags an out-of-band add-permission statement, excludes the declared Permission', async () => {
+    const lambda = mockClient(LambdaClient);
+    emptyLists(lambda)
+      .on(LambdaGetPolicyCommand)
+      .resolves({
+        Policy: policyDoc([
+          // The declared Permission (its CFn physical id IS the Sid) — must NOT surface.
+          { Sid: 'DeclaredInvoke' },
+          // A rogue console `add-permission` — must surface as `added`.
+          { Sid: 'rogue', Principal: { AWS: '999988887777' } },
+        ]),
+      });
+    const ctx = {
+      parent: { physicalId: 'my-fn', logicalId: 'Fn' },
+      desired: {
+        resources: [
+          {
+            resourceType: 'AWS::Lambda::Permission',
+            physicalId: 'DeclaredInvoke', // the CFn physical id of a Permission IS its Sid
+            declared: { FunctionName: 'my-fn' },
+          },
+        ],
+        ctx: { liveAttrs: { Fn: { Arn: 'arn:aws:lambda:us-east-1:111122223333:function:my-fn' } } },
+      },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    const added = await enumerateLambdaFunctionChildren(ctx);
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::Lambda::Permission',
+        identifier: 'my-fn|rogue',
+        siblingLookupId: 'rogue',
+        label: 'permission rogue',
+        live: { Id: 'rogue', Action: 'lambda:InvokeFunction', Principal: '999988887777' },
+      },
+    ]);
+    lambda.restore();
+  });
+
+  it('a function with NO resource policy (ResourceNotFoundException) surfaces nothing', async () => {
+    const lambda = mockClient(LambdaClient);
+    emptyLists(lambda)
+      .on(LambdaGetPolicyCommand)
+      .rejects(Object.assign(new Error('no policy'), { name: 'ResourceNotFoundException' }));
+    const ctx = {
+      parent: { physicalId: 'my-fn', logicalId: 'Fn' },
+      desired: { resources: [], ctx: { liveAttrs: {} } },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    const added = await enumerateLambdaFunctionChildren(ctx);
+    expect(added).toEqual([]);
+    lambda.restore();
+  });
+
+  it('a NON-ResourceNotFound GetPolicy error propagates (parent coverage gap, not a false added)', async () => {
+    const lambda = mockClient(LambdaClient);
+    emptyLists(lambda)
+      .on(LambdaGetPolicyCommand)
+      .rejects(Object.assign(new Error('denied'), { name: 'AccessDeniedException' }));
+    const ctx = {
+      parent: { physicalId: 'my-fn', logicalId: 'Fn' },
+      desired: { resources: [], ctx: { liveAttrs: {} } },
+      region: 'us-east-1',
+    } as unknown as EnumeratorContext;
+    // gather wraps a thrown enumerator error into a `skipped` finding on the parent — it must
+    // NOT be swallowed into a false-clean read, so the enumerator re-throws.
+    await expect(enumerateLambdaFunctionChildren(ctx)).rejects.toThrow('denied');
     lambda.restore();
   });
 });
