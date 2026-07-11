@@ -126,6 +126,60 @@ live_out="$(PATH="$tmp:$PATH" AWS_REGION=us-east-1 bash "$SWEEP" 2>&1 || true)"
 assert "#1463 fail-safe: an EXISTING volume stays a hard ORPHAN (never folded)" "$live_out" "ORPHAN.*volume/vol-0liveaaaa00000000"
 refute "#1463 fail-safe: an existing volume is NOT folded to the RGT-lag SKIP" "$live_out" "already-deleted resource.*volume/vol-0liveaaaa00000000"
 
+# 2026-07-12 hunt phantom set: subnet NotFound (RGT lag), ECS task-definition / service
+# INACTIVE (kept visible by design), KMS key PendingDeletion (self-resolving debris that
+# otherwise deadlocks the gate for the whole deletion window) — all fold to SKIP.
+cat > "$tmp/aws" <<'MOCK'
+#!/usr/bin/env bash
+case "$1/${2:-}" in
+  cloudformation/list-stacks)              echo "SomeUnrelatedStack" ;;
+  resourcegroupstaggingapi/get-resources)
+    printf '%s\tNone\n' "arn:aws:ec2:us-east-1:123456789012:subnet/subnet-0deadbeef0000000a"
+    printf '%s\tNone\n' "arn:aws:ecs:us-east-1:123456789012:task-definition/cdkrd-hunt-td:1"
+    printf '%s\tNone\n' "arn:aws:ecs:us-east-1:123456789012:service/cdkrd-hunt-cluster/cdkrd-hunt-svc"
+    printf '%s\tNone\n' "arn:aws:kms:us-east-1:123456789012:key/00000000-dead-beef-0000-000000000000"
+    ;;
+  ec2/describe-subnets)                     echo "An error occurred (InvalidSubnetID.NotFound) when calling the DescribeSubnets operation: The subnet ID 'subnet-0deadbeef0000000a' does not exist" >&2; exit 255 ;;
+  ecs/describe-task-definition)             echo "INACTIVE" ;;
+  ecs/describe-services)                    echo "INACTIVE" ;;
+  kms/describe-key)                         echo "PendingDeletion" ;;
+  *) : ;;
+esac
+MOCK
+chmod +x "$tmp/aws"
+gone2_out="$(PATH="$tmp:$PATH" AWS_REGION=us-east-1 bash "$SWEEP" 2>&1 || true)"
+assert "a NotFound subnet folds to the RGT-lag SKIP" "$gone2_out" "SKIP \(tagged mapping for an already-deleted resource.*subnet/subnet-0deadbeef0000000a"
+assert "an INACTIVE task definition folds to SKIP" "$gone2_out" "SKIP \(tagged mapping for an already-deleted resource.*task-definition/cdkrd-hunt-td:1"
+assert "an INACTIVE service folds to SKIP" "$gone2_out" "SKIP \(tagged mapping for an already-deleted resource.*service/cdkrd-hunt-cluster/cdkrd-hunt-svc"
+assert "a PendingDeletion KMS key folds to SKIP" "$gone2_out" "SKIP \(tagged mapping for an already-deleted resource.*key/00000000-dead-beef-0000-000000000000"
+assert "sweep is CLEAN once the phantom set is folded" "$gone2_out" "SWEEP CLEAN"
+
+# fail-safe twins: a live subnet / ACTIVE task definition / ACTIVE service / Enabled key
+# all stay hard ORPHANs.
+cat > "$tmp/aws" <<'MOCK'
+#!/usr/bin/env bash
+case "$1/${2:-}" in
+  cloudformation/list-stacks)              echo "SomeUnrelatedStack" ;;
+  resourcegroupstaggingapi/get-resources)
+    printf '%s\tNone\n' "arn:aws:ec2:us-east-1:123456789012:subnet/subnet-0liveaaaa0000000a"
+    printf '%s\tNone\n' "arn:aws:ecs:us-east-1:123456789012:task-definition/cdkrd-live-td:1"
+    printf '%s\tNone\n' "arn:aws:ecs:us-east-1:123456789012:service/cdkrd-live-cluster/cdkrd-live-svc"
+    printf '%s\tNone\n' "arn:aws:kms:us-east-1:123456789012:key/11111111-aaaa-bbbb-0000-000000000000"
+    ;;
+  ec2/describe-subnets)                     echo "subnet-0liveaaaa0000000a" ;;
+  ecs/describe-task-definition)             echo "ACTIVE" ;;
+  ecs/describe-services)                    echo "ACTIVE" ;;
+  kms/describe-key)                         echo "Enabled" ;;
+  *) : ;;
+esac
+MOCK
+chmod +x "$tmp/aws"
+live2_out="$(PATH="$tmp:$PATH" AWS_REGION=us-east-1 bash "$SWEEP" 2>&1 || true)"
+assert "fail-safe: a live subnet stays a hard ORPHAN" "$live2_out" "ORPHAN.*subnet/subnet-0liveaaaa0000000a"
+assert "fail-safe: an ACTIVE task definition stays a hard ORPHAN" "$live2_out" "ORPHAN.*task-definition/cdkrd-live-td:1"
+assert "fail-safe: an ACTIVE service stays a hard ORPHAN" "$live2_out" "ORPHAN.*service/cdkrd-live-cluster/cdkrd-live-svc"
+assert "fail-safe: an Enabled KMS key stays a hard ORPHAN" "$live2_out" "ORPHAN.*key/11111111-aaaa-bbbb-0000-000000000000"
+
 rm -rf "$tmp"
 echo "----"
 echo "sweep-orphans: $PASS passed, $FAIL failed"
