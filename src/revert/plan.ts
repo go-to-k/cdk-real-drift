@@ -1671,7 +1671,7 @@ export function rejectedEmptyStripOps(
 // the user confirms the revert (a prepend/reorder in a same-length object array during the
 // confirm-prompt window), an op at `/Prop/0/Sub` silently lands on a DIFFERENT element and
 // corrupts a sibling (#762).
-function hasArrayIndexSegment(pointer: string): boolean {
+export function hasArrayIndexSegment(pointer: string): boolean {
   return pointer.split('/').some((seg) => /^\d+$/.test(seg));
 }
 
@@ -1681,8 +1681,8 @@ function hasArrayIndexSegment(pointer: string): boolean {
 // descends OBJECT keys), this walks LITERAL numeric array-index segments too, as an
 // index-bearing revert pointer (`/Rules/0/GroupSet`) requires. Each pointer segment is
 // RFC6901-unescaped (`~1` -> `/`, `~0` -> `~`).
-const POINTER_ABSENT = Symbol('pointer-absent');
-function rawValueAtPointer(model: Record<string, unknown>, pointer: string): unknown {
+export const POINTER_ABSENT = Symbol('pointer-absent');
+export function rawValueAtPointer(model: Record<string, unknown>, pointer: string): unknown {
   let node: unknown = model;
   for (const rawSeg of pointer.split('/').slice(1)) {
     const seg = rawSeg.replace(/~1/g, '/').replace(/~0/g, '~');

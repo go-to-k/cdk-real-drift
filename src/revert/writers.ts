@@ -208,6 +208,7 @@ import { SetTopicAttributesCommand, SNSClient } from '@aws-sdk/client-sns';
 import { SetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { partitionForRegion } from '../desired/template-adapter.js';
 import { NESTED_ARRAY_IDENTITY } from '../diff/classify.js';
+import { deepEqual } from '../diff/drift-calculator.js';
 import { identityField } from '../normalize/noise.js';
 import { canonicalizeForCompare } from '../normalize/pipeline.js';
 import { pageResourceRecordSets, route53RecordSetIdentifier } from '../read/child-enumerators.js';
@@ -218,7 +219,7 @@ import {
   SDK_OVERRIDES,
 } from '../read/overrides.js';
 import { applyOps } from './apply-ops.js';
-import type { PatchOp } from './plan.js';
+import { hasArrayIndexSegment, type PatchOp, POINTER_ABSENT, rawValueAtPointer } from './plan.js';
 import { classifyTransient, errorText } from './transient.js';
 
 export type SdkWriter = (ctx: OverrideCtx, ops: PatchOp[]) => Promise<void>;
@@ -261,6 +262,42 @@ const assertOpsConsumed = (
     );
 };
 
+// #805: a whole-document SDK writer that re-reads and re-canonicalizes the live model at apply
+// time (desiredModel below, writeWafv2WebAcl) fixes raw-vs-canonical ORDER, not index FRESHNESS.
+// A revert op's numeric index (e.g. `/PolicyDocument/Statement/1/Resource`, `/Rules/1/Action`)
+// was computed against the CHECK-time model. If a statement/rule was added, removed, or reordered
+// while the user sat on the confirm prompt (the #760 mutation point), the canonically-sorted FRESH
+// array puts a DIFFERENT element at that index -> the whole-document PUT (PutBucketPolicy /
+// PutRolePolicy via SetTopicAttributes/SetQueueAttributes / UpdateWebACL) would corrupt an
+// innocent (security-relevant) element AND write it, while leaving the real drift unreverted.
+// Every op carries `prior` (the check-time live value = the finding's `f.actual`), and both the
+// prior and the freshly-read model are canonicalized the SAME way (this is the very model the
+// following applyOps mutates), so before applying an index-bearing op assert the fresh node at its
+// pointer still deep-equals `prior`. On mismatch — or if the index shifted away entirely
+// (POINTER_ABSENT) — abort the whole item (the writer throws, stack-actions.ts records `ok:false`,
+// an honest FAILED) so the user re-runs check. Fail-closed: a false abort merely declines to write;
+// it never corrupts. This is the SDK-path twin of #762/#853's Cloud Control `test` precondition
+// (which the CC path already carries in toPatchDocument; #762's text wrongly assumed the SDK
+// re-read guarded freshness — it only aligns order). Non-indexed scalar pointers carry no aliasing
+// risk (a named property is stable regardless of array order), so they are not checked.
+export function assertIndexedPriorsFresh(
+  resourceType: string,
+  freshModel: Record<string, unknown>,
+  ops: readonly PatchOp[]
+): void {
+  for (const { path, prior } of ops) {
+    // A `prior` of undefined is nothing to assert against (RFC6902 has no "undefined"): an
+    // append at a new index, or an op the plan built without a check-time value.
+    if (!hasArrayIndexSegment(path) || prior === undefined) continue;
+    const fresh = rawValueAtPointer(freshModel, path);
+    if (fresh === POINTER_ABSENT || !deepEqual(fresh, prior))
+      throw new Error(
+        `${resourceType} revert aborted: the live value at ${path} changed since check ` +
+          `(an element was added, removed, or reordered) — re-run check and revert again`
+      );
+  }
+}
+
 // reconstruct the desired full model = current (read back) with revert ops applied
 async function desiredModel(
   type: string,
@@ -281,6 +318,8 @@ async function desiredModel(
     current.PolicyDocument === undefined
       ? current
       : { ...current, PolicyDocument: canonicalizeForCompare(current.PolicyDocument) };
+  // #805: fail-closed if an index-bearing op's target element changed since check.
+  assertIndexedPriorsFresh(type, aligned, ops);
   return applyOps(aligned, ops);
 }
 const policyJson = (m: Record<string, unknown>): string | undefined =>
@@ -773,13 +812,13 @@ const writeWafv2WebAcl: SdkWriter = async (ctx, ops) => {
   // misalignment class, here on the SDK-writer path). Canonicalize the current model the
   // same way so an indexed op hits the SAME rule; Rule order is not significant to WAFv2
   // (Priority governs evaluation), so re-sending the sorted array changes no behavior.
-  const m = applyOps(
-    canonicalizeForCompare(cur.WebACL as unknown as Record<string, unknown>) as Record<
-      string,
-      unknown
-    >,
-    ops
-  );
+  const canonWebAcl = canonicalizeForCompare(
+    cur.WebACL as unknown as Record<string, unknown>
+  ) as Record<string, unknown>;
+  // #805: fail-closed if a Rule was added/removed/reordered since check, so an indexed op
+  // (`/Rules/1/Action`) can no longer corrupt whatever rule now sits at that sorted index.
+  assertIndexedPriorsFresh('AWS::WAFv2::WebACL', canonWebAcl, ops);
+  const m = applyOps(canonWebAcl, ops);
   const desc = m.Description;
   await c.send(
     new UpdateWebACLCommand({
