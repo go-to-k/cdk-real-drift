@@ -183,13 +183,32 @@ resource_gone() {
       # arn:aws:ec2:<region>:<acct>:vpc-endpoint/vpce-<id> — the second type observed
       # lingering in the RGT index after deletion (2026-07-10): DescribeVpcEndpoints
       # returned InvalidVpcEndpointId.NotFound while the tag filter still listed it,
-      # keeping an unrelated agent's gate RED. Only the vpc-endpoint subtype gets a
-      # probe; every other ec2 resource stays fail-safe (return 1 → ORPHAN stays RED).
+      # keeping an unrelated agent's gate RED. Probed subtypes: vpc-endpoint and
+      # instance; every other ec2 resource stays fail-safe (return 1 → ORPHAN stays RED).
       case "$arn" in
         *:vpc-endpoint/vpce-*)
           id="${arn##*/}"
           err="$(aws ec2 describe-vpc-endpoints --vpc-endpoint-ids "$id" --region "$REGION" 2>&1 >/dev/null)" && return 1
           printf '%s' "$err" | grep -q 'InvalidVpcEndpointId.NotFound' && return 0
+          return 1
+          ;;
+        *:instance/i-*)
+          # arn:aws:ec2:<region>:<acct>:instance/i-<id> — the third RGT-lag subtype
+          # (2026-07-11): a terminated instance stays in the tag index after EC2 has
+          # expunged it. DescribeInstances answers InvalidInstanceID.NotFound for an
+          # unknown id, an EMPTY reservation list for an expunged one, or the instance
+          # with State terminated while it ages out — nothing deletable remains in all
+          # three shapes, so each counts as gone. Any OTHER state (running, stopped,
+          # shutting-down, …) keeps the ORPHAN RED.
+          id="${arn##*/}"
+          local out state
+          if ! out="$(aws ec2 describe-instances --instance-ids "$id" --region "$REGION" \
+            --query 'Reservations[].Instances[].State.Name' --output text 2>&1)"; then
+            printf '%s' "$out" | grep -q 'InvalidInstanceID.NotFound' && return 0
+            return 1
+          fi
+          state="$(printf '%s' "$out" | tr -d '[:space:]')"
+          { [ -z "$state" ] || [ "$state" = "terminated" ]; } && return 0
           return 1
           ;;
         *) return 1 ;;
