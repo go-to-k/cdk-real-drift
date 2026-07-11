@@ -1,3 +1,11 @@
+## [0.12.42](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.41...v0.12.42) (2026-07-11)
+
+
+### Bug Fixes
+
+* **noise:** RDS GlobalCluster EngineVersion prefix fold + Route53 RecordSet Name case fold ([#1360](https://github.com/go-to-k/cdk-real-drift/issues/1360), [#1361](https://github.com/go-to-k/cdk-real-drift/issues/1361)) ([#1403](https://github.com/go-to-k/cdk-real-drift/issues/1403)) ([9f23cbe](https://github.com/go-to-k/cdk-real-drift/commit/9f23cbe20688748ee70a73c17e9dad8565369938))
+* **revert:** EC2 Modify*Attribute siblings write set-default so revert converges ([#1366](https://github.com/go-to-k/cdk-real-drift/issues/1366)) ([#1404](https://github.com/go-to-k/cdk-real-drift/issues/1404)) ([4d98163](https://github.com/go-to-k/cdk-real-drift/commit/4d981635a25f260bcee21463571cbc9dde1fc7fc))
+
 ## [0.12.41](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.40...v0.12.41) (2026-07-11)
 
 
