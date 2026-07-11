@@ -761,23 +761,30 @@ function twinOverlapEchoes(
   return true;
 }
 
-// #712: apply an AWS::StepFunctions::StateMachine `DefinitionSubstitutions` map into a declared
-// `DefinitionString`, mirroring how CloudFormation resolves `${token}` placeholders at deploy time
-// (the live read echoes the substituted string). Each `${key}` for a declared substitution key is
-// replaced with its value (scalars stringified; a non-scalar value is left untouched, since Step
-// Functions substitutions are scalar). Text that is not a declared `${key}` token is preserved, so
-// a genuine out-of-band definition change still surfaces as declared drift.
-function applyDefinitionSubstitutions(
+// #712 / #1305: apply an AWS::StepFunctions::StateMachine `DefinitionSubstitutions` map into a
+// declared `DefinitionString`, mirroring how CloudFormation resolves `${token}` placeholders at
+// deploy time (the live read echoes the substituted string). This is a SINGLE Fn::Sub-like pass:
+// the ORIGINAL definition text is scanned once for `${key}` tokens and each is replaced with its
+// substitution value — injected text is NEVER re-scanned (#1305). A per-key sequential
+// split/join re-substituted a value that itself contained a literal `${otherKey}` and made the
+// result depend on template key order; CloudFormation's provider resolves in one pass, so the
+// live definition keeps that literal while the naive resolver mis-resolved the declared side into
+// a permanent false declared drift (and a mis-resolved revert write).
+//
+// Each `${key}` whose `key` is a declared substitution with a scalar value is replaced (stringified
+// with `String(value)`). A `${key}` whose key is NOT in the map, or whose value is null/object
+// (Step Functions substitutions are scalar), is left VERBATIM — so a genuine out-of-band definition
+// change still surfaces as declared drift.
+export function applyDefinitionSubstitutions(
   definitionString: string,
   substitutions: Record<string, unknown>
 ): string {
-  let out = definitionString;
-  for (const [key, value] of Object.entries(substitutions)) {
-    if (value === null || typeof value === 'object') continue;
-    const token = `\${${key}}`;
-    out = out.split(token).join(String(value));
-  }
-  return out;
+  return definitionString.replace(/\$\{([^}]+)\}/g, (match, key: string) => {
+    if (!(key in substitutions)) return match;
+    const value = substitutions[key];
+    if (value === null || typeof value === 'object') return match;
+    return String(value);
+  });
 }
 
 // Per-type attachment-list properties handled by tier rather than a positional compare.
