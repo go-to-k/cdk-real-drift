@@ -191,6 +191,66 @@ export function unpreviewableParamInfo(
   return `warning: ${stackName}: ${unpreviewable.length} local parameter(s) have NO value under --pre-deploy (new/renamed, no Default, absent from the deployed stack) — every declared property that Refs them resolves UNRESOLVED and was NOT compared (cannot preview): ${shown.join(', ')}${more}`;
 }
 
+// #1292: under --pre-deploy a CHANGED local param Default wins over the deployed DescribeStacks
+// value (#1194), so the preview resolves every property fed by the param from the NEW Default —
+// but deployment tools do not apply it that way: for an EXISTING parameter a plain `cdk deploy`
+// (and `aws cloudformation deploy`) always sends `UsePreviousValue: true` (toolkit-lib's
+// ParameterValues), so the gated deploy KEEPS the deployed value unless the user passes
+// `--parameters <key>=<value>` / `--no-previous-parameters`. DescribeStacks offers no
+// explicit-vs-default signal either, so a param explicitly set at deploy time is
+// indistinguishable from a changed Default — either way the previewed declared drift may be
+// one a plain deploy will NOT apply. Resolution is deliberately unchanged (the local Default
+// still wins — reverting #1194 would re-mask the drift); instead surface the divergence LOUDLY:
+// one aggregated stderr note per stack naming each such param, both values, and the
+// UsePreviousValue caveat. NoEcho and SSM `::Parameter::Value<` params are EXCLUDED — their
+// local Default is a placeholder / SSM key that is never seeded (#744/#882), so no preview is
+// derived from it. Only counts params actually REFERENCED by a declared resource property or a
+// Condition (an unused param feeds no previewed value). Returns the note, or null when none.
+// Pure + exported for unit tests; the caller gates on templateOverride.
+export function changedDefaultParamInfo(
+  template: Record<string, any>,
+  stackParams: Record<string, string>,
+  stackName: string
+): string | null {
+  const paramDefs = (template.Parameters ?? {}) as Record<
+    string,
+    { Default?: unknown; Type?: string; NoEcho?: unknown }
+  >;
+  // CloudFormation whitespace-trims CommaDelimitedList values ("a, b" == "a,b"), so compare
+  // list-typed params on the trimmed split — mirroring buildResolverContext's toParam — else
+  // a cosmetic-whitespace Default would false-note. (SSM list variants are excluded above.)
+  const normalize = (k: string, v: string): string => {
+    const t = paramDefs[k]?.Type ?? '';
+    if (t !== 'CommaDelimitedList' && !t.startsWith('List<')) return v;
+    return v
+      .split(',')
+      .map((s) => s.trim())
+      .join(',');
+  };
+  const changed = Object.entries(paramDefs)
+    .filter(([k, def]) => {
+      if (def?.NoEcho === true || def?.NoEcho === 'true') return false; // #744 masked treatment
+      if ((def?.Type ?? '').includes('::Parameter::Value<')) return false; // #882 SSM treatment
+      if (!def || !('Default' in def)) return false; // no local Default → the fill step applies
+      if (!(k in stackParams)) return false; // new param, no deployed value → #1221's warning
+      return normalize(k, String(def.Default)) !== normalize(k, stackParams[k] ?? '');
+    })
+    .map(([k]) => k);
+  if (changed.length === 0) return null;
+  const referenced = collectReferencedNames(template.Resources ?? {});
+  collectReferencedNames(template.Conditions ?? {}, referenced);
+  const diverged = changed.filter((k) => referenced.has(k)).sort();
+  if (diverged.length === 0) return null;
+  const shown = diverged
+    .slice(0, 10)
+    .map(
+      (k) =>
+        `${k} (local Default ${JSON.stringify(String(paramDefs[k]?.Default))}, deployed ${JSON.stringify(stackParams[k])})`
+    );
+  const more = diverged.length > shown.length ? `, …(+${diverged.length - shown.length} more)` : '';
+  return `warning: ${stackName}: ${diverged.length} local parameter(s) changed their Default vs the deployed value — the preview resolves them from the NEW local Default, but a plain \`cdk deploy\` KEEPS the deployed value (UsePreviousValue) unless \`--parameters <key>=<value>\` / \`--no-previous-parameters\` is passed: ${shown.join(', ')}${more}`;
+}
+
 // The AWS::Partition / AWS::URLSuffix pseudo-parameters are a deterministic function of the
 // region, NOT a commercial-partition constant. CDK env-agnostic stacks emit ${AWS::Partition}
 // inside nearly every Sub/Join-built ARN, so hard-coding `aws` / `amazonaws.com` mis-resolves
@@ -583,6 +643,11 @@ export async function loadDesired(
     // above/below. stackParams is the deployed DescribeStacks set built just above.
     const noValueInfo = unpreviewableParamInfo(template, stackParams, stackName);
     if (noValueInfo) console.error(noValueInfo);
+    // #1292: loud caveat for existing params whose local Default DIFFERS from the deployed
+    // value — the preview applies the new Default (#1194) but a plain `cdk deploy` keeps the
+    // deployed value via UsePreviousValue (see changedDefaultParamInfo). Same stderr channel.
+    const changedDefaultInfo = changedDefaultParamInfo(template, stackParams, stackName);
+    if (changedDefaultInfo) console.error(changedDefaultInfo);
   }
 
   // #882: detect logical ids whose Type changed between the deployed stack and the declared
