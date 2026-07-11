@@ -6,7 +6,12 @@ import { isResourceNotFoundError } from '../aws-errors.js';
 import { partitionForRegion } from '../desired/template-adapter.js';
 import { OVERRIDE_READABLE_WRITEONLY } from '../schema/schema-strip.js';
 import type { DesiredResource } from '../types.js';
-import { isOverrideReadResult, SDK_OVERRIDES, SDK_SUPPLEMENTS } from './overrides.js';
+import {
+  isOverrideReadResult,
+  resolveEc2EipCcIdentifier,
+  SDK_OVERRIDES,
+  SDK_SUPPLEMENTS,
+} from './overrides.js';
 
 export interface ReadResult {
   live?: Record<string, unknown>; // un-stripped property model
@@ -24,6 +29,11 @@ export interface ReadResult {
 // reads as not-found and falsely reports the resource DELETED (found live on the
 // harvest3 fixture). Each adapter derives the CC identifier; returning undefined
 // falls back to the physical id unchanged.
+// Most adapters are pure sync string transforms of the physical id / declared Ref. One
+// (AWS::EC2::EIP, #1317) must call an SDK to resolve the missing half of a composite CC
+// identifier, so an adapter MAY be async; callers `await` the result (a sync string awaits to
+// itself). Restructure any call as `await adapter(...)` THEN `?? physicalId` — a `?? physicalId`
+// applied to the raw (Promise) return would never fall back.
 export const CC_IDENTIFIER_ADAPTERS: Record<
   string,
   (
@@ -31,7 +41,7 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
     declared: Record<string, unknown>,
     region?: string,
     account?: string
-  ) => string | undefined
+  ) => string | undefined | Promise<string | undefined>
 > = {
   // physical id = the API ARN (arn:...:apis/<apiId>); CC wants the bare ApiId.
   'AWS::AppSync::GraphQLApi': (pid) => (pid.startsWith('arn:') ? pid.split('/').pop() : pid),
@@ -442,6 +452,13 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
     }
     return undefined;
   },
+  // AWS::EC2::EIP (#1317): async — its primaryIdentifier is the composite `[PublicIp, AllocationId]`
+  // and the CFn physical id is only the allocation id (VPC) / public ip (classic), so the revert's
+  // CC UpdateResource identifier is resolved via DescribeAddresses. EIP READS go through the SDK
+  // override (readEc2Eip), never CC GetResource, so this adapter is only exercised on the revert
+  // path. Undefined (unresolvable / released) falls back to the bare physical id → honest CC reject.
+  'AWS::EC2::EIP': (physicalId, _declared, region) =>
+    resolveEc2EipCcIdentifier(physicalId, region ?? ''),
 };
 
 // `${PolicyARN}|${ScalableDimension}` for a ScalingPolicy, extracting the
@@ -567,10 +584,15 @@ export async function readLive(
     }
   }
   try {
-    const identifier =
-      CC_IDENTIFIER_ADAPTERS[resourceType]?.(physicalId ?? '', declared, region, accountId) ??
-      physicalId ??
-      '';
+    // Await the adapter (it MAY be async — #1317 EIP) BEFORE the `?? physicalId` fallback: a `??`
+    // on the raw Promise would never fall back to the physical id.
+    const adapted = await CC_IDENTIFIER_ADAPTERS[resourceType]?.(
+      physicalId ?? '',
+      declared,
+      region,
+      accountId
+    );
+    const identifier = adapted ?? physicalId ?? '';
     const g = await cc.send(
       new GetResourceCommand({ TypeName: resourceType, Identifier: identifier })
     );
