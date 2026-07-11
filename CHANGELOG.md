@@ -1,3 +1,11 @@
+## [0.12.68](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.67...v0.12.68) (2026-07-11)
+
+
+### Bug Fixes
+
+* **read:** type-key sibling-probe cache + positional siblingLookupId for Logs filters ([#1310](https://github.com/go-to-k/cdk-real-drift/issues/1310)) ([#1435](https://github.com/go-to-k/cdk-real-drift/issues/1435)) ([42c8bf4](https://github.com/go-to-k/cdk-real-drift/commit/42c8bf46f8c6a8e9b49966842ddae329a5cb4987))
+* **revert:** skip conditional-create-only write-only props in writeOnlyReincludeOps ([#1330](https://github.com/go-to-k/cdk-real-drift/issues/1330)) ([#1434](https://github.com/go-to-k/cdk-real-drift/issues/1434)) ([000f8fa](https://github.com/go-to-k/cdk-real-drift/commit/000f8fa2575c888a50e2804c5e05e0915979ef60))
+
 ## [0.12.67](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.66...v0.12.67) (2026-07-11)
 
 
