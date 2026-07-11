@@ -128,6 +128,27 @@ short of a fix the user wanted.
    check whether any existing case leaves the suspect property **UNDECLARED** — `grep`
    the fixture `app.ts` / the corpus case's `declared` block for it; if every case
    declares it, the undeclared-default path is still open hunting ground.
+
+   **The single most reliable FP-finder: deploy each priority type in its BAREST
+   possible config — one type at a time — and `check` immediately (before `record`).**
+   A minimal fixture declares only what CFn REQUIRES (e.g. an RDS `DBInstance` with just
+   `engine` / `dbInstanceClass` / `allocatedStorage` / master creds — no version, storage,
+   or retention) and so leaves the MOST properties undeclared → it exercises the MOST
+   default-folds, which is exactly where first-run FPs live. A rich fixture (or a corpus
+   case that declares those props) HIDES them. This is the systematic loop that prevents
+   the whole class: **minimal deploy → immediate `check` → fold every `[Potential Drift]`
+   to zero → move to the next type.** Do not settle for one rich fixture per type.
+   **And cover the type's COMMON VARIANTS in their minimal form, not just one** — a
+   default is frequently a function of a mode / family / engine, so a variant you did not
+   deploy is an unguarded gap. Concretely (a live-found miss, #1477): the RDS folds were
+   all built from an Aurora / `DBCluster`-centric corpus, so a minimal **non-Aurora
+   provisioned `DBInstance`** still first-ran FPs on `StorageType` (`gp2` — folded only
+   for `aurora`), `BackupRetentionPeriod` (`1` — added to `DBCluster` but not
+   `DBInstance`), and undeclared `EngineVersion`. When a type has engine / mode / family
+   axes (RDS provisioned vs Aurora, and per-engine; ElastiCache redis vs valkey vs
+   memcached; ECS EC2 vs Fargate; a create-only vs mutable form), enumerate the axis and
+   deploy the MINIMAL form of each branch — the corpus being green on ONE variant proves
+   nothing about the others.
 4. **Probe CC support BEFORE an expensive deploy — skip the CC-gap tail.** For a
    high-cost or slow stateful/niche type (RDS-family, OpenSearch, MSK, Neptune,
    DocumentDB, Cloud Map, …), first check whether Cloud Control can even READ it —
@@ -405,8 +426,13 @@ Take it all the way to merged — do not leave a green PR hanging:
 
 ### 9. Record what you learned
 
-Save a memory for any recurring surprise (a whole _class_ of latent bug, a
-verification gotcha) so the next sweep starts smarter.
+For any recurring surprise (a whole _class_ of latent bug, a verification gotcha, a
+methodology improvement), **encode the durable lesson into THIS skill file** — a
+committed principle/gotcha survives across machines and sessions, whereas an auto-memory
+is per-terminal and invisible to the next hunter. Fold the new lesson into the relevant
+`## Core principles` / `## Gotchas` entry (with the issue/PR number as evidence), and PR
+it. Reserve memory for genuinely session-transient notes; anything future-hunter-relevant
+belongs in the skill.
 
 ## Cleanup is non-negotiable (gate-enforced)
 
