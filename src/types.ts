@@ -118,6 +118,20 @@ export interface SchemaInfo {
   readOnlyPaths: string[]; // full dotted paths incl '*' wildcard (strip from live, any depth)
   writeOnlyPaths: string[]; // full dotted paths incl '*' wildcard (skip from compare, any depth)
   createOnlyPaths: string[]; // full dotted paths incl '*' wildcard (revert is impossible — replacement)
+  // Full dotted paths (incl '*' wildcard) of the schema's `conditionalCreateOnlyProperties`
+  // — props that are create-only ONLY in a specific case (an RDS read replica, a
+  // snapshot-restored DBInstance) and MUTABLE in the common case. These are deliberately
+  // NOT merged into `createOnlyPaths` (that would bar revert of everyday mutable props like
+  // RDS BackupRetentionPeriod — #413/#421), so the revert BAR ignores them. But
+  // `writeOnlyReincludeOps` MUST still SKIP them: re-including a conditional-create-only
+  // write-only prop into a CC read-modify-write patch makes the provider's update handler
+  // see it as newly ADDED (a read handler never returns a write-only prop), and for a prop
+  // that is create-only in its condition the "added" transition is the create-only case →
+  // the whole revert fails (#1330, the #252 failure class). Omitting it is safe: it is fixed
+  // at creation in that condition and the provider preserves an absent write-only prop it
+  // cannot diff. Optional: production (parseSchema / reviveSchema / EMPTY) sets it; older
+  // corpus fixtures may omit it (read with `?.`).
+  conditionalCreateOnlyPaths?: string[];
   defaults: Record<string, unknown>; // top-level schema `default` values
   defaultPaths: Record<string, unknown>; // schema `default` values at ANY depth, dotted-path keyed ('*' for array items)
   // Dotted paths of arrays the schema marks `insertionOrder: false` (AWS declares the

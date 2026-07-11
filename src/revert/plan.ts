@@ -1414,6 +1414,22 @@ export function writeOnlyReincludeOps(
     // and create-only, so re-including it made every revert fail "createOnlyProperties
     // [/properties/CacheSubnetGroupName] cannot be updated".
     if (isUnderCreateOnly(path, schema.createOnlyPaths)) continue;
+    // A write-only prop that is ALSO conditional-create-only (RDS DBInstance
+    // DBSnapshotIdentifier / SourceDBInstanceIdentifier — create-only ONLY when restoring
+    // from a snapshot / creating a read replica) must ALSO be skipped. parseSchema keeps
+    // conditionalCreateOnlyProperties OUT of createOnlyPaths (so the revert BAR does not
+    // block reverting everyday mutable props — #413/#421), so the isUnderCreateOnly check
+    // above does NOT catch these. But re-including such a prop into a CC read-modify-write
+    // patch is fatal: a read handler never returns a write-only prop, so the update handler
+    // sees the re-included value as NEWLY ADDED, and for a prop that is create-only in its
+    // condition the "added" transition IS the create-only condition → the WHOLE revert fails
+    // (#1330, the #252 failure class — e.g. reverting BackupRetentionPeriod on a
+    // snapshot-restored DBInstance failed because `add /DBSnapshotIdentifier` was re-included).
+    // Omitting it is safe by the SAME argument as the createOnly skip: the prop is fixed at
+    // creation in its create-only condition, and the provider preserves an absent write-only
+    // prop it cannot diff. The revert BAR (#413's honest-failure contract) is UNTOUCHED — only
+    // this re-inclusion path changes.
+    if (isUnderCreateOnly(path, schema.conditionalCreateOnlyPaths ?? [])) continue;
     const value = valueAtDottedPath(declared, path);
     if (value === undefined || value === UNRESOLVED || hasUnresolved(value)) continue;
     const pointer = toPointer(path);
