@@ -1,3 +1,12 @@
+## [0.12.43](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.42...v0.12.43) (2026-07-11)
+
+
+### Bug Fixes
+
+* **diff:** propertyTransform tolerates numeric-string/number leaf coercion ([#1304](https://github.com/go-to-k/cdk-real-drift/issues/1304)) ([#1398](https://github.com/go-to-k/cdk-real-drift/issues/1398)) ([727954b](https://github.com/go-to-k/cdk-real-drift/commit/727954b0df43caec59420ba116c5e434994e6221))
+* **read:** GuardDuty IPSet/ThreatIntelSet/*EntitySet + PublishingDestination composite CC id adapters ([#1333](https://github.com/go-to-k/cdk-real-drift/issues/1333)) ([#1399](https://github.com/go-to-k/cdk-real-drift/issues/1399)) ([87faa16](https://github.com/go-to-k/cdk-real-drift/commit/87faa163695ad0584fb84c5197a7d54a353059f7))
+* **read:** VPC-family sub-resource added-tier — NACL entries, subnet RT associations, IGW attachment, secondary CIDR ([#1315](https://github.com/go-to-k/cdk-real-drift/issues/1315)) ([#1400](https://github.com/go-to-k/cdk-real-drift/issues/1400)) ([178844b](https://github.com/go-to-k/cdk-real-drift/commit/178844b437bc1f4a6d23ca5210bbf70f35e44e52))
+
 ## [0.12.42](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.41...v0.12.42) (2026-07-11)
 
 
