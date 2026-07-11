@@ -1,3 +1,10 @@
+## [0.12.105](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.104...v0.12.105) (2026-07-11)
+
+
+### Bug Fixes
+
+* **diff:** add nested value-independent fold; Batch CE DesiredvCpus ([#1501](https://github.com/go-to-k/cdk-real-drift/issues/1501)) ([#1510](https://github.com/go-to-k/cdk-real-drift/issues/1510)) ([b02fc4c](https://github.com/go-to-k/cdk-real-drift/commit/b02fc4c5ad790d1c105494fa2ecc8db0e7a01265))
+
 ## [0.12.104](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.103...v0.12.104) (2026-07-11)
 
 
