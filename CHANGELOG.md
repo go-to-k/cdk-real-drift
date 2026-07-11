@@ -1,3 +1,10 @@
+## [0.12.101](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.100...v0.12.101) (2026-07-11)
+
+
+### Bug Fixes
+
+* **noise:** MemoryDB Cluster barest-valkey first-run FP batch ([#1503](https://github.com/go-to-k/cdk-real-drift/issues/1503)) ([#1506](https://github.com/go-to-k/cdk-real-drift/issues/1506)) ([917d296](https://github.com/go-to-k/cdk-real-drift/commit/917d296da54580772cf3b2131d5938ae0e6204df))
+
 ## [0.12.100](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.99...v0.12.100) (2026-07-11)
 
 
