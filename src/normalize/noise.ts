@@ -2839,13 +2839,17 @@ export const EB_OPTION_VALUE_INDEPENDENT: ReadonlySet<string> = new Set([
   // instance, a silent p4d.24xlarge cost bomb). ebOptionSettingTier now gates them: SecurityGroups
   // folds only the environment's own awseb-* generated group; InstanceType is derived from the
   // sibling aws:ec2:instances|InstanceTypes option's first element. Any other value surfaces.
+  // #1278/#1263: aws:ec2:instances|InstanceTypes is ALSO no longer value-independent — it is the
+  // option a real OOB resize sets (update-environment …InstanceTypes=p4d.24xlarge), and EB mirrors
+  // the legacy InstanceType scalar to match, so folding it value-independent hid the cost bomb AND
+  // left the #893 InstanceType==InstanceTypes[0] gate anchored on an unvalidated source. It is now
+  // gated (ebInstanceTypesDefaultSet) against the architecture's AWS-assigned default burstable set.
   'aws:cloudformation:template:parameter|AppSource',
   'aws:cloudformation:template:parameter|HooksPkgUrl',
   'aws:cloudformation:template:parameter|InstanceTypeFamily',
   // an aggregate echo of the app EnvironmentVariables (includes per-deploy paths like the
   // Python venv staging dir), so any value is a reflection of the declared env vars, not intent
   'aws:cloudformation:template:parameter|EnvironmentVariables',
-  'aws:ec2:instances|InstanceTypes',
   'aws:ec2:instances|SupportedArchitectures',
   // the platform-injected Python venv path carries a random per-deploy staging id
   'aws:elasticbeanstalk:application:environment|PYTHONPATH',
@@ -2885,6 +2889,29 @@ function isAllEbGeneratedGroups(value: unknown): boolean {
   if (typeof value !== 'string' || value === '') return false;
   return value.split(',').every((el) => isEbGeneratedGroup(el));
 }
+// #1278/#1263: when the user declares no `aws:ec2:instances|InstanceTypes` option, EB assigns
+// the platform's smallest burstable pair for the environment's processor architecture — a
+// DETERMINISTIC function of the sibling `aws:ec2:instances|SupportedArchitectures` option
+// (x86_64 when unset, EB's own default). Pinned from `describe-configuration-options` +
+// the harvested EB corpus (x86_64 → t3.micro/t3.small) and the EB arm64 docs
+// (arm64 → t4g.micro/t4g.small). Folding InstanceTypes against this set keeps a clean deploy
+// at zero drift while surfacing any first element AWS did not assign as a default — an OOB
+// instance-family bump (the silent p4d.24xlarge cost bomb).
+const EB_INSTANCE_TYPES_DEFAULT_BY_ARCH: Record<string, ReadonlySet<string>> = {
+  x86_64: new Set(['t3.micro', 't3.small']),
+  arm64: new Set(['t4g.micro', 't4g.small']),
+};
+function ebInstanceTypesDefaultSet(
+  supportedArchitectures: unknown
+): ReadonlySet<string> | undefined {
+  const arch =
+    typeof supportedArchitectures === 'string' && supportedArchitectures.trim() !== ''
+      ? supportedArchitectures.split(',')[0]?.trim()
+      : 'x86_64';
+  return arch === undefined
+    ? EB_INSTANCE_TYPES_DEFAULT_BY_ARCH.x86_64
+    : EB_INSTANCE_TYPES_DEFAULT_BY_ARCH[arch];
+}
 export function ebOptionSettingTier(
   namespace: unknown,
   optionName: unknown,
@@ -2916,6 +2943,22 @@ export function ebOptionSettingTier(
       typeof instanceTypes === 'string' ? instanceTypes.split(',')[0]?.trim() : undefined;
     if (first !== undefined) return first === value ? 'atDefault' : 'undeclared';
     return 'atDefault';
+  }
+  // #1278/#1263: InstanceTypes — the modern list option a real OOB resize sets. Fold only when
+  // EVERY element is one of the architecture's AWS-assigned default burstable types; a bump to a
+  // bigger/other-family type (p4d.24xlarge cost bomb) surfaces. Unknown/future architecture (the
+  // set can't be pinned) → fail open (fold), so a clean deploy never false-positives.
+  if (key === 'aws:ec2:instances|InstanceTypes') {
+    const defaults = ebInstanceTypesDefaultSet(
+      siblingOption?.('aws:ec2:instances', 'SupportedArchitectures')
+    );
+    if (defaults === undefined) return 'atDefault';
+    const types = String(value)
+      .split(',')
+      .map((t) => t.trim())
+      .filter((t) => t !== '');
+    if (types.length === 0) return 'atDefault';
+    return types.every((t) => defaults.has(t)) ? 'atDefault' : 'undeclared';
   }
   if (EB_OPTION_VALUE_INDEPENDENT.has(key)) return 'atDefault';
   const derived = EB_OPTION_DERIVED[key];
