@@ -1,3 +1,10 @@
+## [0.12.73](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.72...v0.12.73) (2026-07-11)
+
+
+### Bug Fixes
+
+* **hooks:** deploy-autoarm-gate must not fail silently when arming ([#1423](https://github.com/go-to-k/cdk-real-drift/issues/1423)) ([#1444](https://github.com/go-to-k/cdk-real-drift/issues/1444)) ([136250d](https://github.com/go-to-k/cdk-real-drift/commit/136250dc3fb87c086991f797561a552883c858ca))
+
 ## [0.12.72](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.71...v0.12.72) (2026-07-11)
 
 
