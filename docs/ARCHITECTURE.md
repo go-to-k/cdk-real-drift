@@ -671,7 +671,12 @@ curated `MEANINGFUL_WHEN_OFF` allowlist in `classify.ts` names the exact
 pin and surfaces them even on a first run; it is predicate-gated (NOT a blanket
 "any diverging `false` surfaces") because most "default true" booleans are
 CONDITIONAL — an SSE-KMS queue reads `SqsManagedSseEnabled:false` legitimately,
-so the predicate surfaces the OFF state only when the queue uses no KMS key.
+so the predicate surfaces the OFF state only when the queue uses no KMS key. A
+NESTED twin (`MEANINGFUL_WHEN_OFF_NESTED`) applies the same predicate-gated carve-out
+to `KNOWN_DEFAULT_PATHS`-pinned nested booleans that `emitNested` would otherwise
+swallow (e.g. CloudFront `DistributionConfig.IPV6Enabled` disabled out of band, #660);
+it stays a curated allowlist because the blanket nested version broke Route53
+`EnableSNI` (a non-HTTPS HealthCheck legitimately reads `false`).
 
 ## 7. Revert (the only AWS-mutating path)
 

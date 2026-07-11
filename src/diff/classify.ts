@@ -191,6 +191,29 @@ const MEANINGFUL_WHEN_OFF: Record<string, Record<string, (ctx: OffStateContext) 
   },
 };
 
+// #660 item 3: the NESTED twin of MEANINGFUL_WHEN_OFF. The table above gates TOP-LEVEL
+// undeclared booleans; a nested `KNOWN_DEFAULT_PATHS`-pinned `true` flipped `false` out of
+// band is swallowed by `isTrivialEmpty(false)` inside `emitNested` BEFORE the nested pin gate
+// ever runs (the CloudFront `DistributionConfig.IPV6Enabled` disable, #1459 — pinning the
+// default removed the first-run FP but the off-flip stayed invisible). Keyed by resourceType →
+// the pin's SCHEMA-PATH (array indices collapsed to `.*`, the same form `emitNested` computes)
+// → a predicate on { declared, live } that returns true only when the OFF state is a genuine
+// divergence in EVERY clean-deploy configuration of the type. This is a CURATED allowlist, NOT
+// a blanket nested rule: the blanket nested version was reverted in #632 because it broke
+// Route53 `EnableSNI` (a non-HTTPS HealthCheck legitimately reads `false`). Add an entry ONLY
+// after a live confirm that a clean deploy ALWAYS reads the pinned `true` (no restore / import /
+// config path yields an untouched `false`).
+const MEANINGFUL_WHEN_OFF_NESTED: Record<
+  string,
+  Record<string, (ctx: OffStateContext) => boolean>
+> = {
+  // A CloudFront distribution enables IPv6 by default on every clean deploy (the
+  // `DistributionConfig.IPV6Enabled` pin, #1459 live-verified — no restore/import path yields
+  // an untouched `false`), so an undeclared live `false` is unambiguously an out-of-band
+  // disable of dual-stack delivery. Unconditionally meaningful when off.
+  'AWS::CloudFront::Distribution': { 'DistributionConfig.IPV6Enabled': () => true },
+};
+
 // #1092: GuardDuty protection Features whose new-detector default Status is DISABLED (not the
 // ENABLED norm) — a newer/preview protection AWS ships OFF by default. Its DISABLED state on a
 // clean detector is the default (folds), so only these names are exempt from the "ENABLED is the
@@ -3240,7 +3263,20 @@ export function classifyResource(
   const underFreeFormMap = (schemaPath: string): boolean =>
     freeFormMapPaths.some((ff) => schemaPath.startsWith(`${ff}.`));
   const emitNested = (path: string, value: unknown): void => {
-    if (isTrivialEmpty(value)) return;
+    const schemaPath = path.replace(/\[[^\]]*\]/g, '.*');
+    // #660 item 3: the nested twin of the top-level MEANINGFUL_WHEN_OFF gate (classify.ts). A
+    // nested undeclared value pinned `true` by KNOWN_DEFAULT_PATHS that is flipped `false` out
+    // of band DIVERGES from its pin, but `isTrivialEmpty(false)` would swallow it BELOW —
+    // before the atDefault pin gate ever runs (the CloudFront `DistributionConfig.IPV6Enabled`
+    // disable, #1459). When the value diverges from its pin AND the curated nested predicate
+    // says the OFF state is genuinely meaningful in this config, DON'T drop it — let it fall
+    // through to surface as nested `undeclared` (the atDefault gate below returns false because
+    // the value differs from the pin, so it lands as a real out-of-band divergence).
+    const offStateIsMeaningful =
+      schemaPath in knownDefPaths &&
+      !matchesKnownDefault(value, knownDefPaths[schemaPath]) &&
+      (MEANINGFUL_WHEN_OFF_NESTED[resourceType]?.[schemaPath]?.({ declared, live }) ?? false);
+    if (!offStateIsMeaningful && isTrivialEmpty(value)) return;
     // #863: `isAllAwsTags` matches two shapes — an ARRAY of `{Key:'aws:*'}` (an unambiguous
     // tag LIST: AWS-managed system tags, always safe to drop) and an OBJECT whose keys are
     // all `aws:*` (a MAP-shaped tag, e.g. UserPoolTags — BUT ALSO an IAM policy Condition
@@ -3254,7 +3290,6 @@ export function classifyResource(
       const parentKey = (path.split('.').pop() ?? '').replace(/\[.*$/, '');
       if (!isObjectForm || /tags$/i.test(parentKey)) return;
     }
-    const schemaPath = path.replace(/\[[^\]]*\]/g, '.*');
     // Same subset-tolerant default match as the top-level atDefault compare: an
     // OBJECT-valued nested default (CloudFront GeoRestriction, Scheduler RetryPolicy,
     // Cognito SignInPolicy, …) that AWS returns with a sub-key omitted still folds,

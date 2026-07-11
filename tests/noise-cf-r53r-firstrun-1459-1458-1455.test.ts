@@ -91,11 +91,15 @@ describe('#1459 CloudFront custom-origin OriginSSLProtocols + IPV6Enabled defaul
     expect(pathsByTier(f, 'atDefault')).toContain('DistributionConfig.IPV6Enabled');
   });
 
-  // NOTE: an out-of-band IPV6Enabled=false disable is NOT surfaced here — a nested `false`
-  // is swallowed by isTrivialEmpty before the pin gate, and the nested MEANINGFUL_WHEN_OFF
-  // wiring that would preserve it is the #660-class deferred follow-up (see classify.ts
-  // MEANINGFUL_WHEN_OFF header). Pinning the default still correctly removes the first-run FP
-  // (the reported symptom) without regressing detection (false was already swallowed before).
+  // #660 item 3: an out-of-band IPV6Enabled=false disable — a nested `false` that used to be
+  // swallowed by isTrivialEmpty before the pin gate — now surfaces as `undeclared` via the
+  // nested MEANINGFUL_WHEN_OFF twin, while the clean `true` still folds atDefault (above).
+  it('surfaces an out-of-band undeclared IPV6Enabled=false disable as undeclared (#660)', () => {
+    const f = classifyResource(res, live({ ipv6: false }), emptySchema);
+    expect(pathsByTier(f, 'undeclared')).toContain('DistributionConfig.IPV6Enabled');
+    // The sibling undeclared creation defaults still fold — only the disabled flag surfaces.
+    expect(pathsByTier(f, 'atDefault')).toContain(SSL_PATH);
+  });
 });
 
 describe('#1455 Route53Resolver FirewallRuleGroupAssociation MutationProtection default', () => {
