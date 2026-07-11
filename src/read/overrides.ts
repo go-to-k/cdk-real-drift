@@ -816,7 +816,12 @@ const readDlmLifecyclePolicy: OverrideReader = async ({ physicalId, declared, re
 // (S3Settings/KinesisSettings/…) are NOT projected: the SDK returns them under DIFFERENT key
 // casing than the CFn schema (e.g. CFn MongoDbSettings vs API MongoDbSettings sub-field
 // drift) and AWS default-fills them, so a passthrough would false-flag; scalar coverage is
-// the deliverable. Read-ONLY: a ModifyEndpoint writer is deferred to a follow-up (revert of
+// the deliverable. A declared *Settings would otherwise hit classify's removed-collection
+// branch (desired={…} actual=undefined) as a false declared drift on essentially every S3/
+// Kinesis/Mongo/… endpoint, so the 17 *Settings keys are an honest counted readGap via
+// READGAP_COLLECTION_PATHS['AWS::DMS::Endpoint'] (normalize/noise.ts); field-by-field
+// projection to restore out-of-band settings detection is a deferred follow-up (#1293).
+// Read-ONLY: a ModifyEndpoint writer is deferred to a follow-up (revert of
 // connection settings needs per-engine care). A deleted endpoint surfaces as
 // ResourceNotFoundFault → the router maps it to `deleted`.
 // Fetch a resource's live tags via DMS dms:ListTagsForResource (the ARN is the tag
