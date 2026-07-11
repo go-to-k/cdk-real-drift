@@ -1,3 +1,10 @@
+## [0.12.58](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.57...v0.12.58) (2026-07-11)
+
+
+### Bug Fixes
+
+* **ci:** invoke vp check directly to avoid the vp-run wrapper stdout-abort (exit 134) ([#1429](https://github.com/go-to-k/cdk-real-drift/issues/1429)) ([43d5998](https://github.com/go-to-k/cdk-real-drift/commit/43d59981c25887a6ae8b4e760eaa50f2acf4c6e5))
+
 ## [0.12.57](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.56...v0.12.57) (2026-07-11)
 
 
