@@ -408,9 +408,9 @@ error (they select which comparison runs, so a combination is contradictory).
 ### Interactive prompts (TTY only, CI is never prompted)
 
 Every option runs exactly the same code as the standalone commands. Prompts are
-skipped under `--json`, `--show-all`, `--pre-deploy`, `--fail`, and the scope
-filters `--declared-only` / `--undeclared-only` (a filtered finding set must never
-become a snapshot-complete baseline via the inline Record — use the standalone
+skipped under `--json`, `--show-all`, `--pre-deploy`, `--fail`, `--yes`, and the
+scope filters `--declared-only` / `--undeclared-only` (a filtered finding set must
+never become a snapshot-complete baseline via the inline Record — use the standalone
 `record` verb, which sees the unfiltered state, #779). A non-TTY run
 never prompts: a required write decision without `--yes` errors with exit 2 (the
 safe side). "Interactive" requires **both** a TTY stdin and a TTY stdout — so
@@ -420,8 +420,9 @@ would otherwise deadlock, waiting on stdin for a prompt written into the file) a
 no spinner frames leaking into the text. `--yes` in a TTY skips the write
 confirmation AND each verb's selection
 multiselect — `record` records ALL, `ignore` ignores ALL, `revert` applies the full
-plan. Only `check`'s action menu (Record / Revert / Ignore / …) still shows under
-`--yes`.
+plan. `check --yes` never opens the action menu (Record / Revert / Ignore / …) —
+it just reports (#1054/#1185); use the standalone `record --yes` / `ignore --yes`
+/ `revert --yes` verbs for scripted, non-interactive decisions.
 
 - **`check` with drift** offers `Record / Revert / Ignore / Decide per finding /
 Nothing` (see [The model](#the-model-one-verb-you-run-three-it-offers)). Each
