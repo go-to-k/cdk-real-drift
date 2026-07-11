@@ -291,7 +291,10 @@ needs `--remove-unrecorded`).
 - **EC2**: VPC subnets, VPC endpoints, VPC route tables, VPC network ACLs, route
   table routes
 - **ECS**: cluster services
-- **KMS**: key aliases
+- **KMS**: key aliases, key grants (an out-of-band `kms create-grant` on a key —
+  grants are not a CloudFormation type, so cdkrd surfaces them as a synthetic
+  `AWS::KMS::Grant`; AWS-service-created grants, e.g. a Lambda env-encryption key's
+  grant, are folded so only a human/IAM-principal grant surfaces)
 - **AppConfig**: application environments, configuration profiles
 - **EFS**: file system mount targets
 - **RDS**: database cluster instances
@@ -1024,7 +1027,10 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
     `ecs:DescribeServices` override reader listed above)
   - `AWS::KMS::Key`: `kms:ListAliases` (the same action listed as optional
     above — here it enumerates a key's aliases as child resources, so it is
-    required, not optional, for the `added` tier)
+    required, not optional, for the `added` tier), `kms:ListGrants` (enumerates a
+    key's out-of-band grants as synthetic `AWS::KMS::Grant` children; AWS-service
+    grants are folded, so only a human/IAM-principal grant surfaces). Reverting a
+    detected one also needs `kms:RevokeGrant` (the SDK deleter revokes the grant).
   - `AWS::AppConfig::Application`: `appconfig:ListEnvironments`,
     `appconfig:ListConfigurationProfiles`
   - `AWS::EFS::FileSystem`: `elasticfilesystem:DescribeMountTargets`
@@ -1057,9 +1063,10 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
 `cloudcontrol:UpdateResource` (which resolves to each type's own update
 permissions), `cloudcontrol:DeleteResource` (to delete an out-of-band `added`
 resource; a type Cloud Control cannot delete goes through its own SDK action
-instead — `appsync:DeleteApiKey` for an out-of-band `AWS::AppSync::ApiKey`, or
+instead — `appsync:DeleteApiKey` for an out-of-band `AWS::AppSync::ApiKey`,
 `route53:ChangeResourceRecordSets` (a DELETE change) for an out-of-band
-`AWS::Route53::RecordSet`), and
+`AWS::Route53::RecordSet`, or `kms:RevokeGrant` for an out-of-band
+`AWS::KMS::Grant`), and
 `cloudcontrol:GetResourceRequestStatus` (to poll the async Cloud
 Control request to completion). Plus, for the SDK-written types:
 `s3:PutBucketPolicy` /

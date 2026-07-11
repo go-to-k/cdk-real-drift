@@ -70,6 +70,7 @@ import {
   UpdateSignalingChannelCommand,
   UpdateStreamStorageConfigurationCommand,
 } from '@aws-sdk/client-kinesis-video';
+import { KMSClient, RevokeGrantCommand } from '@aws-sdk/client-kms';
 import {
   ElasticBeanstalkClient,
   UpdateApplicationCommand,
@@ -3236,10 +3237,27 @@ const deleteSnsTopicPolicy: SdkDeleter = async (ctx) => {
   );
 };
 
+// AWS::KMS::Grant: a SYNTHETIC type — a KMS grant is not a CloudFormation/CC resource, so it has
+// no CC delete handler. An out-of-band grant found by the KMS key child enumerator (#835) is
+// removed via the service's own RevokeGrant, which addresses the grant as { KeyId, GrantId }.
+// `GrantId` is the finding's physicalId (the enumerator identity); `KeyId` is the enumerating
+// parent KMS Key's CFn physical id (parentPhysicalId, recovered at the stack-actions call site
+// from the finding's synthesized `${parentLogicalId}/${GrantId}` logicalId). A grant already gone
+// (RevokeGrant on a missing grant) is the delete goal state — applyRevertDeleteSdk treats a
+// NotFoundException as success.
+const deleteKmsGrant: SdkDeleter = async (ctx) => {
+  const keyId = ctx.parentPhysicalId;
+  if (!keyId) throw new Error('cannot resolve the parent KMS Key id for the grant revoke');
+  await new KMSClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
+    new RevokeGrantCommand({ KeyId: keyId, GrantId: ctx.physicalId })
+  );
+};
+
 export const SDK_DELETERS: Record<string, SdkDeleter> = {
   'AWS::AppSync::ApiKey': deleteAppSyncApiKey,
   'AWS::Route53::RecordSet': deleteRoute53RecordSet,
   'AWS::SQS::QueuePolicy': deleteSqsQueuePolicy,
   'AWS::SecretsManager::ResourcePolicy': deleteSecretsManagerResourcePolicy,
   'AWS::SNS::TopicPolicy': deleteSnsTopicPolicy,
+  'AWS::KMS::Grant': deleteKmsGrant,
 };
