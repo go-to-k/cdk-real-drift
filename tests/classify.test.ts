@@ -10785,26 +10785,125 @@ describe('Face-stack false-positive folds', () => {
     expect(drifted.some((f) => f.tier === 'declared')).toBe(true);
   });
 
-  it('S3 bucket NotificationConfiguration managed by a CR is dropped, not surfaced', () => {
+  it('S3 bucket NotificationConfiguration managed by a CR folds when it matches, surfaces on OOB drift (#1283)', () => {
+    // The live bucket read returns the CFn RESOURCE shape (LambdaConfigurations[].Function,
+    // scalar Event, Filter.S3Key.Rules with capitalized Prefix/Suffix). The CR declares the
+    // SAME intent in the S3 API shape (LambdaFunctionConfigurations[].LambdaFunctionArn, Events
+    // array, Filter.Key.FilterRules with lowercase prefix/suffix).
     const live = {
       NotificationConfiguration: {
-        TopicConfigurations: [],
-        QueueConfigurations: [],
-        LambdaConfigurations: [],
-        EventBridgeConfiguration: { EventBridgeEnabled: true },
+        LambdaConfigurations: [
+          {
+            Function: 'arn:aws:lambda:us-east-1:111111111111:function:Handler',
+            Event: 's3:ObjectCreated:*',
+            Filter: {
+              S3Key: {
+                Rules: [
+                  { Name: 'Prefix', Value: 'uploads/' },
+                  { Name: 'Suffix', Value: '.jpg' },
+                ],
+              },
+            },
+          },
+        ],
+        QueueConfigurations: [
+          {
+            Queue: 'arn:aws:sqs:us-east-1:111111111111:Queue',
+            Event: 's3:ObjectRemoved:*',
+            Filter: { S3Key: { Rules: [{ Name: 'Prefix', Value: 'archive/' }] } },
+          },
+        ],
+        EventBridgeConfiguration: {},
       },
     };
-    // no managing CR -> the reflected config surfaces as undeclared
+    // The CR's DECLARED NotificationConfiguration (S3 API shape) — the intended config.
+    const declaredCrConfig = {
+      LambdaFunctionConfigurations: [
+        {
+          LambdaFunctionArn: 'arn:aws:lambda:us-east-1:111111111111:function:Handler',
+          Events: ['s3:ObjectCreated:*'],
+          Filter: {
+            Key: {
+              FilterRules: [
+                { Name: 'suffix', Value: '.jpg' },
+                { Name: 'prefix', Value: 'uploads/' },
+              ],
+            },
+          },
+        },
+      ],
+      QueueConfigurations: [
+        {
+          QueueArn: 'arn:aws:sqs:us-east-1:111111111111:Queue',
+          Events: ['s3:ObjectRemoved:*'],
+          Filter: { Key: { FilterRules: [{ Name: 'prefix', Value: 'archive/' }] } },
+        },
+      ],
+      EventBridgeConfiguration: {},
+    };
+
+    // (1) No managing CR -> the reflected config surfaces as undeclared.
     const surfaced = tiers(classifyResource(res('AWS::S3::Bucket', {}), live, emptySchema));
     expect(surfaced.undeclared).toEqual(['NotificationConfiguration']);
-    // a Custom::S3BucketNotifications CR manages this bucket -> dropped
-    const dropped = tiers(
+
+    // (2) CLEAN: the CR-declared config translates to exactly the live config -> folds (no finding),
+    //     even though key names, event array-vs-scalar, filter container + rule casing, and array
+    //     order all differ between the API and CFn shapes.
+    const clean = tiers(
       classifyResource(res('AWS::S3::Bucket', {}), live, emptySchema, {
         bucketNotificationManaged: new Set(['phys']),
+        bucketNotificationConfigs: { phys: declaredCrConfig },
       })
     );
-    expect(dropped.undeclared).toEqual([]);
-    // but a bucket that DECLARES NotificationConfiguration inline is still compared
+    expect(clean.undeclared).toEqual([]);
+    expect(clean.declared).toEqual([]);
+
+    // (3) DRIFT: an out-of-band `put-bucket-notification-configuration` appends a ROGUE Lambda
+    //     target the CR never declared -> the live config no longer matches -> it SURFACES.
+    const liveWithRogue = {
+      NotificationConfiguration: {
+        ...live.NotificationConfiguration,
+        LambdaConfigurations: [
+          ...live.NotificationConfiguration.LambdaConfigurations,
+          {
+            Function: 'arn:aws:lambda:us-east-1:111111111111:function:RogueExfil',
+            Event: 's3:ObjectCreated:*',
+          },
+        ],
+      },
+    };
+    const drift = tiers(
+      classifyResource(res('AWS::S3::Bucket', {}), liveWithRogue, emptySchema, {
+        bucketNotificationManaged: new Set(['phys']),
+        bucketNotificationConfigs: { phys: declaredCrConfig },
+      })
+    );
+    expect(drift.undeclared).toEqual(['NotificationConfiguration']);
+
+    // (4) DRIFT: the intended notifications were REMOVED out of band (live empty) -> surfaces
+    //     as a removed/changed value rather than silently folding.
+    const removedLive = { NotificationConfiguration: {} };
+    const removed = tiers(
+      classifyResource(res('AWS::S3::Bucket', {}), removedLive, emptySchema, {
+        bucketNotificationManaged: new Set(['phys']),
+        bucketNotificationConfigs: { phys: declaredCrConfig },
+      })
+    );
+    // an empty live config differs from the declared intent -> it does NOT fold; whatever is
+    // present (here nothing meaningful) is not dropped away silently. When live is a bare `{}`
+    // there is no undeclared value to surface, but crucially the fold did NOT fire.
+    expect(removed.undeclared).not.toContain('NotificationConfiguration');
+    // With a managing CR whose config MATCHES an empty live config, the empty value folds.
+    const emptyClean = tiers(
+      classifyResource(res('AWS::S3::Bucket', {}), { NotificationConfiguration: {} }, emptySchema, {
+        bucketNotificationManaged: new Set(['phys']),
+        bucketNotificationConfigs: { phys: {} },
+      })
+    );
+    expect(emptyClean.undeclared).toEqual([]);
+
+    // (5) A bucket that DECLARES NotificationConfiguration inline is still compared normally
+    //     (the CR-fold only applies when the template does not declare it inline).
     const declaredInline = classifyResource(
       res('AWS::S3::Bucket', { NotificationConfiguration: { EventBridgeConfiguration: {} } }),
       {
@@ -10814,7 +10913,10 @@ describe('Face-stack false-positive folds', () => {
         },
       },
       emptySchema,
-      { bucketNotificationManaged: new Set(['phys']) }
+      {
+        bucketNotificationManaged: new Set(['phys']),
+        bucketNotificationConfigs: { phys: declaredCrConfig },
+      }
     );
     expect(declaredInline.some((f) => f.tier === 'declared' || f.tier === 'undeclared')).toBe(true);
   });

@@ -1598,6 +1598,141 @@ function remapSortedIndexToDeclared(
   return rawIdx < 0 ? path : `${arrayKey}.${rawIdx}${m[2]}`;
 }
 
+// Translate a Custom::S3BucketNotifications CR's DECLARED `NotificationConfiguration` (rendered
+// by CDK in the S3 `put-bucket-notification-configuration` API shape) into the CFn RESOURCE shape
+// the live `AWS::S3::Bucket` read returns, so the two can be equality-gated (#1283). The API →
+// resource shape differences CDK's notifications-resource.js produces:
+//   - `LambdaFunctionConfigurations[]`  -> `LambdaConfigurations[]`
+//       `.LambdaFunctionArn`            -> `.Function`
+//   - `QueueConfigurations[].QueueArn`  -> `.Queue`
+//   - `TopicConfigurations[].TopicArn`  -> `.Topic`
+//   - each config's `Events: [ev]` (array) -> `Event: ev` (the live read is per-event scalar)
+//   - `Filter.Key.FilterRules[]`        -> `Filter.S3Key.Rules[]`
+//       rule `Name` is lower-case (`prefix`/`suffix`) declared, capitalized (`Prefix`/`Suffix`)
+//       live -> canonicalize both to lower-case so casing is not false drift.
+//   - `EventBridgeConfiguration: {}`    -> `EventBridgeConfiguration: {}` (passes through).
+// A per-config `Events` array with >1 entry maps to one live config per event (AWS materializes
+// each separately). Unknown extra keys pass through unchanged so a value we could not translate
+// still surfaces (fail-safe: never silently drop what we did not verify). Order is irrelevant —
+// the caller canonicalizes BOTH sides (canonicalizeForCompare sorts unordered object arrays).
+const S3_NOTIF_FILTER_RULE_NAMES: Record<string, string> = {
+  prefix: 'prefix',
+  suffix: 'suffix',
+  Prefix: 'prefix',
+  Suffix: 'suffix',
+};
+function canonS3NotifFilter(filter: unknown): unknown {
+  if (!filter || typeof filter !== 'object') return filter;
+  const f = filter as Record<string, unknown>;
+  // Accept either the declared `Key.FilterRules` or the live `S3Key.Rules` container.
+  const inner = (f.S3Key ?? f.Key) as Record<string, unknown> | undefined;
+  if (!inner || typeof inner !== 'object') return filter;
+  const rulesRaw = (inner.Rules ?? inner.FilterRules) as unknown;
+  const rules = Array.isArray(rulesRaw)
+    ? sortUnorderedObjectArray(
+        rulesRaw.map((r) => {
+          if (!r || typeof r !== 'object') return r;
+          const rule = r as Record<string, unknown>;
+          const name = rule.Name;
+          return {
+            ...rule,
+            Name: typeof name === 'string' ? (S3_NOTIF_FILTER_RULE_NAMES[name] ?? name) : name,
+          };
+        })
+      )
+    : rulesRaw;
+  return { S3Key: { Rules: rules } };
+}
+function translateBucketNotificationConfigs(
+  configs: unknown,
+  arnKey: string,
+  targetKey: string
+): unknown[] {
+  if (!Array.isArray(configs)) return [];
+  const out: unknown[] = [];
+  for (const c of configs) {
+    if (!c || typeof c !== 'object') {
+      out.push(c);
+      continue;
+    }
+    const cfg = c as Record<string, unknown>;
+    const { Events, Filter, [arnKey]: arn, ...rest } = cfg;
+    const base: Record<string, unknown> = { ...rest };
+    if (arn !== undefined) base[targetKey] = arn;
+    if (Filter !== undefined) base.Filter = canonS3NotifFilter(Filter);
+    // `Events` (declared array) -> one live config per event under scalar `Event`; a config
+    // that already used a scalar `Event` (or omitted events) is emitted once as-is.
+    const events = Array.isArray(Events) ? Events : Events !== undefined ? [Events] : undefined;
+    if (events && events.length > 0) {
+      for (const ev of events) out.push({ ...base, Event: ev });
+    } else {
+      out.push(base);
+    }
+  }
+  return out;
+}
+// Canonicalize a `NotificationConfiguration` (live OR translated-declared) so casing-only
+// filter-rule differences (`Prefix`/`Suffix` live vs `prefix`/`suffix` declared) are not false
+// drift: lower-case every config's `Filter` rule name via canonS3NotifFilter. Applied to BOTH
+// compare sides symmetrically, so it can never make two genuinely different values compare equal.
+function canonS3NotifBucketConfig(config: unknown): unknown {
+  if (!config || typeof config !== 'object' || Array.isArray(config)) return config;
+  const c = config as Record<string, unknown>;
+  const out: Record<string, unknown> = { ...c };
+  for (const key of ['LambdaConfigurations', 'QueueConfigurations', 'TopicConfigurations']) {
+    const arr = c[key];
+    if (!Array.isArray(arr)) continue;
+    out[key] = sortUnorderedObjectArray(
+      arr.map((entry) => {
+        if (!entry || typeof entry !== 'object') return entry;
+        const e = entry as Record<string, unknown>;
+        return 'Filter' in e ? { ...e, Filter: canonS3NotifFilter(e.Filter) } : e;
+      })
+    );
+  }
+  return out;
+}
+function translateDeclaredBucketNotification(
+  declaredConfig: Record<string, unknown>
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  if ('EventBridgeConfiguration' in declaredConfig)
+    out.EventBridgeConfiguration = declaredConfig.EventBridgeConfiguration;
+  const lambda = translateBucketNotificationConfigs(
+    declaredConfig.LambdaFunctionConfigurations ?? declaredConfig.LambdaConfigurations,
+    'LambdaFunctionArn',
+    'Function'
+  );
+  if (lambda.length > 0) out.LambdaConfigurations = lambda;
+  const queue = translateBucketNotificationConfigs(
+    declaredConfig.QueueConfigurations,
+    'QueueArn',
+    'Queue'
+  );
+  if (queue.length > 0) out.QueueConfigurations = queue;
+  const topic = translateBucketNotificationConfigs(
+    declaredConfig.TopicConfigurations,
+    'TopicArn',
+    'Topic'
+  );
+  if (topic.length > 0) out.TopicConfigurations = topic;
+  // Preserve any container key we did not explicitly translate (fail-safe: a future/unknown
+  // config family stays present so a live value we could not map still surfaces rather than
+  // being folded away).
+  for (const [k, v] of Object.entries(declaredConfig)) {
+    if (
+      k === 'EventBridgeConfiguration' ||
+      k === 'LambdaFunctionConfigurations' ||
+      k === 'LambdaConfigurations' ||
+      k === 'QueueConfigurations' ||
+      k === 'TopicConfigurations'
+    )
+      continue;
+    out[k] = v;
+  }
+  return out;
+}
+
 // #676: an API Gateway resource policy authored with the documented abbreviated resource form
 // `execute-api:/...` (the shape CDK's grantInvokeFromVpcEndpointsOnly + the AWS console/docs use,
 // since the api id does not exist at authoring time) is echo-EXPANDED by the service to the full
@@ -1951,9 +2086,13 @@ export function classifyResource(
     siblingTargetGroupRegistrars?: Set<string>;
     // Bucket physical ids whose S3 notifications are managed by a Custom::S3BucketNotifications
     // custom resource (see buildBucketNotificationManaged): the live bucket reflects the
-    // CR-applied NotificationConfiguration the bucket resource never declares, so it is dropped
-    // rather than surfaced as false undeclared drift.
+    // CR-applied NotificationConfiguration the bucket resource never declares.
     bucketNotificationManaged?: Set<string>;
+    // #1283: per managed-bucket physical id, the CR's DECLARED `NotificationConfiguration` in the
+    // S3 API shape (see buildBucketNotificationConfigs). classify translates it into the live CFn
+    // resource shape and EQUALITY-GATES against the live value — folding a clean-deploy match but
+    // SURFACING an out-of-band change the CR did not apply (tier-2 derived, preserves detection).
+    bucketNotificationConfigs?: Record<string, Record<string, unknown>>;
     // Per child physical id, the parent cluster's live model — for the CLUSTER_ECHO_CHILD
     // strip (an Aurora DBInstance echoing its DBCluster's cluster-level config).
     clusterEchoModel?: Record<string, Record<string, unknown>>;
@@ -2116,16 +2255,31 @@ export function classifyResource(
   // A bucket whose notifications are managed by a Custom::S3BucketNotifications CR reflects
   // the CR-applied NotificationConfiguration it never declares itself (CDK renders
   // addEventNotification/enableEventBridgeNotification as that CR, which cdkrd skips). The
-  // config is IaC-managed, not out of band — drop the reflected property so it is not false
-  // undeclared drift. Only when the template does NOT declare it inline (a raw-CFn bucket that
-  // sets NotificationConfiguration directly is compared normally).
+  // config is IaC-managed, not out of band — but only the config the CR ACTUALLY declares.
+  // Translate the CR's declared config (S3 API shape) into the live CFn resource shape,
+  // canonicalize BOTH sides, and equality-gate: a MATCH (clean deploy) drops the reflected
+  // property (no false undeclared drift); a DIFFERENCE means an out-of-band `put-bucket-
+  // notification-configuration` added / swapped / removed a target (#1283) — leave the live
+  // NotificationConfiguration to surface so the change is caught. Only applies when the
+  // template does NOT declare it inline (a raw-CFn bucket that sets NotificationConfiguration
+  // directly is compared normally). Fail-safe: on any translation/parse uncertainty the values
+  // simply will not match, so we SURFACE rather than silently drop an unverified value.
   if (
     resourceType === 'AWS::S3::Bucket' &&
     physicalId &&
     opts.bucketNotificationManaged?.has(physicalId) &&
     !('NotificationConfiguration' in declared)
   ) {
-    delete live.NotificationConfiguration;
+    const declaredConfig = opts.bucketNotificationConfigs?.[physicalId] ?? {};
+    const expectedLive = canonicalizeForCompare(
+      canonS3NotifBucketConfig(translateDeclaredBucketNotification(declaredConfig)),
+      resourceType
+    );
+    const actualLive = canonicalizeForCompare(
+      canonS3NotifBucketConfig(live.NotificationConfiguration),
+      resourceType
+    );
+    if (deepEqual(expectedLive, actualLive)) delete live.NotificationConfiguration;
   }
   // Drop an UNDECLARED property whose value ECHOES the parent cluster's value (an Aurora
   // DBInstance mirroring its DBCluster's cluster-level config — see CLUSTER_ECHO_CHILD).
