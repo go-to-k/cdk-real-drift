@@ -802,6 +802,20 @@ export function buildRevertPlan(
       wholeArrayEmitted.add(waKey);
       f = { ...f, path: f.wholeArrayRevert.path, desired: f.wholeArrayRevert.value };
     }
+    // #688: a property the stack delegates to Application Auto Scaling (a sibling ScalableTarget
+    // governs it). classify folded the in-band case; this residual finding is an out-of-band value
+    // BEYOND the declared band. Writing the declared initial value back would be re-adjusted by the
+    // scaler on its next evaluation — a non-convergent revert (the #667 flavor), so refuse it.
+    if (f.autoscalerGoverned) {
+      notRevertable.push({
+        displayId,
+        resourceType: f.resourceType,
+        path: f.path,
+        reason:
+          'managed by Application Auto Scaling — revert would fight the scaler; change the ScalableTarget band / scaling policy, or record/ignore to accept',
+      });
+      continue;
+    }
     if (f.tier === 'deleted') {
       // a resource deleted out of band cannot be patched back — it must be
       // recreated by re-deploying the stack.

@@ -2222,6 +2222,95 @@ function pushDeclaredFinding(findings: Finding[], finding: Omit<Finding, 'tier'>
   findings.push({ tier: 'declared', ...finding });
 }
 
+// #688: an AWS::ApplicationAutoScaling::ScalableTarget's `ScalableDimension` names the exact
+// declared property the autoscaler governs on the target resource. This maps each supported
+// dimension to the governed CFn resource type and the declared property path(s) the autoscaler
+// moves — a DATA table so a new dimension is one entry, not a special case. gather.ts
+// (buildScalableTargetBands) reads it to build the per-resource band map threaded as
+// `scalableTargetBands`. Scope: dimensions whose governed path is a STATIC dotted path (the
+// live-proven ECS DesiredCount + DynamoDB table Read/Write capacity, plus the same-shaped Lambda
+// alias provisioned-concurrency and ElastiCache node/replica counts). Per-index dynamodb GSI
+// (`dynamodb:index:*`, path needs the index name), native AWS::AutoScaling ASG DesiredCapacity (no
+// ScalableTarget sibling — a different signal), and readGap-only SageMaker variants are follow-ups.
+export const AAS_SCALABLE_DIMENSIONS: Record<string, { resourceType: string; paths: string[] }> = {
+  'ecs:service:DesiredCount': { resourceType: 'AWS::ECS::Service', paths: ['DesiredCount'] },
+  'dynamodb:table:ReadCapacityUnits': {
+    resourceType: 'AWS::DynamoDB::Table',
+    paths: ['ProvisionedThroughput.ReadCapacityUnits'],
+  },
+  'dynamodb:table:WriteCapacityUnits': {
+    resourceType: 'AWS::DynamoDB::Table',
+    paths: ['ProvisionedThroughput.WriteCapacityUnits'],
+  },
+  'lambda:function:ProvisionedConcurrency': {
+    resourceType: 'AWS::Lambda::Alias',
+    paths: ['ProvisionedConcurrencyConfig.ProvisionedConcurrentExecutions'],
+  },
+  'elasticache:replication-group:NodeGroups': {
+    resourceType: 'AWS::ElastiCache::ReplicationGroup',
+    paths: ['NumNodeGroups'],
+  },
+  'elasticache:replication-group:Replicas': {
+    resourceType: 'AWS::ElastiCache::ReplicationGroup',
+    paths: ['ReplicasPerNodeGroup'],
+  },
+};
+
+const AUTOSCALER_HINT_PREFIX =
+  'governed by a sibling AWS::ApplicationAutoScaling::ScalableTarget (Application Auto Scaling)';
+
+/**
+ * #688: fold declared findings whose property the stack DELEGATES to Application Auto Scaling.
+ * A sibling ScalableTarget over `(resource, dimension)` means the live value moving within the
+ * declared `[MinCapacity, MaxCapacity]` band is the autoscaler enforcing the template's own
+ * intent (min-enforcement fires within minutes of a clean deploy, zero traffic) — NOT drift, so
+ * the declared finding is DROPPED. A value OUTSIDE the band is a real over-set: it stays, but is
+ * marked `autoscalerGoverned` (+ a hint) so the revert plan refuses a write the scaler would
+ * immediately undo. Range-gated → detection preserved. Pure; only touches `declared`-tier
+ * findings whose path is a governed path (all else passes through untouched).
+ */
+export function applyAutoscalerBandFold(
+  findings: Finding[],
+  bands: { path: string; min: number; max: number }[]
+): Finding[] {
+  const out: Finding[] = [];
+  for (const f of findings) {
+    if (f.tier !== 'declared') {
+      out.push(f);
+      continue;
+    }
+    const band = bands.find((b) => b.path === f.path);
+    if (band === undefined) {
+      out.push(f);
+      continue;
+    }
+    const actual = f.actual;
+    if (
+      typeof actual === 'number' &&
+      Number.isFinite(actual) &&
+      actual >= band.min &&
+      actual <= band.max
+    ) {
+      // within the declared scaling band — the autoscaler did exactly what the template asked.
+      continue;
+    }
+    // outside the band (or non-numeric) — a genuine over-set. Keep it visible, but block revert.
+    out.push({
+      ...f,
+      autoscalerGoverned: true,
+      ...(f.hint === undefined
+        ? {
+            hint:
+              `${AUTOSCALER_HINT_PREFIX}, band ${band.min}..${band.max}; the live value is outside ` +
+              `it, so this is a real change — but revert cannot converge (the scaler re-adjusts it). ` +
+              `Change the ScalableTarget band / scaling policy, or record/ignore to accept it`,
+          }
+        : {}),
+    });
+  }
+  return out;
+}
+
 export function classifyResource(
   resource: DesiredResource,
   liveRaw: Record<string, unknown>,
@@ -2326,6 +2415,16 @@ export function classifyResource(
     // sentinel default to the listener's port), so classify derives + equality-gates the undeclared
     // HealthCheckPort from it. Built from the desired set in gather.ts (buildSiblingListenerPorts).
     siblingListenerPorts?: Record<string, number>;
+    // #688: per GOVERNED resource logicalId, the Application Auto Scaling bands a sibling
+    // AWS::ApplicationAutoScaling::ScalableTarget declares over that resource's properties —
+    // `{ path, min, max }[]` (built from the ScalableDimension → AAS_SCALABLE_DIMENSIONS map in
+    // gather.ts, buildScalableTargetBands). The template DELEGATES the property to the autoscaler,
+    // which moves the live value WITHIN [min,max] within minutes of a clean deploy (min-enforcement)
+    // — declared intent, not drift, so classify FOLDS a declared finding whose live value is in the
+    // band (the delegation is visible in the template itself). A value OUTSIDE the band is a real
+    // over-set and SURFACES, marked autoscalerGoverned so revert refuses (a write-back the scaler
+    // re-adjusts would never converge). Absent → no fold (fail-open, the finding stays visible).
+    scalableTargetBands?: Record<string, { path: string; min: number; max: number }[]>;
   } = {}
 ): Finding[] {
   const { logicalId, resourceType, physicalId, declared: declaredIn } = resource;
@@ -4794,7 +4893,11 @@ export function classifyResource(
   // live IAM is worse than an un-reverted FP). Applies to Role / User / Group alike.
   const unresolvedSibling =
     IAM_PRINCIPAL_POLICY_TYPES.has(resourceType) && resource.siblingPolicyNames === 'unresolved';
-  return findings.map((f) => ({
+  // #688: fold declared drift the template delegates to a sibling AAS ScalableTarget (within its
+  // declared band); an out-of-band value beyond the band stays but is marked non-revertable.
+  const bands = opts.scalableTargetBands?.[resource.logicalId];
+  const folded = bands ? applyAutoscalerBandFold(findings, bands) : findings;
+  return folded.map((f) => ({
     ...f,
     ...(pid !== undefined && { physicalId: pid }),
     ...(cp !== undefined && { constructPath: cp }),

@@ -53,7 +53,12 @@ case that matters is still caught: a recorded value that later flips to
 
 **A property keeps drifting because an autoscaler manages it — do I re-record
 forever?**
-No — list it in `.cdkrd/ignore.yaml` (see
+No. For a property an `AWS::ApplicationAutoScaling::ScalableTarget` governs (ECS
+Service `DesiredCount`, autoscaled DynamoDB capacity, a Lambda alias's provisioned
+concurrency, …), cdkrd folds it automatically while the live value stays within the
+declared `MinCapacity`/`MaxCapacity` band — no rule needed (#688). For a property a
+_different_ controller rewrites (e.g. Lambda reserved concurrency), or an autoscaler
+value pushed beyond its band, list it in `.cdkrd/ignore.yaml` (see
 [Ignoring externally-managed properties](../README.md#ignoring-externally-managed-properties)).
 
 **Is it safe to run in CI / on production accounts?**

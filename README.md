@@ -512,10 +512,17 @@ no such gap and compares transformed stacks fully; prefer it for SAM/macro apps.
 
 ### Ignoring externally-managed properties
 
-Some properties are _legitimately_ rewritten by another system, such as Application
-Auto Scaling moving an ECS Service `DesiredCount`, or autoscaled DynamoDB capacity.
-A recorded snapshot would re-flag every move. Run **`cdkrd ignore`** to pick the
-drift to suppress, or hand-edit the git-committed `.cdkrd/ignore.yaml`. It is a
+Some properties are _legitimately_ rewritten by another system. cdkrd already folds
+the most common case automatically: a property a sibling
+`AWS::ApplicationAutoScaling::ScalableTarget` governs — an ECS Service `DesiredCount`,
+autoscaled DynamoDB capacity, a Lambda alias's provisioned concurrency, … — is **not**
+flagged while its live value stays within the declared `MinCapacity`/`MaxCapacity`
+band (the autoscaler enforcing the template's own delegation is intent, not drift,
+#688). A value pushed _beyond_ the band still surfaces as real drift, but `revert`
+deliberately refuses it (writing the initial value back would just be re-scaled). For
+anything cdkrd does not fold — an externally-managed Lambda **reserved** concurrency,
+a value another controller rewrites — run **`cdkrd ignore`** to pick the drift to
+suppress, or hand-edit the git-committed `.cdkrd/ignore.yaml`. It is a
 hand-edited policy file (the `.gitignore` / `.dockerignore` / `.trivyignore`
 family), so it is YAML rather than JSON: the single most valuable hand-edit is a
 `#` comment recording **why** a property is ignored, and YAML can carry it where
@@ -525,10 +532,10 @@ machine-generated, wholesale-rewritten data, not human policy.)
 ```yaml
 # cdkrd ignore rules — properties cdkrd should stop reporting as drift.
 ignore:
-  # DesiredCount is managed by Application Auto Scaling
-  - path: '*.DesiredCount'
+  # reserved concurrency is managed by an external controller (not AAS, so not auto-folded)
+  - path: '*.ReservedConcurrentExecutions'
   # the common case: scope a rule to one stack
-  - path: '*.DesiredCount'
+  - path: '*.ReservedConcurrentExecutions'
     stack: Prod*
   # narrow further to a single account and/or region when the same stack
   # name is deployed to several (a property may legitimately drift in only one)
