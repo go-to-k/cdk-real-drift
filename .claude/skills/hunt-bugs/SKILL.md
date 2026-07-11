@@ -219,15 +219,21 @@ Add fixtures under `tests/integration/<name>/` — mirror an existing one (`app.
 all fixtures in parallel FIRST (cheap, catches TS errors before any paid deploy).
 
 **Before deploying, record every stack you are about to deploy into the sentinel —
-this arms the cleanup gate:**
+this arms the cleanup gate. SCOPE it to THIS session** so a parallel agent's live
+stacks never mix into a shared owner file (see the owner-scoping note below):
 
 ```bash
-.claude/skills/hunt-bugs/bughunt-track.sh add CdkRealDriftIntegS3Rich CdkRealDriftIntegVpcCommon ...
+# this session's own owner (env does not persist across tool calls — re-prefix each command)
+CDKRD_BUGHUNT_OWNER="session-${CLAUDE_CODE_SESSION_ID:-$$}" \
+  .claude/skills/hunt-bugs/bughunt-track.sh add CdkRealDriftIntegS3Rich CdkRealDriftIntegVpcCommon ...
 ```
 
-(The `deploy-autoarm-gate` hook also arms a per-session `autoarm-<session>` token on
-any deploy as a backstop, but `add` with the real stack names gives the clearer gate
-message.) **Tag
+Run every later `bughunt-track.sh verify` / `clear` with the SAME
+`CDKRD_BUGHUNT_OWNER="session-${CLAUDE_CODE_SESSION_ID:-$$}"` prefix, so you clear
+only YOUR own pending set. (The `deploy-autoarm-gate` hook also arms a per-session
+`autoarm-<session>` token on any deploy as a backstop — keyed by the SAME
+`CLAUDE_CODE_SESSION_ID` — so the merge/commit block is per-session either way; the
+explicit `add` gives the clearer gate message and the per-stack list.) **Tag
 every fixture `cdkrd:ephemeral=1`** (`Tags.of(app).add('cdkrd:ephemeral','1')` in
 `app.ts`) so the generic tag net in `sweep-orphans.sh` catches any resource type it has
 no per-type rule for.
@@ -422,6 +428,20 @@ enforced structurally rather than by discipline:
   pipeline's exit was tail's). Run `verify` and `clear` as separate, un-piped
   commands from the SAME directory (the owner key is cwd-derived — a cwd that
   drifted back to the main checkout arms/clears the WRONG owner).
+- **Owner scoping — set `CDKRD_BUGHUNT_OWNER="session-$CLAUDE_CODE_SESSION_ID"`.**
+  When `CDKRD_BUGHUNT_OWNER` is UNSET, the tracker derives the owner from the
+  main-tree root (`--git-common-dir`), so two sessions both running `add` from the
+  main checkout write into ONE shared owner file (#1409). Then a `clear` — which
+  empties the WHOLE owner file — would drop a PEER's still-pending stacks, releasing
+  the gate while their live AWS resources remain. Setting a per-session owner gives
+  each session its own `.d/session-<id>` file, so your `clear` can never touch a
+  peer's. **If you DID share the default owner with a peer: NEVER `clear` it while it
+  lists another session's stacks** — release only your own session's token
+  (`CDKRD_BUGHUNT_OWNER="autoarm-$CLAUDE_CODE_SESSION_ID" ... clear`, or
+  `CDKRD_BUGHUNT_FORCE_CLEAR=1` if the only remaining sweep orphan is provably a
+  peer's), and merge from a worktree cwd (the gate scopes commit/merge blocks by the
+  committing command's worktree-toplevel owner + your `autoarm-<session>` token, not
+  the shared main-root owner).
 
 `delstack` only deletes stack MEMBERS. `sweep-orphans.sh` catches the
 stack-EXTERNAL orphans teardown leaves behind — auto-created `/aws/lambda/*` log
