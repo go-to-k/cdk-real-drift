@@ -1,3 +1,10 @@
+## [0.12.107](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.106...v0.12.107) (2026-07-11)
+
+
+### Bug Fixes
+
+* **diff:** sibling-gated fold for Subnet Ipv6CidrBlock echo ([#1498](https://github.com/go-to-k/cdk-real-drift/issues/1498)) ([#1512](https://github.com/go-to-k/cdk-real-drift/issues/1512)) ([2511127](https://github.com/go-to-k/cdk-real-drift/commit/2511127b0ca0fe7c3d61971a335aa1e060ebc9c8))
+
 ## [0.12.106](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.105...v0.12.106) (2026-07-11)
 
 
