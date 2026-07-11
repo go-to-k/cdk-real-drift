@@ -1681,6 +1681,22 @@ function matchesPropertyTransform(
       try {
         const out = compiled.evaluate(scope as unknown);
         if (out !== undefined && deepEqual(out, liveValue)) return true;
+        // #1294: ~35 registry propertyTransforms produce a PATTERN string, not a value (constant regexes
+        // like DirectConnect Location `^[a-zA-Z0-9-]+$`, or an ARN pattern built from the declared value
+        // for ECS Service TaskDefinition). CloudFormation's own drift engine matches the live value against
+        // the transformed string as an ANCHORED pattern; replicate that. Guarded: only when the transform
+        // OUTPUT and the live value are both strings AND the output differs from the raw declared value (a
+        // value-producing transform whose concrete output already failed deepEqual is not re-interpreted as
+        // a pattern). Anchored full-match keeps it equality-gated in spirit — a genuinely different live
+        // value still surfaces. Inside the existing fail-open try, so a malformed pattern just falls through.
+        if (
+          typeof out === 'string' &&
+          typeof liveValue === 'string' &&
+          typeof declaredValue === 'string' &&
+          out !== declaredValue &&
+          new RegExp('^(?:' + out + ')$').test(liveValue)
+        )
+          return true;
       } catch {
         // eval error on this scope — try the next scope / alternative (fail-open)
       }
