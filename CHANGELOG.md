@@ -1,3 +1,10 @@
+## [0.12.60](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.59...v0.12.60) (2026-07-11)
+
+
+### Bug Fixes
+
+* **diff:** match live against a pattern-producing propertyTransform ([#1294](https://github.com/go-to-k/cdk-real-drift/issues/1294)) ([#1424](https://github.com/go-to-k/cdk-real-drift/issues/1424)) ([28ced42](https://github.com/go-to-k/cdk-real-drift/commit/28ced4296b95917196e5e6270e6e3e63c758d554))
+
 ## [0.12.59](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.58...v0.12.59) (2026-07-11)
 
 
