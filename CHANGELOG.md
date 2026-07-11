@@ -1,3 +1,10 @@
+## [0.12.46](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.45...v0.12.46) (2026-07-11)
+
+
+### Bug Fixes
+
+* **read:** Cognito IdentityPool GetCognitoEvents failure surfaces a counted readGap ([#1326](https://github.com/go-to-k/cdk-real-drift/issues/1326)) ([#1410](https://github.com/go-to-k/cdk-real-drift/issues/1410)) ([ef1c935](https://github.com/go-to-k/cdk-real-drift/commit/ef1c9352a023ea94eb6ade4b3d0e879cd71a26ac))
+
 ## [0.12.45](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.44...v0.12.45) (2026-07-11)
 
 
