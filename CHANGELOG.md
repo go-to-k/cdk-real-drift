@@ -1,3 +1,10 @@
+## [0.12.94](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.93...v0.12.94) (2026-07-11)
+
+
+### Bug Fixes
+
+* **diff:** surface out-of-band nested off-flip via MEANINGFUL_WHEN_OFF_NESTED — CloudFront IPV6Enabled disable (part of [#660](https://github.com/go-to-k/cdk-real-drift/issues/660)) ([#1484](https://github.com/go-to-k/cdk-real-drift/issues/1484)) ([9806d0b](https://github.com/go-to-k/cdk-real-drift/commit/9806d0bc8fdafbeb6bc89281dd9f7237681348ac))
+
 ## [0.12.93](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.92...v0.12.93) (2026-07-11)
 
 
