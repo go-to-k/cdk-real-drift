@@ -3313,8 +3313,11 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
           emptySchema
         )
       );
+      // #1437: once ResourceLifecycleConfig diverges from the whole-object default it is DESCENDED,
+      // so the enabled rule surfaces at the precise nested VersionLifecycleConfig sub-block (still
+      // undeclared drift, never atDefault — detection preserved).
       expect(t.atDefault).toEqual([]);
-      expect(t.undeclared).toEqual(['ResourceLifecycleConfig']);
+      expect(t.undeclared).toEqual(['ResourceLifecycleConfig.VersionLifecycleConfig']);
     });
 
     it('an Environment folds the default WebServer/Standard/1.0 Tier and the derived PlatformArn', () => {
@@ -12517,5 +12520,97 @@ describe('#890 EKS AccessEntry.Username derived fold (deterministic transform of
     );
     expect(t.undeclared).toEqual(['Username']);
     expect(t.atDefault).toEqual([]);
+  });
+});
+
+// #1437: EB Application ResourceLifecycleConfig — the AWS-kept ServiceRole residual.
+// A lifecycle change out of band forces EB to stamp a ServiceRole (the
+// UpdateApplicationResourceLifecycle API requires one) and EB KEEPS it even after `revert`
+// writes the disabled default. The whole-object KNOWN_DEFAULTS fold (no ServiceRole) then no
+// longer matches, so the reverted config perpetually surfaced as [Potential Drift]. Descend the
+// object: VersionLifecycleConfig folds equality-gated (KNOWN_DEFAULT_PATHS) and ServiceRole folds
+// value-independent (GENERATED_NESTED_PATHS), while an enabled rule still surfaces.
+describe('EB Application ResourceLifecycleConfig ServiceRole residual (#1437)', () => {
+  const emptySchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+  const app: DesiredResource = {
+    logicalId: 'App',
+    resourceType: 'AWS::ElasticBeanstalk::Application',
+    physicalId: 'my-eb-app',
+    declared: { ApplicationName: 'my-eb-app' },
+  };
+  const DEFAULT_LIFECYCLE = {
+    VersionLifecycleConfig: {
+      MaxCountRule: { DeleteSourceFromS3: false, Enabled: false, MaxCount: 200 },
+      MaxAgeRule: { DeleteSourceFromS3: false, MaxAgeInDays: 180, Enabled: false },
+    },
+  };
+  const SERVICE_ROLE = 'arn:aws:iam::111111111111:role/aws-elasticbeanstalk-service-role';
+
+  it('clean deploy: whole default object (no ServiceRole) folds atDefault — no drift', () => {
+    const t = tiers(
+      classifyResource(app, { ResourceLifecycleConfig: DEFAULT_LIFECYCLE }, emptySchema)
+    );
+    expect(t.undeclared).toEqual([]);
+    expect(t.atDefault).toEqual(['ResourceLifecycleConfig']);
+  });
+
+  it('post-revert residual: default lifecycle + AWS-kept ServiceRole folds — no [Potential Drift]', () => {
+    const findings = classifyResource(
+      app,
+      { ResourceLifecycleConfig: { ServiceRole: SERVICE_ROLE, ...DEFAULT_LIFECYCLE } },
+      emptySchema
+    );
+    const t = tiers(findings);
+    // The residual is folded, NOT surfaced: VersionLifecycleConfig atDefault, ServiceRole generated.
+    expect(t.undeclared).toEqual([]);
+    expect(t.atDefault).toEqual(['ResourceLifecycleConfig.VersionLifecycleConfig']);
+    expect(t.generated).toEqual(['ResourceLifecycleConfig.ServiceRole']);
+  });
+
+  it('any ServiceRole value folds (value-independent) — a custom role ARN is still not drift', () => {
+    const t = tiers(
+      classifyResource(
+        app,
+        {
+          ResourceLifecycleConfig: {
+            ServiceRole: 'arn:aws:iam::111111111111:role/some-other-role',
+            ...DEFAULT_LIFECYCLE,
+          },
+        },
+        emptySchema
+      )
+    );
+    expect(t.undeclared).toEqual([]);
+    expect(t.generated).toEqual(['ResourceLifecycleConfig.ServiceRole']);
+  });
+
+  it('detection preserved: an ENABLED MaxCountRule (with a ServiceRole) still surfaces', () => {
+    const t = tiers(
+      classifyResource(
+        app,
+        {
+          ResourceLifecycleConfig: {
+            ServiceRole: SERVICE_ROLE,
+            VersionLifecycleConfig: {
+              MaxCountRule: { DeleteSourceFromS3: false, Enabled: true, MaxCount: 5 },
+              MaxAgeRule: { DeleteSourceFromS3: false, MaxAgeInDays: 180, Enabled: false },
+            },
+          },
+        },
+        emptySchema
+      )
+    );
+    // The substantive lifecycle change surfaces; the ServiceRole still folds.
+    expect(t.undeclared).toEqual(['ResourceLifecycleConfig.VersionLifecycleConfig']);
+    expect(t.generated).toEqual(['ResourceLifecycleConfig.ServiceRole']);
   });
 });

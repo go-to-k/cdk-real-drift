@@ -1792,6 +1792,32 @@ describe('ElasticBeanstalk Application/Environment writers (CC UpdateResource Se
     });
   });
 
+  it('#1437: an UNDECLARED nested set-default add (no declared config) writes the WHOLE default lifecycle, not the leaf fragment', async () => {
+    eb.on(UpdateApplicationResourceLifecycleCommand).resolves({});
+    // Post-#1437 an out-of-band lifecycle change surfaces at the DESCENDED nested path, so the
+    // undeclared revert plan emits a set-default `add` at `/ResourceLifecycleConfig/
+    // VersionLifecycleConfig` whose value is the VersionLifecycleConfig CONTENTS (no wrapper) and
+    // there is NO declared config. The writer must reconstruct the whole default object — writing
+    // op.value directly would send a wrapper-less fragment as the whole ResourceLifecycleConfig.
+    await SDK_WRITERS['AWS::ElasticBeanstalk::Application'](
+      ctx({ physicalId: 'my-app', declared: { ApplicationName: 'my-app' } }),
+      [
+        {
+          op: 'add',
+          path: '/ResourceLifecycleConfig/VersionLifecycleConfig',
+          value: DEFAULT_RLC.VersionLifecycleConfig,
+          human: 'ResourceLifecycleConfig.VersionLifecycleConfig -> AWS default',
+        },
+      ]
+    );
+    const calls = eb.commandCalls(UpdateApplicationResourceLifecycleCommand);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.args[0].input).toEqual({
+      ApplicationName: 'my-app',
+      ResourceLifecycleConfig: DEFAULT_RLC,
+    });
+  });
+
   it('applies Description AND ResourceLifecycleConfig in one op set (two distinct commands)', async () => {
     eb.on(UpdateApplicationCommand).resolves({});
     eb.on(UpdateApplicationResourceLifecycleCommand).resolves({});
