@@ -1,3 +1,10 @@
+## [0.12.80](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.79...v0.12.80) (2026-07-11)
+
+
+### Bug Fixes
+
+* **revert:** SDK-writer indexed ops verify op.prior against the fresh model before applying ([#805](https://github.com/go-to-k/cdk-real-drift/issues/805)) ([#1467](https://github.com/go-to-k/cdk-real-drift/issues/1467)) ([3899648](https://github.com/go-to-k/cdk-real-drift/commit/38996486717c867edb2e8b4ebcb29ad4461995a4))
+
 ## [0.12.79](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.78...v0.12.79) (2026-07-11)
 
 
