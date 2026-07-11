@@ -1,3 +1,10 @@
+## [0.12.41](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.40...v0.12.41) (2026-07-11)
+
+
+### Bug Fixes
+
+* **desired:** getCrossRegionExports merges per-name across same-region stacks ([#1282](https://github.com/go-to-k/cdk-real-drift/issues/1282)) ([#1402](https://github.com/go-to-k/cdk-real-drift/issues/1402)) ([fe1eef2](https://github.com/go-to-k/cdk-real-drift/commit/fe1eef2459a4b06e0a1c5d474a33104416f32c68))
+
 ## [0.12.40](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.39...v0.12.40) (2026-07-11)
 
 
