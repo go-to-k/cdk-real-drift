@@ -735,6 +735,18 @@ function isUnderCreateOnly(findingPath: string, createOnlyPaths: readonly string
   return false;
 }
 
+// #1405: resource types whose out-of-band `added` finding CANNOT be reverted by a Cloud
+// Control DeleteResource — the CC registry has NO delete handler for the type, so a
+// `delete`-kind item would be built and then FAIL only at apply with
+// `UnsupportedActionException: Resource type <T> does not support DELETE action`. Pre-classify
+// them as `notRevertable` up front — the honest twin of the `deleted` / `no physical id`
+// gates — instead of offering a delete that loudly fails. Detection + record / ignore still
+// work; a type-specific SDK writer could later make it actually revertable.
+//   - AWS::EC2::NetworkAclEntry: live-proven (#1315/#1405). CC GetResource reads it via the
+//     SDK override (`readEc2NetworkAclEntry`), but DeleteResource returns the unsupported-action
+//     error above (its CFn delete flows through the parent NetworkAcl's EC2 API, not CC).
+const CC_DELETE_UNSUPPORTED_ADDED_TYPES = new Set<string>(['AWS::EC2::NetworkAclEntry']);
+
 export function buildRevertPlan(
   findings: Finding[],
   baseline: BaselineFile | undefined,
@@ -833,6 +845,18 @@ export function buildRevertPlan(
           resourceType: f.resourceType,
           path: f.path,
           reason: 'no physical id',
+        });
+        continue;
+      }
+      // #1405: Cloud Control has no DeleteResource handler for this type — a `delete` item
+      // would fail only at apply (UnsupportedActionException). Report it honestly up front.
+      if (CC_DELETE_UNSUPPORTED_ADDED_TYPES.has(f.resourceType)) {
+        notRevertable.push({
+          displayId,
+          resourceType: f.resourceType,
+          path: f.path,
+          reason:
+            'out-of-band resource of a type Cloud Control cannot delete (no DeleteResource handler) — remove it manually',
         });
         continue;
       }
