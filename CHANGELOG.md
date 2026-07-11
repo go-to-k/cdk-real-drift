@@ -1,3 +1,10 @@
+## [0.12.102](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.101...v0.12.102) (2026-07-11)
+
+
+### Bug Fixes
+
+* **diff:** ElastiCache RG cluster-mode-enabled derived-default trio ([#1500](https://github.com/go-to-k/cdk-real-drift/issues/1500)) ([#1508](https://github.com/go-to-k/cdk-real-drift/issues/1508)) ([d79e373](https://github.com/go-to-k/cdk-real-drift/commit/d79e373b11bb1ddab2205ab04012c9e619ab2c66))
+
 ## [0.12.101](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.100...v0.12.101) (2026-07-11)
 
 
