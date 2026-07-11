@@ -689,6 +689,94 @@ describe('intrinsic resolver', () => {
     ).toBe(UNRESOLVED);
   });
 
+  // #1329: CloudFormation REMOVES a list element whose value resolves to AWS::NoValue,
+  // so the list COMPACTS and later indices shift BEFORE Fn::Select runs. The resolver
+  // already mirrors that compaction in Fn::Join and pruneNoValue, but Fn::Select
+  // indexed the RAW resolved array: an index after the NoValue slot selected the WRONG
+  // element (a fabricated declared value → false [Declared Drift], and revert writes
+  // the wrong value back), and an index AT the slot returned the NOVALUE symbol, which
+  // pruneNoValue then deleted as the whole declared property.
+  it('#1329: Fn::Select indexes the COMPACTED list (AWS::NoValue elements removed first)', () => {
+    const c = ctx({
+      params: { Env: 'dev' }, // IsProd=false → the Fn::If element resolves to NOVALUE
+      conditions: { IsProd: { 'Fn::Equals': [{ Ref: 'Env' }, 'prod'] } },
+    });
+    // index AFTER the NoValue slot: CFn compacts to ['b','c'], so index 1 is 'c' (was 'b')
+    expect(
+      resolve(
+        {
+          'Fn::Select': [
+            1,
+            [{ 'Fn::If': ['IsProd', 'prod-only', { Ref: 'AWS::NoValue' }] }, 'b', 'c'],
+          ],
+        },
+        c
+      )
+    ).toBe('c');
+    // index AT the NoValue slot: compacted[0] is 'y' — previously the NOVALUE symbol
+    // leaked out and pruneNoValue deleted the whole declared property.
+    expect(
+      resolveProperties(
+        {
+          Port: {
+            'Fn::Select': [0, [{ 'Fn::If': ['IsProd', 'x', { Ref: 'AWS::NoValue' }] }, 'y']],
+          },
+        },
+        c
+      )
+    ).toEqual({ Port: 'y' });
+    // the bounds check runs against the COMPACTED length: selecting past it fails
+    // closed (previously the raw length let a wrong element through).
+    expect(resolve({ 'Fn::Select': [1, [{ Ref: 'AWS::NoValue' }, 'only']] }, ctx())).toBe(
+      UNRESOLVED
+    );
+    // a list WITHOUT NoValue is unchanged (regression guard; Fn::Join compaction is
+    // pinned separately above).
+    expect(resolve({ 'Fn::Select': [1, ['a', 'b']] }, ctx())).toBe('b');
+  });
+
+  // #1331: the #1073 re-check of an intrinsic-PRODUCED value was gated on
+  // `typeof r === 'string'`, so a produced ARRAY passed through with its elements
+  // uninspected — a `{{resolve:…}}` ELEMENT inside a CommaDelimitedList/List<>
+  // parameter value or an Fn::FindInMap list value leaked out (false declared drift
+  // that prints the secret token and, on revert, writes the literal token to AWS).
+  // The whole container fails closed to UNRESOLVED (per-element muting would
+  // fabricate a list whose shape differs from live), matching the scalar precedent.
+  it('#1331: a dynamic-ref ELEMENT inside a produced list → whole value UNRESOLVED', () => {
+    const ssm = '{{resolve:ssm:/prod/extra-sg}}';
+    // (a) Ref to a CommaDelimitedList/List<> parameter carrying a token element
+    //     (buildResolverContext.toParam splits 'sg-aaa,{{resolve:…}}' into this array).
+    expect(resolve({ Ref: 'SgList' }, ctx({ params: { SgList: ['sg-aaa', ssm] } }))).toBe(
+      UNRESOLVED
+    );
+    // (b) Fn::FindInMap whose looked-up value is a LIST with a token element.
+    expect(
+      resolve(
+        { 'Fn::FindInMap': ['M', 'top', 'key'] },
+        ctx({ mappings: { M: { top: { key: ['sg-aaa', ssm] } } } })
+      )
+    ).toBe(UNRESOLVED);
+    // controls: the SCALAR cases stay muted exactly as before (#1073).
+    expect(
+      resolve(
+        { 'Fn::FindInMap': ['M', 'top', 'key'] },
+        ctx({ mappings: { M: { top: { key: ssm } } } })
+      )
+    ).toBe(UNRESOLVED);
+    expect(resolve({ Ref: 'Secret' }, ctx({ params: { Secret: ssm } }))).toBe(UNRESOLVED);
+    // controls: plain lists WITHOUT tokens still resolve normally (no over-muting).
+    expect(resolve({ Ref: 'SgList' }, ctx({ params: { SgList: ['sg-aaa', 'sg-bbb'] } }))).toEqual([
+      'sg-aaa',
+      'sg-bbb',
+    ]);
+    expect(
+      resolve(
+        { 'Fn::FindInMap': ['M', 'top', 'key'] },
+        ctx({ mappings: { M: { top: { key: ['a', 'b'] } } } })
+      )
+    ).toEqual(['a', 'b']);
+  });
+
   it('#722 NEGATIVE: a literal that merely contains `{{resolve` without a valid token is NOT muted', () => {
     // no valid <service> + closing `}}` completion → stays a literal declared value.
     expect(resolve('see {{resolve later}}', ctx())).toBe('see {{resolve later}}');
