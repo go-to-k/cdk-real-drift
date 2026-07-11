@@ -50,7 +50,8 @@ un-deployed code edits would show as false "drift".
     later CHANGE surfaces as drift; an UNRECORDED added resource is Not-Recorded
     inventory (not drift), a recorded+unchanged one is suppressed (PR4). Not a
     per-property compare, so it runs outside classify. Revertable by Cloud Control
-    DeleteResource (no per-type writer; an unrecorded one needs --remove-unrecorded).
+    DeleteResource, or an SDK_DELETERS per-type delete where CC lacks DELETE support
+    (AppSync ApiKey, #1386); an unrecorded one needs --remove-unrecorded.
 6. report + exit code (report-only by default; --fail → 1 on drift; --strict → 1 on incomplete coverage; 2 error)
 ```
 

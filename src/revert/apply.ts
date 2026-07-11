@@ -248,19 +248,27 @@ export async function applyRevertDelete(
     }
   };
 
-  // A DEPENDENCY-VIOLATION failure (#969) must NOT burn the in-item transient-retry budget.
-  // In a delete BATCH the blocker is a sibling delete queued later in the SAME pass, so time
-  // (and the `--wait` deadline) can never free it — only the next applyRevertDeletes pass,
-  // after that sibling is deleted, does. It must fail FAST back to the pass loop (the pass IS
-  // the retry) rather than spin its private backoff / `--wait` deadline on a guaranteed-futile
-  // wait (the #969 blowup: a wrong-ordered Route→Integration pair burning a full 10-minute
-  // `--wait` before the Route even runs). The generic transient patterns classify a
-  // dependency error TRANSIENT (`ConflictException`, `resource is in use`, …), so we can't let
-  // retryTransient see the raw text. Wrap the op: on a dependency violation, stash the real
-  // error and hand retryTransient a TERMINAL-classified sentinel so it returns immediately
-  // (no retry, no sleep); a genuine transient (throttle / mid-update) still flows through with
-  // the full backoff / `--wait` semantics unchanged. This keeps retryTransient the single
-  // driver of backoff/deadline/onRetry — no duplicated retry math, no double send.
+  return retryDeleteDeferringDependencies(oneDelete, retry);
+}
+
+// Shared retry driver for ONE delete attempt-function (the CC path above and the SDK path
+// below) — a DEPENDENCY-VIOLATION failure (#969) must NOT burn the in-item transient-retry
+// budget. In a delete BATCH the blocker is a sibling delete queued later in the SAME pass, so
+// time (and the `--wait` deadline) can never free it — only the next applyRevertDeletes pass,
+// after that sibling is deleted, does. It must fail FAST back to the pass loop (the pass IS
+// the retry) rather than spin its private backoff / `--wait` deadline on a guaranteed-futile
+// wait (the #969 blowup: a wrong-ordered Route→Integration pair burning a full 10-minute
+// `--wait` before the Route even runs). The generic transient patterns classify a
+// dependency error TRANSIENT (`ConflictException`, `resource is in use`, …), so we can't let
+// retryTransient see the raw text. Wrap the op: on a dependency violation, stash the real
+// error and hand retryTransient a TERMINAL-classified sentinel so it returns immediately
+// (no retry, no sleep); a genuine transient (throttle / mid-update) still flows through with
+// the full backoff / `--wait` semantics unchanged. This keeps retryTransient the single
+// driver of backoff/deadline/onRetry — no duplicated retry math, no double send.
+async function retryDeleteDeferringDependencies(
+  oneDelete: () => Promise<ApplyResult>,
+  retry: RetryOptions
+): Promise<ApplyResult> {
   let deferredDepError: string | undefined;
   const guardedDelete = async (): Promise<ApplyResult> => {
     const r = await oneDelete();
@@ -278,4 +286,29 @@ export async function applyRevertDelete(
     return { ok: false, error: deferredDepError ?? DEP_VIOLATION_TERMINAL };
   }
   return r;
+}
+
+// DELETE an `added` resource via a type-specific SDK deleter (#1386) — for a type Cloud
+// Control cannot delete (AWS::AppSync::ApiKey: DeleteResource throws
+// UnsupportedActionException). `doDelete` is the bound SDK call (a revert/writers.ts
+// SDK_DELETERS entry with its context already threaded by the caller); this wrapper gives it
+// the SAME contract as the Cloud Control applyRevertDelete: an already-gone target is the
+// goal state (success, not failure), a dependency-violation failure defers to the
+// applyRevertDeletes pass loop without burning the transient budget, and a genuine transient
+// gets the full retryTransient backoff / `--wait` semantics. An SDK delete is synchronous
+// (the send IS the terminal state) so there is no ProgressEvent poll.
+export async function applyRevertDeleteSdk(
+  doDelete: () => Promise<void>,
+  retry: RetryOptions = {}
+): Promise<ApplyResult> {
+  const oneDelete = async (): Promise<ApplyResult> => {
+    try {
+      await doDelete();
+      return { ok: true };
+    } catch (e) {
+      if (isAlreadyGone(e)) return { ok: true };
+      return { ok: false, error: errorText(e) };
+    }
+  };
+  return retryDeleteDeferringDependencies(oneDelete, retry);
 }

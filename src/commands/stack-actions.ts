@@ -37,7 +37,12 @@ import { style } from '../report/style.js';
 import { bulkMultiselect } from './bulk-multiselect.js';
 import { CLIENT_TIMEOUTS } from '../read/client-config.js';
 import { CC_IDENTIFIER_ADAPTERS } from '../read/router.js';
-import { applyRevertDelete, applyRevertDeletes, applyRevertItem } from '../revert/apply.js';
+import {
+  applyRevertDelete,
+  applyRevertDeletes,
+  applyRevertDeleteSdk,
+  applyRevertItem,
+} from '../revert/apply.js';
 import {
   buildRevertPlan,
   isContractOp,
@@ -49,7 +54,7 @@ import {
   writeOnlyReincludeOps,
 } from '../revert/plan.js';
 import { errorText, type RetryOptions, retryTransient } from '../revert/transient.js';
-import { resolveSdkWriter } from '../revert/writers.js';
+import { resolveSdkWriter, SDK_DELETERS } from '../revert/writers.js';
 import { deepEqual } from '../diff/drift-calculator.js';
 import type { Finding, SchemaInfo } from '../types.js';
 import { type Desired } from '../desired/template-adapter.js';
@@ -1528,10 +1533,31 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
   // `--wait` budget per pass. Undefined without `--wait` (falls back to the default
   // fixed-attempt backoff, unaffected by the deadline).
   const deleteDeadlineMs = waitMs !== undefined ? clock() + waitMs : undefined;
-  const deleteOutcomes = await applyRevertDeletes(deleteItems, (item) =>
+  const deleteOutcomes = await applyRevertDeletes(deleteItems, (item) => {
+    // #1386: a type Cloud Control cannot DELETE (AWS::AppSync::ApiKey —
+    // UnsupportedActionException) routes through its type-specific SDK deleter instead,
+    // wrapped so the batch keeps the identical already-gone / dependency-defer / transient
+    // semantics as the CC path. An added finding's synthesized logicalId is
+    // `${parentLogicalId}/${ccIdentifier}` (gather.ts addedFinding), so the enumerating
+    // PARENT's physical id (e.g. the GraphQLApi ARN DeleteApiKey derives its apiId from)
+    // is recovered from the prefix via resByLogical.
+    const sdkDeleter = SDK_DELETERS[item.resourceType];
+    if (sdkDeleter) {
+      const parentLogicalId = item.logicalId.split('/', 1)[0] ?? item.logicalId;
+      const parentPhysicalId = resByLogical.get(parentLogicalId)?.physicalId;
+      return applyRevertDeleteSdk(
+        () => sdkDeleter({ physicalId: item.physicalId, parentPhysicalId, region }),
+        buildRetryOpts(item.displayId, deleteDeadlineMs)
+      );
+    }
     // physicalId IS the CC identifier (the composite the finding carried); delete it.
-    applyRevertDelete(cc, item, item.physicalId, buildRetryOpts(item.displayId, deleteDeadlineMs))
-  );
+    return applyRevertDelete(
+      cc,
+      item,
+      item.physicalId,
+      buildRetryOpts(item.displayId, deleteDeadlineMs)
+    );
+  });
   for (const { item, result: r } of deleteOutcomes) {
     if (!r.ok) failedDeleteIds.add(item.logicalId);
     applied.push({
