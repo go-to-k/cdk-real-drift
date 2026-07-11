@@ -293,6 +293,8 @@ needs `--remove-unrecorded`).
 - **AppConfig**: application environments, configuration profiles
 - **EFS**: file system mount targets
 - **RDS**: database cluster instances
+- **S3**: bucket resource policies (an out-of-band `put-bucket-policy` on a bucket
+  with no declared `AWS::S3::BucketPolicy`)
 
 </details>
 
@@ -1008,6 +1010,10 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
     `appconfig:ListConfigurationProfiles`
   - `AWS::EFS::FileSystem`: `elasticfilesystem:DescribeMountTargets`
   - `AWS::RDS::DBCluster`: `rds:DescribeDBClusters`, `rds:DescribeDBInstances`
+  - `AWS::S3::Bucket`: `s3:GetBucketPolicy` (the same action listed as an SDK
+    override-reader permission above — here it enumerates a bucket's out-of-band
+    resource policy as a child `AWS::S3::BucketPolicy`, so it is required for the
+    `added` tier too; `NoSuchBucketPolicy` is the normal no-policy case)
 
   The `added` tier also needs `cloudformation:DescribeStackResources` (grouped with
   the other CloudFormation actions above): before flagging a live child as

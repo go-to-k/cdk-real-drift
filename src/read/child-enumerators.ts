@@ -140,6 +140,7 @@ import {
   type ResourceRecordSet,
   Route53Client,
 } from '@aws-sdk/client-route-53';
+import { GetBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
 import {
   ListSubscriptionsByTopicCommand,
   SNSClient,
@@ -265,8 +266,10 @@ export type ChildEnumerator = (ctx: EnumeratorContext) => Promise<AddedChild[]>;
 // thirteenth; AppConfig applications (environments) the fourteenth; Elastic Load Balancing
 // v2 listeners (rules) the fifteenth; EFS file systems (mount targets) the sixteenth;
 // RDS DB clusters (DB instances) the seventeenth; Route53 hosted zones (record sets) the
-// eighteenth; EC2 network ACLs (NACL entries) the nineteenth.
+// eighteenth; EC2 network ACLs (NACL entries) the nineteenth; S3 buckets (an out-of-band
+// resource policy attached with no declared AWS::S3::BucketPolicy, #835) the twentieth.
 export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
+  'AWS::S3::Bucket': enumerateS3BucketChildren,
   'AWS::ApiGateway::RestApi': enumerateRestApiChildren,
   'AWS::ApiGatewayV2::Api': enumerateHttpApiChildren,
   'AWS::SNS::Topic': enumerateSnsTopicChildren,
@@ -1957,6 +1960,111 @@ export async function enumerateLambdaFunctionChildren(
   });
 
   return [...esmAdded, ...urlAdded, ...aliasAdded, ...versionAdded, ...policyAdded];
+}
+
+// ── S3 ───────────────────────────────────────────────────────────────────────
+// An `AWS::S3::Bucket` can carry a resource policy, but the Bucket's own Cloud
+// Control model does NOT include it — the policy lives in the SEPARATE
+// `AWS::S3::BucketPolicy` resource type (1:1 with the bucket; its CFn physical id
+// AND CC primaryIdentifier are BOTH the bucket name). When a template DECLARES an
+// `AWS::S3::BucketPolicy`, cdkrd's declared override reader (`readS3BucketPolicy`)
+// already reads the live policy and diffs it, so an out-of-band edit surfaces on
+// that declared resource. But when the bucket has NO declared BucketPolicy, an
+// out-of-band `aws s3api put-bucket-policy` (a public-read / cross-account grant —
+// the classic drift a drift-detector exists to catch) is covered by NEITHER
+// mechanism and reads back CLEAN — a false negative (#835). This enumerator reads
+// the live policy via GetBucketPolicy and, when a bucket without a declared
+// BucketPolicy has one live, surfaces it as an out-of-band `added`
+// AWS::S3::BucketPolicy (revert deletes it via CC DeleteResource, identifier =
+// bucket name). The whole policy is ONE resource (unlike the Lambda per-statement
+// case), so there is a single `added` entry per bucket.
+
+// Pure diff: whether a declared BucketPolicy covers this bucket + the live policy
+// document -> the added BucketPolicy (if any). Separated from the SDK call so the
+// matching logic is unit-tested offline.
+export interface S3BucketPolicyInput {
+  bucketName: string; // the Bucket's physical id (name) — the BucketPolicy CC identifier
+  // A declared AWS::S3::BucketPolicy targets this bucket (so the declared override
+  // reader already handles it) OR the stack declares a BucketPolicy whose Bucket ref
+  // is UNRESOLVED (we cannot prove it is NOT this bucket, so conservatively treat it
+  // as covered — protecting the zero-first-run invariant against a false `added`).
+  hasDeclaredPolicy: boolean;
+  livePolicy: Record<string, unknown> | undefined; // parsed live bucket policy document, or undefined if none
+}
+
+export function diffS3BucketPolicy(input: S3BucketPolicyInput): AddedChild[] {
+  // A declared BucketPolicy already covers this bucket's policy (declared-tier diff).
+  if (input.hasDeclaredPolicy) return [];
+  // No live policy -> nothing out of band (the normal clean-bucket case).
+  if (!input.livePolicy) return [];
+  return [
+    {
+      resourceType: 'AWS::S3::BucketPolicy',
+      identifier: input.bucketName, // CC primaryIdentifier is /properties/Bucket
+      siblingLookupId: input.bucketName, // the CFn physical id of an AWS::S3::BucketPolicy IS the bucket name
+      label: `bucket policy ${input.bucketName}`,
+      live: { Bucket: input.bucketName, PolicyDocument: input.livePolicy },
+    },
+  ];
+}
+
+// Read the bucket's live resource policy document. GetBucketPolicy throws
+// `NoSuchBucketPolicy` when the bucket has NO policy — the NORMAL clean case, so it
+// maps to `undefined` (nothing to enumerate) rather than a coverage-gap `skipped` on
+// the parent. Any OTHER error (throttle, AccessDenied) is left to propagate: gather
+// turns it into a `skipped` finding on the parent (coverage-incomplete), never a
+// false `added`. A policy that is present but not parseable as a JSON object is also
+// treated as absent (we cannot form a meaningful `live` snippet).
+async function readS3BucketPolicyDocument(
+  client: S3Client,
+  bucket: string
+): Promise<Record<string, unknown> | undefined> {
+  let policyJson: string | undefined;
+  try {
+    const res = await client.send(new GetBucketPolicyCommand({ Bucket: bucket }));
+    policyJson = res?.Policy;
+  } catch (e) {
+    if ((e as { name?: string }).name === 'NoSuchBucketPolicy') return undefined;
+    throw e;
+  }
+  if (!policyJson) return undefined;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(policyJson);
+  } catch {
+    return undefined;
+  }
+  return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+    ? (parsed as Record<string, unknown>)
+    : undefined;
+}
+
+export async function enumerateS3BucketChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  const bucketName = parent.physicalId; // the Bucket's physical id is its name
+  if (!bucketName) return [];
+
+  // A declared AWS::S3::BucketPolicy covers this bucket iff its (gather-resolved)
+  // `Bucket` equals this bucket's name. gather resolves a same-stack `{ Ref: Bucket }`
+  // to the bucket name (the declared override reader `readS3BucketPolicy` consumes it
+  // as a plain string), so the common case is a reliable string match. A declared
+  // BucketPolicy whose `Bucket` is UNRESOLVED (e.g. an unresolvable cross-stack import)
+  // is conservatively treated as covering this bucket — we cannot prove it is NOT this
+  // bucket, and a false `added` on a clean deploy is worse than a missed rogue.
+  let hasDeclaredPolicy = false;
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::S3::BucketPolicy') continue;
+    const b = r.declared.Bucket;
+    if (typeof b === 'string') {
+      if (b === bucketName) hasDeclaredPolicy = true;
+    } else if (b !== undefined && hasUnresolved(b)) {
+      hasDeclaredPolicy = true;
+    }
+  }
+
+  const client = new S3Client({ region, ...READ_RETRY });
+  const livePolicy = await readS3BucketPolicyDocument(client, bucketName);
+  return diffS3BucketPolicy({ bucketName, hasDeclaredPolicy, livePolicy });
 }
 
 // ── EventBridge ────────────────────────────────────────────────────────────────
