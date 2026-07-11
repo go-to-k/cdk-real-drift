@@ -1,3 +1,10 @@
+## [0.12.89](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.88...v0.12.89) (2026-07-11)
+
+
+### Bug Fixes
+
+* **read:** surface out-of-band SQS queue policy as `added` (part of [#835](https://github.com/go-to-k/cdk-real-drift/issues/835)) ([#1480](https://github.com/go-to-k/cdk-real-drift/issues/1480)) ([e6a18f0](https://github.com/go-to-k/cdk-real-drift/commit/e6a18f083a88f90c1b2f27049f032e13db358592))
+
 ## [0.12.88](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.87...v0.12.88) (2026-07-11)
 
 
