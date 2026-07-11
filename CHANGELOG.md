@@ -1,3 +1,11 @@
+## [0.12.51](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.50...v0.12.51) (2026-07-11)
+
+
+### Bug Fixes
+
+* **diff:** consult an ancestor-path propertyTransform for child-path drift ([#1298](https://github.com/go-to-k/cdk-real-drift/issues/1298)) ([#1418](https://github.com/go-to-k/cdk-real-drift/issues/1418)) ([336f3ba](https://github.com/go-to-k/cdk-real-drift/commit/336f3ba5f79b3ad56ef56feaac2c7449d6708dd1))
+* **read:** OpenSearch service-client skip requires corroboration that a domain targets the pool ([#1265](https://github.com/go-to-k/cdk-real-drift/issues/1265)) ([#1419](https://github.com/go-to-k/cdk-real-drift/issues/1419)) ([3e7fb78](https://github.com/go-to-k/cdk-real-drift/commit/3e7fb78e688f7a96132bbd8f09765337b0c3b900))
+
 ## [0.12.50](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.49...v0.12.50) (2026-07-11)
 
 
