@@ -124,6 +124,11 @@ import {
   ListVersionsByFunctionCommand,
 } from '@aws-sdk/client-lambda';
 import {
+  DescribeDomainsCommand,
+  ListDomainNamesCommand,
+  OpenSearchClient,
+} from '@aws-sdk/client-opensearch';
+import {
   type DBInstance as RdsDBInstance,
   DescribeDBClustersCommand,
   DescribeDBInstancesCommand,
@@ -1687,7 +1692,24 @@ async function enumerateEventBusChildren(ctx: EnumeratorContext): Promise<AddedC
 // is created by another AWS service on the user's behalf, and Dashboards auth DEPENDS on
 // it (offering to DELETE it would break auth). It belongs to no stack, so the
 // sibling-stack check cannot rescue it. Gating only on this documented prefix preserves
-// out-of-band detection: a rogue client with an ordinary name still surfaces (#897).
+// out-of-band detection for an ordinary-named rogue client (#897).
+//
+// But `ClientName` is FREE-FORM user input: an attacker can `create-user-pool-client
+// --client-name AmazonOpenSearchService-backdoor` to mint a token-granting credential
+// that this prefix skip would then silently swallow — the rogue-IdP threat class (#1043)
+// — even in an account with NO OpenSearch/Elasticsearch domain at all (FN, #1265). So the
+// prefix skip is now GATED on CORROBORATION that an OpenSearch/Elasticsearch domain
+// actually targets THIS user pool (`openSearchCorroborated`); an uncorroborated
+// service-prefixed client surfaces as `added`. Corroboration is resolved by the async
+// enumerator in two tiers: (1) same-stack, offline — a declared `AWS::OpenSearchService::
+// Domain` / `AWS::Elasticsearch::Domain` whose `CognitoOptions.UserPoolId` refs this pool;
+// (2) live fallback — the OpenSearch `ListDomainNames` + `DescribeDomains` read, consulted
+// ONLY when a service-prefixed undeclared client exists and same-stack corroboration was
+// not found. The live call is FAIL-SAFE toward no-false-positive: if it throws (AccessDenied,
+// throttling, any error), corroboration is treated as TRUE (keep skipping) so a legitimate
+// OpenSearch user who lacks `es:` read perms never gets a false `added` on the service
+// client — the core invariant (a clean deploy shows ZERO drift on first check) wins. The
+// client is surfaced ONLY on an AFFIRMATIVE determination that no domain targets the pool.
 const OPENSEARCH_SERVICE_CLIENT_PREFIXES = ['AWSElasticsearch-', 'AmazonOpenSearchService-'];
 
 function isOpenSearchServiceClient(name: string | undefined): boolean {
@@ -1700,16 +1722,24 @@ export interface UserPoolChildInput {
   userPoolId: string;
   declaredClientIds: string[]; // physical ids (ClientIds) of AWS::Cognito::UserPoolClient
   liveClients: { id: string; name?: string | undefined; label?: string | undefined }[];
+  // Whether an OpenSearch/Elasticsearch domain is corroborated to target THIS user pool
+  // (#1265). When true, a service-prefixed client is the documented Dashboards-auth client
+  // and is skipped (#897); when false, even a service-prefixed name surfaces as `added`.
+  // Resolved (and defaulted fail-safe TRUE on live-read error) by `enumerateUserPoolChildren`.
+  // Optional so existing callers/tests that predate the gate keep the #897 skip behavior.
+  openSearchCorroborated?: boolean;
 }
 
 export function diffUserPoolChildren(input: UserPoolChildInput): AddedChild[] {
-  const { userPoolId, declaredClientIds, liveClients } = input;
+  const { userPoolId, declaredClientIds, liveClients, openSearchCorroborated = true } = input;
   const declared = new Set(declaredClientIds);
   const added: AddedChild[] = [];
   for (const c of liveClients) {
     if (declared.has(c.id)) continue;
-    // Skip the OpenSearch/Elasticsearch service-created Dashboards-auth client (#897).
-    if (isOpenSearchServiceClient(c.name ?? c.label)) continue;
+    // Skip the OpenSearch/Elasticsearch service-created Dashboards-auth client (#897) ONLY
+    // when a domain targeting this pool is corroborated — otherwise a free-form-named rogue
+    // client (`--client-name AmazonOpenSearchService-…`) would be invisible (#1265).
+    if (openSearchCorroborated && isOpenSearchServiceClient(c.name ?? c.label)) continue;
     added.push({
       resourceType: 'AWS::Cognito::UserPoolClient',
       identifier: `${userPoolId}|${c.id}`, // CC composite UserPoolId|ClientId
@@ -1926,6 +1956,30 @@ async function pageUserPoolIdentityProviders(
   return out;
 }
 
+// Live corroboration (#1265) that an OpenSearch/Elasticsearch domain enables Cognito
+// Dashboards auth against `userPoolId`. Lists the account's domains, describes them, and
+// checks each domain's `CognitoOptions.UserPoolId`. FAIL-SAFE toward no-false-positive:
+// any error (AccessDenied for a caller lacking `es:` read perms, throttling, etc.) returns
+// TRUE so a legitimate service-created Dashboards client is never falsely surfaced as
+// `added`. Returns FALSE only on an AFFIRMATIVE read that no domain targets the pool.
+async function openSearchDomainTargetsPool(region: string, userPoolId: string): Promise<boolean> {
+  try {
+    const os = new OpenSearchClient({ region, ...READ_RETRY });
+    const list = await os.send(new ListDomainNamesCommand({}));
+    const domainNames = (list.DomainNames ?? [])
+      .map((d) => d.DomainName)
+      .filter((n): n is string => typeof n === 'string');
+    if (domainNames.length === 0) return false;
+    const desc = await os.send(new DescribeDomainsCommand({ DomainNames: domainNames }));
+    return (desc.DomainStatusList ?? []).some(
+      (d) => d.CognitoOptions?.Enabled === true && d.CognitoOptions.UserPoolId === userPoolId
+    );
+  } catch {
+    // Fail-safe: treat as corroborated (keep skipping) — never a false `added`.
+    return true;
+  }
+}
+
 async function enumerateUserPoolChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
   const { parent, desired, region } = ctx;
   const userPoolId = parent.physicalId; // a UserPool's physical id IS its UserPoolId
@@ -1978,7 +2032,37 @@ async function enumerateUserPoolChildren(ctx: EnumeratorContext): Promise<AddedC
       (c): c is UserPoolClientDescription & { ClientId: string } => typeof c.ClientId === 'string'
     )
     .map((c) => ({ id: c.ClientId, name: c.ClientName, label: c.ClientName ?? c.ClientId }));
-  const clientAdded = diffUserPoolChildren({ userPoolId, declaredClientIds, liveClients });
+
+  // Resolve whether an OpenSearch/Elasticsearch domain targets THIS pool, so a
+  // service-prefixed client can be safely skipped as the documented Dashboards-auth client
+  // (#897) — otherwise it surfaces as an out-of-band `added` (#1265). Same-stack, offline
+  // corroboration first: a declared domain refs this pool via CognitoOptions.UserPoolId.
+  let openSearchCorroborated = desired.resources.some(
+    (r) =>
+      (r.resourceType === 'AWS::OpenSearchService::Domain' ||
+        r.resourceType === 'AWS::Elasticsearch::Domain') &&
+      parentRefMatches(
+        (r.declared.CognitoOptions as { UserPoolId?: unknown } | undefined)?.UserPoolId,
+        userPoolId
+      )
+  );
+  // Live fallback: consulted ONLY when same-stack corroboration was NOT found AND there is
+  // at least one undeclared, service-prefix-named live client (nothing to gate otherwise).
+  if (
+    !openSearchCorroborated &&
+    liveClients.some(
+      (c) => !declaredClientIds.includes(c.id) && isOpenSearchServiceClient(c.name ?? c.label)
+    )
+  ) {
+    openSearchCorroborated = await openSearchDomainTargetsPool(region, userPoolId);
+  }
+
+  const clientAdded = diffUserPoolChildren({
+    userPoolId,
+    declaredClientIds,
+    liveClients,
+    openSearchCorroborated,
+  });
 
   const groups = await pageUserPoolGroups(client, userPoolId);
   const liveGroups = groups

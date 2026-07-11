@@ -956,7 +956,11 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   - `AWS::Events::EventBus`: `events:ListRules`
   - `AWS::Cognito::UserPool`: `cognito-idp:ListUserPoolClients`,
     `cognito-idp:ListGroups`, `cognito-idp:ListResourceServers`,
-    `cognito-idp:ListIdentityProviders`
+    `cognito-idp:ListIdentityProviders`, plus (only when an undeclared
+    service-prefix-named app client is present, to corroborate that an
+    OpenSearch/Elasticsearch domain targets the pool before skipping it)
+    `es:ListDomainNames`, `es:DescribeDomains` — a caller lacking these degrades
+    fail-safe (the service client is treated as corroborated, never falsely flagged)
   - `AWS::AppSync::GraphQLApi`: `appsync:ListDataSources`, `appsync:ListResolvers`,
     `appsync:ListFunctions`, `appsync:ListTypes`
   - `AWS::Logs::LogGroup`: `logs:DescribeSubscriptionFilters` (plus
