@@ -73,6 +73,7 @@ import {
 import {
   ElasticBeanstalkClient,
   UpdateApplicationCommand,
+  UpdateApplicationResourceLifecycleCommand,
   UpdateEnvironmentCommand,
 } from '@aws-sdk/client-elastic-beanstalk';
 import {
@@ -2370,31 +2371,70 @@ const writeLexBotLocales: SdkWriter = async (ctx, ops) => {
 // The revertable declared surface is thin: ApplicationName / EnvironmentName are create-only
 // identities, the Environment's Tier is create-only, and its OptionSettings is write-only
 // (read gap) — so a DECLARED drift only ever lands on Description. ResourceLifecycleConfig
-// (Application) needs a separate UpdateApplicationResourceLifecycle call and is left to CC
-// (it folds atDefault when undeclared, so a declared drift on it is rare); a future writer
-// can extend the allowlist.
+// (Application) needs a separate UpdateApplicationResourceLifecycle call (below).
 const EB_APPLICATION_MODIFY_PARAMS = new Set(['Description']);
+// #1295 — AWS::ElasticBeanstalk::Application.ResourceLifecycleConfig is mutable out of band
+// (`aws elasticbeanstalk update-application-resource-lifecycle` — e.g. enabling a MaxCountRule
+// that auto-deletes application versions) and folds atDefault when undeclared. An OOB change
+// therefore surfaces as drift whose revert op lands on this writer, but UpdateApplication cannot
+// set ResourceLifecycleConfig, so before this fix the op hit the #804 assertOpsConsumed
+// honest-fail ("update it manually") and the drift could never converge in-tool. Route it
+// through its OWN UpdateApplicationResourceLifecycle call. The revert-to-default value (for a
+// `remove` on an undeclared, at-default finding) mirrors the KNOWN_DEFAULTS service default in
+// src/normalize/noise.ts — kept as a local constant here so this writer stays self-contained:
+// a version-lifecycle policy carrying both rules present but DISABLED (so no ServiceRole is
+// required). A declared drift writes the declared intent instead.
+const EB_APPLICATION_DEFAULT_RESOURCE_LIFECYCLE: Record<string, unknown> = {
+  VersionLifecycleConfig: {
+    MaxCountRule: { DeleteSourceFromS3: false, Enabled: false, MaxCount: 200 },
+    MaxAgeRule: { DeleteSourceFromS3: false, MaxAgeInDays: 180, Enabled: false },
+  },
+};
+const asObject = (v: unknown): Record<string, unknown> | undefined =>
+  v !== null && typeof v === 'object' && !Array.isArray(v)
+    ? (v as Record<string, unknown>)
+    : undefined;
 const writeElasticBeanstalkApplication: SdkWriter = async (ctx, ops) => {
   const name = str(ctx.physicalId) ?? str(ctx.declared['ApplicationName']);
   if (!name) throw new Error('cannot resolve Elastic Beanstalk ApplicationName for revert');
+  const client = new ElasticBeanstalkClient({ region: ctx.region, ...CLIENT_TIMEOUTS });
   const input: { ApplicationName: string; Description?: string } = { ApplicationName: name };
   let any = false;
+  let lifecycle: Record<string, unknown> | undefined;
   for (const op of ops) {
     const top = op.path.replace(/^\//, '').split('/')[0];
     if (top && EB_APPLICATION_MODIFY_PARAMS.has(top)) {
       // add -> declared value; remove -> clear (empty string, which EB reads as unset)
       input[top as 'Description'] = op.op === 'remove' ? '' : (str(ctx.declared[top]) ?? '');
       any = true;
+    } else if (top === 'ResourceLifecycleConfig') {
+      // remove -> the at-default service default (undeclared finding reverting to default);
+      // add/replace -> the declared intent (whole object), falling back to the op's carried
+      // value then the default. The declared object is preferred over op.value so a NESTED
+      // op path still writes the complete, coherent config rather than a leaf fragment.
+      lifecycle =
+        op.op === 'remove'
+          ? EB_APPLICATION_DEFAULT_RESOURCE_LIFECYCLE
+          : (asObject(ctx.declared['ResourceLifecycleConfig']) ??
+            asObject(op.value) ??
+            EB_APPLICATION_DEFAULT_RESOURCE_LIFECYCLE);
     }
   }
-  if (any)
-    await new ElasticBeanstalkClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
-      new UpdateApplicationCommand(input)
+  if (any) await client.send(new UpdateApplicationCommand(input));
+  if (lifecycle !== undefined)
+    await client.send(
+      new UpdateApplicationResourceLifecycleCommand({
+        ApplicationName: name,
+        ResourceLifecycleConfig: lifecycle,
+      })
     );
-  // #804 — ResourceLifecycleConfig (needs a separate UpdateApplicationResourceLifecycle call)
-  // and any other prop outside EB_APPLICATION_MODIFY_PARAMS are NOT applied here; report them
-  // not-reverted instead of silently succeeding.
-  assertOpsConsumed('ElasticBeanstalk Application', ops, EB_APPLICATION_MODIFY_PARAMS);
+  // Any other prop outside the handled set (Description + ResourceLifecycleConfig) is NOT
+  // applied here; report it not-reverted (#804) instead of silently succeeding.
+  assertOpsConsumed(
+    'ElasticBeanstalk Application',
+    ops,
+    new Set([...EB_APPLICATION_MODIFY_PARAMS, 'ResourceLifecycleConfig'])
+  );
 };
 
 const EB_ENVIRONMENT_MODIFY_PARAMS = new Set(['Description']);

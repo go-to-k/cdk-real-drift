@@ -72,6 +72,7 @@ import {
 import {
   ElasticBeanstalkClient,
   UpdateApplicationCommand,
+  UpdateApplicationResourceLifecycleCommand,
   UpdateEnvironmentCommand,
 } from '@aws-sdk/client-elastic-beanstalk';
 import {
@@ -1712,6 +1713,119 @@ describe('ElasticBeanstalk Application/Environment writers (CC UpdateResource Se
       SDK_WRITERS['AWS::ElasticBeanstalk::Application'](ctx({ physicalId: '', declared: {} }), [
         descOp('x'),
       ])
+    ).rejects.toThrow(/ApplicationName/);
+  });
+
+  // #1295 — ResourceLifecycleConfig is mutable out of band and folds atDefault when undeclared.
+  // Its revert op used to hit the #804 assertOpsConsumed honest-fail (UpdateApplication cannot
+  // set it); it now routes through UpdateApplicationResourceLifecycle and converges.
+  const DEFAULT_RLC = {
+    VersionLifecycleConfig: {
+      MaxCountRule: { DeleteSourceFromS3: false, Enabled: false, MaxCount: 200 },
+      MaxAgeRule: { DeleteSourceFromS3: false, MaxAgeInDays: 180, Enabled: false },
+    },
+  };
+  const enabledRLC = {
+    VersionLifecycleConfig: {
+      MaxCountRule: { DeleteSourceFromS3: true, Enabled: true, MaxCount: 5 },
+    },
+  };
+
+  it('reverts an undeclared, at-default ResourceLifecycleConfig (remove op) to the service default via UpdateApplicationResourceLifecycle', async () => {
+    eb.on(UpdateApplicationResourceLifecycleCommand).resolves({});
+    // The undeclared prop folded atDefault, drifted out of band, and the revert plan emits a
+    // `remove` (desired = absent/default). The writer must NOT honest-fail; it writes the default.
+    await SDK_WRITERS['AWS::ElasticBeanstalk::Application'](
+      ctx({ physicalId: 'my-app', declared: { ApplicationName: 'my-app' } }),
+      [
+        {
+          op: 'remove',
+          path: '/ResourceLifecycleConfig',
+          human: 'ResourceLifecycleConfig -> default',
+        },
+      ]
+    );
+    const calls = eb.commandCalls(UpdateApplicationResourceLifecycleCommand);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.args[0].input).toEqual({
+      ApplicationName: 'my-app',
+      ResourceLifecycleConfig: DEFAULT_RLC,
+    });
+    // no UpdateApplication (Description) call was sent for a pure lifecycle revert
+    expect(eb.commandCalls(UpdateApplicationCommand)).toHaveLength(0);
+  });
+
+  it('reverts a DECLARED ResourceLifecycleConfig drift (add op) to the declared intent', async () => {
+    eb.on(UpdateApplicationResourceLifecycleCommand).resolves({});
+    await SDK_WRITERS['AWS::ElasticBeanstalk::Application'](
+      ctx({
+        physicalId: 'my-app',
+        declared: { ApplicationName: 'my-app', ResourceLifecycleConfig: enabledRLC },
+      }),
+      [{ op: 'add', path: '/ResourceLifecycleConfig', value: enabledRLC, human: 'x' }]
+    );
+    expect(eb.commandCalls(UpdateApplicationResourceLifecycleCommand)[0]!.args[0].input).toEqual({
+      ApplicationName: 'my-app',
+      ResourceLifecycleConfig: enabledRLC,
+    });
+  });
+
+  it('a nested-path add op still writes the WHOLE declared ResourceLifecycleConfig (not a leaf fragment)', async () => {
+    eb.on(UpdateApplicationResourceLifecycleCommand).resolves({});
+    await SDK_WRITERS['AWS::ElasticBeanstalk::Application'](
+      ctx({
+        physicalId: 'my-app',
+        declared: { ApplicationName: 'my-app', ResourceLifecycleConfig: enabledRLC },
+      }),
+      [
+        {
+          op: 'add',
+          path: '/ResourceLifecycleConfig/VersionLifecycleConfig/MaxCountRule/Enabled',
+          value: true,
+          human: 'x',
+        },
+      ]
+    );
+    expect(eb.commandCalls(UpdateApplicationResourceLifecycleCommand)[0]!.args[0].input).toEqual({
+      ApplicationName: 'my-app',
+      ResourceLifecycleConfig: enabledRLC,
+    });
+  });
+
+  it('applies Description AND ResourceLifecycleConfig in one op set (two distinct commands)', async () => {
+    eb.on(UpdateApplicationCommand).resolves({});
+    eb.on(UpdateApplicationResourceLifecycleCommand).resolves({});
+    await SDK_WRITERS['AWS::ElasticBeanstalk::Application'](
+      ctx({
+        physicalId: 'my-app',
+        declared: { ApplicationName: 'my-app', Description: 'declared' },
+      }),
+      [
+        descOp('declared'),
+        {
+          op: 'remove',
+          path: '/ResourceLifecycleConfig',
+          human: 'ResourceLifecycleConfig -> default',
+        },
+      ]
+    );
+    expect(eb.commandCalls(UpdateApplicationCommand)[0]!.args[0].input).toEqual({
+      ApplicationName: 'my-app',
+      Description: 'declared',
+    });
+    expect(eb.commandCalls(UpdateApplicationResourceLifecycleCommand)[0]!.args[0].input).toEqual({
+      ApplicationName: 'my-app',
+      ResourceLifecycleConfig: DEFAULT_RLC,
+    });
+  });
+
+  it('still reports a truly off-allowlist prop (not Description/ResourceLifecycleConfig) not-reverted (#804)', async () => {
+    eb.on(UpdateApplicationResourceLifecycleCommand).resolves({});
+    await expect(
+      SDK_WRITERS['AWS::ElasticBeanstalk::Application'](
+        ctx({ physicalId: 'my-app', declared: { ApplicationName: 'my-app' } }),
+        [{ op: 'add', path: '/ApplicationName', value: 'renamed', human: 'x' }]
+      )
     ).rejects.toThrow(/ApplicationName/);
   });
 });
