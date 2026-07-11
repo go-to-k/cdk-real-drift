@@ -1,3 +1,10 @@
+## [0.12.92](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.91...v0.12.92) (2026-07-11)
+
+
+### Bug Fixes
+
+* **read:** surface out-of-band Secrets Manager resource policy as `added` (part of [#835](https://github.com/go-to-k/cdk-real-drift/issues/835)) ([#1482](https://github.com/go-to-k/cdk-real-drift/issues/1482)) ([2878784](https://github.com/go-to-k/cdk-real-drift/commit/287878469f4b02c39575a9691a7621fc8df18700))
+
 ## [0.12.91](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.90...v0.12.91) (2026-07-11)
 
 
