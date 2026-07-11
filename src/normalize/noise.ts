@@ -5074,6 +5074,37 @@ export const READGAP_COLLECTION_PATHS: Record<string, ReadonlySet<string>> = {
   // (live-observed on a clean ClientVpnEndpoint, us-east-1, 2026-07-10; #1102 F3). A true readGap:
   // the declared input shape is simply not part of the live model.
   'AWS::EC2::ClientVpnEndpoint': new Set(['TagSpecifications']),
+  // The per-engine `*Settings` connection blobs (S3Settings/KinesisSettings/…) — a
+  // NON_PROVISIONABLE type read via DMS DescribeEndpoints (overrides.ts readDmsEndpoint).
+  // The SDK returns these under DIFFERENT key casing than the CFn schema AND AWS
+  // default-fills them, so a verbatim passthrough would false-flag; the reader deliberately
+  // projects only the scalars and NEVER these blobs. Without this denylist a declared
+  // `S3Settings` (REQUIRED for an S3 endpoint) — a non-empty object — hits classify's
+  // removed-collection branch as `[CFn-Declared Drift] S3Settings desired={…} actual=undefined`
+  // on every S3/Kinesis/Kafka/MongoDB/… endpoint, survives record, and revert offers a bogus
+  // whole-property add. A true readGap: the live model genuinely never carries the declared
+  // shape. The 17 keys are the full AWS::DMS::Endpoint `*Settings` set (describe-type,
+  // us-east-1, 2026-07-10). Full field-by-field projection (restoring out-of-band detection)
+  // needs per-engine live default-fill analysis and is a deferred follow-up (#1293).
+  'AWS::DMS::Endpoint': new Set([
+    'DocDbSettings',
+    'DynamoDbSettings',
+    'ElasticsearchSettings',
+    'GcpMySQLSettings',
+    'IbmDb2Settings',
+    'KafkaSettings',
+    'KinesisSettings',
+    'MicrosoftSqlServerSettings',
+    'MongoDbSettings',
+    'MySqlSettings',
+    'NeptuneSettings',
+    'OracleSettings',
+    'PostgreSqlSettings',
+    'RedisSettings',
+    'RedshiftSettings',
+    'S3Settings',
+    'SybaseSettings',
+  ]),
 };
 
 // SCALAR_RETURNED_WHEN_SET is the ALLOWLIST inverse of the collection default in the
