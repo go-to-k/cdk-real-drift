@@ -15,6 +15,7 @@ import {
   deletedResourceInfo,
   loadDesired,
   parseTemplateBody,
+  transformStackWarning,
   typeChangedResources,
   typeChangeReplaceInfo,
 } from '../src/desired/template-adapter.js';
@@ -1050,5 +1051,107 @@ describe('#882 — buildResolverContext does NOT seed an SSM-typed param Default
     };
     const ctx = buildResolverContext(template, {}, {}, 'us-east-1', '999', 'S', 'arn');
     expect('Sgs' in ctx.params).toBe(false);
+  });
+});
+
+// #904 part 1: honest per-stack warning when a Transform-bearing / SAM local template
+// is compared under --pre-deploy (CDK's local synth is UNPROCESSED, so Serverless
+// resources are `skipped` and transform-generated resources are invisible).
+describe('#904 transformStackWarning', () => {
+  it('warns for a Transform directive (string) + names the AWS::Serverless::* resources', () => {
+    const w = transformStackWarning(
+      {
+        Transform: 'AWS::Serverless-2016-10-31',
+        Resources: {
+          Fn: { Type: 'AWS::Serverless::Function' },
+          Api: { Type: 'AWS::Serverless::Api' },
+          Tbl: { Type: 'AWS::DynamoDB::Table' },
+        },
+      },
+      'S'
+    );
+    expect(w).toContain('--pre-deploy CANNOT process server-side transforms');
+    expect(w).toContain('Transform AWS::Serverless-2016-10-31');
+    expect(w).toContain('2 AWS::Serverless::* resource(s): Api, Fn');
+    expect(w).not.toContain('Tbl'); // ordinary declared resources are not listed
+  });
+
+  it('warns for an array Transform (e.g. LanguageExtensions) even with no Serverless resources', () => {
+    const w = transformStackWarning(
+      { Transform: ['AWS::LanguageExtensions'], Resources: { B: { Type: 'AWS::S3::Bucket' } } },
+      'S'
+    );
+    expect(w).toContain('Transform AWS::LanguageExtensions');
+  });
+
+  it('warns for a SAM stack that only carries Serverless resources (macro caught via the type set)', () => {
+    const w = transformStackWarning(
+      { Resources: { Fn: { Type: 'AWS::Serverless::Function' } } },
+      'S'
+    );
+    expect(w).toContain('1 AWS::Serverless::* resource(s): Fn');
+  });
+
+  it('returns null for a transform-free stack (previews normally)', () => {
+    expect(
+      transformStackWarning({ Resources: { B: { Type: 'AWS::S3::Bucket' } } }, 'S')
+    ).toBeNull();
+    expect(transformStackWarning({}, 'S')).toBeNull();
+  });
+});
+
+// #904 part 1 (wiring) + part 3 (explicit TemplateStage).
+describe('#904 loadDesired — transform warning under --pre-deploy + Processed TemplateStage', () => {
+  function liveStack(cfn: ReturnType<typeof mockClient>): void {
+    cfn.on(ListStackResourcesCommand).resolves({ StackResourceSummaries: [] });
+    cfn.on(DescribeStacksCommand).resolves({
+      Stacks: [
+        {
+          StackId: 'arn:aws:cloudformation:us-east-1:111122223333:stack/S/x',
+          StackName: 'S',
+          CreationTime: new Date(0),
+          StackStatus: 'CREATE_COMPLETE',
+          Parameters: [],
+        },
+      ],
+    });
+  }
+
+  it('emits the transform warning to stderr under --pre-deploy for a SAM template', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    cfn.on(GetTemplateCommand).rejects(new Error('GetTemplate must NOT be called in pre-deploy'));
+    liveStack(cfn);
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    let msg = '';
+    try {
+      await loadDesired(cfn as unknown as CloudFormationClient, 'S', 'us-east-1', {
+        Transform: 'AWS::Serverless-2016-10-31',
+        Resources: { Fn: { Type: 'AWS::Serverless::Function' } },
+      });
+      msg = err.mock.calls.map((c) => String(c[0])).join('\n');
+    } finally {
+      err.mockRestore();
+    }
+    expect(msg).toContain('--pre-deploy CANNOT process server-side transforms');
+  });
+
+  it('fetches the deployed template with TemplateStage: Processed (part 3) and does not warn', async () => {
+    const cfn = mockClient(CloudFormationClient);
+    cfn.on(GetTemplateCommand).resolves({
+      TemplateBody: JSON.stringify({
+        Resources: { B: { Type: 'AWS::S3::Bucket', Properties: {} } },
+      }),
+    });
+    liveStack(cfn);
+    const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      // deployed path (no templateOverride) — the transform warning never fires.
+      await loadDesired(cfn as unknown as CloudFormationClient, 'S', 'us-east-1');
+    } finally {
+      err.mockRestore();
+    }
+    const calls = cfn.commandCalls(GetTemplateCommand);
+    expect(calls.length).toBe(1);
+    expect(calls[0]!.args[0].input).toMatchObject({ StackName: 'S', TemplateStage: 'Processed' });
   });
 });

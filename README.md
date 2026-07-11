@@ -496,6 +496,15 @@ from a **changed local `Default`** is applied only if you pass
 `--parameters <key>=<value>` / `--no-previous-parameters` — `check` prints a
 stderr note naming each such parameter and both values.
 
+A second caveat on **server-side transforms** (SAM `AWS::Serverless-2016-10-31`,
+`AWS::LanguageExtensions`, macros): CloudFormation expands these in the cloud at
+deploy time, but `--pre-deploy` compares against your **local, unprocessed** synth
+template. So under `--pre-deploy` every `AWS::Serverless::*` resource is `skipped`
+(its declared props are not compared) and transform-generated resources are
+invisible — `check` prints a per-stack stderr note when it sees a transformed
+template. Normal `check` (against the deployed, already-**processed** template) has
+no such gap and compares transformed stacks fully; prefer it for SAM/macro apps.
+
 ### Ignoring externally-managed properties
 
 Some properties are _legitimately_ rewritten by another system, such as Application
