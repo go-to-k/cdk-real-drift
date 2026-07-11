@@ -3714,6 +3714,28 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   'AWS::CloudFormation::Stack': new Set(['TemplateBody', 'Capabilities']),
 };
 
+// The NESTED twin of VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS (fold-strategy tier 3, "nested
+// kin"): undeclared NESTED scalar paths whose AWS-chosen value is SERVICE-MANAGED and genuinely
+// cannot be pinned OR derived from the declared inputs — AWS moves it continuously after creation.
+// Keyed by resource type -> a set of SCHEMA-PATHS (array indices collapsed to `.*`, the form
+// emitNested computes). Folded to `atDefault` REGARDLESS of value: the property is not declared,
+// so whatever AWS materializes is its own choice, never user intent (a user who cares DECLARES it
+// and is then compared in the declared loop, never reaching emitNested). Like the top-level table
+// this LOSES change-detection at the path, so it is the LAST resort — reserved for a value AWS owns
+// and moves, not one a user can meaningfully set. Suppressed for any path that also has a
+// knownDefPaths equality gate this run (that gate already folds the default and must surface a
+// real change), same as the top-level `!(k in knownDef)` guard.
+//   AWS::Batch::ComputeEnvironment.ComputeResources.DesiredvCpus — for a MANAGED CE, Batch OWNS the
+//   desired vCPU count and scales it continuously with the job load (0 when idle, up to MaxvCpus as
+//   jobs run). No constant / ONE_OF / derivation can pin a moving target, and an equality-gate on
+//   the creation value (0) would false-positive on every busy environment's later checks after
+//   record. Undeclared + service-managed → value-independent. A user who pins a starting count
+//   DECLARES DesiredvCpus, compared in the declared loop. First-run FP on a barest MANAGED/EC2 CE
+//   (#1501, live-repro'd 2026-07-12 on tests/integration/s3kms-ddb-batch-min).
+export const VALUE_INDEPENDENT_DEFAULT_NESTED_PATHS: Record<string, ReadonlySet<string>> = {
+  'AWS::Batch::ComputeEnvironment': new Set(['ComputeResources.DesiredvCpus']),
+};
+
 // R142: true when `value` equals a `|`/`:`/`/`-separated SEGMENT of the physical id.
 // Folds a GENERATED_PATHS value only when it ECHOES an id AWS minted (an ApiGateway
 // Method's CacheNamespace = the parent Resource id, the middle segment of

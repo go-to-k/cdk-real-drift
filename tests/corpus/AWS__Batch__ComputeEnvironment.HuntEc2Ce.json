@@ -157,7 +157,7 @@
       "constructPath": "CdkRealDriftIntegS3KmsDdbBatchMin/HuntEc2Ce"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "HuntEc2Ce",
       "resourceType": "AWS::Batch::ComputeEnvironment",
       "path": "ComputeResources.DesiredvCpus",

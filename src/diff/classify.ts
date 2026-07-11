@@ -95,6 +95,7 @@ import {
   UNORDERED_NESTED_OBJECT_ARRAY_PATHS,
   UNORDERED_OBJECT_ARRAY_IDENTITY,
   UNORDERED_OBJECT_ARRAY_PROPS,
+  VALUE_INDEPENDENT_DEFAULT_NESTED_PATHS,
   VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS,
   VERSION_PREFIX_PATHS,
 } from '../normalize/noise.js';
@@ -3425,6 +3426,14 @@ export function classifyResource(
         matchesKnownDefault(value, d)
       ) ??
         false) ||
+      // The nested twin of the top-level VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS fold (fold tier
+      // 3, "nested kin"): a nested scalar path whose AWS value is service-managed and moves after
+      // creation (Batch ComputeResources.DesiredvCpus) — folded atDefault regardless of value.
+      // Suppressed when the path also has a knownDefPaths equality gate this run (the gate already
+      // folds the default and must surface a real change), matching the top-level `!(k in knownDef)`
+      // guard. A trivially-empty value has already returned at the top of emitNested.
+      (VALUE_INDEPENDENT_DEFAULT_NESTED_PATHS[resourceType]?.has(schemaPath) &&
+        !(schemaPath in knownDefPaths)) ||
       // #627: a GSI's undeclared WarmThroughput echoing that GSI's effective capacity
       // (on-demand constant or its own ProvisionedThroughput) — a per-GSI derived default.
       dynamoGsiWarmThroughputAtDefault(resourceType, path, value, live) ||
