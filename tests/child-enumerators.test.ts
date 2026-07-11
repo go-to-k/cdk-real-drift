@@ -32,6 +32,7 @@ import {
 import { ListResourceRecordSetsCommand, Route53Client } from '@aws-sdk/client-route-53';
 import { GetBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
 import { ListSubscriptionsByTopicCommand, SNSClient } from '@aws-sdk/client-sns';
+import { GetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { mockClient } from 'aws-sdk-client-mock';
 import { describe, expect, it } from 'vite-plus/test';
 import { UNRESOLVED } from '../src/normalize/intrinsic-resolver.js';
@@ -44,6 +45,7 @@ import {
   enumerateRoute53HostedZoneChildren,
   enumerateS3BucketChildren,
   enumerateSnsTopicChildren,
+  enumerateSqsQueueChildren,
   enumerateVpcChildren,
   diffApiGatewayAuthorizers,
   diffApiGatewayChildren,
@@ -79,6 +81,7 @@ import {
   diffRouteTableChildren,
   diffS3BucketPolicy,
   diffSnsTopicChildren,
+  diffSqsQueuePolicy,
   diffUserPoolChildren,
   diffUserPoolGroups,
   diffUserPoolIdentityProviders,
@@ -1426,6 +1429,60 @@ describe('diffS3BucketPolicy (S3 out-of-band bucket policy, #835)', () => {
     expect(
       diffS3BucketPolicy({
         bucketName: BUCKET,
+        hasDeclaredPolicy: false,
+        livePolicy: undefined,
+      })
+    ).toEqual([]);
+  });
+});
+
+describe('diffSqsQueuePolicy (SQS out-of-band queue policy, #835)', () => {
+  const QURL = 'https://sqs.us-east-1.amazonaws.com/111122223333/my-queue';
+  const crossAcctPolicy = {
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Sid: 'RogueCrossAccountSend',
+        Effect: 'Allow',
+        Principal: { AWS: '999988887777' },
+        Action: 'sqs:SendMessage',
+        Resource: 'arn:aws:sqs:us-east-1:111122223333:my-queue',
+      },
+    ],
+  };
+
+  it('flags an out-of-band policy on a queue with no declared QueuePolicy', () => {
+    const added = diffSqsQueuePolicy({
+      queueUrl: QURL,
+      hasDeclaredPolicy: false,
+      livePolicy: crossAcctPolicy,
+    });
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::SQS::QueuePolicy',
+        // CC primaryIdentifier is a generated Id; the finding carries the queue URL instead.
+        identifier: QURL,
+        siblingLookupId: QURL,
+        label: `queue policy ${QURL}`,
+        live: { Queues: [QURL], PolicyDocument: crossAcctPolicy },
+      },
+    ]);
+  });
+
+  it('suppresses when a declared AWS::SQS::QueuePolicy already covers the queue', () => {
+    expect(
+      diffSqsQueuePolicy({
+        queueUrl: QURL,
+        hasDeclaredPolicy: true,
+        livePolicy: crossAcctPolicy,
+      })
+    ).toEqual([]);
+  });
+
+  it('no drift when the queue has no live policy (zero first-run FP)', () => {
+    expect(
+      diffSqsQueuePolicy({
+        queueUrl: QURL,
         hasDeclaredPolicy: false,
         livePolicy: undefined,
       })
@@ -3970,6 +4027,91 @@ describe('enumerateS3BucketChildren out-of-band bucket policy (#835)', () => {
     );
     await expect(enumerateS3BucketChildren(ctxFor([]))).rejects.toThrow('denied');
     s3.restore();
+  });
+});
+
+describe('enumerateSqsQueueChildren out-of-band queue policy (#835)', () => {
+  const QURL = 'https://sqs.us-east-1.amazonaws.com/111122223333/my-queue';
+  const policyJson = JSON.stringify({
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Sid: 'RogueCrossAccountSend',
+        Effect: 'Allow',
+        Principal: { AWS: '999988887777' },
+        Action: 'sqs:SendMessage',
+        Resource: 'arn:aws:sqs:us-east-1:111122223333:my-queue',
+      },
+    ],
+  });
+  const ctxFor = (resources: unknown[]) =>
+    ({
+      parent: { physicalId: QURL, logicalId: 'Queue' },
+      desired: { resources },
+      region: 'us-east-1',
+    }) as unknown as EnumeratorContext;
+
+  it('flags an out-of-band policy on a queue with no declared QueuePolicy', async () => {
+    const sqs = mockClient(SQSClient);
+    sqs.on(GetQueueAttributesCommand).resolves({ Attributes: { Policy: policyJson } });
+    const added = await enumerateSqsQueueChildren(ctxFor([]));
+    expect(added).toEqual([
+      {
+        resourceType: 'AWS::SQS::QueuePolicy',
+        identifier: QURL,
+        siblingLookupId: QURL,
+        label: `queue policy ${QURL}`,
+        live: {
+          Queues: [QURL],
+          PolicyDocument: {
+            Version: '2012-10-17',
+            Statement: [
+              {
+                Sid: 'RogueCrossAccountSend',
+                Effect: 'Allow',
+                Principal: { AWS: '999988887777' },
+                Action: 'sqs:SendMessage',
+                Resource: 'arn:aws:sqs:us-east-1:111122223333:my-queue',
+              },
+            ],
+          },
+        },
+      },
+    ]);
+    sqs.restore();
+  });
+
+  it('suppresses when a declared AWS::SQS::QueuePolicy targets the queue (resolved Queues)', async () => {
+    const sqs = mockClient(SQSClient);
+    sqs.on(GetQueueAttributesCommand).resolves({ Attributes: { Policy: policyJson } });
+    // gather resolves the declared QueuePolicy's `Queues: [{ Ref: Queue }]` to the queue URL.
+    const added = await enumerateSqsQueueChildren(
+      ctxFor([
+        {
+          resourceType: 'AWS::SQS::QueuePolicy',
+          physicalId: 'gen-id',
+          declared: { Queues: [QURL] },
+        },
+      ])
+    );
+    expect(added).toEqual([]);
+    sqs.restore();
+  });
+
+  it('a queue with NO policy attribute surfaces nothing (zero first-run FP)', async () => {
+    const sqs = mockClient(SQSClient);
+    sqs.on(GetQueueAttributesCommand).resolves({ Attributes: {} });
+    expect(await enumerateSqsQueueChildren(ctxFor([]))).toEqual([]);
+    sqs.restore();
+  });
+
+  it('a GetQueueAttributes error propagates (parent coverage gap, not a false added)', async () => {
+    const sqs = mockClient(SQSClient);
+    sqs
+      .on(GetQueueAttributesCommand)
+      .rejects(Object.assign(new Error('denied'), { name: 'AccessDenied' }));
+    await expect(enumerateSqsQueueChildren(ctxFor([]))).rejects.toThrow('denied');
+    sqs.restore();
   });
 });
 

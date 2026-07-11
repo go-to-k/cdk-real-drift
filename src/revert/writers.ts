@@ -3151,7 +3151,21 @@ const deleteRoute53RecordSet: SdkDeleter = async (ctx) => {
   );
 };
 
+// AWS::SQS::QueuePolicy: CC has no usable delete for an out-of-band policy (its
+// primaryIdentifier is a service-generated `Id` the policy-set never produces), so an added
+// queue policy found by the SQS child enumerator (#835) is removed via SetQueueAttributes with
+// an EMPTY `Policy` — the same API the declared `writeSqsQueuePolicy` uses to converge a policy,
+// here clearing it entirely. The finding carries the QUEUE URL as its physicalId (the enumerator
+// identity), which is exactly the SetQueueAttributes target. An already-cleared policy is the
+// delete goal state (applyRevertDeleteSdk treats a no-op / already-gone as success).
+const deleteSqsQueuePolicy: SdkDeleter = async (ctx) => {
+  await new SQSClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
+    new SetQueueAttributesCommand({ QueueUrl: ctx.physicalId, Attributes: { Policy: '' } })
+  );
+};
+
 export const SDK_DELETERS: Record<string, SdkDeleter> = {
   'AWS::AppSync::ApiKey': deleteAppSyncApiKey,
   'AWS::Route53::RecordSet': deleteRoute53RecordSet,
+  'AWS::SQS::QueuePolicy': deleteSqsQueuePolicy,
 };

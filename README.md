@@ -295,6 +295,8 @@ needs `--remove-unrecorded`).
 - **RDS**: database cluster instances
 - **S3**: bucket resource policies (an out-of-band `put-bucket-policy` on a bucket
   with no declared `AWS::S3::BucketPolicy`)
+- **SQS**: queue access policies (an out-of-band `set-queue-attributes Policy` on a
+  queue with no declared `AWS::SQS::QueuePolicy`)
 
 </details>
 
@@ -1014,6 +1016,10 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
     override-reader permission above — here it enumerates a bucket's out-of-band
     resource policy as a child `AWS::S3::BucketPolicy`, so it is required for the
     `added` tier too; `NoSuchBucketPolicy` is the normal no-policy case)
+  - `AWS::SQS::Queue`: `sqs:GetQueueAttributes` (enumerates a queue's out-of-band
+    access policy as a child `AWS::SQS::QueuePolicy`; a queue with no policy simply
+    returns no `Policy` attribute). Reverting a detected one also needs
+    `sqs:SetQueueAttributes` (the SDK deleter clears the `Policy`).
 
   The `added` tier also needs `cloudformation:DescribeStackResources` (grouped with
   the other CloudFormation actions above): before flagging a live child as

@@ -146,6 +146,7 @@ import {
   SNSClient,
   type Subscription as SnsSubscription,
 } from '@aws-sdk/client-sns';
+import { GetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { READ_RETRY } from './client-config.js';
 import { hasUnresolved, UNRESOLVED } from '../normalize/intrinsic-resolver.js';
 import type { Desired } from '../desired/template-adapter.js';
@@ -267,9 +268,12 @@ export type ChildEnumerator = (ctx: EnumeratorContext) => Promise<AddedChild[]>;
 // v2 listeners (rules) the fifteenth; EFS file systems (mount targets) the sixteenth;
 // RDS DB clusters (DB instances) the seventeenth; Route53 hosted zones (record sets) the
 // eighteenth; EC2 network ACLs (NACL entries) the nineteenth; S3 buckets (an out-of-band
-// resource policy attached with no declared AWS::S3::BucketPolicy, #835) the twentieth.
+// resource policy attached with no declared AWS::S3::BucketPolicy, #835) the twentieth;
+// SQS queues (an out-of-band access policy set with no declared AWS::SQS::QueuePolicy, #835)
+// the twenty-first.
 export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::S3::Bucket': enumerateS3BucketChildren,
+  'AWS::SQS::Queue': enumerateSqsQueueChildren,
   'AWS::ApiGateway::RestApi': enumerateRestApiChildren,
   'AWS::ApiGatewayV2::Api': enumerateHttpApiChildren,
   'AWS::SNS::Topic': enumerateSnsTopicChildren,
@@ -2065,6 +2069,107 @@ export async function enumerateS3BucketChildren(ctx: EnumeratorContext): Promise
   const client = new S3Client({ region, ...READ_RETRY });
   const livePolicy = await readS3BucketPolicyDocument(client, bucketName);
   return diffS3BucketPolicy({ bucketName, hasDeclaredPolicy, livePolicy });
+}
+
+// ── SQS ──────────────────────────────────────────────────────────────────────
+// An `AWS::SQS::Queue` can carry an access policy, but the Queue's own Cloud Control
+// model does NOT include it — the policy lives in the SEPARATE `AWS::SQS::QueuePolicy`
+// type (its CC primaryIdentifier is a service-generated `Id`, NOT the queue). When a
+// template DECLARES an `AWS::SQS::QueuePolicy`, cdkrd's declared override reader
+// (`readSqsQueuePolicy`) already reads + diffs the live `Policy` attribute. But when
+// the queue has NO declared QueuePolicy, an out-of-band `aws sqs set-queue-attributes
+// Policy=…` (a cross-account send/receive grant) is covered by NEITHER mechanism and
+// reads back CLEAN — a false negative (#835). A fresh queue has NO policy attribute, so
+// a present `Policy` is always a set one (no first-run FP). This enumerator reads the
+// live `Policy` and, when a queue without a declared QueuePolicy has one, surfaces it as
+// an out-of-band `added` AWS::SQS::QueuePolicy. Because the CC identifier is a generated
+// `Id` (unavailable for an out-of-band policy), the finding carries the QUEUE URL as its
+// identity: gather skips the doomed CC GetResource for it (CC_GET_UNSUPPORTED_ADDED_TYPES)
+// and uses the enumerator's `live` snippet, and revert deletes it via the
+// `deleteSqsQueuePolicy` SDK deleter (SetQueueAttributes with an empty Policy), not CC.
+
+// Pure diff: whether a declared QueuePolicy covers this queue + the live policy document
+// -> the added QueuePolicy (if any). Separated from the SDK call so the matching logic is
+// unit-tested offline.
+export interface SqsQueuePolicyInput {
+  queueUrl: string; // the Queue's physical id (URL) — the SDK-deleter delete target + the finding identity
+  // A declared AWS::SQS::QueuePolicy targets this queue (so the declared override reader
+  // already handles it) OR the stack declares a QueuePolicy whose `Queues` is UNRESOLVED
+  // (we cannot prove it is NOT this queue, so conservatively treat it as covered — protecting
+  // the zero-first-run invariant against a false `added`).
+  hasDeclaredPolicy: boolean;
+  livePolicy: Record<string, unknown> | undefined; // parsed live queue policy document, or undefined if none
+}
+
+export function diffSqsQueuePolicy(input: SqsQueuePolicyInput): AddedChild[] {
+  // A declared QueuePolicy already covers this queue's policy (declared-tier diff).
+  if (input.hasDeclaredPolicy) return [];
+  // No live policy -> nothing out of band (the normal clean-queue case).
+  if (!input.livePolicy) return [];
+  return [
+    {
+      resourceType: 'AWS::SQS::QueuePolicy',
+      // The CC primaryIdentifier is a generated `Id` unavailable for an out-of-band policy;
+      // carry the queue URL as the identity — the SDK deleter's SetQueueAttributes target,
+      // and (type-gated) the sibling-stack membership lookup key.
+      identifier: input.queueUrl,
+      siblingLookupId: input.queueUrl,
+      label: `queue policy ${input.queueUrl}`,
+      live: { Queues: [input.queueUrl], PolicyDocument: input.livePolicy },
+    },
+  ];
+}
+
+// Read the queue's live access policy document. A queue with no policy simply returns no
+// `Policy` attribute (NOT an error), which maps to `undefined`. A `Policy` present but not
+// parseable as a JSON object is also treated as absent (no meaningful `live` snippet). Any
+// error (throttle, AccessDenied, QueueDoesNotExist) is left to propagate: gather turns it
+// into a `skipped` finding on the parent (coverage-incomplete), never a false `added`.
+async function readSqsQueuePolicyDocument(
+  client: SQSClient,
+  queueUrl: string
+): Promise<Record<string, unknown> | undefined> {
+  const res = await client.send(
+    new GetQueueAttributesCommand({ QueueUrl: queueUrl, AttributeNames: ['Policy'] })
+  );
+  const policyJson = res.Attributes?.Policy;
+  if (!policyJson) return undefined;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(policyJson);
+  } catch {
+    return undefined;
+  }
+  return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+    ? (parsed as Record<string, unknown>)
+    : undefined;
+}
+
+export async function enumerateSqsQueueChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  const queueUrl = parent.physicalId; // an AWS::SQS::Queue's physical id (Ref) IS its URL
+  if (!queueUrl) return [];
+
+  // A declared AWS::SQS::QueuePolicy covers this queue iff one of its (gather-resolved)
+  // `Queues` equals this queue's URL. gather resolves a same-stack `{ Ref: Queue }` to the
+  // URL (the declared override reader `readSqsQueuePolicy` consumes it as a plain string).
+  // A declared QueuePolicy whose `Queues` is UNRESOLVED is conservatively treated as covering
+  // this queue — a false `added` on a clean deploy is worse than a missed rogue.
+  let hasDeclaredPolicy = false;
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::SQS::QueuePolicy') continue;
+    const queues = r.declared.Queues;
+    if (Array.isArray(queues)) {
+      if (queues.some((q) => q === queueUrl)) hasDeclaredPolicy = true;
+      else if (queues.some((q) => hasUnresolved(q))) hasDeclaredPolicy = true;
+    } else if (queues !== undefined && hasUnresolved(queues)) {
+      hasDeclaredPolicy = true;
+    }
+  }
+
+  const client = new SQSClient({ region, ...READ_RETRY });
+  const livePolicy = await readSqsQueuePolicyDocument(client, queueUrl);
+  return diffSqsQueuePolicy({ queueUrl, hasDeclaredPolicy, livePolicy });
 }
 
 // ── EventBridge ────────────────────────────────────────────────────────────────

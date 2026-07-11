@@ -366,7 +366,15 @@ export function addedFinding(
 // recordable model in its `live` snippet (a Route53 RecordSet's Name/Type/TTL/ResourceRecords/
 // AliasTarget), so use THAT as the recordable model instead of the doomed CC read. (Its real
 // delete goes through a type-specific SDK deleter, not CC — see revert/writers.ts SDK_DELETERS.)
-const CC_GET_UNSUPPORTED_ADDED_TYPES = new Set<string>(['AWS::Route53::RecordSet']);
+// AWS::SQS::QueuePolicy (#835): the CC primaryIdentifier is a service-generated `Id`, which
+// an out-of-band `set-queue-attributes Policy=…` never produces — so a CC GetResource keyed on
+// the queue URL the enumerator carries would always fail. The enumerator's `live` snippet
+// ({ Queues, PolicyDocument }) IS the recordable model; use it. (Its real delete goes through
+// the `deleteSqsQueuePolicy` SDK deleter — SetQueueAttributes with an empty Policy — not CC.)
+const CC_GET_UNSUPPORTED_ADDED_TYPES = new Set<string>([
+  'AWS::Route53::RecordSet',
+  'AWS::SQS::QueuePolicy',
+]);
 
 // Read the added child's FULL live model via Cloud Control GetResource (its
 // `identifier` is the CC composite, the same one revert's DeleteResource consumes) and
