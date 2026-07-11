@@ -1644,8 +1644,22 @@ describe('diffLogGroupChildren (CloudWatch Logs metric filters)', () => {
         identifier: `${LG}|cdkrd-integ-oob`,
         label: 'cdkrd-integ-oob',
         live: { FilterName: 'cdkrd-integ-oob', LogGroupName: LG },
+        // #1310: the CFn physical id is the FilterName, carried positionally so the sibling
+        // check probes the exact id (and skips the `|` fan-out that mishandles a `|` in a name).
+        siblingLookupId: 'cdkrd-integ-oob',
       },
     ]);
+  });
+
+  it('#1310: siblingLookupId is the bare FilterName even when it contains a `|`', () => {
+    const added = diffLogGroupChildren({
+      logGroupName: LG,
+      declaredFilterNames: [],
+      liveFilters: [{ name: 'error|filter' }],
+    });
+    // the CC composite splits into 3 on `|`, but the true physical id is the whole FilterName
+    expect(added[0]!.identifier).toBe(`${LG}|error|filter`);
+    expect(added[0]!.siblingLookupId).toBe('error|filter');
   });
 
   it('identifier is the CC composite LogGroupName|FilterName', () => {
@@ -1684,6 +1698,8 @@ describe('diffLogGroupSubscriptionFilters (CloudWatch Logs subscription filters)
         identifier: `cdkrd-oob-sub|${LG}`,
         label: 'cdkrd-oob-sub',
         live: { FilterName: 'cdkrd-oob-sub', LogGroupName: LG },
+        // #1310: the CFn physical id is the FilterName, carried positionally.
+        siblingLookupId: 'cdkrd-oob-sub',
       },
     ]);
   });
