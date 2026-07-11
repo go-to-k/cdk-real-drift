@@ -1,3 +1,10 @@
+## [0.12.75](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.74...v0.12.75) (2026-07-11)
+
+
+### Bug Fixes
+
+* **diff:** gate EC2 Instance SecurityGroupIds against the VPC-default SG ([#640](https://github.com/go-to-k/cdk-real-drift/issues/640)) ([#1449](https://github.com/go-to-k/cdk-real-drift/issues/1449)) ([038e473](https://github.com/go-to-k/cdk-real-drift/commit/038e473539a93ec1acbfe878b29ae9f9061c561e))
+
 ## [0.12.74](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.73...v0.12.74) (2026-07-11)
 
 
