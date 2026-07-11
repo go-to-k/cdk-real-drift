@@ -929,6 +929,13 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     ManageMasterUserPassword: false,
     MultiAZ: false,
     StorageEncrypted: false,
+    // RDS's documented default backup retention (1 day) — the DBInstance twin of the
+    // AWS::RDS::DBCluster / AWS::DocDB::DBCluster BackupRetentionPeriod:1 folds below. A provisioned
+    // DBInstance that omits it reads back 1 as first-run noise (live-confirmed on a fresh minimal
+    // mysql instance, 2026-07-11; the corpus was Aurora/DBCluster-centric, so the standalone
+    // DBInstance case was missed). Equality-gated: a longer retention the user sets (or later changes
+    // out of band) is not 1, so it still surfaces.
+    BackupRetentionPeriod: 1,
     // The current AWS default RDS server certificate authority — unanimous across every
     // corpus DBInstance (aurora-mysql AND mysql) and both real Aurora dogfood stacks. A
     // constant, not engine-derived. Equality-gated: AWS rotates the default CA over time, so
@@ -2356,7 +2363,12 @@ export const CONTEXT_ARN_DEFAULTS: Record<string, Record<string, string | string
 // create-only on StorageType, so its fold hides nothing revertable.
 export const ENGINE_DEFAULTS: Record<string, Record<string, (engine: string) => unknown>> = {
   'AWS::RDS::DBInstance': {
-    StorageType: (e) => (e.startsWith('aurora') ? 'aurora' : undefined),
+    // Aurora's cluster-backed storage reads back "aurora"; a PROVISIONED engine (mysql / postgres /
+    // mariadb / oracle / sqlserver) that declares no StorageType defaults to "gp2" — live-confirmed on
+    // a fresh minimal mysql db.t3.micro (2026-07-11). Equality-gated: an out-of-band switch to io1/io2/
+    // gp3 no longer matches "gp2" and surfaces. (A large-storage config AWS provisions as gp3 by
+    // default would not match "gp2" and would surface — a narrower follow-up, not a wrong fold.)
+    StorageType: (e) => (e.startsWith('aurora') ? 'aurora' : 'gp2'),
     AllocatedStorage: (e) => (e.startsWith('aurora') ? 1 : undefined),
     Port: rdsDefaultPort,
     LicenseModel: rdsDefaultLicense,
@@ -3114,8 +3126,16 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   restored cluster's `-disabled` would be exactly that). Fold value-independent; a user who
   //   cares about the enrollment (its billing / EOL implications) DECLARES it, and it is then
   //   compared in the declared loop (detected).
+  //   `EngineVersion` — an instance/cluster that declares no version reads back the GA patch version
+  //   AWS auto-selects at creation, which AWS moves forward over time (a fixed constant would go
+  //   stale). Undeclared → never user intent; the tier-3 GA-version case, the sibling of the already-
+  //   folded DocDB / Neptune / ElastiCache::ReplicationGroup EngineVersion folds. A DECLARED version
+  //   is compared in the declared loop with VERSION_PREFIX_PATHS partial-track matching (detected).
+  //   Live-confirmed on a fresh minimal mysql DBInstance (2026-07-11) — the standalone provisioned
+  //   DBInstance was missed while the Aurora/DBCluster corpus drove the existing folds.
   'AWS::RDS::DBCluster': new Set([
     'KmsKeyId',
+    'EngineVersion',
     'PerformanceInsightsKmsKeyId',
     'AvailabilityZones',
     'PreferredMaintenanceWindow',
@@ -3124,6 +3144,7 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   ]),
   'AWS::RDS::DBInstance': new Set([
     'KmsKeyId',
+    'EngineVersion',
     'PerformanceInsightsKMSKeyId',
     'AvailabilityZone',
     'PreferredMaintenanceWindow',
@@ -3332,13 +3353,38 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //       fold can never hide a real change. A user who caps cores/threads DECLARES CpuOptions.
   //     * `SubnetId` — when the subnet is declared inside `NetworkInterfaces[0]`, AWS echoes it to
   //       the top-level `SubnetId` (create-only, derived from the declared NIC subnet).
-  //   DELIBERATELY NOT folded here: `SecurityGroups` / `SecurityGroupIds` are MUTABLE out of band
-  //   (`ec2 modify-instance-attribute --groups sg-…` swaps an instance's SGs with no replacement),
-  //   so a value-independent fold would HIDE an OOB SG swap — they stay undeclared, tracked by #889
-  //   as a sibling-reflection / derived fold. `NetworkInterfaces` / `Volumes` are deferred: a rogue
-  //   ENI / volume can be ATTACHED out of band to a running instance, so folding the whole array
-  //   value-independent would hide the attach — they need a nested/sibling mechanism.
-  'AWS::EC2::Instance': new Set(['PrivateIpAddress', 'CpuOptions', 'SubnetId']),
+  //     * `AvailabilityZone` — create-only; AWS derives it from the declared subnet (an instance's
+  //       AZ cannot change without replacement, itself a template change). Undeclared → never user
+  //       intent (a user who pins the AZ DECLARES it, compared in the declared loop). Live-confirmed
+  //       on a fresh CfnInstance placed by SubnetId (2026-07-11, #640) — the create-only twin of
+  //       `SubnetId` above.
+  //     * `SecurityGroups` — the NAME-form echo of the instance's security groups (the id-form
+  //       lives in the sibling `SecurityGroupIds`). Undeclared → AWS-assigned name reflection, not
+  //       user intent. Detection is NOT lost: an out-of-band `ec2 modify-instance-attribute --groups`
+  //       swap/append changes `SecurityGroupIds` (the id-form), which is NOT folded here — it is
+  //       compared in the declared loop when declared, or routed through the #889/#1449 VPC-default-SG
+  //       gate that SURFACES a swap/append when undeclared. So folding the redundant name-form loses
+  //       no net detection; the id-form sibling is the canonical detector.
+  //     * `Volumes` — an array of pure AWS-assigned IDENTIFIERS (`{VolumeId, Device}`) for the
+  //       instance's attached volumes; it carries no user-settable configuration (a volume's size /
+  //       encryption / IOPS live on the `AWS::EC2::Volume` resource or in `BlockDeviceMappings`). A
+  //       per-resource AWS-assigned id is the canonical value-independent case. A user who manages
+  //       the instance's storage DECLARES `BlockDeviceMappings` (compared in the declared loop).
+  //     * `BlockDeviceMappings` — when undeclared, the AMI-derived root block-device husk AWS
+  //       materialises at launch (`SnapshotId`/`Iops`/`Encrypted`… all derived from the AMI, which
+  //       AWS moves over time). Undeclared → the user delegated the instance's storage to the AMI;
+  //       a user who pins the root volume's size/encryption DECLARES `BlockDeviceMappings`, then
+  //       compared in the declared loop. (`NetworkInterfaces` is NOT value-independent — it is
+  //       gated per-element in classify.ts so an out-of-band ENI attach still surfaces.)
+  'AWS::EC2::Instance': new Set([
+    'PrivateIpAddress',
+    'CpuOptions',
+    'SubnetId',
+    'AvailabilityZone',
+    'SecurityGroups',
+    'Volumes',
+    'BlockDeviceMappings',
+  ]),
   //   AWS::EC2::NetworkInterface.PrivateIpAddresses — an ENI that declares no
   //   PrivateIpAddresses reads back the single auto-assigned primary
   //   ([{PrivateIpAddress:"10.0.0.x", Primary:true}]) — the plural-array twin of the singular

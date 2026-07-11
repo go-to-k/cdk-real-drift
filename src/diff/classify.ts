@@ -4379,6 +4379,29 @@ export function classifyResource(
       findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
       continue;
     }
+    // #640: an EC2 Instance that declares no `NetworkInterfaces` reads back the single AWS-auto-
+    // created PRIMARY interface (`DeviceIndex "0"`, carrying the declared subnet + SGs). Fold that
+    // baseline atDefault — but PRESERVE detection of an out-of-band ENI attach: a secondary interface
+    // (`aws ec2 attach-network-interface` → `DeviceIndex` 1, 2, …) is a real divergence, so the whole
+    // path SURFACES the moment any element is non-primary (unlike `Volumes`, an attached ENI is a
+    // network-boundary change worth catching). A user who manages the interfaces DECLARES them (the
+    // eni-rich fixture does), compared in the declared loop.
+    if (resourceType === 'AWS::EC2::Instance' && k === 'NetworkInterfaces' && Array.isArray(v)) {
+      const allPrimary = v.every(
+        (el) =>
+          el != null &&
+          typeof el === 'object' &&
+          String((el as Record<string, unknown>).DeviceIndex) === '0'
+      );
+      findings.push({
+        tier: allPrimary ? 'atDefault' : 'undeclared',
+        logicalId,
+        resourceType,
+        path: k,
+        actual: v,
+      });
+      continue;
+    }
     // A live value equal to its CONTEXT-DERIVED default — a default whose VALUE is
     // this resource's own read context (region), which a constant KNOWN_DEFAULTS
     // entry cannot express (a VPCEndpointService's SupportedRegions defaults to
