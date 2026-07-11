@@ -201,6 +201,10 @@ import {
 import { ChangeResourceRecordSetsCommand, Route53Client } from '@aws-sdk/client-route-53';
 import { DeleteBucketPolicyCommand, PutBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
 import {
+  DeleteResourcePolicyCommand as SecretsDeleteResourcePolicyCommand,
+  SecretsManagerClient,
+} from '@aws-sdk/client-secrets-manager';
+import {
   ServiceDiscoveryClient,
   UpdateHttpNamespaceCommand,
 } from '@aws-sdk/client-servicediscovery';
@@ -3164,8 +3168,22 @@ const deleteSqsQueuePolicy: SdkDeleter = async (ctx) => {
   );
 };
 
+// AWS::SecretsManager::ResourcePolicy: CC has no usable delete for an out-of-band policy (its
+// primaryIdentifier is a service-generated `Id` the `put-resource-policy` never produces), so an
+// added secret resource policy found by the Secrets Manager child enumerator (#835) is removed via
+// the service's own DeleteResourcePolicy — a TRUE delete that detaches the policy entirely. The
+// finding carries the SECRET ARN as its physicalId (the enumerator identity), which is exactly the
+// DeleteResourcePolicy `SecretId` target. An already-detached policy is the delete goal state
+// (applyRevertDeleteSdk treats a no-op / already-gone as success).
+const deleteSecretsManagerResourcePolicy: SdkDeleter = async (ctx) => {
+  await new SecretsManagerClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
+    new SecretsDeleteResourcePolicyCommand({ SecretId: ctx.physicalId })
+  );
+};
+
 export const SDK_DELETERS: Record<string, SdkDeleter> = {
   'AWS::AppSync::ApiKey': deleteAppSyncApiKey,
   'AWS::Route53::RecordSet': deleteRoute53RecordSet,
   'AWS::SQS::QueuePolicy': deleteSqsQueuePolicy,
+  'AWS::SecretsManager::ResourcePolicy': deleteSecretsManagerResourcePolicy,
 };

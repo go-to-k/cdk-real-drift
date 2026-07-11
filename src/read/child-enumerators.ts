@@ -142,6 +142,10 @@ import {
 } from '@aws-sdk/client-route-53';
 import { GetBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
 import {
+  GetResourcePolicyCommand as SecretsGetResourcePolicyCommand,
+  SecretsManagerClient,
+} from '@aws-sdk/client-secrets-manager';
+import {
   ListSubscriptionsByTopicCommand,
   SNSClient,
   type Subscription as SnsSubscription,
@@ -270,10 +274,12 @@ export type ChildEnumerator = (ctx: EnumeratorContext) => Promise<AddedChild[]>;
 // eighteenth; EC2 network ACLs (NACL entries) the nineteenth; S3 buckets (an out-of-band
 // resource policy attached with no declared AWS::S3::BucketPolicy, #835) the twentieth;
 // SQS queues (an out-of-band access policy set with no declared AWS::SQS::QueuePolicy, #835)
-// the twenty-first.
+// the twenty-first; Secrets Manager secrets (an out-of-band resource policy attached with no
+// declared AWS::SecretsManager::ResourcePolicy, #835) the twenty-second.
 export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::S3::Bucket': enumerateS3BucketChildren,
   'AWS::SQS::Queue': enumerateSqsQueueChildren,
+  'AWS::SecretsManager::Secret': enumerateSecretsManagerSecretChildren,
   'AWS::ApiGateway::RestApi': enumerateRestApiChildren,
   'AWS::ApiGatewayV2::Api': enumerateHttpApiChildren,
   'AWS::SNS::Topic': enumerateSnsTopicChildren,
@@ -2170,6 +2176,107 @@ export async function enumerateSqsQueueChildren(ctx: EnumeratorContext): Promise
   const client = new SQSClient({ region, ...READ_RETRY });
   const livePolicy = await readSqsQueuePolicyDocument(client, queueUrl);
   return diffSqsQueuePolicy({ queueUrl, hasDeclaredPolicy, livePolicy });
+}
+
+// ── Secrets Manager ──────────────────────────────────────────────────────────
+// An `AWS::SecretsManager::Secret` can carry a resource policy (controlling cross-account
+// access to the secret VALUE), but the Secret's own Cloud Control model does NOT include it
+// — the policy lives in the SEPARATE `AWS::SecretsManager::ResourcePolicy` type (its CC
+// primaryIdentifier is a service-generated `Id`, NOT the secret). When a template DECLARES an
+// `AWS::SecretsManager::ResourcePolicy`, cdkrd diffs it as a declared resource. But when the
+// secret has NO declared ResourcePolicy, an out-of-band `aws secretsmanager put-resource-policy`
+// (a cross-account read grant — a secret-exfil vector) is covered by NEITHER mechanism and reads
+// back CLEAN — a false negative (#835). A fresh secret has NO resource policy, so a present one
+// is always a set one (no first-run FP). This enumerator reads the live policy via
+// GetResourcePolicy and, when a secret without a declared ResourcePolicy has one, surfaces it as
+// an out-of-band `added` AWS::SecretsManager::ResourcePolicy. Because the CC identifier is a
+// generated `Id` (unavailable for an out-of-band policy), the finding carries the SECRET ARN as
+// its identity: gather skips the doomed CC GetResource (CC_GET_UNSUPPORTED_ADDED_TYPES) and uses
+// the enumerator's `live` snippet, and revert deletes it via the `deleteSecretsManagerResourcePolicy`
+// SDK deleter (DeleteResourcePolicy), not CC.
+
+// Pure diff: whether a declared ResourcePolicy covers this secret + the live policy document
+// -> the added ResourcePolicy (if any). Separated from the SDK call so the matching logic is
+// unit-tested offline.
+export interface SecretsManagerResourcePolicyInput {
+  secretId: string; // the Secret's physical id (ARN) — the SDK-deleter target + the finding identity
+  // A declared AWS::SecretsManager::ResourcePolicy targets this secret (so cdkrd already diffs it
+  // as a declared resource) OR the stack declares one whose `SecretId` is UNRESOLVED (we cannot
+  // prove it is NOT this secret, so conservatively treat it as covered — protecting the
+  // zero-first-run invariant against a false `added`).
+  hasDeclaredPolicy: boolean;
+  livePolicy: Record<string, unknown> | undefined; // parsed live resource policy document, or undefined if none
+}
+
+export function diffSecretsManagerResourcePolicy(
+  input: SecretsManagerResourcePolicyInput
+): AddedChild[] {
+  // A declared ResourcePolicy already covers this secret's policy (declared-tier diff).
+  if (input.hasDeclaredPolicy) return [];
+  // No live policy -> nothing out of band (the normal clean-secret case).
+  if (!input.livePolicy) return [];
+  return [
+    {
+      resourceType: 'AWS::SecretsManager::ResourcePolicy',
+      // The CC primaryIdentifier is a generated `Id` unavailable for an out-of-band policy;
+      // carry the secret ARN as the identity — the SDK deleter's DeleteResourcePolicy target,
+      // and (type-gated) the sibling-stack membership lookup key.
+      identifier: input.secretId,
+      siblingLookupId: input.secretId,
+      label: `secret resource policy ${input.secretId}`,
+      live: { SecretId: input.secretId, ResourcePolicy: input.livePolicy },
+    },
+  ];
+}
+
+// Read the secret's live resource policy document. A secret with no policy returns an absent
+// `ResourcePolicy` (NOT an error), which maps to `undefined`. A policy present but not parseable
+// as a JSON object is also treated as absent (no meaningful `live` snippet). Any error (throttle,
+// AccessDenied, ResourceNotFoundException) is left to propagate: gather turns it into a `skipped`
+// finding on the parent (coverage-incomplete), never a false `added`.
+async function readSecretsManagerResourcePolicyDocument(
+  client: SecretsManagerClient,
+  secretId: string
+): Promise<Record<string, unknown> | undefined> {
+  const res = await client.send(new SecretsGetResourcePolicyCommand({ SecretId: secretId }));
+  const policyJson = res.ResourcePolicy;
+  if (!policyJson) return undefined;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(policyJson);
+  } catch {
+    return undefined;
+  }
+  return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+    ? (parsed as Record<string, unknown>)
+    : undefined;
+}
+
+export async function enumerateSecretsManagerSecretChildren(
+  ctx: EnumeratorContext
+): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  const secretId = parent.physicalId; // an AWS::SecretsManager::Secret's physical id (Ref) IS its ARN
+  if (!secretId) return [];
+
+  // A declared AWS::SecretsManager::ResourcePolicy covers this secret iff its (gather-resolved)
+  // `SecretId` equals this secret's ARN. gather resolves a same-stack `{ Ref: Secret }` to the ARN.
+  // A declared ResourcePolicy whose `SecretId` is UNRESOLVED is conservatively treated as covering
+  // this secret — a false `added` on a clean deploy is worse than a missed rogue.
+  let hasDeclaredPolicy = false;
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::SecretsManager::ResourcePolicy') continue;
+    const sid = r.declared.SecretId;
+    if (typeof sid === 'string') {
+      if (sid === secretId) hasDeclaredPolicy = true;
+    } else if (sid !== undefined && hasUnresolved(sid)) {
+      hasDeclaredPolicy = true;
+    }
+  }
+
+  const client = new SecretsManagerClient({ region, ...READ_RETRY });
+  const livePolicy = await readSecretsManagerResourcePolicyDocument(client, secretId);
+  return diffSecretsManagerResourcePolicy({ secretId, hasDeclaredPolicy, livePolicy });
 }
 
 // ── EventBridge ────────────────────────────────────────────────────────────────

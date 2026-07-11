@@ -372,9 +372,15 @@ export function addedFinding(
 // the queue URL the enumerator carries would always fail. The enumerator's `live` snippet
 // ({ Queues, PolicyDocument }) IS the recordable model; use it. (Its real delete goes through
 // the `deleteSqsQueuePolicy` SDK deleter — SetQueueAttributes with an empty Policy — not CC.)
+// AWS::SecretsManager::ResourcePolicy (#835): same generated-`Id` primaryIdentifier situation as
+// AWS::SQS::QueuePolicy — an out-of-band `put-resource-policy` produces no CFn `Id`, so a CC
+// GetResource keyed on the secret ARN the enumerator carries would fail. The enumerator's `live`
+// snippet ({ SecretId, ResourcePolicy }) IS the recordable model; use it. (Its real delete goes
+// through the `deleteSecretsManagerResourcePolicy` SDK deleter — DeleteResourcePolicy — not CC.)
 const CC_GET_UNSUPPORTED_ADDED_TYPES = new Set<string>([
   'AWS::Route53::RecordSet',
   'AWS::SQS::QueuePolicy',
+  'AWS::SecretsManager::ResourcePolicy',
 ]);
 
 // Read the added child's FULL live model via Cloud Control GetResource (its

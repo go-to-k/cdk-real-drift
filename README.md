@@ -297,6 +297,8 @@ needs `--remove-unrecorded`).
   with no declared `AWS::S3::BucketPolicy`)
 - **SQS**: queue access policies (an out-of-band `set-queue-attributes Policy` on a
   queue with no declared `AWS::SQS::QueuePolicy`)
+- **Secrets Manager**: secret resource policies (an out-of-band `put-resource-policy`
+  on a secret with no declared `AWS::SecretsManager::ResourcePolicy`)
 
 </details>
 
@@ -1027,6 +1029,11 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
     access policy as a child `AWS::SQS::QueuePolicy`; a queue with no policy simply
     returns no `Policy` attribute). Reverting a detected one also needs
     `sqs:SetQueueAttributes` (the SDK deleter clears the `Policy`).
+  - `AWS::SecretsManager::Secret`: `secretsmanager:GetResourcePolicy` (enumerates a
+    secret's out-of-band resource policy as a child
+    `AWS::SecretsManager::ResourcePolicy`; a secret with no policy returns none).
+    Reverting a detected one also needs `secretsmanager:DeleteResourcePolicy` (the
+    SDK deleter detaches the policy).
 
   The `added` tier also needs `cloudformation:DescribeStackResources` (grouped with
   the other CloudFormation actions above): before flagging a live child as
