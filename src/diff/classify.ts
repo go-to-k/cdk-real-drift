@@ -244,6 +244,15 @@ const DEFAULT_SG_LIST_PATHS: Record<string, string> = {
   // is NamespaceName/WorkgroupName only), so a value-independent fold hid a rogue SG swap/append.
   // Same derived VPC-default-SG check: fold a single default SG, surface an append/swap.
   'AWS::RedshiftServerless::Workgroup': 'SecurityGroupIds',
+  // #640: an EC2 Instance that declares no security group is placed into its VPC's default SG and
+  // reads back that single SG id in `SecurityGroupIds` — the same AWS first-run default the
+  // ALB/ENI/Neptune/MQ/Workgroup cases fold. It is OOB-mutable (`ec2 modify-instance-attribute
+  // --groups sg-…` swaps an instance's SGs with NO replacement), so the value-independent fold the
+  // noise.ts note deliberately withheld would hide a rogue SG swap/append. Gate it through the same
+  // derived VPC-default-SG check: fold a single default SG, surface an append/swap. (The name-form
+  // sibling `SecurityGroups` — an echo of the declared SGs or "default" — needs SG id→name
+  // resolution to gate safely and stays undeclared for a follow-up; #640.)
+  'AWS::EC2::Instance': 'SecurityGroupIds',
 };
 /** #1269 fold decision for an UNDECLARED default-SUBNET list (RedshiftServerless Workgroup
  *  SubnetIds). Unlike the SG gate (which folds only a SINGLE default SG), a workgroup placed into

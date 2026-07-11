@@ -4,12 +4,14 @@
 // NetworkInterfaces block — a create-only value cannot drift out of band, so folding it can never
 // hide a real change, and it is never user intent when undeclared.
 //
-// DELIBERATELY NOT folded (a #889 handoff / deferred boundary this test documents): SecurityGroups
-// / SecurityGroupIds are MUTABLE out of band (`ec2 modify-instance-attribute --groups sg-…` swaps
-// them on a running instance with no replacement), so value-independent would HIDE an OOB SG swap —
-// they STILL surface as undeclared drift. NetworkInterfaces / Volumes are likewise deferred (a rogue
-// ENI / volume can be attached OOB). A user who pins any folded item DECLARES it, which is then
-// compared in the declared loop and does NOT fold here.
+// SecurityGroupIds is MUTABLE out of band (`ec2 modify-instance-attribute --groups sg-…` swaps it on
+// a running instance with no replacement), so it is NOT folded value-independent (that would HIDE an
+// OOB SG swap); instead it goes through the derived VPC-default-SG GATE (#889/#640): fold the single
+// VPC-default SG a clean deploy reads back, surface an append or a swap to a non-default SG.
+// STILL deferred (this test documents the boundary): the name-form `SecurityGroups` (needs SG id→name
+// resolution to gate safely) and NetworkInterfaces / Volumes (a rogue ENI / volume can be attached
+// OOB — needs a nested-attach mechanism) STILL surface as undeclared drift. A user who pins any folded
+// item DECLARES it, which is then compared in the declared loop and does NOT fold here.
 import { describe, expect, it } from 'vite-plus/test';
 import { classifyResource } from '../src/diff/classify.js';
 import type { DesiredResource, Finding, SchemaInfo } from '../src/types.js';
@@ -55,22 +57,27 @@ describe('#640 EC2 Instance first-run undeclared folds (value-independent)', () 
     Volumes: [{ VolumeId: 'vol-094cd4ee2e33c8e54', Device: '/dev/xvda' }],
   };
 
-  it('folds only the create-only CpuOptions + SubnetId to atDefault', () => {
-    const fs = classifyResource(mk(declared), structuredClone(live), schema(), {});
-    expect(tier(fs, 'atDefault')).toEqual(['CpuOptions', 'SubnetId']);
+  // The single VPC-default SG id the clean deploy read back, supplied to the #889/#640 SG gate.
+  const defaultSgIds = new Set(['sg-027bb24dfa8eb1b48']);
+
+  it('folds the create-only CpuOptions + SubnetId AND the gated default SecurityGroupIds', () => {
+    const fs = classifyResource(mk(declared), structuredClone(live), schema(), { defaultSgIds });
+    expect(tier(fs, 'atDefault')).toEqual(['CpuOptions', 'SecurityGroupIds', 'SubnetId']);
   });
 
-  it('SecurityGroupIds / SecurityGroups / NetworkInterfaces / Volumes are NOT folded — they still surface as undeclared drift', () => {
-    // These four are MUTABLE out of band (an SG swap or a rogue ENI / volume attach on a running
-    // instance), so a value-independent fold would HIDE that change. They deliberately do NOT fold
-    // here — SecurityGroups/SecurityGroupIds are a #889 handoff, NetworkInterfaces/Volumes deferred.
-    const fs = classifyResource(mk(declared), structuredClone(live), schema(), {});
-    expect(tier(fs, 'undeclared')).toEqual([
-      'NetworkInterfaces',
-      'SecurityGroupIds',
-      'SecurityGroups',
-      'Volumes',
-    ]);
+  it('SecurityGroups (name-form) / NetworkInterfaces / Volumes are NOT folded — they still surface', () => {
+    // The name-form SecurityGroups (needs id→name resolution) and NetworkInterfaces / Volumes (a
+    // rogue ENI / volume can be attached OOB) deliberately do NOT fold here yet — deferred boundary.
+    const fs = classifyResource(mk(declared), structuredClone(live), schema(), { defaultSgIds });
+    expect(tier(fs, 'undeclared')).toEqual(['NetworkInterfaces', 'SecurityGroups', 'Volumes']);
+  });
+
+  it('SecurityGroupIds SURFACES on an out-of-band swap to a NON-default SG (detection preserved)', () => {
+    // A rogue `modify-instance-attribute --groups` swaps the instance onto a non-default SG. The
+    // gate must SURFACE it (undeclared) — this is the OOB SG swap a value-independent fold would hide.
+    const swapped = { ...structuredClone(live), SecurityGroupIds: ['sg-0deadbeef00000000'] };
+    const fs = classifyResource(mk(declared), swapped, schema(), { defaultSgIds });
+    expect(tier(fs, 'undeclared')).toContain('SecurityGroupIds');
   });
 
   it('WITHOUT the folds every value would surface (guards the regression this fixes)', () => {
