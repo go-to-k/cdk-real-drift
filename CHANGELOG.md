@@ -1,3 +1,10 @@
+## [0.12.47](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.46...v0.12.47) (2026-07-11)
+
+
+### Bug Fixes
+
+* **normalize:** Fn::Select indexes the compacted list; dynamic-ref elements in produced containers fail closed ([#1329](https://github.com/go-to-k/cdk-real-drift/issues/1329), [#1331](https://github.com/go-to-k/cdk-real-drift/issues/1331)) ([#1356](https://github.com/go-to-k/cdk-real-drift/issues/1356)) ([d28d41b](https://github.com/go-to-k/cdk-real-drift/commit/d28d41b2d0141d9ba6649f8fdb150954a67b3683))
+
 ## [0.12.46](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.45...v0.12.46) (2026-07-11)
 
 
