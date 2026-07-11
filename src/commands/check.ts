@@ -527,6 +527,14 @@ export async function runCheck(args: string[]): Promise<number> {
         region: a.region,
         profile: a.profile,
         context: a.context,
+        // Scope toolkit-lib's metadata validation to the TARGET stacks, mirroring the
+        // discovery synth (#905, resolveStacks). Without this the --pre-deploy second synth
+        // re-validates EVERY stack, so a failing context lookup in an unrelated sibling
+        // stack (creds for account A only; a `Vpc.fromLookup` pinned to account B) aborts a
+        // named-stack `check StackA --pre-deploy` with exit 2 before any stack is processed —
+        // the exact #905 regression, left unfixed on this second call (#957 fixed only its
+        // region parity, not its selector parity) (#1325).
+        stackPatterns: !a.all && a.stackNames.length > 0 ? a.stackNames : undefined,
         // Refuse (not just warn) an assembly with unresolved context lookups here: under
         // --pre-deploy the synth template is the DECLARED source, so CDK's dummy-value
         // placeholders (vpc-12345, ...) would surface as guaranteed false declared drift
