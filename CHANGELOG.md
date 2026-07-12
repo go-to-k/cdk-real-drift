@@ -1,3 +1,10 @@
+## [0.13.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.13.0...v0.13.1) (2026-07-12)
+
+
+### Bug Fixes
+
+* **diff:** derive RDS DBInstance PubliclyAccessible default from subnet-group placement ([#1499](https://github.com/go-to-k/cdk-real-drift/issues/1499)) ([#1516](https://github.com/go-to-k/cdk-real-drift/issues/1516)) ([6782fce](https://github.com/go-to-k/cdk-real-drift/commit/6782fcea0528dc940f87e7dc25051619b67f1631))
+
 # [0.13.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.109...v0.13.0) (2026-07-12)
 
 
