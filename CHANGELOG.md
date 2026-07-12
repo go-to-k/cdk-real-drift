@@ -1,3 +1,10 @@
+## [0.12.109](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.108...v0.12.109) (2026-07-12)
+
+
+### Bug Fixes
+
+* **diff:** fold non-burstable EC2::Instance CreditSpecification standard echo ([#640](https://github.com/go-to-k/cdk-real-drift/issues/640)) ([#1514](https://github.com/go-to-k/cdk-real-drift/issues/1514)) ([e6a92cf](https://github.com/go-to-k/cdk-real-drift/commit/e6a92cf157ca12482460262913578c6e2bbbd385))
+
 ## [0.12.108](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.107...v0.12.108) (2026-07-12)
 
 
