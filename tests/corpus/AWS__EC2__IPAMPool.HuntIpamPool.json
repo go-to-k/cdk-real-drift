@@ -1,0 +1,118 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntIpamPool",
+    "resourceType": "AWS::EC2::IPAMPool",
+    "physicalId": "ipam-pool-0013ee995392639c6",
+    "constructPath": "CdkrdHunt0713bPrivApiMisc/HuntIpamPool",
+    "declared": {
+      "AddressFamily": "ipv4",
+      "IpamScopeId": "ipam-scope-09670ee3ac2818c02",
+      "Locale": "us-east-1",
+      "ProvisionedCidrs": [
+        {
+          "Cidr": "10.99.0.0/16"
+        }
+      ],
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Locale": "us-east-1",
+    "IpamPoolId": "ipam-pool-0013ee995392639c6",
+    "IpamArn": "arn:aws:ec2::111111111111:ipam/ipam-0d3d23ed11d25b891",
+    "IpamScopeArn": "arn:aws:ec2::111111111111:ipam-scope/ipam-scope-09670ee3ac2818c02",
+    "IpamScopeType": "private",
+    "IpamScopeId": "ipam-scope-09670ee3ac2818c02",
+    "ProvisionedCidrs": [
+      {
+        "Cidr": "10.99.0.0/16"
+      }
+    ],
+    "PoolDepth": 1,
+    "State": "create-complete",
+    "AutoImport": false,
+    "AddressFamily": "ipv4",
+    "Arn": "arn:aws:ec2::111111111111:ipam-pool/ipam-pool-0013ee995392639c6",
+    "StateMessage": "None",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      },
+      {
+        "Value": "HuntIpamPool",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0713bPrivApiMisc/ee3c7ab0-7e15-11f1-8361-125309d81d7b",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkrdHunt0713bPrivApiMisc",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [
+      "Arn",
+      "IpamArn",
+      "IpamPoolId",
+      "IpamScopeArn",
+      "IpamScopeType",
+      "PoolDepth",
+      "State",
+      "StateMessage"
+    ],
+    "writeOnly": [],
+    "createOnly": [
+      "AddressFamily",
+      "AwsService",
+      "IpamScopeId",
+      "Locale",
+      "PublicIpSource",
+      "PubliclyAdvertisable",
+      "SourceIpamPoolId",
+      "SourceResource"
+    ],
+    "readOnlyPaths": [
+      "Arn",
+      "IpamArn",
+      "IpamPoolId",
+      "IpamScopeArn",
+      "IpamScopeType",
+      "PoolDepth",
+      "State",
+      "StateMessage"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "AddressFamily",
+      "AwsService",
+      "IpamScopeId",
+      "Locale",
+      "PublicIpSource",
+      "PubliclyAdvertisable",
+      "SourceIpamPoolId",
+      "SourceResource"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["ProvisionedCidrs"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

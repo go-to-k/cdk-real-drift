@@ -1,0 +1,230 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntGeneveTg",
+    "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+    "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-HuntG-QCLFQCJTOQ9N/0045c0e329aa3d9184",
+    "constructPath": "CdkrdHunt0713bNetVariants/HuntGeneveTg",
+    "declared": {
+      "HealthCheckPort": "80",
+      "HealthCheckProtocol": "TCP",
+      "Port": 6081,
+      "Protocol": "GENEVE",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "TargetType": "ip",
+      "VpcId": "vpc-01146262770c307f8"
+    }
+  },
+  "liveRaw": {
+    "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-HuntG-QCLFQCJTOQ9N/0045c0e329aa3d9184",
+    "HealthCheckIntervalSeconds": 10,
+    "LoadBalancerArns": [
+      "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/gwy/CdkrdH-HuntG-OFYadmIe1DYX/60097202e3984d48"
+    ],
+    "Port": 6081,
+    "Targets": [],
+    "HealthCheckEnabled": true,
+    "UnhealthyThresholdCount": 2,
+    "HealthCheckTimeoutSeconds": 5,
+    "Name": "CdkrdH-HuntG-QCLFQCJTOQ9N",
+    "VpcId": "vpc-01146262770c307f8",
+    "TargetGroupFullName": "targetgroup/CdkrdH-HuntG-QCLFQCJTOQ9N/0045c0e329aa3d9184",
+    "HealthyThresholdCount": 5,
+    "HealthCheckProtocol": "TCP",
+    "TargetGroupAttributes": [
+      {
+        "Value": "false",
+        "Key": "stickiness.enabled"
+      },
+      {
+        "Value": "300",
+        "Key": "deregistration_delay.timeout_seconds"
+      },
+      {
+        "Value": "source_ip_dest_ip_proto",
+        "Key": "stickiness.type"
+      },
+      {
+        "Value": "no_rebalance",
+        "Key": "target_failover.on_deregistration"
+      },
+      {
+        "Value": "no_rebalance",
+        "Key": "target_failover.on_unhealthy"
+      }
+    ],
+    "TargetType": "ip",
+    "HealthCheckPort": "80",
+    "Protocol": "GENEVE",
+    "TargetGroupName": "CdkrdH-HuntG-QCLFQCJTOQ9N",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0713bNetVariants",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntGeneveTg",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0713bNetVariants/c4438b90-7e15-11f1-a059-12ce1366b8d9",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["LoadBalancerArns", "TargetGroupArn", "TargetGroupFullName", "TargetGroupName"],
+    "writeOnly": [],
+    "createOnly": [
+      "IpAddressType",
+      "Name",
+      "Port",
+      "Protocol",
+      "ProtocolVersion",
+      "TargetType",
+      "VpcId"
+    ],
+    "readOnlyPaths": [
+      "LoadBalancerArns",
+      "TargetGroupArn",
+      "TargetGroupFullName",
+      "TargetGroupName"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "IpAddressType",
+      "Name",
+      "Port",
+      "Protocol",
+      "ProtocolVersion",
+      "TargetType",
+      "VpcId"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["LoadBalancerArns"],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntGeneveTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthCheckIntervalSeconds",
+      "actual": 10,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-HuntG-QCLFQCJTOQ9N/0045c0e329aa3d9184",
+      "constructPath": "CdkrdHunt0713bNetVariants/HuntGeneveTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntGeneveTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthCheckEnabled",
+      "actual": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-HuntG-QCLFQCJTOQ9N/0045c0e329aa3d9184",
+      "constructPath": "CdkrdHunt0713bNetVariants/HuntGeneveTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntGeneveTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "UnhealthyThresholdCount",
+      "actual": 2,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-HuntG-QCLFQCJTOQ9N/0045c0e329aa3d9184",
+      "constructPath": "CdkrdHunt0713bNetVariants/HuntGeneveTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntGeneveTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthCheckTimeoutSeconds",
+      "actual": 5,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-HuntG-QCLFQCJTOQ9N/0045c0e329aa3d9184",
+      "constructPath": "CdkrdHunt0713bNetVariants/HuntGeneveTg"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "HuntGeneveTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "Name",
+      "actual": "CdkrdH-HuntG-QCLFQCJTOQ9N",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-HuntG-QCLFQCJTOQ9N/0045c0e329aa3d9184",
+      "constructPath": "CdkrdHunt0713bNetVariants/HuntGeneveTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntGeneveTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthyThresholdCount",
+      "actual": 5,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-HuntG-QCLFQCJTOQ9N/0045c0e329aa3d9184",
+      "constructPath": "CdkrdHunt0713bNetVariants/HuntGeneveTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntGeneveTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[deregistration_delay.timeout_seconds]",
+      "actual": "300",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-HuntG-QCLFQCJTOQ9N/0045c0e329aa3d9184",
+      "constructPath": "CdkrdHunt0713bNetVariants/HuntGeneveTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntGeneveTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[stickiness.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-HuntG-QCLFQCJTOQ9N/0045c0e329aa3d9184",
+      "constructPath": "CdkrdHunt0713bNetVariants/HuntGeneveTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntGeneveTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[stickiness.type]",
+      "actual": "source_ip_dest_ip_proto",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-HuntG-QCLFQCJTOQ9N/0045c0e329aa3d9184",
+      "constructPath": "CdkrdHunt0713bNetVariants/HuntGeneveTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntGeneveTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[target_failover.on_deregistration]",
+      "actual": "no_rebalance",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-HuntG-QCLFQCJTOQ9N/0045c0e329aa3d9184",
+      "constructPath": "CdkrdHunt0713bNetVariants/HuntGeneveTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntGeneveTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[target_failover.on_unhealthy]",
+      "actual": "no_rebalance",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-HuntG-QCLFQCJTOQ9N/0045c0e329aa3d9184",
+      "constructPath": "CdkrdHunt0713bNetVariants/HuntGeneveTg"
+    }
+  ]
+}

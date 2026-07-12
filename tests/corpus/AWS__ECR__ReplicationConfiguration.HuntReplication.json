@@ -1,0 +1,70 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntReplication",
+    "resourceType": "AWS::ECR::ReplicationConfiguration",
+    "physicalId": "111111111111",
+    "constructPath": "CdkrdHunt0713bAcctSingletons/HuntReplication",
+    "declared": {
+      "ReplicationConfiguration": {
+        "Rules": [
+          {
+            "Destinations": [
+              {
+                "Region": "us-west-2",
+                "RegistryId": "111111111111"
+              }
+            ],
+            "RepositoryFilters": [
+              {
+                "Filter": "cdkrd-hunt",
+                "FilterType": "PREFIX_MATCH"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "liveRaw": {
+    "RegistryId": "111111111111",
+    "ReplicationConfiguration": {
+      "Rules": [
+        {
+          "RepositoryFilters": [
+            {
+              "FilterType": "PREFIX_MATCH",
+              "Filter": "cdkrd-hunt"
+            }
+          ],
+          "Destinations": [
+            {
+              "Region": "us-west-2",
+              "RegistryId": "111111111111"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "schema": {
+    "readOnly": ["RegistryId"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["RegistryId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

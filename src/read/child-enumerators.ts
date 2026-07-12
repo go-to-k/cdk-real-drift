@@ -3655,6 +3655,12 @@ async function enumerateListenerChildren(ctx: EnumeratorContext): Promise<AddedC
   const { parent, desired, region } = ctx;
   const listenerArn = parent.physicalId; // a Listener's physical id IS its ListenerArn
   if (!listenerArn) return [];
+  // #1548: a gateway (GWLB) listener has NO rules concept — elbv2:DescribeRules REJECTS
+  // its ARN with ListenerNotFound (live-proven on a `listener/gwy/...` ARN,
+  // CdkrdHunt0713bNetVariants 2026-07-13), which used to fail the scan and stamp the
+  // listener with a misleading `skipped` note on every check. Nothing can be added out
+  // of band where rules don't exist — skip the scan.
+  if (listenerArn.includes(':listener/gwy/')) return [];
 
   // Declared rules of THIS listener (Ref/GetAtt ListenerArn already resolved to the
   // physical id by gather). A rule's physical id IS its RuleArn.
@@ -3984,6 +3990,17 @@ async function pageSubnets(client: EC2Client, vpcId: string): Promise<Ec2Subnet[
   return out;
 }
 
+// #1547: marker tags that identify a VPC endpoint as SERVICE-MANAGED (AWS created it in
+// the customer VPC while provisioning another resource). Curated allowlist — a tag key
+// must unambiguously identify the owning AWS service; user-created endpoints never carry
+// these.
+const SERVICE_MANAGED_VPCE_TAG_KEYS = new Set(['AWSMSKManaged']);
+export function isServiceManagedVpcEndpoint(e: Ec2VpcEndpoint): boolean {
+  return (e.Tags ?? []).some(
+    (t) => typeof t.Key === 'string' && SERVICE_MANAGED_VPCE_TAG_KEYS.has(t.Key)
+  );
+}
+
 async function pageVpcEndpoints(client: EC2Client, vpcId: string): Promise<Ec2VpcEndpoint[]> {
   const out: Ec2VpcEndpoint[] = [];
   let next: string | undefined;
@@ -4125,6 +4142,14 @@ export async function enumerateVpcChildren(ctx: EnumeratorContext): Promise<Adde
     .filter(
       (e): e is Ec2VpcEndpoint & { VpcEndpointId: string } => typeof e.VpcEndpointId === 'string'
     )
+    // #1547: drop SERVICE-MANAGED endpoints — AWS plants interface endpoints in the
+    // customer VPC as part of provisioning another resource (MSK Serverless tags its
+    // endpoint `AWSMSKManaged=true` + `ClusterArn=...`), and flagging that managed
+    // infrastructure as out-of-band `added` is a first-run FP for every MSK Serverless
+    // deploy (live-proven, CdkrdHunt0713bNetVariants 2026-07-13). Marker-tag table so
+    // other services' managed endpoints can join; a user-created endpoint carries no
+    // marker and still surfaces.
+    .filter((e) => !isServiceManagedVpcEndpoint(e))
     .map((e) => ({ id: e.VpcEndpointId, label: e.ServiceName ?? e.VpcEndpointId }));
 
   // Drop the MAIN route table (AWS auto-creates one per VPC; its association carries

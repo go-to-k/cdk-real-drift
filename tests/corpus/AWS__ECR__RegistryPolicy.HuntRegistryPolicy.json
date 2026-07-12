@@ -1,0 +1,62 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntRegistryPolicy",
+    "resourceType": "AWS::ECR::RegistryPolicy",
+    "physicalId": "111111111111",
+    "constructPath": "CdkrdHunt0713bAcctSingletons/HuntRegistryPolicy",
+    "declared": {
+      "PolicyText": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Sid": "cdkrd-hunt-replication",
+            "Effect": "Allow",
+            "Principal": {
+              "AWS": "arn:aws:iam::111111111111:root"
+            },
+            "Action": ["ecr:CreateRepository", "ecr:ReplicateImage"],
+            "Resource": "arn:aws:ecr:us-east-1:111111111111:repository/*"
+          }
+        ]
+      }
+    }
+  },
+  "liveRaw": {
+    "PolicyText": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": ["ecr:CreateRepository", "ecr:ReplicateImage"],
+          "Resource": "arn:aws:ecr:us-east-1:111111111111:repository/*",
+          "Effect": "Allow",
+          "Principal": {
+            "AWS": "arn:aws:iam::111111111111:root"
+          },
+          "Sid": "cdkrd-hunt-replication"
+        }
+      ]
+    },
+    "RegistryId": "111111111111"
+  },
+  "schema": {
+    "readOnly": ["RegistryId"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["RegistryId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
