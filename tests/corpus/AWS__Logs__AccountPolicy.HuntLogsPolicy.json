@@ -1,0 +1,42 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntLogsPolicy",
+    "resourceType": "AWS::Logs::AccountPolicy",
+    "physicalId": "111111111111|DATA_PROTECTION_POLICY|cdkrd-hunt-data-protection",
+    "constructPath": "CdkrdHunt0713bAcctSingletons/HuntLogsPolicy",
+    "declared": {
+      "PolicyDocument": "{\"Name\":\"cdkrd-hunt-data-protection\",\"Version\":\"2021-06-01\",\"Statement\":[{\"Sid\":\"audit-policy\",\"DataIdentifier\":[\"arn:aws:dataprotection::aws:data-identifier/EmailAddress\"],\"Operation\":{\"Audit\":{\"FindingsDestination\":{}}}},{\"Sid\":\"redact-policy\",\"DataIdentifier\":[\"arn:aws:dataprotection::aws:data-identifier/EmailAddress\"],\"Operation\":{\"Deidentify\":{\"MaskConfig\":{}}}}]}",
+      "PolicyName": "cdkrd-hunt-data-protection",
+      "PolicyType": "DATA_PROTECTION_POLICY",
+      "Scope": "ALL"
+    }
+  },
+  "liveRaw": {
+    "PolicyType": "DATA_PROTECTION_POLICY",
+    "AccountId": "111111111111",
+    "Scope": "ALL",
+    "PolicyName": "cdkrd-hunt-data-protection",
+    "PolicyDocument": "{\"Name\":\"cdkrd-hunt-data-protection\",\"Version\":\"2021-06-01\",\"Statement\":[{\"Sid\":\"audit-policy\",\"DataIdentifier\":[\"arn:aws:dataprotection::aws:data-identifier/EmailAddress\"],\"Operation\":{\"Audit\":{\"FindingsDestination\":{}}}},{\"Sid\":\"redact-policy\",\"DataIdentifier\":[\"arn:aws:dataprotection::aws:data-identifier/EmailAddress\"],\"Operation\":{\"Deidentify\":{\"MaskConfig\":{}}}}]}"
+  },
+  "schema": {
+    "readOnly": ["AccountId"],
+    "writeOnly": [],
+    "createOnly": ["PolicyName", "PolicyType"],
+    "readOnlyPaths": ["AccountId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["PolicyName", "PolicyType"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

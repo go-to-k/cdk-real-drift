@@ -264,6 +264,16 @@ export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   'AWS::EC2::NetworkInterface\0SourceDestCheck',
   'AWS::EC2::Instance\0SourceDestCheck',
   'AWS::EC2::Instance\0InstanceInitiatedShutdownBehavior',
+  // #1544: the one-shot ModifyInstanceMetadataOptions family — a bare `remove` of an
+  // out-of-band undeclared MetadataOptions change is a silent no-op (live-proven on
+  // CdkrdHunt0713bImds: an IMDSv2 downgrade to HttpTokens:"optional" was DETECTED but the
+  // revert reported success while the live value persisted — a security regression cdkrd
+  // could see but not fix). Write the KNOWN_DEFAULTS whole-object constant (the AL2023
+  // secure defaults: tokens required, hop limit 2, IPv6/tags disabled, endpoint enabled)
+  // back explicitly. An account whose ec2:modify-instance-metadata-defaults overlay (#1070)
+  // differs from the constant gets the HARDENED constant written and the residual delta
+  // SURFACES on the post-revert check (visible + recordable, never a silent wrong state).
+  'AWS::EC2::Instance\0MetadataOptions',
   // EC2 ModifyClientVpnEndpoint is a SELECTIVE-update API routed through an SDK writer
   // (CLIENT_VPN_SCALAR_PARAMS): a `remove` deletes the key from the desired model, the
   // writer skips the now-undefined param, and nothing is sent — Cloud Control-style

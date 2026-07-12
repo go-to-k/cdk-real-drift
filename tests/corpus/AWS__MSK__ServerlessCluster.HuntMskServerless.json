@@ -1,0 +1,68 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntMskServerless",
+    "resourceType": "AWS::MSK::ServerlessCluster",
+    "physicalId": "arn:aws:kafka:us-east-1:111111111111:cluster/cdkrd-hunt-msk-serverless/c6b8b8b3-9d77-4223-ab7f-06eda6206a51-s3",
+    "constructPath": "CdkrdHunt0713bNetVariants/HuntMskServerless",
+    "declared": {
+      "ClientAuthentication": {
+        "Sasl": {
+          "Iam": {
+            "Enabled": true
+          }
+        }
+      },
+      "ClusterName": "cdkrd-hunt-msk-serverless",
+      "Tags": {
+        "cdkrd:ephemeral": "1"
+      },
+      "VpcConfigs": [
+        {
+          "SecurityGroups": ["sg-0dc3d9ea7b7eb5681"],
+          "SubnetIds": ["subnet-0c373bdbf629322e1", "subnet-0d304c22f3ea3a979"]
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "VpcConfigs": [
+      {
+        "SecurityGroups": ["sg-0dc3d9ea7b7eb5681"],
+        "SubnetIds": ["subnet-0d304c22f3ea3a979", "subnet-0c373bdbf629322e1"]
+      }
+    ],
+    "ClusterName": "cdkrd-hunt-msk-serverless",
+    "Arn": "arn:aws:kafka:us-east-1:111111111111:cluster/cdkrd-hunt-msk-serverless/c6b8b8b3-9d77-4223-ab7f-06eda6206a51-s3",
+    "ClientAuthentication": {
+      "Sasl": {
+        "Iam": {
+          "Enabled": true
+        }
+      }
+    },
+    "Tags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["ClientAuthentication", "ClusterName", "Tags", "VpcConfigs"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ClientAuthentication", "ClusterName", "Tags", "VpcConfigs"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["VpcConfigs"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

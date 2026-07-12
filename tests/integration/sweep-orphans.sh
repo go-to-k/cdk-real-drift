@@ -292,6 +292,25 @@ resource_gone() {
         *) return 1 ;;
       esac
       ;;
+    batch)
+      # arn:aws:batch:<region>:<acct>:job-definition/<name>:<rev> — the seventh
+      # RGT-lag/terminal-state subtype (2026-07-13 hunt): CFn DEREGISTERS a job
+      # definition at stack delete, Batch keeps it visible as INACTIVE (~180 days,
+      # no delete API — deregister IS terminal), and the tag index kept flagging it
+      # as an ORPHAN that nothing can delete. INACTIVE (or a not-found answer)
+      # counts as gone; an ACTIVE answer keeps the ORPHAN RED (a real leftover
+      # that needs deregistering).
+      case "$arn" in
+        *:job-definition/*)
+          local bst
+          bst="$(aws batch describe-job-definitions --job-definitions "$arn" \
+            --region "$REGION" --query 'jobDefinitions[0].status' --output text 2>/dev/null)" || return 0
+          { [ "$bst" = "INACTIVE" ] || [ "$bst" = "None" ]; } && return 0
+          return 1
+          ;;
+        *) return 1 ;;
+      esac
+      ;;
     rds)
       # arn:aws:rds:<region>:<acct>:snapshot:rds:<instance>-<ts> — the sixth RGT-lag
       # subtype (2026-07-13 hunt): a SYSTEM (automated) snapshot is removed together

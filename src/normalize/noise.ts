@@ -4233,6 +4233,11 @@ export const ELB_ATTRIBUTE_DEFAULTS: Record<string, Record<string, string>> = {
     // advertise / response-header attributes are all empty (folded by isTrivialEmpty),
     // and the `server` response header is enabled. Observed live.
     'routing.http.response.server.enabled': 'true',
+    // #1546: a TCP-family listener (NLB TCP and a GWLB's GENEVE listener alike) reads back
+    // the 2024-added idle-timeout attribute at its 350s default. An HTTP listener never
+    // returns tcp.* keys, so no cross-type conflict; equality-gated — an out-of-band
+    // idle-timeout change still surfaces. Observed live (CdkrdHunt0713bNetVariants).
+    'tcp.idle_timeout.seconds': '350',
   },
   'AWS::ElasticLoadBalancingV2::TargetGroup': {
     // A group that declares no deregistration delay reads back the 300s default; a lambda group
@@ -4269,6 +4274,49 @@ export const ELB_ATTRIBUTE_DEFAULTS: Record<string, Record<string, string>> = {
 export const ELB_ATTRIBUTE_DEFAULTS_BY_LB_TYPE: Record<string, Record<string, string>> = {
   network: { 'load_balancing.cross_zone.enabled': 'false' },
   gateway: { 'load_balancing.cross_zone.enabled': 'false' },
+};
+
+// #1546: TargetGroup attribute defaults that differ BY PROTOCOL (the TG `Protocol`
+// property, create-only). The shared table above carries the ALB/HTTP-family values
+// (`stickiness.type: lb_cookie`); the NLB family (TCP/TLS/UDP/TCP_UDP) and a GWLB's
+// GENEVE group return DIFFERENT constants for the same keys, which first-run-FP'd on a
+// barest GWLB + ALB-behind-NLB deploy (CdkrdHunt0713bNetVariants, 2026-07-13). Merged
+// OVER the shared entry in classify, keyed by the declared (create-only) Protocol with
+// the live echo as fallback. Equality-gated like every bag default — an out-of-band
+// change (a stickiness enable, a failover-mode rebalance flip) still surfaces.
+export const ELB_TG_ATTRIBUTE_DEFAULTS_BY_PROTOCOL: Record<string, Record<string, string>> = {
+  GENEVE: {
+    'stickiness.type': 'source_ip_dest_ip_proto',
+    'target_failover.on_deregistration': 'no_rebalance',
+    'target_failover.on_unhealthy': 'no_rebalance',
+  },
+  TCP: {
+    'stickiness.type': 'source_ip',
+    'deregistration_delay.connection_termination.enabled': 'false',
+    'proxy_protocol_v2.enabled': 'false',
+  },
+  TLS: {
+    'stickiness.type': 'source_ip',
+    'deregistration_delay.connection_termination.enabled': 'false',
+    'proxy_protocol_v2.enabled': 'false',
+  },
+  UDP: {
+    'stickiness.type': 'source_ip',
+    'deregistration_delay.connection_termination.enabled': 'false',
+    'proxy_protocol_v2.enabled': 'false',
+  },
+  TCP_UDP: {
+    'stickiness.type': 'source_ip',
+    'deregistration_delay.connection_termination.enabled': 'false',
+    'proxy_protocol_v2.enabled': 'false',
+  },
+};
+
+// #1546: TargetGroup attribute defaults that differ BY TARGET TYPE — an `alb`-type group
+// (an ALB behind an NLB) preserves client IPs by default. Merged after the BY_PROTOCOL
+// overrides; live-verified on the same deploy.
+export const ELB_TG_ATTRIBUTE_DEFAULTS_BY_TARGET_TYPE: Record<string, Record<string, string>> = {
+  alb: { 'preserve_client_ip.enabled': 'true' },
 };
 
 // (R95) The generic `projectLiveToDeclaredSubset` was REMOVED. It projected the live

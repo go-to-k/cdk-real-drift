@@ -1,0 +1,82 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntNlbListener",
+    "resourceType": "AWS::ElasticLoadBalancingV2::Listener",
+    "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/net/CdkrdH-HuntN-BnlrYxTq3L6w/78f1e71360baa288/8555be1589ea60c7",
+    "constructPath": "CdkrdHunt0713bNetVariants/HuntNlbListener",
+    "declared": {
+      "DefaultActions": [
+        {
+          "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-HuntA-WSAUJN1IYFU3/140c7e1039fd697d",
+          "Type": "forward"
+        }
+      ],
+      "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkrdH-HuntN-BnlrYxTq3L6w/78f1e71360baa288",
+      "Port": 80,
+      "Protocol": "TCP"
+    }
+  },
+  "liveRaw": {
+    "ListenerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/net/CdkrdH-HuntN-BnlrYxTq3L6w/78f1e71360baa288/8555be1589ea60c7",
+    "ListenerAttributes": [
+      {
+        "Value": "350",
+        "Key": "tcp.idle_timeout.seconds"
+      }
+    ],
+    "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkrdH-HuntN-BnlrYxTq3L6w/78f1e71360baa288",
+    "DefaultActions": [
+      {
+        "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-HuntA-WSAUJN1IYFU3/140c7e1039fd697d",
+        "Type": "forward",
+        "ForwardConfig": {
+          "TargetGroupStickinessConfig": {
+            "Enabled": false
+          },
+          "TargetGroups": [
+            {
+              "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-HuntA-WSAUJN1IYFU3/140c7e1039fd697d"
+            }
+          ]
+        }
+      }
+    ],
+    "Port": 80,
+    "Protocol": "TCP"
+  },
+  "schema": {
+    "readOnly": ["ListenerArn"],
+    "writeOnly": [],
+    "createOnly": ["LoadBalancerArn"],
+    "readOnlyPaths": ["ListenerArn"],
+    "writeOnlyPaths": ["DefaultActions.*.AuthenticateOidcConfig.ClientSecret"],
+    "createOnlyPaths": ["LoadBalancerArn"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": [
+      "DefaultActions.*.AuthenticateCognitoConfig.AuthenticationRequestExtraParams",
+      "DefaultActions.*.AuthenticateOidcConfig.AuthenticationRequestExtraParams"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntNlbListener",
+      "resourceType": "AWS::ElasticLoadBalancingV2::Listener",
+      "path": "ListenerAttributes[tcp.idle_timeout.seconds]",
+      "actual": "350",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/net/CdkrdH-HuntN-BnlrYxTq3L6w/78f1e71360baa288/8555be1589ea60c7",
+      "constructPath": "CdkrdHunt0713bNetVariants/HuntNlbListener"
+    }
+  ]
+}

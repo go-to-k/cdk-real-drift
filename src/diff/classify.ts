@@ -82,6 +82,8 @@ import {
   READ_NORMALIZED_DECLARED_PATHS,
   ELB_ATTRIBUTE_DEFAULTS,
   ELB_ATTRIBUTE_DEFAULTS_BY_LB_TYPE,
+  ELB_TG_ATTRIBUTE_DEFAULTS_BY_PROTOCOL,
+  ELB_TG_ATTRIBUTE_DEFAULTS_BY_TARGET_TYPE,
   NAME_VALUE_SUBSET_PATHS,
   alignNameValueSubset,
   RATE_EXPRESSION_PATHS,
@@ -112,6 +114,37 @@ import { calculateResourceDrift, deepEqual } from './drift-calculator.js';
 // caps a modify at 20 attributes). Maps the resource type to its bag property; a
 // drift inside the bag emits one declared finding per changed Key (path stays at
 // the bag property, the Key rides on Finding.attributeKey for the SDK writer).
+// #1546: effective per-key defaults for an ELB attribute bag — the shared
+// ELB_ATTRIBUTE_DEFAULTS table overlaid with the variant tables, keyed on create-only
+// discriminators (LoadBalancer Type; TargetGroup Protocol / TargetType), declared
+// preferred with the live echo as fallback. A discriminator that matches no override
+// leaves the shared values standing; every value stays equality-gated at the call site.
+function elbAttributeDefaultsFor(
+  resourceType: string,
+  declared: Record<string, unknown>,
+  live: Record<string, unknown>
+): Record<string, string> {
+  const shared = ELB_ATTRIBUTE_DEFAULTS[resourceType] ?? {};
+  if (resourceType === 'AWS::ElasticLoadBalancingV2::LoadBalancer') {
+    const lbType = String(live.Type ?? declared.Type ?? 'application');
+    return { ...shared, ...(ELB_ATTRIBUTE_DEFAULTS_BY_LB_TYPE[lbType] ?? {}) };
+  }
+  if (resourceType === 'AWS::ElasticLoadBalancingV2::TargetGroup') {
+    const protocol = declared.Protocol ?? live.Protocol;
+    const targetType = declared.TargetType ?? live.TargetType;
+    return {
+      ...shared,
+      ...(typeof protocol === 'string'
+        ? (ELB_TG_ATTRIBUTE_DEFAULTS_BY_PROTOCOL[protocol] ?? {})
+        : {}),
+      ...(typeof targetType === 'string'
+        ? (ELB_TG_ATTRIBUTE_DEFAULTS_BY_TARGET_TYPE[targetType] ?? {})
+        : {}),
+    };
+  }
+  return shared;
+}
+
 const ELB_ATTRIBUTE_BAGS: Record<string, string> = {
   'AWS::ElasticLoadBalancingV2::LoadBalancer': 'LoadBalancerAttributes',
   'AWS::ElasticLoadBalancingV2::TargetGroup': 'TargetGroupAttributes',
@@ -1369,6 +1402,32 @@ const isNestedObject = (x: unknown): x is Record<string, unknown> =>
 // Application-Auto-Scaling scale-in) no longer matches the live-derived value — callers must
 // ALSO gate against the derivation from the DECLARED ProvisionedThroughput (the creation
 // value). A table that warmed UP under traffic (warm > both) still surfaces, unchanged.
+// #1545: does the declared inline NetworkInterfaces carry a DeviceIndex-0 entry whose
+// resolved GroupSet equals the given SG-id list (order-insensitive)? The live top-level
+// `SecurityGroupIds` of an instance declared NIC-inline is a deterministic echo of that
+// GroupSet. Unresolved GroupSet elements (a non-string intrinsic residue) fail the
+// comparison — fail-safe: the echo then falls through to the caller's default-SG gate.
+function nicZeroGroupSetEquals(declaredNics: unknown, liveSgIds: unknown[]): boolean {
+  if (!Array.isArray(declaredNics)) return false;
+  const nic0 = declaredNics.find(
+    (n) =>
+      n !== null &&
+      typeof n === 'object' &&
+      ((n as Record<string, unknown>).DeviceIndex === '0' ||
+        (n as Record<string, unknown>).DeviceIndex === 0)
+  );
+  if (nic0 === undefined) return false;
+  const groupSet = (nic0 as Record<string, unknown>).GroupSet;
+  if (!Array.isArray(groupSet) || groupSet.length !== liveSgIds.length) return false;
+  if (
+    !groupSet.every((g) => typeof g === 'string') ||
+    !liveSgIds.every((g) => typeof g === 'string')
+  )
+    return false;
+  const live = new Set(liveSgIds as string[]);
+  return groupSet.length === live.size && (groupSet as string[]).every((g) => live.has(g));
+}
+
 const DDB_TABLE_TYPES = new Set(['AWS::DynamoDB::Table', 'AWS::DynamoDB::GlobalTable']);
 // Template numbers can arrive as strings (raw-YAML templates); tolerate both.
 function capacityUnit(x: unknown): number | undefined {
@@ -3076,24 +3135,33 @@ export function classifyResource(
   // HTTP/instance case, so a clean gRPC / instance / lambda group floods first-run potential
   // drift (#648). Derive the per-type default and equality-gate it (a real out-of-band change to
   // any still surfaces). Live-verified across all three variants (hunt 2026-07-08 #648):
-  //   - HealthCheckIntervalSeconds: lambda -> 35, else 30.
+  //   - HealthCheckIntervalSeconds: lambda -> 35, GENEVE (a GWLB group) -> 10, else 30.
   //   - HealthCheckPath: GRPC -> "/AWS.ALB/healthcheck", else "/" (only present for HTTP-family
   //     health checks; a TCP group returns none so the default is inert there).
-  //   - HealthCheckTimeoutSeconds: lambda -> 30 (the base 5 constant covers instance/ip/gRPC).
-  //   - Matcher: GRPC -> {GrpcCode:"12"} (the base {HttpCode:"200"} constant covers the rest).
+  //   - HealthCheckTimeoutSeconds: lambda -> 30, alb target -> 6 (the base 5 constant covers
+  //     instance/ip/gRPC).
+  //   - Matcher: GRPC -> {GrpcCode:"12"}, alb target -> {HttpCode:"200-399"} (the base
+  //     {HttpCode:"200"} constant covers the rest).
   //   - HealthyThresholdCount: 5 for every undeclared group.
   // A group that DECLARES any of these carries it in the template and is compared there.
+  // #1546 extends the derivation to the GENEVE (GWLB) and alb-target variants, live-verified
+  // on CdkrdHunt0713bNetVariants (2026-07-13).
   if (resourceType === 'AWS::ElasticLoadBalancingV2::TargetGroup') {
     const targetType = declaredIn?.['TargetType'];
     // gRPC groups declare ProtocolVersion: GRPC; instance/ip groups read it back HTTP1 from
-    // live; a lambda group has neither (so the "/" path default applies).
+    // live; a lambda group has neither (so the "/" path default applies). Protocol is
+    // create-only and always declared for non-lambda groups; fall back to the live echo.
     const protocolVersion = declaredIn?.['ProtocolVersion'] ?? live['ProtocolVersion'];
+    const protocol = declaredIn?.['Protocol'] ?? live['Protocol'];
     knownDef = {
       ...knownDef,
       HealthyThresholdCount: 5,
-      HealthCheckIntervalSeconds: targetType === 'lambda' ? 35 : 30,
+      HealthCheckIntervalSeconds: targetType === 'lambda' ? 35 : protocol === 'GENEVE' ? 10 : 30,
       HealthCheckPath: protocolVersion === 'GRPC' ? '/AWS.ALB/healthcheck' : '/',
       ...(targetType === 'lambda' ? { HealthCheckTimeoutSeconds: 30 } : {}),
+      ...(targetType === 'alb'
+        ? { HealthCheckTimeoutSeconds: 6, Matcher: { HttpCode: '200-399' } }
+        : {}),
       ...(protocolVersion === 'GRPC' ? { Matcher: { GrpcCode: '12' } } : {}),
     };
   }
@@ -3997,17 +4065,9 @@ export function classifyResource(
       const declaredKeys = new Set(
         v.filter(isKeyValueEntry).map((e) => (e as { Key: string }).Key)
       );
-      // A LoadBalancer's per-type defaults (NLB/GWLB cross_zone "false") override the
-      // shared table — the live `Type` is authoritative (readable, createOnly), with
-      // the omitted-Type default `application` as the fallback.
-      const lbType =
-        resourceType === 'AWS::ElasticLoadBalancingV2::LoadBalancer'
-          ? String(live.Type ?? declared.Type ?? 'application')
-          : undefined;
-      const attrDefaults = {
-        ...(ELB_ATTRIBUTE_DEFAULTS[resourceType] ?? {}),
-        ...(lbType === undefined ? {} : (ELB_ATTRIBUTE_DEFAULTS_BY_LB_TYPE[lbType] ?? {})),
-      };
+      // Per-variant defaults (a LoadBalancer's per-Type, a TargetGroup's per-Protocol /
+      // per-TargetType — #1546) override the shared table.
+      const attrDefaults = elbAttributeDefaultsFor(resourceType, declared, live);
       for (const lEl of liveBag) {
         if (!isKeyValueEntry(lEl)) continue;
         const key = (lEl as { Key: string }).Key;
@@ -4597,19 +4657,10 @@ export function classifyResource(
     // the curated AWS default folds `atDefault`, and anything else stays `undeclared` (so a
     // genuinely-set attribute still surfaces, fail-closed).
     if (k === ELB_ATTRIBUTE_BAGS[resourceType] && Array.isArray(v)) {
-      // Same per-LB-type default resolution as the declared-bag branch above: an NLB/GWLB
-      // whose LoadBalancerAttributes is WHOLLY undeclared reads back its type-specific
-      // defaults (cross_zone "false", deletion_protection "false"), which the shared
-      // application-oriented table does not carry — merge the BY_LB_TYPE overrides so they
-      // fold `atDefault` instead of surfacing as false undeclared drift.
-      const lbType =
-        resourceType === 'AWS::ElasticLoadBalancingV2::LoadBalancer'
-          ? String(live.Type ?? declared.Type ?? 'application')
-          : undefined;
-      const attrDefaults = {
-        ...(ELB_ATTRIBUTE_DEFAULTS[resourceType] ?? {}),
-        ...(lbType === undefined ? {} : (ELB_ATTRIBUTE_DEFAULTS_BY_LB_TYPE[lbType] ?? {})),
-      };
+      // Same per-variant default resolution as the declared-bag branch above (#1546): an
+      // NLB/GWLB whose attributes are WHOLLY undeclared reads back its variant-specific
+      // defaults, which the shared application-oriented table does not carry.
+      const attrDefaults = elbAttributeDefaultsFor(resourceType, declared, live);
       for (const lEl of v) {
         if (!isKeyValueEntry(lEl)) continue;
         const key = (lEl as { Key: string }).Key;
@@ -4647,6 +4698,23 @@ export function classifyResource(
     // value-independent fold, which hid an out-of-band SG swap/append. Fold atDefault ONLY when the
     // live list is the single VPC-default SG (or the prefetch is unavailable → fail open); a 2+-element
     // APPEND or a single non-default SG SWAP falls through to the undeclared tier and surfaces.
+    // #1545: an instance that declares its security groups via inline
+    // NetworkInterfaces (the CDK L2 shape whenever a NIC-level prop like
+    // AssociatePublicIpAddress is set) reads back the SAME list echoed as the
+    // undeclared top-level `SecurityGroupIds` — a deterministic echo of the
+    // declared DeviceIndex-0 GroupSet (fold tier 2, order-insensitive equality).
+    // An out-of-band SG swap/append no longer equals the declared GroupSet and
+    // falls through to the default-SG gate below (surfacing unless it is the
+    // lone VPC-default SG — the #640 semantics).
+    if (
+      resourceType === 'AWS::EC2::Instance' &&
+      k === 'SecurityGroupIds' &&
+      Array.isArray(v) &&
+      nicZeroGroupSetEquals(declared.NetworkInterfaces, v)
+    ) {
+      findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
+      continue;
+    }
     if (DEFAULT_SG_LIST_PATHS[resourceType] === k && !isTrivialEmpty(v)) {
       findings.push({
         tier: shouldFoldDefaultSgList(resourceType, k, v, opts.defaultSgIds)

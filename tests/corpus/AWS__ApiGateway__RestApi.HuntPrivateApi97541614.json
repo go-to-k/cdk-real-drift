@@ -1,0 +1,130 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntPrivateApi97541614",
+    "resourceType": "AWS::ApiGateway::RestApi",
+    "physicalId": "w38wud0ma1",
+    "constructPath": "CdkrdHunt0713bPrivApiMisc/HuntPrivateApi",
+    "declared": {
+      "EndpointConfiguration": {
+        "Types": ["PRIVATE"]
+      },
+      "Name": "cdkrd-hunt-private-api",
+      "Policy": {
+        "Statement": [
+          {
+            "Action": "execute-api:Invoke",
+            "Effect": "Allow",
+            "Principal": {
+              "AWS": "*"
+            },
+            "Resource": "execute-api:/*"
+          }
+        ],
+        "Version": "2012-10-17"
+      },
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":\"*\"},\"Action\":\"execute-api:Invoke\",\"Resource\":\"arn:aws:execute-api:us-east-1:111111111111:w38wud0ma1/*\"}]}",
+    "RootResourceId": "vxjkrg5a95",
+    "SecurityPolicy": "TLS_1_2",
+    "RestApiId": "w38wud0ma1",
+    "ApiKeySourceType": "HEADER",
+    "EndpointConfiguration": {
+      "IpAddressType": "dualstack",
+      "Types": ["PRIVATE"]
+    },
+    "DisableExecuteApiEndpoint": false,
+    "Tags": [
+      {
+        "Value": "HuntPrivateApi97541614",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0713bPrivApiMisc/ee3c7ab0-7e15-11f1-8361-125309d81d7b",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkrdHunt0713bPrivApiMisc",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "Name": "cdkrd-hunt-private-api"
+  },
+  "schema": {
+    "readOnly": ["RestApiId", "RootResourceId"],
+    "writeOnly": ["Body", "BodyS3Location", "CloneFrom", "FailOnWarnings", "Mode", "Parameters"],
+    "createOnly": [],
+    "readOnlyPaths": ["RestApiId", "RootResourceId"],
+    "writeOnlyPaths": [
+      "Body",
+      "BodyS3Location",
+      "CloneFrom",
+      "FailOnWarnings",
+      "Mode",
+      "Parameters"
+    ],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntPrivateApi97541614",
+      "resourceType": "AWS::ApiGateway::RestApi",
+      "path": "SecurityPolicy",
+      "actual": "TLS_1_2",
+      "physicalId": "w38wud0ma1",
+      "constructPath": "CdkrdHunt0713bPrivApiMisc/HuntPrivateApi"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntPrivateApi97541614",
+      "resourceType": "AWS::ApiGateway::RestApi",
+      "path": "ApiKeySourceType",
+      "actual": "HEADER",
+      "physicalId": "w38wud0ma1",
+      "constructPath": "CdkrdHunt0713bPrivApiMisc/HuntPrivateApi"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntPrivateApi97541614",
+      "resourceType": "AWS::ApiGateway::RestApi",
+      "path": "DisableExecuteApiEndpoint",
+      "actual": false,
+      "physicalId": "w38wud0ma1",
+      "constructPath": "CdkrdHunt0713bPrivApiMisc/HuntPrivateApi"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntPrivateApi97541614",
+      "resourceType": "AWS::ApiGateway::RestApi",
+      "path": "EndpointConfiguration.IpAddressType",
+      "actual": "dualstack",
+      "nested": true,
+      "physicalId": "w38wud0ma1",
+      "constructPath": "CdkrdHunt0713bPrivApiMisc/HuntPrivateApi"
+    }
+  ]
+}

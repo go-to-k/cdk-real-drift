@@ -576,6 +576,41 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('#1544: EC2 Instance MetadataOptions (SET-DEFAULT) -> add op writing the secure-defaults object, not a no-op remove', () => {
+    // ModifyInstanceMetadataOptions is a one-shot API: a bare `remove` of an out-of-band
+    // undeclared MetadataOptions change is a silent no-op (live-proven on
+    // CdkrdHunt0713bImds: an IMDSv2 downgrade to HttpTokens "optional" was detected but
+    // the revert reported success while the live value persisted). Revert must write the
+    // KNOWN_DEFAULTS AL2023 secure-defaults object explicitly (post-fix live re-verified:
+    // the instance converged back to required/2).
+    const drifted = {
+      HttpTokens: 'optional',
+      HttpPutResponseHopLimit: 2,
+      HttpProtocolIpv6: 'disabled',
+      InstanceMetadataTags: 'disabled',
+      HttpEndpoint: 'enabled',
+    };
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::EC2::Instance',
+      path: 'MetadataOptions',
+      actual: drifted,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/MetadataOptions',
+      value: {
+        HttpTokens: 'required',
+        HttpPutResponseHopLimit: 2,
+        HttpProtocolIpv6: 'disabled',
+        InstanceMetadataTags: 'disabled',
+        HttpEndpoint: 'enabled',
+      },
+      prior: drifted,
+    });
+  });
+
   it('Lambda Alias Description (SET-DEFAULT) -> add op writing the empty-string default, not a no-op remove', () => {
     // AWS::Lambda::Alias Description is in REVERT_SET_DEFAULT_PATHS: UpdateAlias leaves the
     // description UNCHANGED when it is OMITTED, so a bare `remove` is a silent no-op (Cloud
