@@ -99,16 +99,5 @@
       }
     }
   },
-  "expected": [
-    {
-      "tier": "declared",
-      "logicalId": "HuntOg",
-      "resourceType": "AWS::RDS::OptionGroup",
-      "path": "OptionGroupName",
-      "desired": "CdkrdHunt-Mixed-OG",
-      "actual": "cdkrdhunt-mixed-og",
-      "physicalId": "cdkrdhunt-mixed-og",
-      "constructPath": "CdkRealDriftIntegCaseIdentsMin/HuntOg"
-    }
-  ]
+  "expected": []
 }

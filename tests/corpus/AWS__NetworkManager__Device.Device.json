@@ -1,0 +1,53 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Device",
+    "resourceType": "AWS::NetworkManager::Device",
+    "physicalId": "global-network-014914d5c119d2d12|device-0c0f34170dc8c8c5e",
+    "constructPath": "CdkrdHuntMiscBarest20712c/Device",
+    "declared": {
+      "GlobalNetworkId": "global-network-014914d5c119d2d12",
+      "SiteId": "site-0d3f736b4455cedb7",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "SiteId": "site-0d3f736b4455cedb7",
+    "GlobalNetworkId": "global-network-014914d5c119d2d12",
+    "DeviceArn": "arn:aws:networkmanager::111111111111:device/global-network-014914d5c119d2d12/device-0c0f34170dc8c8c5e",
+    "DeviceId": "device-0c0f34170dc8c8c5e",
+    "State": "AVAILABLE",
+    "CreatedAt": "2026-07-12T14:58:15Z",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["CreatedAt", "DeviceArn", "DeviceId", "State"],
+    "writeOnly": [],
+    "createOnly": ["GlobalNetworkId"],
+    "readOnlyPaths": ["CreatedAt", "DeviceArn", "DeviceId", "State"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["GlobalNetworkId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

@@ -1,0 +1,49 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "GlobalNetwork",
+    "resourceType": "AWS::NetworkManager::GlobalNetwork",
+    "physicalId": "global-network-0be4a731ac6af18ee",
+    "constructPath": "CdkrdHuntMiscBarest0712c/GlobalNetwork",
+    "declared": {
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "State": "AVAILABLE",
+    "CreatedAt": "2026-07-12T14:13:10Z",
+    "Id": "global-network-0be4a731ac6af18ee",
+    "Arn": "arn:aws:networkmanager::111111111111:global-network/global-network-0be4a731ac6af18ee",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "CreatedAt", "Id", "State"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Arn", "CreatedAt", "Id", "State"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

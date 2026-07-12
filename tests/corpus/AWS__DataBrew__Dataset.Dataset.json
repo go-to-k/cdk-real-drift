@@ -1,0 +1,82 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Dataset",
+    "resourceType": "AWS::DataBrew::Dataset",
+    "physicalId": "cdkrd-hunt-dataset-0712c",
+    "constructPath": "CdkrdHuntMiscBarest20712c/Dataset",
+    "declared": {
+      "Input": {
+        "S3InputDefinition": {
+          "Bucket": "cdkrdhuntmiscbarest20712c-bucket-wugmxx3qvpyt",
+          "Key": "input.csv"
+        }
+      },
+      "Name": "cdkrd-hunt-dataset-0712c",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Input": {
+      "S3InputDefinition": {
+        "Bucket": "cdkrdhuntmiscbarest20712c-bucket-wugmxx3qvpyt",
+        "Key": "input.csv"
+      }
+    },
+    "Source": "S3",
+    "Tags": [
+      {
+        "Value": "CdkrdHuntMiscBarest20712c",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Dataset",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHuntMiscBarest20712c/11d28640-7e02-11f1-b97f-0ec669663bd7",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "Name": "cdkrd-hunt-dataset-0712c"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Dataset",
+      "resourceType": "AWS::DataBrew::Dataset",
+      "path": "Source",
+      "actual": "S3",
+      "physicalId": "cdkrd-hunt-dataset-0712c",
+      "constructPath": "CdkrdHuntMiscBarest20712c/Dataset"
+    }
+  ]
+}

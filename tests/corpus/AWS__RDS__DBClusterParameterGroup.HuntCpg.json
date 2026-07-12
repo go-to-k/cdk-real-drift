@@ -65,16 +65,5 @@
     "kmsAliasTargets": {},
     "oaiCanonicalIds": {}
   },
-  "expected": [
-    {
-      "tier": "declared",
-      "logicalId": "HuntCpg",
-      "resourceType": "AWS::RDS::DBClusterParameterGroup",
-      "path": "DBClusterParameterGroupName",
-      "desired": "CdkrdHunt-Mixed-CPG",
-      "actual": "cdkrdhunt-mixed-cpg",
-      "physicalId": "cdkrdhunt-mixed-cpg",
-      "constructPath": "CdkRealDriftIntegCaseIdentsMin/HuntCpg"
-    }
-  ]
+  "expected": []
 }

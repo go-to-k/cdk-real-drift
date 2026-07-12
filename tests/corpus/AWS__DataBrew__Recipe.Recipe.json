@@ -1,0 +1,80 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Recipe",
+    "resourceType": "AWS::DataBrew::Recipe",
+    "physicalId": "cdkrd-hunt-recipe-0712c",
+    "constructPath": "CdkrdHuntMiscBarest20712c/Recipe",
+    "declared": {
+      "Name": "cdkrd-hunt-recipe-0712c",
+      "Steps": [
+        {
+          "Action": {
+            "Operation": "UPPER_CASE",
+            "Parameters": {
+              "sourceColumn": "col1"
+            }
+          }
+        }
+      ],
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Steps": [
+      {
+        "Action": {
+          "Parameters": {
+            "SourceColumn": "col1"
+          },
+          "Operation": "UPPER_CASE"
+        },
+        "ConditionExpressions": []
+      }
+    ],
+    "Tags": [
+      {
+        "Value": "CdkrdHuntMiscBarest20712c",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Recipe",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHuntMiscBarest20712c/11d28640-7e02-11f1-b97f-0ec669663bd7",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "Name": "cdkrd-hunt-recipe-0712c"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": ["Steps.*.Action.Parameters"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

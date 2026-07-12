@@ -235,9 +235,8 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // reads back the constant documented default `true` (AWS terminates the build instance on
   // failure). Equality-gated: the fold applies ONLY to the `true` default, so a different
   // materialized value never folds. (A later `false` disable is an undeclared boolean that the
-  // classify undeclared loop drops as trivially-empty upstream — surfacing that disable would
-  // need a MEANINGFUL_WHEN_OFF entry in diff/classify.ts, out of scope for this first-run-FP
-  // fold; this entry only mutes the AWS-assigned `true`.) Live-confirmed on a fresh
+  // classify undeclared loop would drop as trivially-empty upstream — surfaced since #1530 by
+  // the paired MEANINGFUL_WHEN_OFF entry in diff/classify.ts.) Live-confirmed on a fresh
   // imagebuilder-rich deploy (#911).
   'AWS::ImageBuilder::InfrastructureConfiguration': { TerminateInstanceOnFailure: true },
   // An ImageBuilder ImagePipeline that declares neither EnhancedImageMetadataEnabled nor
@@ -247,8 +246,9 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // (subset-tolerant): disabling image tests reads back ImageTestsConfiguration as a non-empty
   // OBJECT ({ImageTestsEnabled:false, TimeoutMinutes:720}) that no longer matches the default,
   // so it re-surfaces as real undeclared drift (detection preserved). (EnhancedImageMetadata
-  // ENABLED=false is a bare undeclared boolean the classify loop drops as trivially-empty
-  // upstream, same as TerminateInstanceOnFailure above.) Live-confirmed on a fresh
+  // ENABLED=false is a bare undeclared boolean the classify loop would drop as trivially-empty
+  // upstream — surfaced since #1530 by the paired MEANINGFUL_WHEN_OFF entry, same as
+  // TerminateInstanceOnFailure above.) Live-confirmed on a fresh
   // imagebuilder-rich pipeline (#911).
   'AWS::ImageBuilder::ImagePipeline': {
     EnhancedImageMetadataEnabled: true,
@@ -1154,10 +1154,25 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // A DAX cluster that declares no ClusterEndpointEncryptionType reads back "NONE" (the
   // constant service default; the only other value, "TLS", is an explicit opt-in).
   // Observed live on a fresh DAX deploy (us-east-1, 2026-07-03; #554). Equality-gated.
-  // (PreferredMaintenanceWindow / SecurityGroupIds and the ParameterGroup's parameter
-  // values are per-resource/AWS-assigned, so they are deliberately NOT folded here.)
+  // #1532: a cluster that declares no ParameterGroupName reads back the AWS-managed
+  // "default.dax1.0" (live-confirmed on a fresh barest cluster, us-east-1 2026-07-12;
+  // DAX has a single engine track, so the name is a stable constant). Equality-gated —
+  // an out-of-band parameter-group swap no longer matches and surfaces. The remaining
+  // #554 deferrals are folded per-tier elsewhere: PreferredMaintenanceWindow is a
+  // RANDOMLY-assigned per-cluster slot (value-independent, see
+  // VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS) and SecurityGroupIds defaults to the VPC
+  // default SG (derive-gated in classify DEFAULT_SG_LIST_PATHS).
   'AWS::DAX::Cluster': {
     ClusterEndpointEncryptionType: 'NONE',
+    ParameterGroupName: 'default.dax1.0',
+  },
+  // #1532: a DAX parameter group that declares no parameter values reads back the two
+  // engine defaults materialized at creation (5-minute item/query TTLs, serialized as
+  // millisecond strings). Live-confirmed on a fresh description-only parameter group
+  // (us-east-1, 2026-07-12). Equality-gated — an out-of-band TTL change no longer
+  // matches and surfaces.
+  'AWS::DAX::ParameterGroup': {
+    ParameterNameValues: { 'query-ttl-millis': '300000', 'record-ttl-millis': '300000' },
   },
   // Managed Prometheus materializes a WorkspaceConfiguration of service defaults
   // (150-day retention, 60s rule-query offset / out-of-order window) on every
@@ -1561,6 +1576,44 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   },
   'AWS::Lightsail::Instance': {
     KeyPairName: 'LightsailDefaultKeyPair',
+    // #1533: every Linux-blueprint instance is created with the constant default firewall —
+    // inbound tcp 22 (SSH) + tcp 80 (HTTP) from anywhere (live-verified on a fresh
+    // amazon_linux_2023 nano instance, us-east-1 2026-07-12). Equality-gated: an out-of-band
+    // `open-instance-public-ports` (a rogue port) breaks the pin and SURFACES — exactly the
+    // security drift the fold must preserve. The Ports ARRAY is compared deep-equal
+    // (matchesKnownDefault's subset tolerance applies to objects, not array elements), so
+    // the pin carries the exact live element shape including its empty CidrListAliases/
+    // CommonName; the sibling MonthlyTransfer:{} husk IS absorbed at the object level. A
+    // Windows blueprint's default set (RDP 3389) is a DIFFERENT shape — add it as a second
+    // accepted value when live-observed.
+    Networking: {
+      Ports: [
+        {
+          FromPort: 22,
+          ToPort: 22,
+          Protocol: 'tcp',
+          AccessDirection: 'inbound',
+          AccessType: 'public',
+          AccessFrom: 'Anywhere (0.0.0.0/0 and ::/0)',
+          Cidrs: ['0.0.0.0/0'],
+          Ipv6Cidrs: ['::/0'],
+          CidrListAliases: [],
+          CommonName: '',
+        },
+        {
+          FromPort: 80,
+          ToPort: 80,
+          Protocol: 'tcp',
+          AccessDirection: 'inbound',
+          AccessType: 'public',
+          AccessFrom: 'Anywhere (0.0.0.0/0 and ::/0)',
+          Cidrs: ['0.0.0.0/0'],
+          Ipv6Cidrs: ['::/0'],
+          CidrListAliases: [],
+          CommonName: '',
+        },
+      ],
+    },
   },
   'AWS::Lightsail::Disk': {
     AddOns: [{ AddOnType: 'AutoSnapshot', Status: 'Disabled' }],
@@ -3343,6 +3396,17 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   DECLARES KmsKeyId and is compared in the declared loop. Observed live on a fresh
   //   minimal endpoint (case-idents-min, 2026-07-12; #1490).
   'AWS::DMS::Endpoint': new Set(['KmsKeyId']),
+  //   AWS::DAX::Cluster.PreferredMaintenanceWindow — a cluster that declares no window reads
+  //   back the RANDOMLY-assigned weekly slot AWS chose at creation (live first-run on a fresh
+  //   barest cluster, #1532) — the same per-resource assigned-window shape as the RDS/DocDB/
+  //   Neptune/ElastiCache windows in this table. Not a constant, not derivable; a user who
+  //   cares DECLARES it (compared in the declared loop).
+  'AWS::DAX::Cluster': new Set(['PreferredMaintenanceWindow']),
+  //   AWS::Lightsail::Instance.AvailabilityZone — an instance that declares no AZ reads back
+  //   the zone AWS placed it in at creation (create-only; the Lightsail twin of the RDS/
+  //   Neptune AvailabilityZone entries above). Live first-run on a fresh nano instance
+  //   (#1533). A DECLARED AZ is compared in the declared loop (detected).
+  'AWS::Lightsail::Instance': new Set(['AvailabilityZone']),
   'AWS::RDS::DBCluster': new Set([
     'KmsKeyId',
     'EngineVersion',
@@ -4376,8 +4440,11 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
   // the service lowercases again). Every identifier here is create-only, so case-insensitive
   // equality hides no revertable drift (a genuine rename is a replacement). ElastiCache
   // SubnetGroup live-verified; the rest docs-verified from the AWS CLI help. NOTE:
-  // AWS::RDS::DBSubnetGroup.DBSubnetGroupName and AWS::Route53::HostedZone.Name were
-  // live-ruled-out (RDS/Route53 PRESERVE case on read) so they are deliberately NOT added.
+  // AWS::Route53::HostedZone.Name was live-ruled-out (Route53 PRESERVES case on read) so it
+  // is deliberately NOT added. (An earlier note also ruled out RDS DBSubnetGroupName, but a
+  // 2026-07-12 live probe disproved that: `create-db-subnet-group
+  // --db-subnet-group-name CdkrdHunt-Mixed-SNG` stores and reads back
+  // `cdkrdhunt-mixed-sng` — it IS lowercased, so it is now in the family below.)
   'AWS::ElastiCache::SubnetGroup': new Set(['CacheSubnetGroupName']),
   'AWS::ElastiCache::ReplicationGroup': new Set(['ReplicationGroupId']),
   'AWS::ElastiCache::CacheCluster': new Set(['ClusterName']),
@@ -4387,6 +4454,21 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
   'AWS::Neptune::DBCluster': new Set(['DBClusterIdentifier']),
   'AWS::Neptune::DBInstance': new Set(['DBInstanceIdentifier']),
   'AWS::Neptune::DBSubnetGroup': new Set(['DBSubnetGroupName']),
+  // #1531: the parameter-group / option-group / subnet-group NAME twins of the identifier
+  // family above — RDS stores each "as a lowercase string" (CLI help for the RDS/Neptune/
+  // DocDB create calls; OptionGroupName + RDS DBSubnetGroupName live-proven: a mixed-case
+  // declaration reads back all-lowercase). The mixed-case FP was live-captured by the #1507
+  // hunt and its three corpus cases pinned the wrong `expected` (corrected in the same PR
+  // as this entry). All are create-only names, so case-insensitive equality hides no
+  // revertable drift (a genuine rename is a replacement). Neptune/DocDB spell the CFn
+  // property `Name`.
+  'AWS::RDS::DBParameterGroup': new Set(['DBParameterGroupName']),
+  'AWS::RDS::DBClusterParameterGroup': new Set(['DBClusterParameterGroupName']),
+  'AWS::RDS::OptionGroup': new Set(['OptionGroupName']),
+  'AWS::RDS::DBSubnetGroup': new Set(['DBSubnetGroupName']),
+  'AWS::Neptune::DBParameterGroup': new Set(['Name']),
+  'AWS::Neptune::DBClusterParameterGroup': new Set(['Name']),
+  'AWS::DocDB::DBClusterParameterGroup': new Set(['Name']),
   'AWS::DMS::ReplicationInstance': new Set(['ReplicationInstanceIdentifier']),
   'AWS::DMS::ReplicationSubnetGroup': new Set(['ReplicationSubnetGroupIdentifier']),
   // DMS Endpoint `EndpointType` — the CFn/CDK value is lowercase (`source` /
