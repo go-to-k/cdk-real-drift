@@ -1,0 +1,449 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntMariaDbFC079FD5",
+    "resourceType": "AWS::RDS::DBInstance",
+    "physicalId": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
+    "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb",
+    "declared": {
+      "AllocatedStorage": "100",
+      "CopyTagsToSnapshot": true,
+      "DBInstanceClass": "db.t4g.micro",
+      "DBSubnetGroupName": "cdkrdhunt0713rdsmariadb-huntmariadbsubnetgroup3bb9d0fd-e8i3czpv08rs",
+      "DeleteAutomatedBackups": true,
+      "Engine": "mariadb",
+      "MasterUserPassword": "CdkrdHuntPassw0rd!",
+      "MasterUsername": "huntadmin",
+      "PubliclyAccessible": false,
+      "StorageType": "gp2",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "VPCSecurityGroups": ["sg-052cf0fcf27208fa0"]
+    }
+  },
+  "liveRaw": {
+    "DatabaseInsightsMode": "standard",
+    "StorageEncrypted": false,
+    "StatusInfos": [],
+    "CertificateDetails": {
+      "ValidTill": "2027-07-12T15:56:38Z",
+      "CAIdentifier": "rds-ca-rsa2048-g1"
+    },
+    "Port": "3306",
+    "AdditionalStorageVolumes": [],
+    "StorageThroughput": 0,
+    "DbiResourceId": "db-NDJGN7WYVTPF4QYA2BNQM4SAUY",
+    "ReadReplicaDBClusterIdentifiers": [],
+    "MonitoringInterval": 0,
+    "DBParameterGroupName": "default.mariadb11.8",
+    "DBInstanceArn": "arn:aws:rds:us-east-1:111111111111:db:cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
+    "Endpoint": {
+      "Address": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa.caxxotukouxo.us-east-1.rds.amazonaws.com",
+      "Port": "3306",
+      "HostedZoneId": "Z2R2ITUGPM61AM"
+    },
+    "LatestRestorableTime": "2026-07-12T16:00:02Z",
+    "MultiAZ": false,
+    "Engine": "mariadb",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0713RdsMariadb",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntMariaDbFC079FD5",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0713RdsMariadb/e10850a0-7e09-11f1-96ab-129bac179cd9",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "IsStorageConfigUpgradeAvailable": false,
+    "EngineVersion": "11.8.6",
+    "StorageType": "gp2",
+    "DBInstanceStatus": "available",
+    "DBInstanceClass": "db.t4g.micro",
+    "AvailabilityZone": "us-east-1a",
+    "OptionGroupName": "default:mariadb-11-8",
+    "EnablePerformanceInsights": false,
+    "ReadReplicaDBInstanceIdentifiers": [],
+    "AutoMinorVersionUpgrade": true,
+    "DBSubnetGroupName": "cdkrdhunt0713rdsmariadb-huntmariadbsubnetgroup3bb9d0fd-e8i3czpv08rs",
+    "DeletionProtection": false,
+    "DBInstanceIdentifier": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
+    "AllocatedStorage": "100",
+    "MasterUserSecret": {},
+    "DBSecurityGroups": [],
+    "MasterUsername": "huntadmin",
+    "PubliclyAccessible": false,
+    "AssociatedRoles": [],
+    "InstanceCreateTime": "2026-07-12T15:57:51.093Z",
+    "ProcessorFeatures": [],
+    "PreferredBackupWindow": "04:18-04:48",
+    "NetworkType": "IPV4",
+    "DedicatedLogVolume": false,
+    "CopyTagsToSnapshot": true,
+    "LicenseModel": "general-public-license",
+    "PreferredMaintenanceWindow": "mon:09:13-mon:09:43",
+    "BackupTarget": "region",
+    "CACertificateIdentifier": "rds-ca-rsa2048-g1",
+    "ManageMasterUserPassword": false,
+    "VPCSecurityGroups": ["sg-052cf0fcf27208fa0"],
+    "EnableIAMDatabaseAuthentication": false,
+    "BackupRetentionPeriod": 1,
+    "EnableCloudwatchLogsExports": []
+  },
+  "schema": {
+    "readOnly": [
+      "AutomaticRestartTime",
+      "CertificateDetails",
+      "DBInstanceArn",
+      "DBInstanceStatus",
+      "DbiResourceId",
+      "Endpoint",
+      "InstanceCreateTime",
+      "IsStorageConfigUpgradeAvailable",
+      "LatestRestorableTime",
+      "ListenerEndpoint",
+      "PercentProgress",
+      "ReadReplicaDBClusterIdentifiers",
+      "ReadReplicaDBInstanceIdentifiers",
+      "ResumeFullAutomationModeTime",
+      "SecondaryAvailabilityZone",
+      "StatusInfos"
+    ],
+    "writeOnly": [
+      "AllowMajorVersionUpgrade",
+      "ApplyImmediately",
+      "AutomaticBackupReplicationKmsKeyId",
+      "CertificateRotationRestart",
+      "DBSnapshotIdentifier",
+      "DeleteAutomatedBackups",
+      "MasterUserAuthenticationType",
+      "MasterUserPassword",
+      "RestoreTime",
+      "SourceDBInstanceAutomatedBackupsArn",
+      "SourceDBInstanceIdentifier",
+      "SourceDbiResourceId",
+      "SourceRegion",
+      "TdeCredentialPassword",
+      "UseDefaultProcessorFeatures",
+      "UseLatestRestorableTime"
+    ],
+    "createOnly": [
+      "BackupTarget",
+      "CharacterSetName",
+      "CustomIAMInstanceProfile",
+      "DBClusterIdentifier",
+      "DBInstanceIdentifier",
+      "DBName",
+      "DBSubnetGroupName",
+      "DBSystemId",
+      "KmsKeyId",
+      "MasterUsername",
+      "NcharCharacterSetName",
+      "SourceRegion",
+      "StorageEncrypted",
+      "Timezone"
+    ],
+    "readOnlyPaths": [
+      "AutomaticRestartTime",
+      "CertificateDetails",
+      "CertificateDetails.CAIdentifier",
+      "CertificateDetails.ValidTill",
+      "DBInstanceArn",
+      "DBInstanceStatus",
+      "DbiResourceId",
+      "Endpoint",
+      "Endpoint.Address",
+      "Endpoint.HostedZoneId",
+      "Endpoint.Port",
+      "InstanceCreateTime",
+      "IsStorageConfigUpgradeAvailable",
+      "LatestRestorableTime",
+      "ListenerEndpoint",
+      "ListenerEndpoint.Address",
+      "ListenerEndpoint.HostedZoneId",
+      "ListenerEndpoint.Port",
+      "MasterUserSecret.SecretArn",
+      "PercentProgress",
+      "ReadReplicaDBClusterIdentifiers",
+      "ReadReplicaDBInstanceIdentifiers",
+      "ResumeFullAutomationModeTime",
+      "SecondaryAvailabilityZone",
+      "StatusInfos"
+    ],
+    "writeOnlyPaths": [
+      "AllowMajorVersionUpgrade",
+      "ApplyImmediately",
+      "AutomaticBackupReplicationKmsKeyId",
+      "CertificateRotationRestart",
+      "DBSnapshotIdentifier",
+      "DeleteAutomatedBackups",
+      "MasterUserAuthenticationType",
+      "MasterUserPassword",
+      "RestoreTime",
+      "SourceDBInstanceAutomatedBackupsArn",
+      "SourceDBInstanceIdentifier",
+      "SourceDbiResourceId",
+      "SourceRegion",
+      "TdeCredentialPassword",
+      "UseDefaultProcessorFeatures",
+      "UseLatestRestorableTime"
+    ],
+    "createOnlyPaths": [
+      "BackupTarget",
+      "CharacterSetName",
+      "CustomIAMInstanceProfile",
+      "DBClusterIdentifier",
+      "DBInstanceIdentifier",
+      "DBName",
+      "DBSubnetGroupName",
+      "DBSystemId",
+      "KmsKeyId",
+      "MasterUsername",
+      "NcharCharacterSetName",
+      "SourceRegion",
+      "StorageEncrypted",
+      "Timezone"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "HuntMariaDbFC079FD5",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "DeleteAutomatedBackups",
+      "note": "write-only — cannot be read back",
+      "physicalId": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
+      "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb"
+    },
+    {
+      "tier": "readGap",
+      "logicalId": "HuntMariaDbFC079FD5",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "MasterUserPassword",
+      "note": "write-only — cannot be read back",
+      "physicalId": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
+      "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntMariaDbFC079FD5",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "DatabaseInsightsMode",
+      "actual": "standard",
+      "physicalId": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
+      "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntMariaDbFC079FD5",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "StorageEncrypted",
+      "actual": false,
+      "physicalId": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
+      "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntMariaDbFC079FD5",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "Port",
+      "actual": "3306",
+      "physicalId": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
+      "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntMariaDbFC079FD5",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "StorageThroughput",
+      "actual": 0,
+      "physicalId": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
+      "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntMariaDbFC079FD5",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "MonitoringInterval",
+      "actual": 0,
+      "physicalId": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
+      "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntMariaDbFC079FD5",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "DBParameterGroupName",
+      "actual": "default.mariadb11.8",
+      "physicalId": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
+      "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntMariaDbFC079FD5",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "MultiAZ",
+      "actual": false,
+      "physicalId": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
+      "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntMariaDbFC079FD5",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "EngineVersion",
+      "actual": "11.8.6",
+      "physicalId": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
+      "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntMariaDbFC079FD5",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "AvailabilityZone",
+      "actual": "us-east-1a",
+      "physicalId": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
+      "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntMariaDbFC079FD5",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "OptionGroupName",
+      "actual": "default:mariadb-11-8",
+      "physicalId": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
+      "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntMariaDbFC079FD5",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "EnablePerformanceInsights",
+      "actual": false,
+      "physicalId": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
+      "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntMariaDbFC079FD5",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "AutoMinorVersionUpgrade",
+      "actual": true,
+      "physicalId": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
+      "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntMariaDbFC079FD5",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "PreferredBackupWindow",
+      "actual": "04:18-04:48",
+      "physicalId": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
+      "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntMariaDbFC079FD5",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "NetworkType",
+      "actual": "IPV4",
+      "physicalId": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
+      "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntMariaDbFC079FD5",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "DedicatedLogVolume",
+      "actual": false,
+      "physicalId": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
+      "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntMariaDbFC079FD5",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "LicenseModel",
+      "actual": "general-public-license",
+      "physicalId": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
+      "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntMariaDbFC079FD5",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "PreferredMaintenanceWindow",
+      "actual": "mon:09:13-mon:09:43",
+      "physicalId": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
+      "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntMariaDbFC079FD5",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "BackupTarget",
+      "actual": "region",
+      "physicalId": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
+      "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntMariaDbFC079FD5",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "CACertificateIdentifier",
+      "actual": "rds-ca-rsa2048-g1",
+      "physicalId": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
+      "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntMariaDbFC079FD5",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "ManageMasterUserPassword",
+      "actual": false,
+      "physicalId": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
+      "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntMariaDbFC079FD5",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "EnableIAMDatabaseAuthentication",
+      "actual": false,
+      "physicalId": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
+      "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntMariaDbFC079FD5",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "BackupRetentionPeriod",
+      "actual": 1,
+      "physicalId": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
+      "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb"
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+#!/bin/sh
+# Dummy bootstrap for the cdkrd lambda-runtimes-min fixture — never invoked.
+exit 0

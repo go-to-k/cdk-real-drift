@@ -556,6 +556,34 @@ Recorded]` breakdown with `--verbose`.
   TransitEncryptionEnabled, both unlike redis; observed 2026-07-12). Record the
   difference in the fixture comment (it documents the axis) and declare the minimum
   to proceed — the surviving undeclared surface is still the probe.
+- **Raw-API acceptance ≠ CloudFormation reachability — probe the CFn HANDLER before
+  concluding a case-echo FP risk.** Several CC handlers add CLIENT-side validation the
+  raw service API does not have: `elasticache create-user` and `memorydb
+create-parameter-group` both ACCEPT a mixed-case identifier (storing it lowercased —
+  the FP trigger), yet the CFn/CC handlers REJECT the same input
+  (`InvalidRequest: must contain only lowercase…`), making the FP unreachable via
+  CloudFormation — no allowlist entry needed (2026-07-13, #1539 determinations). The
+  cheap sequence: probe the raw API by CLI create+delete first (it answers "does the
+  service lowercase?"), but only a CFn DEPLOY proves reachability; a handler rejection
+  is itself the determination (record it in the fixture comment). The inverse also
+  held: Redshift's and Batch's handlers pass mixed case through, and both FP'd.
+- **An undeclared-revert "proof" is void if the CDK L2 declares the leaf.** Before
+  claiming a revert no-op / convergence proof for an UNDECLARED property, read the
+  DEPLOYED template: mutating a value the L2 silently declared (RDS
+  `CopyTagsToSnapshot: true`) produces NO divergence (live == declared), so the revert
+  never plans it and the "proof" proves nothing — the fixture-side twin of the
+  "corpus that declares the target leaf can't stand in" lesson. Live-proof each
+  REVERT_SET_DEFAULT sibling individually with a template that genuinely omits it
+  (#1541: BackupRetentionPeriod proven; CopyTagsToSnapshot stays unproven for exactly
+  this reason).
+- **An in-stack scalable target is a cheap real-drift generator.** A ScalableTarget
+  scheduled action (min/max below the declared capacity) makes App Auto Scaling clamp
+  the resource within minutes of deploy — producing a REAL capacity divergence with no
+  out-of-band CLI call. That accident exposed the WarmThroughput creation-echo FP
+  (#1538: warm throughput echoes CREATION capacity and never follows a scale-in, so a
+  derived fold gated only on the CURRENT live sibling FPs after any scale-in). Pattern
+  to reuse: derived folds for creation-echo values must ALSO gate against the
+  DECLARED-derived value, and autoscaling-governed fixtures probe that class for free.
 - **`example.com` / `.test` / `.example` are AWS-RESERVED for Route53 hosted zones**
   (`InvalidDomainNameException` on create). A Route53 fixture must use a non-reserved
   placeholder domain (e.g. `cdkrd-fphunt-x9z7q.com.`) — a public hosted zone for a

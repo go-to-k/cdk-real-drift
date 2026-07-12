@@ -292,6 +292,28 @@ resource_gone() {
         *) return 1 ;;
       esac
       ;;
+    rds)
+      # arn:aws:rds:<region>:<acct>:snapshot:rds:<instance>-<ts> — the sixth RGT-lag
+      # subtype (2026-07-13 hunt): a SYSTEM (automated) snapshot is removed together
+      # with its deleted instance, yet its tagged mapping lingered in the index and
+      # kept the gate RED. DescribeDBSnapshots answers DBSnapshotNotFound once gone;
+      # an EXISTING snapshot (manual or automated-retained) stays RED — a real orphan
+      # that needs an explicit delete.
+      case "$arn" in
+        *:snapshot:*)
+          id="${arn#*:snapshot:}"
+          [ -n "$id" ] || return 1
+          err="$(aws rds describe-db-snapshots --db-snapshot-identifier "$id" \
+            --region "$REGION" --query 'DBSnapshots[0].Status' --output text 2>&1)" || {
+              printf '%s' "$err" | grep -q 'DBSnapshotNotFound' && return 0
+              return 1
+            }
+          [ "$err" = "None" ] && return 0
+          return 1
+          ;;
+        *) return 1 ;;
+      esac
+      ;;
     *)
       return 1 ;;
   esac

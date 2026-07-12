@@ -1,0 +1,65 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntLfResource",
+    "resourceType": "AWS::LakeFormation::Resource",
+    "physicalId": "LakeFormation-arn:aws:s3:::cdkrd-hunt-lf-bucket-x9z7q",
+    "constructPath": "CdkrdHunt0713MiscReaders/HuntLfResource",
+    "declared": {
+      "ResourceArn": "arn:aws:s3:::cdkrd-hunt-lf-bucket-x9z7q",
+      "UseServiceLinkedRole": true
+    }
+  },
+  "liveRaw": {
+    "RoleArn": "arn:aws:iam::111111111111:role/aws-service-role/lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess",
+    "HybridAccessEnabled": false
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["ResourceArn"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ResourceArn"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "HuntLfResource",
+      "resourceType": "AWS::LakeFormation::Resource",
+      "path": "ResourceArn",
+      "note": "declared but not returned by live read",
+      "physicalId": "LakeFormation-arn:aws:s3:::cdkrd-hunt-lf-bucket-x9z7q",
+      "constructPath": "CdkrdHunt0713MiscReaders/HuntLfResource"
+    },
+    {
+      "tier": "readGap",
+      "logicalId": "HuntLfResource",
+      "resourceType": "AWS::LakeFormation::Resource",
+      "path": "UseServiceLinkedRole",
+      "note": "declared but not returned by live read",
+      "physicalId": "LakeFormation-arn:aws:s3:::cdkrd-hunt-lf-bucket-x9z7q",
+      "constructPath": "CdkrdHunt0713MiscReaders/HuntLfResource"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntLfResource",
+      "resourceType": "AWS::LakeFormation::Resource",
+      "path": "RoleArn",
+      "actual": "arn:aws:iam::111111111111:role/aws-service-role/lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess",
+      "physicalId": "LakeFormation-arn:aws:s3:::cdkrd-hunt-lf-bucket-x9z7q",
+      "constructPath": "CdkrdHunt0713MiscReaders/HuntLfResource"
+    }
+  ]
+}
