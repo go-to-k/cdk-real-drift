@@ -302,6 +302,15 @@ export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   'AWS::OpenSearchService::Domain\0AdvancedOptions',
   'AWS::OpenSearchService::Domain\0IPAddressType',
   'AWS::OpenSearchService::Domain\0DeploymentStrategyOptions',
+  // EKS `update-cluster-config` REJECTS an endpoint patch that omits either access flag
+  // ("The new template must include all the properties specified in the previous template,
+  // property EndpointPrivateAccess missing" — live-proven on Cdkrd660EksRevertVerify). So a
+  // bare `remove` of an out-of-band `EndpointPrivateAccess=true` fails the WHOLE patch, taking
+  // the paired `EndpointPublicAccess` set-default (from KNOWN_DEFAULT_PATHS) down with it and
+  // reverting NOTHING. Plan an explicit set-default to the `false` default (via
+  // REVERT_SET_DEFAULT_VALUES — it folds `atDefault` as trivial-empty, so no KNOWN_DEFAULTS
+  // source) so the patch carries both flags and converges to {public:true, private:false}.
+  'AWS::EKS::Cluster\0ResourcesVpcConfig.EndpointPrivateAccess',
 ]);
 
 // Set-default values for REVERT_SET_DEFAULT_PATHS entries whose default is a plain constant
@@ -315,6 +324,10 @@ const REVERT_SET_DEFAULT_VALUES: Record<string, unknown> = {
   // revert set-default value is the plain constant `false` here — the EnableDns64 pattern.
   'AWS::EC2::ClientVpnEndpoint\0SplitTunnel': false,
   'AWS::DocDB::DBCluster\0DeletionProtection': false,
+  // EKS ResourcesVpcConfig.EndpointPrivateAccess folds `atDefault` as trivial-empty `false`
+  // (no KNOWN_DEFAULTS source); its revert set-default value is the plain constant `false` so
+  // the endpoint patch keeps both access flags (EKS rejects a partial endpoint update).
+  'AWS::EKS::Cluster\0ResourcesVpcConfig.EndpointPrivateAccess': false,
 };
 
 /**
