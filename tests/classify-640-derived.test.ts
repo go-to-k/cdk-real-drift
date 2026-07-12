@@ -64,14 +64,27 @@ describe('#640 EC2 Instance CreditSpecification derived from InstanceType family
     );
     expect(tier(f, 'undeclared')).toContain('CreditSpecification');
   });
-  it('does NOT fold a non-burstable (m5) instance — no default is set', () => {
+  it('folds "standard" on a non-burstable (m5) instance — the meaningless echo AWS returns', () => {
+    // #640 (2026-07-12): a fresh non-burstable m5.large echoes an undeclared
+    // CreditSpecification={CPUCredits:"standard"} on first check — fold it (non-T families default
+    // "standard"), else a clean deploy shows a first-run false positive.
+    const res = mk('AWS::EC2::Instance', { ImageId: 'ami-1', InstanceType: 'm5.large' });
+    const f = classifyResource(
+      res,
+      { CreditSpecification: { CPUCredits: 'standard' } },
+      emptySchema
+    );
+    expect(tier(f, 'atDefault')).toContain('CreditSpecification');
+    expect(tier(f, 'undeclared')).not.toContain('CreditSpecification');
+  });
+  it('surfaces a non-burstable (m5) instance reading a non-"standard" value — detection preserved', () => {
     const res = mk('AWS::EC2::Instance', { ImageId: 'ami-1', InstanceType: 'm5.large' });
     const f = classifyResource(
       res,
       { CreditSpecification: { CPUCredits: 'unlimited' } },
       emptySchema
     );
-    expect(tier(f, 'atDefault')).not.toContain('CreditSpecification');
+    expect(tier(f, 'undeclared')).toContain('CreditSpecification');
   });
 });
 

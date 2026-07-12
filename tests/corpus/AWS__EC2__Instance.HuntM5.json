@@ -396,7 +396,7 @@
       "constructPath": "CdkRealDriftIntegEc2EbsOptMin/HuntM5"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "HuntM5",
       "resourceType": "AWS::EC2::Instance",
       "path": "CreditSpecification",
