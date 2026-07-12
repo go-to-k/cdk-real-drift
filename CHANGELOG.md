@@ -1,3 +1,10 @@
+## [0.13.7](https://github.com/go-to-k/cdk-real-drift/compare/v0.13.6...v0.13.7) (2026-07-12)
+
+
+### Bug Fixes
+
+* **noise:** fold SageMaker MonitoringSchedule AWS-managed runtime-state ([#915](https://github.com/go-to-k/cdk-real-drift/issues/915)) ([#1522](https://github.com/go-to-k/cdk-real-drift/issues/1522)) ([d6613cb](https://github.com/go-to-k/cdk-real-drift/commit/d6613cb62f135d18fe7af988d3d8f9f27add5cb7))
+
 ## [0.13.6](https://github.com/go-to-k/cdk-real-drift/compare/v0.13.5...v0.13.6) (2026-07-12)
 
 
