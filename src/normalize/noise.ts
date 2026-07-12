@@ -3718,6 +3718,33 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   cfn-exec-role ARN shape: the `cdk-<qualifier>-cfn-exec-role-<acct>-<region>` role folds, any
   //   other RoleARN surfaces as undeclared (recordable, then watched).
   'AWS::CloudFormation::Stack': new Set(['TemplateBody', 'Capabilities']),
+  //   AWS::SageMaker::MonitoringSchedule — the resource schema marks ONLY
+  //   [MonitoringScheduleArn, CreationTime, LastModifiedTime] readOnly, so three AWS-managed
+  //   RUNTIME-STATE props leak as undeclared on a clean deploy (a schema gap — they are
+  //   effectively read-only status, never template intent):
+  //     * `MonitoringScheduleStatus` — the schedule's lifecycle state ("Scheduled" fresh, then
+  //       Pending / Stopped / Failed). A user never declares it; it is operational status, not
+  //       config. First-run FP on EVERY fresh MonitoringSchedule (live-verified 2026-07-12,
+  //       Cdkrd915MonSchedVerify: surfaces "Scheduled" undeclared before any execution).
+  //     * `LastMonitoringExecutionSummary` — the last execution's summary
+  //       ({ScheduledTime, MonitoringExecutionStatus, FailureReason, ...}). It is absent until the
+  //       first execution, then MOVES on every hourly run (ScheduledTime + status change each
+  //       tick) — the exact #847-class time-varying value #915 tracks: class (a) first-check FP AND
+  //       class (b) `record` never converges. The nested CreationTime/LastModifiedTime are already
+  //       ALWAYS_STRIPPED, but ScheduledTime/status/FailureReason are not, so the whole object
+  //       surfaces. Live-verified 2026-07-12 (same stack, after forcing one execution):
+  //       actual={"ScheduledTime":"…","MonitoringExecutionStatus":"Failed","FailureReason":"…"}.
+  //     * `FailureReason` — the schedule-level failure diagnostic (populated only when the
+  //       schedule itself fails); same undeclared-runtime-state class.
+  //   All three are undeclared → whatever AWS assigns is not user intent (the declared config —
+  //   MonitoringScheduleConfig / EndpointName / Tags — is compared in the declared loop, so a real
+  //   config change still surfaces). Fold value-independent: these are moving status/state, not a
+  //   pinnable constant. #915 (case 1).
+  'AWS::SageMaker::MonitoringSchedule': new Set([
+    'MonitoringScheduleStatus',
+    'LastMonitoringExecutionSummary',
+    'FailureReason',
+  ]),
 };
 
 // The NESTED twin of VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS (fold-strategy tier 3, "nested
