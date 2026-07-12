@@ -243,6 +243,20 @@ const MEANINGFUL_WHEN_OFF_NESTED: Record<
     'WorkGroupConfiguration.EnforceWorkGroupConfiguration': () => true,
     'WorkGroupConfiguration.PublishCloudWatchMetricsEnabled': () => true,
   },
+  // #660 item 3: an EKS cluster exposes a PUBLIC Kubernetes API endpoint by default on every
+  // clean deploy (the `ResourcesVpcConfig.EndpointPublicAccess` `true` pin in KNOWN_DEFAULT_PATHS).
+  // A cluster declares `SubnetIds`, so `ResourcesVpcConfig` is PARTIALLY declared and therefore
+  // descended (emitNested) — an out-of-band `update-cluster-config` flipping the endpoint to
+  // private-only (`EndpointPublicAccess=false`, which requires `EndpointPrivateAccess=true`)
+  // breaks the per-leaf pin and the lone `false` leaf is swallowed by `isTrivialEmpty(false)`
+  // before the pin gate, staying invisible (the same IPV6Enabled / Athena class the mechanism
+  // was built for). Unconditionally meaningful when off: a user who wants a private-only endpoint
+  // DECLARES `EndpointPublicAccess: false` (compared in the declared loop); an undeclared `false`
+  // is an out-of-band restriction of API reachability. An EKS cluster has no snapshot/restore
+  // lineage that could yield an untouched `false`, so no predicate is needed.
+  'AWS::EKS::Cluster': {
+    'ResourcesVpcConfig.EndpointPublicAccess': () => true,
+  },
 };
 
 // #1092/#1485: GuardDuty protection Features (and their nested AdditionalConfiguration members)
