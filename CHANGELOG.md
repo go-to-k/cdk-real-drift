@@ -1,3 +1,10 @@
+## [0.13.10](https://github.com/go-to-k/cdk-real-drift/compare/v0.13.9...v0.13.10) (2026-07-12)
+
+
+### Bug Fixes
+
+* **read:** unskip SageMaker EndpointConfig ARN physical id + fold MediaConvert/SageMaker Model first-run defaults ([#1529](https://github.com/go-to-k/cdk-real-drift/issues/1529)) ([f9b44ff](https://github.com/go-to-k/cdk-real-drift/commit/f9b44ff802df406466eae3af3e2f8fbe8af6676a))
+
 ## [0.13.9](https://github.com/go-to-k/cdk-real-drift/compare/v0.13.8...v0.13.9) (2026-07-12)
 
 
