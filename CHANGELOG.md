@@ -1,3 +1,10 @@
+## [0.13.12](https://github.com/go-to-k/cdk-real-drift/compare/v0.13.11...v0.13.12) (2026-07-12)
+
+
+### Bug Fixes
+
+* **hunt:** fold CloudMap/DDB-warm/re-case first-run FPs, unskip LakeFormation reader, converge RDS BackupRetentionPeriod revert ([#1543](https://github.com/go-to-k/cdk-real-drift/issues/1543)) ([5631176](https://github.com/go-to-k/cdk-real-drift/commit/56311767f858de5b65f2e538e35bbaa736512838))
+
 ## [0.13.11](https://github.com/go-to-k/cdk-real-drift/compare/v0.13.10...v0.13.11) (2026-07-12)
 
 
