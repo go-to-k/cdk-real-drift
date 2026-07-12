@@ -1,3 +1,10 @@
+## [0.13.4](https://github.com/go-to-k/cdk-real-drift/compare/v0.13.3...v0.13.4) (2026-07-12)
+
+
+### Bug Fixes
+
+* **revert:** converge EKS endpoint private-only lockdown revert (part of [#660](https://github.com/go-to-k/cdk-real-drift/issues/660)) ([#1519](https://github.com/go-to-k/cdk-real-drift/issues/1519)) ([4ea2ccd](https://github.com/go-to-k/cdk-real-drift/commit/4ea2ccdafbafa1919a256ec7e4aec5c242fe67d3))
+
 ## [0.13.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.13.2...v0.13.3) (2026-07-12)
 
 
