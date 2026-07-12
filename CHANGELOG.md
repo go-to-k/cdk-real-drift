@@ -1,3 +1,10 @@
+## [0.13.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.13.1...v0.13.2) (2026-07-12)
+
+
+### Bug Fixes
+
+* **diff:** surface out-of-band Athena WorkGroup config off-flip (part of [#660](https://github.com/go-to-k/cdk-real-drift/issues/660)) ([#1517](https://github.com/go-to-k/cdk-real-drift/issues/1517)) ([d21eba7](https://github.com/go-to-k/cdk-real-drift/commit/d21eba7483718621f71b93e58ade63284dccec58))
+
 ## [0.13.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.13.0...v0.13.1) (2026-07-12)
 
 
