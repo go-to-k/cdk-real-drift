@@ -311,6 +311,24 @@ export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // REVERT_SET_DEFAULT_VALUES — it folds `atDefault` as trivial-empty, so no KNOWN_DEFAULTS
   // source) so the patch carries both flags and converges to {public:true, private:false}.
   'AWS::EKS::Cluster\0ResourcesVpcConfig.EndpointPrivateAccess',
+  // #660 item 1 revert follow-up to #1520: the restore-risk version-upgrade booleans
+  // (AutoMinorVersionUpgrade / AllowVersionUpgrade) are now DETECTED when disabled out of band
+  // (MEANINGFUL_WHEN_OFF), but their update APIs KEEP the existing value on an omitted flag, so a
+  // bare `remove` revert is a silent no-op — `check` flags the disable yet `revert` can't fix it.
+  // The modify APIs (modify-db-instance / modify-db-cluster / modify-cache-cluster /
+  // modify-replication-group / update-cluster (MemoryDB) / modify-cluster (Redshift)) only change
+  // a flag when it is PRESENT in the request, so write the `true` default (from KNOWN_DEFAULTS)
+  // back explicitly. Live-proven on RDS::DBInstance (Cdkrd660RevertVerify): pre-fix `revert` bare
+  // `remove` reported success yet the live value stayed false; post-fix the set-default `add true`
+  // converges. The set-default value resolves from KNOWN_DEFAULTS (the same `true` pin that folds
+  // the clean read atDefault) — no REVERT_SET_DEFAULT_VALUES entry needed.
+  'AWS::RDS::DBInstance\0AutoMinorVersionUpgrade',
+  'AWS::RDS::DBCluster\0AutoMinorVersionUpgrade',
+  'AWS::Neptune::DBInstance\0AutoMinorVersionUpgrade',
+  'AWS::ElastiCache::CacheCluster\0AutoMinorVersionUpgrade',
+  'AWS::ElastiCache::ReplicationGroup\0AutoMinorVersionUpgrade',
+  'AWS::MemoryDB::Cluster\0AutoMinorVersionUpgrade',
+  'AWS::Redshift::Cluster\0AllowVersionUpgrade',
 ]);
 
 // Set-default values for REVERT_SET_DEFAULT_PATHS entries whose default is a plain constant
