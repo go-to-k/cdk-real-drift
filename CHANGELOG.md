@@ -1,3 +1,10 @@
+## [0.13.13](https://github.com/go-to-k/cdk-real-drift/compare/v0.13.12...v0.13.13) (2026-07-12)
+
+
+### Bug Fixes
+
+* **hunt2:** converge IMDS revert, fold NIC-SG echo + ELBv2 variant defaults, drop MSK-managed VPCE from added scan, skip GWLB rules scan ([#1549](https://github.com/go-to-k/cdk-real-drift/issues/1549)) ([103acc6](https://github.com/go-to-k/cdk-real-drift/commit/103acc63a04bec20f26beff2b5857333a1b928d1))
+
 ## [0.13.12](https://github.com/go-to-k/cdk-real-drift/compare/v0.13.11...v0.13.12) (2026-07-12)
 
 
