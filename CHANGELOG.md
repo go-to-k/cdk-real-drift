@@ -1,3 +1,10 @@
+## [0.13.11](https://github.com/go-to-k/cdk-real-drift/compare/v0.13.10...v0.13.11) (2026-07-12)
+
+
+### Bug Fixes
+
+* **diff,noise,revert:** off-flip FN pairings, RDS lowercase-name FPs, DAX + Lightsail first-run folds ([#1534](https://github.com/go-to-k/cdk-real-drift/issues/1534)) ([ef21a3e](https://github.com/go-to-k/cdk-real-drift/commit/ef21a3ecad6510ef44ea40526f39d898542399d3))
+
 ## [0.13.10](https://github.com/go-to-k/cdk-real-drift/compare/v0.13.9...v0.13.10) (2026-07-12)
 
 
