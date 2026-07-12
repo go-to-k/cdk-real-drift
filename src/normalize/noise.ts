@@ -94,6 +94,26 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // undeclared drift. Observed live on a fresh minimal mysql source endpoint
   // (case-idents-min, 2026-07-12; #1490).
   'AWS::DMS::Endpoint': { SslMode: 'none' },
+  // A MediaConvert queue that declares only its Name reads back the two constant
+  // creation defaults: PricingPlan "ON_DEMAND" (the only value CreateQueue assigns
+  // undeclared; RESERVED requires an explicit reservation plan) and Status "ACTIVE".
+  // Equality-gated, so the classic console pause (Status -> PAUSED) or a reserved-queue
+  // conversion still surfaces as real undeclared drift. Observed live on a fresh barest
+  // queue (mediaconvert-min, 2026-07-12).
+  'AWS::MediaConvert::Queue': { PricingPlan: 'ON_DEMAND', Status: 'ACTIVE' },
+  // A MediaConvert job template that declares only Name + SettingsJson reads back three
+  // constant creation defaults: Priority 0, StatusUpdateInterval "SECONDS_60" (the
+  // documented CloudWatch STATUS_UPDATE cadence default), and the fully-undeclared
+  // AccelerationSettings {Mode: "DISABLED"} husk (a whole live-only object, so
+  // KNOWN_DEFAULTS not KNOWN_DEFAULT_PATHS; subset-tolerant deep equality gates it).
+  // Equality-gated, so an out-of-band priority bump, a faster update cadence, or
+  // enabling accelerated transcoding still surfaces. Observed live on a fresh barest
+  // template (mediaconvert-min, 2026-07-12).
+  'AWS::MediaConvert::JobTemplate': {
+    Priority: 0,
+    StatusUpdateInterval: 'SECONDS_60',
+    AccelerationSettings: { Mode: 'DISABLED' },
+  },
   // A SELF_MANAGED StackSet that declares no ExecutionRoleName reads back the documented
   // conventional default. Equality-gated: an out-of-band switch to a custom execution
   // role no longer matches and re-surfaces. (The AdministrationRoleARN sibling is
@@ -1762,6 +1782,16 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     'DataQualityJobInput.BatchTransformInput.S3InputMode': 'File',
     'DataQualityJobInput.EndpointInput.S3DataDistributionType': 'FullyReplicated',
     'DataQualityJobInput.EndpointInput.S3InputMode': 'File',
+  },
+  // A SageMaker model whose container definition declares only the Image reads back the
+  // AWS-filled `Mode: "SingleModel"` — the constant creation default for a container that
+  // never declares it (the only other value, MultiModel, is an explicit opt-in). Both the
+  // single-container (PrimaryContainer) and multi-container (Containers, identity-keyed)
+  // shapes share the definition. Equality-gated, so an out-of-band MultiModel flip still
+  // surfaces. Observed live on a fresh barest model (sagemaker-epc-min, 2026-07-12).
+  'AWS::SageMaker::Model': {
+    'PrimaryContainer.Mode': 'SingleModel',
+    'Containers.*.Mode': 'SingleModel',
   },
   // A lambda TargetGroup's declared `Targets` element reads back an AWS-filled
   // `AvailabilityZone: "all"` husk (a lambda target has no AZ) that the template never declares —

@@ -1,0 +1,65 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntQueue",
+    "resourceType": "AWS::MediaConvert::Queue",
+    "physicalId": "cdkrd-hunt-mc-queue",
+    "constructPath": "CdkRealDriftIntegMediaConvertMin/HuntQueue",
+    "declared": {
+      "Name": "cdkrd-hunt-mc-queue",
+      "Tags": {
+        "cdkrd:ephemeral": "1"
+      }
+    }
+  },
+  "liveRaw": {
+    "Name": "cdkrd-hunt-mc-queue",
+    "PricingPlan": "ON_DEMAND",
+    "Status": "ACTIVE",
+    "Tags": {
+      "aws:cloudformation:logical-id": "HuntQueue",
+      "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegMediaConvertMin/542a0180-7df3-11f1-adce-0e08da467277",
+      "aws:cloudformation:stack-name": "CdkRealDriftIntegMediaConvertMin",
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntQueue",
+      "resourceType": "AWS::MediaConvert::Queue",
+      "path": "PricingPlan",
+      "actual": "ON_DEMAND",
+      "physicalId": "cdkrd-hunt-mc-queue",
+      "constructPath": "CdkRealDriftIntegMediaConvertMin/HuntQueue"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntQueue",
+      "resourceType": "AWS::MediaConvert::Queue",
+      "path": "Status",
+      "actual": "ACTIVE",
+      "physicalId": "cdkrd-hunt-mc-queue",
+      "constructPath": "CdkRealDriftIntegMediaConvertMin/HuntQueue"
+    }
+  ]
+}
