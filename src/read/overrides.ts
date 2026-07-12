@@ -168,6 +168,7 @@ import {
 import { DescribeParametersCommand, SSMClient } from '@aws-sdk/client-ssm';
 import {
   DescribeEndpointConfigCommand,
+  DescribeMonitoringScheduleCommand,
   ListTagsCommand as SageMakerListTagsCommand,
   type ProductionVariant,
   SageMakerClient,
@@ -2160,6 +2161,72 @@ const readSageMakerEndpointConfig: OverrideReader = async ({
   return model;
 };
 
+// AWS::SageMaker::MonitoringSchedule — the CC API read handler DOES return the resource, but its
+// response OMITS `Tags` (a fresh DescribeMonitoringSchedule returns no Tags field), so a declared
+// non-empty Tags array read back as Tags=undefined → a false `declared`-tier `desired=[…]
+// actual=undefined` drift on every tagged monitoring schedule (a `Tags.of(app)` app tags them
+// all). Live-confirmed 2026-07-12 (Cdkrd1523TagsVerify: declared team=drift-probe + cdkrd:ephemeral,
+// live via sagemaker:ListTags, cdkrd reported Tags actual=undefined). #1523 (part 2).
+//
+// Read via DescribeMonitoringSchedule + a separate sagemaker:ListTags, projecting ONLY the
+// CFn-declarable surface: MonitoringScheduleName, MonitoringScheduleConfig (the SDK shape is 1:1
+// with the CFn definition — MonitoringType / MonitoringJobDefinitionName-or-inline
+// MonitoringJobDefinition / ScheduleConfig — verified live), EndpointName, and Tags. The
+// AWS-managed readOnly response fields the registry schema marks readOnly (MonitoringScheduleArn /
+// CreationTime / LastModifiedTime) AND the runtime-STATE fields it UNDER-marks as non-readOnly
+// (MonitoringScheduleStatus / FailureReason / LastMonitoringExecutionSummary, plus the top-level
+// MonitoringType echo) are dropped — projecting them would be a permanent undeclared false
+// inventory (the #1522 value-independent fold that previously swallowed them from the CC read is
+// now moot for this resource, but harmless as a fallback). On a ListTags failure, MIRROR declared
+// Tags + warn (the readSageMakerEndpointConfig / #1086 degrade shape) so a permission gap does not
+// false-flag. A deleted schedule throws ValidationException → ResourceGoneError → router maps to
+// `deleted`.
+const readSageMakerMonitoringSchedule: OverrideReader = async ({
+  physicalId,
+  declared,
+  region,
+  accountId,
+}) => {
+  // The CFn PhysicalResourceId is the schedule ARN
+  // (arn:…:monitoring-schedule/<name>), but DescribeMonitoringSchedule requires the BARE name
+  // (≤63 chars) — passing the ARN ValidationExceptions and the whole resource skips. Extract the
+  // last ARN segment; a non-ARN physical id (or the declared name) passes through unchanged.
+  const raw = str(physicalId) ?? str(declared.MonitoringScheduleName);
+  if (!raw) return undefined;
+  const name = raw.startsWith('arn:') ? (raw.split('/').pop() ?? raw) : raw;
+  const c = new SageMakerClient({ region, ...READ_RETRY });
+  const r = await c.send(new DescribeMonitoringScheduleCommand({ MonitoringScheduleName: name }));
+  if (!r.MonitoringScheduleName)
+    throw new ResourceGoneError(`SageMaker MonitoringSchedule ${name} absent`);
+  const model: Record<string, unknown> = {};
+  if (str(r.MonitoringScheduleName)) model.MonitoringScheduleName = r.MonitoringScheduleName;
+  if (r.MonitoringScheduleConfig !== undefined)
+    model.MonitoringScheduleConfig = r.MonitoringScheduleConfig;
+  if (str(r.EndpointName)) model.EndpointName = r.EndpointName;
+  // Tags — a separate SageMaker sagemaker:ListTags call keyed on the MonitoringScheduleArn (the
+  // response's ARN, else synthesize it). On failure, mirror declared Tags + warn (see note).
+  const tagArn =
+    str(r.MonitoringScheduleArn) ??
+    (accountId
+      ? `arn:${partitionForRegion(region).partition}:sagemaker:${region}:${accountId}:monitoring-schedule/${name}`
+      : undefined);
+  if (tagArn) {
+    try {
+      const t = await c.send(new SageMakerListTagsCommand({ ResourceArn: tagArn }));
+      const tags = projectTagList(t.Tags);
+      if (tags) model.Tags = tags;
+    } catch (err) {
+      const mirrored = mirrorDeclaredTags(declared.Tags);
+      if (mirrored) model.Tags = mirrored;
+      const call = (err as Error)?.name || 'unknown error';
+      process.stderr.write(
+        `[cdkrd] warning: SageMaker ListTags for MonitoringSchedule (${tagArn}) failed (${call}) — mirroring declared Tags to avoid a false drift; grant sagemaker:ListTags to detect out-of-band tag changes\n`
+      );
+    }
+  }
+  return model;
+};
+
 // AWS::Logs::MetricFilter — CC API GetResource throws ValidationException. Read via
 // CloudWatch Logs DescribeMetricFilters. The CFn physical id IS the filter name;
 // the log group comes from the declared (GetAtt-resolved) LogGroupName.
@@ -3169,6 +3236,7 @@ export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::Glue::Connection': readGlueConnection,
   'AWS::Glue::SecurityConfiguration': readGlueSecurityConfiguration,
   'AWS::SageMaker::EndpointConfig': readSageMakerEndpointConfig,
+  'AWS::SageMaker::MonitoringSchedule': readSageMakerMonitoringSchedule,
   'AWS::Logs::MetricFilter': readMetricFilter,
   'AWS::Scheduler::Schedule': readSchedulerSchedule,
 };
