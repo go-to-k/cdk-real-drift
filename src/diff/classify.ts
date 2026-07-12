@@ -3279,13 +3279,13 @@ export function classifyResource(
       knownDef = { ...knownDef, ...twins };
     }
   }
-  // #640: an EC2 Instance on a BURSTABLE (T-family) InstanceType reads back an undeclared
-  // CreditSpecification.CPUCredits whose default depends on the family — the T2 family
-  // defaults to "standard", every later burstable family (t3 / t3a / t4g) defaults to
-  // "unlimited". Derive the expected default from the declared InstanceType family and
-  // equality-gate the whole {CPUCredits} object (fold tier 2): a user who pins the other
-  // credit mode still surfaces. Non-burstable families carry no CreditSpecification, so
-  // leave the default unset there (nothing to fold).
+  // #640: an EC2 Instance reads back an undeclared CreditSpecification.CPUCredits whose default
+  // depends on the InstanceType family — a BURSTABLE (T-family) instance defaults to "standard"
+  // (t2) or "unlimited" (t3 / t3a / t4g), while a NON-burstable family (m5, c6i, …) cannot use CPU
+  // credits yet AWS still echoes a meaningless CreditSpecification={CPUCredits:"standard"} on first
+  // read (live-confirmed 2026-07-12 on a fresh m5.large). Derive the expected default from the
+  // declared InstanceType family and equality-gate the whole {CPUCredits} object (fold tier 2): a
+  // user who pins the other credit mode still surfaces.
   if (resourceType === 'AWS::EC2::Instance') {
     const instanceType = declared['InstanceType'];
     const family = typeof instanceType === 'string' ? instanceType.split('.')[0] : undefined;
@@ -3295,12 +3295,17 @@ export function classifyResource(
     // it. Prefer gather.ts's prefetched account-effective default for the declared family; fall back
     // to the AWS factory default (t2 standard, t3/t3a/t4g unlimited) when the lookup was
     // denied/unavailable. Equality-gated below → an out-of-band credit-mode change still surfaces.
+    // #640 (non-burstable): any family that is NOT a T-family echoes the meaningless "standard" —
+    // fold it too. A T-family we do not recognize (a future burstable generation) stays undefined so
+    // the account-default prefetch decides rather than mislabelling it "standard".
     const factoryDefault =
       family === 't2'
         ? 'standard'
         : family === 't3' || family === 't3a' || family === 't4g'
           ? 'unlimited'
-          : undefined;
+          : family !== undefined && !family.startsWith('t')
+            ? 'standard'
+            : undefined;
     const acctDefault =
       family !== undefined ? opts.accountDefaults?.ec2FamilyCreditDefaults?.[family] : undefined;
     const creditDefault = acctDefault ?? factoryDefault;
