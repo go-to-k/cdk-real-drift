@@ -1,0 +1,46 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntAccessKey",
+    "resourceType": "AWS::IAM::AccessKey",
+    "physicalId": "AKIAIOSFODNN7EXAMPLE",
+    "constructPath": "CdkrdHunt0713MiscReaders/HuntAccessKey",
+    "declared": {
+      "UserName": "cdkrd-hunt-accesskey-user"
+    }
+  },
+  "liveRaw": {
+    "UserName": "cdkrd-hunt-accesskey-user",
+    "Status": "Active"
+  },
+  "schema": {
+    "readOnly": ["Id", "SecretAccessKey"],
+    "writeOnly": [],
+    "createOnly": ["Serial", "UserName"],
+    "readOnlyPaths": ["Id", "SecretAccessKey"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Serial", "UserName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAccessKey",
+      "resourceType": "AWS::IAM::AccessKey",
+      "path": "Status",
+      "actual": "Active",
+      "physicalId": "AKIAIOSFODNN7EXAMPLE",
+      "constructPath": "CdkrdHunt0713MiscReaders/HuntAccessKey"
+    }
+  ]
+}

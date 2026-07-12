@@ -1,0 +1,92 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntPublicNsHuntService1926FAC1",
+    "resourceType": "AWS::ServiceDiscovery::Service",
+    "physicalId": "srv-q2zaznfivbb4usfe",
+    "constructPath": "CdkrdHunt0713CloudmapPub/HuntPublicNs/HuntService",
+    "declared": {
+      "DnsConfig": {
+        "DnsRecords": [
+          {
+            "TTL": 60,
+            "Type": "A"
+          }
+        ],
+        "NamespaceId": "ns-tn6g37nbeg3jrbke",
+        "RoutingPolicy": "MULTIVALUE"
+      },
+      "Name": "hunt-svc",
+      "NamespaceId": "ns-tn6g37nbeg3jrbke",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Name": "hunt-svc",
+    "NamespaceId": "ns-tn6g37nbeg3jrbke",
+    "Type": "DNS_HTTP",
+    "DnsConfig": {
+      "NamespaceId": "ns-tn6g37nbeg3jrbke",
+      "RoutingPolicy": "MULTIVALUE",
+      "DnsRecords": [
+        {
+          "Type": "A",
+          "TTL": 60
+        }
+      ]
+    },
+    "Tags": [
+      {
+        "Key": "aws:cloudformation:stack-name",
+        "Value": "CdkrdHunt0713CloudmapPub"
+      },
+      {
+        "Key": "aws:cloudformation:logical-id",
+        "Value": "HuntPublicNsHuntService1926FAC1"
+      },
+      {
+        "Key": "aws:cloudformation:stack-id",
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0713CloudmapPub/0ad74660-7e06-11f1-b367-12a157b5d713"
+      },
+      {
+        "Key": "cdkrd:ephemeral",
+        "Value": "1"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": [],
+    "createOnly": ["HealthCheckCustomConfig", "Name", "NamespaceId", "Type"],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["HealthCheckCustomConfig", "Name", "NamespaceId", "Type"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntPublicNsHuntService1926FAC1",
+      "resourceType": "AWS::ServiceDiscovery::Service",
+      "path": "Type",
+      "actual": "DNS_HTTP",
+      "physicalId": "srv-q2zaznfivbb4usfe",
+      "constructPath": "CdkrdHunt0713CloudmapPub/HuntPublicNs/HuntService"
+    }
+  ]
+}

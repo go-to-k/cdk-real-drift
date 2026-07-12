@@ -1324,37 +1324,56 @@ const isNestedObject = (x: unknown): x is Record<string, unknown> =>
 // So it is a DERIVED default keyed on the sibling ProvisionedThroughput, unifying both cases:
 // compute it and equality-gate, so an out-of-band warm-throughput change (which auto-ratchets
 // upward under load and never decreases) still surfaces — the same trade-off the type accepts.
+// #1538: warm throughput echoes the capacity at CREATION and never follows a scale-in, so a
+// table whose live capacity dropped below the template's initial capacity (the everyday
+// Application-Auto-Scaling scale-in) no longer matches the live-derived value — callers must
+// ALSO gate against the derivation from the DECLARED ProvisionedThroughput (the creation
+// value). A table that warmed UP under traffic (warm > both) still surfaces, unchanged.
 const DDB_TABLE_TYPES = new Set(['AWS::DynamoDB::Table', 'AWS::DynamoDB::GlobalTable']);
+// Template numbers can arrive as strings (raw-YAML templates); tolerate both.
+function capacityUnit(x: unknown): number | undefined {
+  if (typeof x === 'number') return x;
+  if (typeof x === 'string' && x.trim() !== '' && !Number.isNaN(Number(x))) return Number(x);
+  return undefined;
+}
 function warmThroughputDefault(provisionedThroughput: unknown): Record<string, number> {
-  if (
-    isNestedObject(provisionedThroughput) &&
-    typeof provisionedThroughput.ReadCapacityUnits === 'number' &&
-    typeof provisionedThroughput.WriteCapacityUnits === 'number'
-  ) {
-    return {
-      ReadUnitsPerSecond: provisionedThroughput.ReadCapacityUnits,
-      WriteUnitsPerSecond: provisionedThroughput.WriteCapacityUnits,
-    };
+  if (isNestedObject(provisionedThroughput)) {
+    const read = capacityUnit(provisionedThroughput.ReadCapacityUnits);
+    const write = capacityUnit(provisionedThroughput.WriteCapacityUnits);
+    if (read !== undefined && write !== undefined)
+      return { ReadUnitsPerSecond: read, WriteUnitsPerSecond: write };
   }
   return { ReadUnitsPerSecond: 12000, WriteUnitsPerSecond: 4000 };
 }
 // A GSI-nested WarmThroughput path (`GlobalSecondaryIndexes[<IndexName>].WarmThroughput`) that
 // echoes THAT GSI's effective capacity. Resolves the GSI's own ProvisionedThroughput from the
-// live model by IndexName so the derived default is per-GSI.
+// live model by IndexName — and, per #1538, from the DECLARED model too (the creation echo
+// survives a later autoscaling scale-in) — so the derived default is per-GSI.
+function gsiByName(model: unknown, indexName: string): Record<string, unknown> | undefined {
+  if (!isNestedObject(model) || !Array.isArray(model.GlobalSecondaryIndexes)) return undefined;
+  const gsi = (model.GlobalSecondaryIndexes as unknown[]).find(
+    (g) => isNestedObject(g) && g.IndexName === indexName
+  );
+  return isNestedObject(gsi) ? gsi : undefined;
+}
 function dynamoGsiWarmThroughputAtDefault(
   resourceType: string,
   path: string,
   value: unknown,
-  live: Record<string, unknown>
+  live: Record<string, unknown>,
+  declared: Record<string, unknown>
 ): boolean {
   if (!DDB_TABLE_TYPES.has(resourceType)) return false;
   const m = /^GlobalSecondaryIndexes\[(.*)\]\.WarmThroughput$/.exec(path);
-  if (m === null || !Array.isArray(live.GlobalSecondaryIndexes)) return false;
-  const gsi = (live.GlobalSecondaryIndexes as unknown[]).find(
-    (g) => isNestedObject(g) && g.IndexName === m[1]
+  if (m === null) return false;
+  const liveGsi = gsiByName(live, m[1] as string);
+  const declaredGsi = gsiByName(declared, m[1] as string);
+  return (
+    (liveGsi !== undefined &&
+      deepEqual(value, warmThroughputDefault(liveGsi.ProvisionedThroughput))) ||
+    (declaredGsi !== undefined &&
+      deepEqual(value, warmThroughputDefault(declaredGsi.ProvisionedThroughput)))
   );
-  if (!isNestedObject(gsi)) return false;
-  return deepEqual(value, warmThroughputDefault(gsi.ProvisionedThroughput));
 }
 
 // #705: a Classic ELB (ElasticLoadBalancing::LoadBalancer) with an HTTPS/SSL listener but no
@@ -3553,7 +3572,7 @@ export function classifyResource(
         !(schemaPath in knownDefPaths)) ||
       // #627: a GSI's undeclared WarmThroughput echoing that GSI's effective capacity
       // (on-demand constant or its own ProvisionedThroughput) — a per-GSI derived default.
-      dynamoGsiWarmThroughputAtDefault(resourceType, path, value, live) ||
+      dynamoGsiWarmThroughputAtDefault(resourceType, path, value, live, declared) ||
       // #1314: an AWS::Events::EventBusPolicy's live `Statement[n].Sid` (the resource's OWN
       // read) is the service stamping the declared top-level `StatementId` into the stored
       // statement — the registry `propertyTransform` `Statement: $merge([{"Sid":StatementId},
@@ -4860,11 +4879,28 @@ export function classifyResource(
     // #627: a provisioned DynamoDB table's top-level WarmThroughput echoes its own
     // ProvisionedThroughput (an on-demand table's {12000,4000} constant is already folded by
     // KNOWN_DEFAULTS above). Derived from the sibling ProvisionedThroughput and equality-gated,
-    // so an out-of-band warm-throughput change still surfaces.
+    // so an out-of-band warm-throughput change still surfaces. #1538: ALSO gate against the
+    // DECLARED capacity — warm throughput echoes the CREATION capacity and never follows a
+    // scale-in, so after an autoscaling scale-in below the template's initial capacity only
+    // the declared-derived value matches.
     if (
       DDB_TABLE_TYPES.has(resourceType) &&
       k === 'WarmThroughput' &&
-      deepEqual(v, warmThroughputDefault(live.ProvisionedThroughput))
+      (deepEqual(v, warmThroughputDefault(live.ProvisionedThroughput)) ||
+        deepEqual(v, warmThroughputDefault(declared.ProvisionedThroughput)))
+    ) {
+      findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
+      continue;
+    }
+    // #1537: Cloud Map derives a Service's `Type` at creation from the declared shape — a
+    // service with a DnsConfig is DNS+API discoverable (`DNS_HTTP`); one without (an
+    // HTTP-namespace service) is `HTTP`. A deterministic function of the declared inputs
+    // (fold tier 2), equality-gated so a genuinely different mode (a DNS-only service
+    // created out of band) still surfaces.
+    if (
+      resourceType === 'AWS::ServiceDiscovery::Service' &&
+      k === 'Type' &&
+      v === (declared.DnsConfig !== undefined ? 'DNS_HTTP' : 'HTTP')
     ) {
       findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
       continue;

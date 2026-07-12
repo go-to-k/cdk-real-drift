@@ -1,0 +1,101 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntTrustStore",
+    "resourceType": "AWS::ElasticLoadBalancingV2::TrustStore",
+    "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:truststore/cdkrd-hunt-truststore/befed9e5159d260e",
+    "constructPath": "CdkrdHunt0713TrustStore/HuntTrustStore",
+    "declared": {
+      "CaCertificatesBundleS3Bucket": "cdkrd-hunt-ca-x9z7q",
+      "CaCertificatesBundleS3Key": "cdkrd-hunt-ca.pem",
+      "Name": "cdkrd-hunt-truststore",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Status": "ACTIVE",
+    "TrustStoreArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:truststore/cdkrd-hunt-truststore/befed9e5159d260e",
+    "NumberOfCaCertificates": 1,
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0713TrustStore",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntTrustStore",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0713TrustStore/0ad327b0-7e06-11f1-84b0-0ead0d2d9e45",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "Name": "cdkrd-hunt-truststore",
+    "CaCertificatesBundleSha256": "8e3b996e3b0e01bd4e75b9ddbbae1f0a672b52a4b0b1c38af0119c9aa826567f"
+  },
+  "schema": {
+    "readOnly": ["NumberOfCaCertificates", "Status", "TrustStoreArn"],
+    "writeOnly": [
+      "CaCertificatesBundleS3Bucket",
+      "CaCertificatesBundleS3Key",
+      "CaCertificatesBundleS3ObjectVersion"
+    ],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["NumberOfCaCertificates", "Status", "TrustStoreArn"],
+    "writeOnlyPaths": [
+      "CaCertificatesBundleS3Bucket",
+      "CaCertificatesBundleS3Key",
+      "CaCertificatesBundleS3ObjectVersion"
+    ],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "HuntTrustStore",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TrustStore",
+      "path": "CaCertificatesBundleS3Bucket",
+      "note": "write-only — cannot be read back",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:truststore/cdkrd-hunt-truststore/befed9e5159d260e",
+      "constructPath": "CdkrdHunt0713TrustStore/HuntTrustStore"
+    },
+    {
+      "tier": "readGap",
+      "logicalId": "HuntTrustStore",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TrustStore",
+      "path": "CaCertificatesBundleS3Key",
+      "note": "write-only — cannot be read back",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:truststore/cdkrd-hunt-truststore/befed9e5159d260e",
+      "constructPath": "CdkrdHunt0713TrustStore/HuntTrustStore"
+    },
+    {
+      "tier": "undeclared",
+      "logicalId": "HuntTrustStore",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TrustStore",
+      "path": "CaCertificatesBundleSha256",
+      "actual": "8e3b996e3b0e01bd4e75b9ddbbae1f0a672b52a4b0b1c38af0119c9aa826567f",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:truststore/cdkrd-hunt-truststore/befed9e5159d260e",
+      "constructPath": "CdkrdHunt0713TrustStore/HuntTrustStore"
+    }
+  ]
+}

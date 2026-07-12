@@ -910,6 +910,21 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // (NumShards≠1), a replica change, a snapshot enable, or a TLS DISABLE still surfaces (the
   // TLSEnabled truthy-bool disable via the AWS::MemoryDB::Cluster MEANINGFUL_WHEN_OFF gate in
   // diff/classify.ts, so a live `false` is not swallowed by isTrivialEmpty).
+  // #1535: a barest on-demand MediaConvert Queue / JobTemplate first-run-FP'd all five of
+  // these creation-time constants (the #497 SDK-override readers were never exercised in
+  // their barest form). Equality-gated: `Status` is the classic console-toggled prop (pause
+  // a queue), so an out-of-band PAUSED no longer matches and surfaces — the very detection
+  // the reader exists for; likewise a priority bump, a faster status-update cadence, or an
+  // acceleration enable on the template.
+  'AWS::MediaConvert::Queue': {
+    PricingPlan: 'ON_DEMAND',
+    Status: 'ACTIVE',
+  },
+  'AWS::MediaConvert::JobTemplate': {
+    Priority: 0,
+    StatusUpdateInterval: 'SECONDS_60',
+    AccelerationSettings: { Mode: 'DISABLED' },
+  },
   'AWS::MemoryDB::Cluster': {
     Port: 6379,
     AutoMinorVersionUpgrade: true,
@@ -2446,6 +2461,15 @@ export const CONTEXT_ARN_DEFAULTS: Record<string, Record<string, string | string
   'AWS::SSM::MaintenanceWindowTask': {
     ServiceRoleArn:
       'arn:{partition}:iam::{accountId}:role/aws-service-role/ssm.amazonaws.com/AWSServiceRoleForAmazonSSM',
+  },
+  // A LakeFormation Resource registered with `UseServiceLinkedRole: true` (RoleArn
+  // undeclared) reads back the account's LakeFormation service-linked role ARN —
+  // f(partition, accountId). Twin of the ASG / Batch / SSM SLR folds; equality-gated, so an
+  // out-of-band re-registration under a CUSTOM role still surfaces (the drift the #1536
+  // reader unskip exists to catch). Live-confirmed (misc-readers-min, 2026-07-13; #1536).
+  'AWS::LakeFormation::Resource': {
+    RoleArn:
+      'arn:{partition}:iam::{accountId}:role/aws-service-role/lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess',
   },
   // A LakeFormation Tag that declares no CatalogId reads back the deploying account id — the
   // default (own-account) Data Catalog. The bare `{accountId}` placeholder substitutes to the
@@ -4320,6 +4344,12 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
   // two valid values differ beyond case, so case-insensitive equality hides no real
   // drift. Observed live on a fresh batch-rich deploy.
   'AWS::Batch::ComputeEnvironment': new Set(['Type']),
+  // Batch JobDefinition `Type` — the same enum re-case echo as ComputeEnvironment above:
+  // the handler accepts `Container`, the service echoes the canonical lowercase
+  // `container`. The valid values (container / multinode) differ beyond case, so a real
+  // change still surfaces. Observed live on a fresh mixed-case job definition
+  // (case-idents2-min, 2026-07-13; #1539).
+  'AWS::Batch::JobDefinition': new Set(['Type']),
   // EMR Serverless Application `Type` — the CFn schema enum is UPPERCASE
   // (`SPARK`/`HIVE`) but the EMR Serverless API canonicalizes to mixed case on
   // read (`Spark`/`Hive`), so a case-sensitive compare false-flags declared drift
@@ -4357,6 +4387,14 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
   'AWS::Neptune::DBCluster': new Set(['DBClusterIdentifier']),
   'AWS::Neptune::DBInstance': new Set(['DBInstanceIdentifier']),
   'AWS::Neptune::DBSubnetGroup': new Set(['DBSubnetGroupName']),
+  // Redshift lowercases a cluster parameter group's name on creation (the CFn handler
+  // accepts the mixed-case input): a template declaring "CdkrdHunt-RsCpg" reads back
+  // "cdkrdhunt-rscpg" — the same stored-lowercased identifier family as the RDS
+  // parameter/option groups (#1531). Two names differing beyond case are a genuine
+  // replacement and still surface. Observed live (case-idents2-min, 2026-07-13; #1539).
+  // ClusterSubnetGroup has no declarable name; Cluster's ClusterIdentifier is CDK-lowered
+  // already and unprobed — add it here only with live proof.
+  'AWS::Redshift::ClusterParameterGroup': new Set(['ParameterGroupName']),
   'AWS::DMS::ReplicationInstance': new Set(['ReplicationInstanceIdentifier']),
   'AWS::DMS::ReplicationSubnetGroup': new Set(['ReplicationSubnetGroupIdentifier']),
   // DMS Endpoint `EndpointType` — the CFn/CDK value is lowercase (`source` /

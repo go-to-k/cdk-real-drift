@@ -1,0 +1,97 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntJobDef",
+    "resourceType": "AWS::Batch::JobDefinition",
+    "physicalId": "arn:aws:batch:us-east-1:111111111111:job-definition/CdkrdHunt-JobDef:1",
+    "constructPath": "CdkrdHunt0713CaseIdents2/HuntJobDef",
+    "declared": {
+      "ContainerProperties": {
+        "Command": ["true"],
+        "Image": "public.ecr.aws/amazonlinux/amazonlinux:2023",
+        "Memory": 2048,
+        "Vcpus": 1
+      },
+      "JobDefinitionName": "CdkrdHunt-JobDef",
+      "Tags": {
+        "cdkrd:ephemeral": "1"
+      },
+      "Type": "Container"
+    }
+  },
+  "liveRaw": {
+    "Type": "container",
+    "Parameters": {},
+    "JobDefinitionArn": "arn:aws:batch:us-east-1:111111111111:job-definition/CdkrdHunt-JobDef:1",
+    "ContainerProperties": {
+      "MountPoints": [],
+      "Volumes": [],
+      "Secrets": [],
+      "Command": ["true"],
+      "Memory": 2048,
+      "Environment": [],
+      "Ulimits": [],
+      "Vcpus": 1,
+      "Image": "public.ecr.aws/amazonlinux/amazonlinux:2023",
+      "ResourceRequirements": []
+    },
+    "JobDefinitionName": "CdkrdHunt-JobDef",
+    "PropagateTags": false,
+    "Tags": {
+      "aws:cloudformation:stack-name": "CdkrdHunt0713CaseIdents2",
+      "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0713CaseIdents2/f375cad0-7e07-11f1-b041-0affcaf0bffd",
+      "cdkrd:ephemeral": "1",
+      "aws:cloudformation:logical-id": "HuntJobDef"
+    }
+  },
+  "schema": {
+    "readOnly": ["JobDefinitionArn"],
+    "writeOnly": ["ResourceRetentionPolicy"],
+    "createOnly": ["JobDefinitionName"],
+    "readOnlyPaths": ["JobDefinitionArn"],
+    "writeOnlyPaths": ["ResourceRetentionPolicy", "ResourceRetentionPolicy.SkipDeregisterOnUpdate"],
+    "createOnlyPaths": ["JobDefinitionName"],
+    "defaults": {},
+    "defaultPaths": {
+      "ResourceRetentionPolicy.SkipDeregisterOnUpdate": false
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [
+      "ContainerProperties.LinuxParameters.Devices",
+      "ContainerProperties.LinuxParameters.Tmpfs",
+      "ContainerProperties.MountPoints",
+      "ContainerProperties.ResourceRequirements",
+      "EcsProperties.TaskProperties",
+      "NodeProperties.NodeRangeProperties",
+      "RetryStrategy.EvaluateOnExit"
+    ],
+    "freeFormMapPaths": [
+      "ContainerProperties.LogConfiguration.Options",
+      "EcsProperties.TaskProperties.*.Containers.*.FirelensConfiguration.Options",
+      "EcsProperties.TaskProperties.*.Containers.*.LogConfiguration.Options",
+      "EksProperties.PodProperties.Containers.*.Resources.Limits",
+      "EksProperties.PodProperties.Containers.*.Resources.Requests",
+      "EksProperties.PodProperties.InitContainers.*.Resources.Limits",
+      "EksProperties.PodProperties.InitContainers.*.Resources.Requests",
+      "EksProperties.PodProperties.Metadata.Annotations",
+      "EksProperties.PodProperties.Metadata.Labels",
+      "NodeProperties.NodeRangeProperties.*.Container.LogConfiguration.Options",
+      "NodeProperties.NodeRangeProperties.*.EcsProperties.TaskProperties.*.Containers.*.FirelensConfiguration.Options",
+      "NodeProperties.NodeRangeProperties.*.EcsProperties.TaskProperties.*.Containers.*.LogConfiguration.Options",
+      "NodeProperties.NodeRangeProperties.*.EksProperties.PodProperties.Containers.*.Resources.Limits",
+      "NodeProperties.NodeRangeProperties.*.EksProperties.PodProperties.Containers.*.Resources.Requests",
+      "NodeProperties.NodeRangeProperties.*.EksProperties.PodProperties.InitContainers.*.Resources.Limits",
+      "NodeProperties.NodeRangeProperties.*.EksProperties.PodProperties.InitContainers.*.Resources.Requests",
+      "NodeProperties.NodeRangeProperties.*.EksProperties.PodProperties.Metadata.Annotations",
+      "NodeProperties.NodeRangeProperties.*.EksProperties.PodProperties.Metadata.Labels",
+      "Parameters"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

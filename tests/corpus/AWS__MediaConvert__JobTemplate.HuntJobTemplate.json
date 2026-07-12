@@ -1,0 +1,145 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntJobTemplate",
+    "resourceType": "AWS::MediaConvert::JobTemplate",
+    "physicalId": "cdkrd-hunt-mc-jobtemplate",
+    "constructPath": "CdkrdHunt0713MediaConv/HuntJobTemplate",
+    "declared": {
+      "Name": "cdkrd-hunt-mc-jobtemplate",
+      "SettingsJson": {
+        "OutputGroups": [
+          {
+            "Name": "File Group",
+            "OutputGroupSettings": {
+              "Type": "FILE_GROUP_SETTINGS",
+              "FileGroupSettings": {
+                "Destination": "s3://cdkrd-hunt-placeholder-output/"
+              }
+            },
+            "Outputs": [
+              {
+                "ContainerSettings": {
+                  "Container": "MP4",
+                  "Mp4Settings": {}
+                },
+                "VideoDescription": {
+                  "CodecSettings": {
+                    "Codec": "H_264",
+                    "H264Settings": {
+                      "RateControlMode": "QVBR",
+                      "QvbrSettings": {
+                        "QvbrQualityLevel": 7
+                      },
+                      "MaxBitrate": 5000000
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "Tags": {
+        "cdkrd:ephemeral": "1"
+      }
+    }
+  },
+  "liveRaw": {
+    "Name": "cdkrd-hunt-mc-jobtemplate",
+    "Priority": 0,
+    "StatusUpdateInterval": "SECONDS_60",
+    "AccelerationSettings": {
+      "Mode": "DISABLED"
+    },
+    "SettingsJson": {
+      "OutputGroups": [
+        {
+          "Name": "File Group",
+          "OutputGroupSettings": {
+            "FileGroupSettings": {
+              "Destination": "s3://cdkrd-hunt-placeholder-output/"
+            },
+            "Type": "FILE_GROUP_SETTINGS"
+          },
+          "Outputs": [
+            {
+              "ContainerSettings": {
+                "Container": "MP4",
+                "Mp4Settings": {}
+              },
+              "VideoDescription": {
+                "CodecSettings": {
+                  "Codec": "H_264",
+                  "H264Settings": {
+                    "MaxBitrate": 5000000,
+                    "QvbrSettings": {
+                      "QvbrQualityLevel": 7
+                    },
+                    "RateControlMode": "QVBR"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "Tags": {
+      "aws:cloudformation:logical-id": "HuntJobTemplate",
+      "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0713MediaConv/e1cb7660-7e05-11f1-8222-0affcab5baff",
+      "aws:cloudformation:stack-name": "CdkrdHunt0713MediaConv",
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntJobTemplate",
+      "resourceType": "AWS::MediaConvert::JobTemplate",
+      "path": "Priority",
+      "actual": 0,
+      "physicalId": "cdkrd-hunt-mc-jobtemplate",
+      "constructPath": "CdkrdHunt0713MediaConv/HuntJobTemplate"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntJobTemplate",
+      "resourceType": "AWS::MediaConvert::JobTemplate",
+      "path": "StatusUpdateInterval",
+      "actual": "SECONDS_60",
+      "physicalId": "cdkrd-hunt-mc-jobtemplate",
+      "constructPath": "CdkrdHunt0713MediaConv/HuntJobTemplate"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntJobTemplate",
+      "resourceType": "AWS::MediaConvert::JobTemplate",
+      "path": "AccelerationSettings",
+      "actual": {
+        "Mode": "DISABLED"
+      },
+      "physicalId": "cdkrd-hunt-mc-jobtemplate",
+      "constructPath": "CdkrdHunt0713MediaConv/HuntJobTemplate"
+    }
+  ]
+}

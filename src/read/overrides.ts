@@ -1119,9 +1119,16 @@ const readDmsReplicationTask: OverrideReader = async ({ physicalId, declared, re
 // be permanent first-run noise). Read-ONLY. A deregistered/absent location surfaces as
 // EntityNotFoundException (or an empty ResourceInfo) → ResourceGoneError, which the router maps
 // to `deleted`.
+// #1536: the CFn physical id is NOT the bare ResourceArn — CloudFormation prefixes it
+// (`LakeFormation-arn:aws:s3:::bucket`), so passing it verbatim threw InvalidInputException
+// and the resource silently SKIPPED (a falsely-CLEAN read on the exact type this reader was
+// added to watch — the same ARN-vs-physical-id skip-mask class as #1523). Strip everything
+// before the first `arn:`.
 const readLakeFormationResource: OverrideReader = async ({ physicalId, region }) => {
-  const arn = str(physicalId);
-  if (!arn) return undefined;
+  const raw = str(physicalId);
+  if (!raw) return undefined;
+  const arnStart = raw.indexOf('arn:');
+  const arn = arnStart >= 0 ? raw.slice(arnStart) : raw;
   const c = new LakeFormationClient({ region, ...READ_RETRY });
   let info;
   try {
@@ -2667,10 +2674,15 @@ const readServiceDiscoveryNamespace: OverrideReader = async ({ physicalId, decla
 
 // AWS::ServiceDiscovery::Service — same CC read gap. Read via Cloud Map GetService;
 // the CFn physical id IS the service Id (srv-xxxx). Project the CFn-modeled props,
-// mapping the SDK shapes back to CFn PascalCase. DnsConfig.NamespaceId is a
-// deprecated/read-only echo, deliberately not projected (a service in an HTTP
-// namespace has no DnsConfig at all). HealthCheck* are projected only when present
-// so an HTTP service stays CLEAN. Id / Arn / InstanceCount / CreateDate are noise.
+// mapping the SDK shapes back to CFn PascalCase. GetService's DnsConfig omits the
+// deprecated NamespaceId echo, but the CDK L2 Service ALWAYS declares it inside
+// DnsConfig — so when the DECLARED model carries DnsConfig.NamespaceId, mirror the
+// live top-level Service.NamespaceId into the projected DnsConfig (#1537; without
+// this every CDK L2 DNS service false-flagged declared drift `desired=ns-…
+// actual=undefined`). A raw-CFn template that omits it stays unprojected (a service
+// in an HTTP namespace has no DnsConfig at all). HealthCheck* are projected only
+// when present so an HTTP service stays CLEAN. Id / Arn / InstanceCount /
+// CreateDate are noise.
 const readServiceDiscoveryService: OverrideReader = async ({ physicalId, declared, region }) => {
   const id = str(physicalId);
   if (!id) return undefined;
@@ -2683,13 +2695,20 @@ const readServiceDiscoveryService: OverrideReader = async ({ physicalId, declare
   if (s.Description !== undefined) model.Description = s.Description;
   if (s.NamespaceId !== undefined) model.NamespaceId = s.NamespaceId;
   if (s.Type !== undefined) model.Type = s.Type;
-  if (s.DnsConfig)
+  if (s.DnsConfig) {
+    const declaredDnsConfig = (declared as Record<string, unknown> | undefined)?.DnsConfig;
+    const declaresNamespaceId =
+      declaredDnsConfig !== null &&
+      typeof declaredDnsConfig === 'object' &&
+      (declaredDnsConfig as Record<string, unknown>).NamespaceId !== undefined;
     model.DnsConfig = {
+      ...(declaresNamespaceId && s.NamespaceId !== undefined && { NamespaceId: s.NamespaceId }),
       ...(s.DnsConfig.RoutingPolicy !== undefined && { RoutingPolicy: s.DnsConfig.RoutingPolicy }),
       ...(s.DnsConfig.DnsRecords !== undefined && {
         DnsRecords: s.DnsConfig.DnsRecords.map((d) => ({ Type: d.Type, TTL: d.TTL })),
       }),
     };
+  }
   if (s.HealthCheckConfig)
     model.HealthCheckConfig = {
       ...(s.HealthCheckConfig.Type !== undefined && { Type: s.HealthCheckConfig.Type }),

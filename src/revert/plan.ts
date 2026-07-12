@@ -323,6 +323,17 @@ export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // converges. The set-default value resolves from KNOWN_DEFAULTS (the same `true` pin that folds
   // the clean read atDefault) — no REVERT_SET_DEFAULT_VALUES entry needed.
   'AWS::RDS::DBInstance\0AutoMinorVersionUpgrade',
+  // #1541: ModifyDBInstance keeps the existing value for ANY omitted property — the same
+  // selective-modify semantics as the #660 upgrade booleans above, live-proven beyond them
+  // on CdkrdHunt0713RdsMariadb (us-east-1, 2026-07-13): an out-of-band undeclared
+  // BackupRetentionPeriod 1->3 survived a bare-`remove` revert that reported success (the
+  // convergence re-read flagged it NOT reverted); with this entry the set-default `add 1`
+  // (from KNOWN_DEFAULTS) converges — live re-verified to 1. The remaining folded siblings
+  // on the same API (MultiAZ, CopyTagsToSnapshot, EnablePerformanceInsights,
+  // CACertificateIdentifier, MonitoringInterval) are expected twins — add each ONLY with
+  // its own live proof (note the CDK L2 declares CopyTagsToSnapshot, so proving it needs a
+  // raw-CFn/L1 fixture that leaves it undeclared).
+  'AWS::RDS::DBInstance\0BackupRetentionPeriod',
   'AWS::RDS::DBCluster\0AutoMinorVersionUpgrade',
   'AWS::Neptune::DBInstance\0AutoMinorVersionUpgrade',
   'AWS::ElastiCache::CacheCluster\0AutoMinorVersionUpgrade',
