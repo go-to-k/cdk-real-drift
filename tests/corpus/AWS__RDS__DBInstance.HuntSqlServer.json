@@ -476,7 +476,7 @@
       "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "HuntSqlServer",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "PubliclyAccessible",

@@ -477,7 +477,7 @@
       "constructPath": "CdkRealDriftIntegRdsPostgresMin/HuntPostgres"
     },
     {
-      "tier": "undeclared",
+      "tier": "atDefault",
       "logicalId": "HuntPostgres",
       "resourceType": "AWS::RDS::DBInstance",
       "path": "PubliclyAccessible",
