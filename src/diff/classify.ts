@@ -297,7 +297,7 @@ function guardDutyFeaturesAllAtDefault(features: unknown[]): boolean {
 // ec2:DescribeSecurityGroups / lookup failed → `defaultSgIds` undefined or empty) KEEP folding, so
 // a clean deploy never gains a first-run false positive; the derived detection is best-effort and
 // requires the DescribeSecurityGroups permission.
-const DEFAULT_SG_LIST_PATHS: Record<string, string> = {
+export const DEFAULT_SG_LIST_PATHS: Record<string, string> = {
   'AWS::ElasticLoadBalancingV2::LoadBalancer': 'SecurityGroups',
   'AWS::EC2::NetworkInterface': 'GroupSet',
   // #976: a Neptune DBCluster that declares no VpcSecurityGroupIds reads back the VPC's DEFAULT

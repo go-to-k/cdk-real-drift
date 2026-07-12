@@ -84,6 +84,22 @@ export const DEFAULT_SG_LIST_TYPES: ReadonlySet<string> = new Set([
   // #976 Neptune shape) — registered in classify DEFAULT_SG_LIST_PATHS, so the prefetch must fire
   // when a cluster is present or the OOB-swap gate loses its default-SG ids (detection silently lost).
   'AWS::Redshift::Cluster',
+  // #1499: the RDS/DocDB twins of the #976 Neptune shape — a barest DBCluster/DBInstance/DocDB
+  // cluster that declares no security groups reads back the VPC default SG. These are registered in
+  // classify DEFAULT_SG_LIST_PATHS (VpcSecurityGroupIds / VPCSecurityGroups) but were MISSING here,
+  // so for a stack containing only such a type the prefetch never fired → defaultSgIds empty →
+  // shouldFoldDefaultSgList failed OPEN and an OOB `rds/docdb modify-db-cluster|instance
+  // --vpc-security-group-ids` swap/append was silently NOT detected. Register them so the prefetch
+  // fires and the derived VPC-default-SG gate keeps its swap/append detection.
+  'AWS::RDS::DBCluster',
+  'AWS::RDS::DBInstance',
+  'AWS::DocDB::DBCluster',
+  // #640: an EC2::Instance that declares no security group reads back its VPC default SG in
+  // SecurityGroupIds (registered in classify DEFAULT_SG_LIST_PATHS by PR #1449). It too was MISSING
+  // here, so a stack whose only default-SG-gated resource is a bare instance (no ENI/ALB present)
+  // never fired the prefetch → defaultSgIds empty → an OOB `ec2 modify-instance-attribute --groups`
+  // swap/append was silently NOT detected. Register it so the derived gate keeps its detection.
+  'AWS::EC2::Instance',
 ]);
 
 // #1269: types whose undeclared SubnetIds default to ALL of the account's DEFAULT-VPC subnets —
