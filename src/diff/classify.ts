@@ -133,6 +133,24 @@ const ELB_ATTRIBUTE_BAGS: Record<string, string> = {
 // state is a genuine divergence in THIS resource's config. Add an entry ONLY after a live
 // confirm that the OFF state is meaningful in EVERY clean-deploy configuration of the type.
 type OffStateContext = { declared: Record<string, unknown>; live: Record<string, unknown> };
+// #660 item 1: a MEANINGFUL_WHEN_OFF predicate for a `true`-default switch that a snapshot /
+// point-in-time RESTORE can carry over as an untouched `false`. A fresh, NON-restored resource
+// always reads the pin back `true` (so an undeclared `false` is a real out-of-band disable), but
+// a restore INHERITS the source's value — a restore of a source that had the flag `false` reads
+// back `false` UNTOUCHED (live-proven on RDS::DBInstance 2026-07-12: restore-db-instance-from-db-
+// snapshot inherits the source's AutoMinorVersionUpgrade, it does NOT default to `true`). That
+// inherited `false` is a creation-time value AWS assigned for an undeclared prop, NOT a
+// divergence (the core invariant), so it must NOT surface. Gate OFF-meaningfulness on the
+// resource NOT being a restore, keyed on the type's restore-source property(s) — which stay in
+// the template for the resource's life. Conservative on the restore path (a restored-then-
+// disabled resource stays folded rather than risk a first-check FP), FP-free on every clean
+// deploy. The predicate is uniformly SAFE for every restore-capable sibling: where a sibling's
+// restore likewise inherits `false` it prevents the FP; where it defaults to `true` the gate is
+// merely over-conservative — it never itself produces an FP.
+const notRestored =
+  (...restoreSourceKeys: string[]) =>
+  ({ declared }: OffStateContext): boolean =>
+    restoreSourceKeys.every((k) => declared[k] === undefined);
 const MEANINGFUL_WHEN_OFF: Record<string, Record<string, (ctx: OffStateContext) => boolean>> = {
   // A KMS key is always created enabled; `disable-key` (Enabled=false) is always meaningful.
   'AWS::KMS::Key': { Enabled: () => true },
@@ -195,7 +213,12 @@ const MEANINGFUL_WHEN_OFF: Record<string, Record<string, (ctx: OffStateContext) 
   // TLS off DECLARES TLSEnabled=false (compared in the declared loop), so an UNDECLARED false
   // is an out-of-band DISABLE of transit encryption — unconditionally meaningful. Without this
   // gate the live `false` is dropped by isTrivialEmpty before the pin gate, hiding the disable.
-  'AWS::MemoryDB::Cluster': { TLSEnabled: () => true },
+  'AWS::MemoryDB::Cluster': {
+    TLSEnabled: () => true,
+    // #660 item 1: automatic minor-version upgrades default ON; an undeclared false is an
+    // out-of-band disable — except a snapshot/point-in-time restore inherits the source's value.
+    AutoMinorVersionUpgrade: notRestored('SnapshotName', 'SnapshotArns'),
+  },
   // #1492: a Redshift ScheduledAction is created ENABLED — a fresh action that declares no
   // Enable always reads back true (the KNOWN_DEFAULTS pin, live-confirmed 2026-07-12). There is
   // no conditional clean-deploy shape that reads false undeclared (a user who wants it paused
@@ -203,6 +226,28 @@ const MEANINGFUL_WHEN_OFF: Record<string, Record<string, (ctx: OffStateContext) 
   // out-of-band `modify-scheduled-action --disable` that silently stops the schedule — the live
   // `false` would otherwise be dropped by isTrivialEmpty before the pin gate. Unconditional.
   'AWS::Redshift::ScheduledAction': { Enable: () => true },
+  // #660 item 1 — the restore-risk `true`-default switches (AutoMinorVersionUpgrade /
+  // AllowVersionUpgrade). Each is pinned `true` in KNOWN_DEFAULTS and a fresh deploy reads it
+  // back `true` across every engine variant (corpus-confirmed: redis/memcached/valkey/postgres/
+  // sqlserver/Neptune/Redshift), so an undeclared `false` is a real out-of-band DISABLE of
+  // automatic patching that isTrivialEmpty otherwise hides. The `notRestored(...)` gate excludes
+  // a snapshot-restored resource, whose undeclared `false` is an inherited creation-time value
+  // (see the `notRestored` note above) — live-proven on RDS::DBInstance.
+  'AWS::RDS::DBInstance': { AutoMinorVersionUpgrade: notRestored('DBSnapshotIdentifier') },
+  'AWS::RDS::DBCluster': {
+    AutoMinorVersionUpgrade: notRestored('SnapshotIdentifier', 'SourceDBClusterIdentifier'),
+  },
+  // A Neptune DBInstance has no instance-level restore source (only AWS::Neptune::DBCluster
+  // restores from a snapshot; its member instances are always CREATED fresh and read the flag
+  // back `true`), so there is no clean-deploy path to an untouched `false` — unconditional.
+  'AWS::Neptune::DBInstance': { AutoMinorVersionUpgrade: () => true },
+  'AWS::ElastiCache::CacheCluster': {
+    AutoMinorVersionUpgrade: notRestored('SnapshotName', 'SnapshotArns'),
+  },
+  'AWS::ElastiCache::ReplicationGroup': {
+    AutoMinorVersionUpgrade: notRestored('SnapshotName', 'SnapshotArns'),
+  },
+  'AWS::Redshift::Cluster': { AllowVersionUpgrade: notRestored('SnapshotIdentifier') },
 };
 
 // #660 item 3: the NESTED twin of MEANINGFUL_WHEN_OFF. The table above gates TOP-LEVEL
