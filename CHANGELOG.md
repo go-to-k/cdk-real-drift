@@ -1,3 +1,10 @@
+## [0.13.5](https://github.com/go-to-k/cdk-real-drift/compare/v0.13.4...v0.13.5) (2026-07-12)
+
+
+### Bug Fixes
+
+* **diff:** surface out-of-band disable of restore-risk version-upgrade booleans (part of [#660](https://github.com/go-to-k/cdk-real-drift/issues/660)) ([#1520](https://github.com/go-to-k/cdk-real-drift/issues/1520)) ([bc847af](https://github.com/go-to-k/cdk-real-drift/commit/bc847afcd22914394e74029f27bab8267126db9e))
+
 ## [0.13.4](https://github.com/go-to-k/cdk-real-drift/compare/v0.13.3...v0.13.4) (2026-07-12)
 
 
