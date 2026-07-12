@@ -270,6 +270,9 @@ export function finalCheckExit(code: number, fail: boolean): number {
  * who can make the decision. It is gated OUT of every machine/automation mode:
  *   - --json / --show-all / --pre-deploy — machine output or baseline-untouched contracts,
  *   - --fail — the CI drift-exit path,
+ *   - --no-prompt — the exit-0 twin of --fail's suppression: force the run non-interactive
+ *     (report-only) even in a TTY, without failing CI on drift. Its whole job is this gate;
+ *     when it fires on a no-baseline stack the establish note below takes over (no hang).
  *   - #779: --declared-only / --undeclared-only — a SCOPE filter is active, so `findings`
  *     has been reduced to one tier (declared-only drops the whole undeclared/added/atDefault
  *     tier; undeclared-only drops declared plus its readGap/unresolved byproducts). The
@@ -294,7 +297,14 @@ export function finalCheckExit(code: number, fail: boolean): number {
 export function shouldOfferInteractiveResolve(
   a: Pick<
     CommonArgs,
-    'json' | 'showAll' | 'preDeploy' | 'fail' | 'yes' | 'declaredOnly' | 'undeclaredOnly'
+    | 'json'
+    | 'showAll'
+    | 'preDeploy'
+    | 'fail'
+    | 'noPrompt'
+    | 'yes'
+    | 'declaredOnly'
+    | 'undeclaredOnly'
   >,
   ctx: { code: number; hasUnrecorded: boolean; hasBaseline: boolean; interactive: boolean }
 ): boolean {
@@ -304,6 +314,7 @@ export function shouldOfferInteractiveResolve(
     !a.showAll &&
     !a.preDeploy &&
     !a.fail &&
+    !a.noPrompt &&
     !a.yes &&
     !a.declaredOnly &&
     !a.undeclaredOnly &&
@@ -853,7 +864,7 @@ export async function runCheck(args: string[]): Promise<number> {
           positionPrefix: posPrefix,
         });
       } else if (!baseline && !hasUnrecorded && !a.showAll && !a.preDeploy) {
-        // R142: no interactive establish prompt could fire (non-TTY, --fail, OR --json —
+        // R142: no interactive establish prompt could fire (non-TTY, --fail, --no-prompt, OR --json —
         // shouldOfferInteractiveResolve is false in all of those) and there is no baseline on
         // an otherwise-quiet stack — the report gave no record cue (nothing is unrecorded), so
         // point at how to create the day-1 baseline. #1095: emit UNCONDITIONALLY to stderr

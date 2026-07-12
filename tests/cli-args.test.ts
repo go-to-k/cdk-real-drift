@@ -175,6 +175,16 @@ describe('parseCommonArgs', () => {
     expect(parseCommonArgs(['S', '--fail']).fail).toBe(true);
   });
 
+  it('--no-prompt parses as a boolean, orthogonal to --fail (default false)', () => {
+    expect(parseCommonArgs(['S']).noPrompt).toBe(false);
+    expect(parseCommonArgs(['S', '--no-prompt']).noPrompt).toBe(true);
+    // orthogonal axes: --no-prompt does NOT set fail, and both may be combined
+    expect(parseCommonArgs(['S', '--no-prompt']).fail).toBe(false);
+    const both = parseCommonArgs(['S', '--no-prompt', '--fail']);
+    expect(both.noPrompt).toBe(true);
+    expect(both.fail).toBe(true);
+  });
+
   it('scope flags parse and are mutually exclusive (R59)', () => {
     expect(parseCommonArgs(['S', '--undeclared-only']).undeclaredOnly).toBe(true);
     expect(parseCommonArgs(['S', '--declared-only']).declaredOnly).toBe(true);
@@ -297,6 +307,12 @@ describe('parseCommonArgs per-verb flag applicability (#780)', () => {
     expect(() => parseCommonArgs(['--fail'], 'check')).not.toThrow();
   });
 
+  it('rejects `--no-prompt` outside check', () => {
+    for (const verb of ['record', 'ignore', 'revert'] as const)
+      expect(() => parseCommonArgs(['--no-prompt'], verb)).toThrow(/"--no-prompt" is not valid/);
+    expect(() => parseCommonArgs(['--no-prompt'], 'check')).not.toThrow();
+  });
+
   it('rejects check-only scope/coverage flags on other verbs', () => {
     for (const flag of [
       '--strict',
@@ -333,7 +349,7 @@ describe('parseCommonArgs per-verb flag applicability (#780)', () => {
   it('accepts each verb-appropriate flag set (no false rejection)', () => {
     expect(() =>
       parseCommonArgs(
-        ['--fail', '--strict', '--show-all', '--pre-deploy', '--json', '--verbose'],
+        ['--fail', '--no-prompt', '--strict', '--show-all', '--pre-deploy', '--json', '--verbose'],
         'check'
       )
     ).not.toThrow();

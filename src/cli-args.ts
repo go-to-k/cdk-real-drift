@@ -10,6 +10,7 @@ const VALUE_FLAGS = new Set(['--region', '--profile', '--app', '-a', '-c', '--co
 const BOOLEAN_FLAGS = new Set([
   '--json',
   '--fail',
+  '--no-prompt',
   '--show-all',
   '--yes',
   '-y',
@@ -54,6 +55,7 @@ const ALLOWED_FLAGS_BY_VERB: Record<Verb, Set<string>> = {
   check: new Set([
     ...GLOBAL_FLAGS,
     '--fail',
+    '--no-prompt',
     '--strict',
     '--show-all',
     '--pre-deploy',
@@ -101,6 +103,21 @@ export interface CommonArgs {
   // convention (R53): drift sets exit 1 and prompts are suppressed. Without it,
   // check REPORTS drift but exits 0 (report-only).
   fail: boolean;
+  // (check) prompt axis, ORTHOGONAL to --fail (which is the exit-code axis): force the
+  // run non-interactive — suppress the after-report resolve menu (Record / Revert / Ignore /
+  // day-1 establish) even in a TTY, WITHOUT changing the exit code. `--fail` already implies
+  // this (its automation contract suppresses prompts); `--no-prompt` is the exit-0 twin, for a
+  // report-only script that runs attached to a terminal (both stdin+stdout TTY, so the TTY
+  // gate alone would still prompt and could hang) and must not fail CI on drift. Passing both
+  // is harmless — `--fail`'s exit-1 wins, the suppression is identical. Non-TTY already never
+  // prompts, so this only bites the terminal-attached-script case.
+  //
+  // OPTIONAL + POST-ASSIGNED (see parseCommonArgs) rather than a required field IN the return
+  // literal: growing that ~28-property literal trips tsgolint's whole-program type-aware pass
+  // into cascading FALSE `no-base-to-string` lint errors on UNRELATED files (classify.ts /
+  // gather.ts) — `tsgo` typecheck is unaffected, but `vp check` and CI go red. Keeping the
+  // literal at its prior size + a separate assignment sidesteps it. Always set at runtime. (#683.)
+  noPrompt?: boolean;
   // (check) coverage axis, ORTHOGONAL to --fail (which is about drift): make a run
   // whose coverage was incomplete — any resource SKIPPED (CC-unsupported + no SDK
   // override, a read error, a missing physical id) or any nested stack not recursed
@@ -249,7 +266,11 @@ export function parseCommonArgs(args: string[], verb?: Verb): CommonArgs {
   // also export the resolved profile as $AWS_PROFILE; this marker is the "was it explicit?"
   // bit that export loses. Set only when `--profile` is actually present.
   if (values['--profile'] !== undefined) process.env.CDKRD_EXPLICIT_PROFILE = '1';
-  return {
+  // POST-ASSIGN noPrompt (below) rather than adding it to this return literal: growing this
+  // ~28-property literal trips tsgolint's whole-program type-aware pass into cascading false
+  // lint errors on UNRELATED files (tsgo typecheck is unaffected). Keeping the literal at its
+  // prior size + a separate assignment sidesteps it. (#683 — same pattern as loadDesired.)
+  const parsed: CommonArgs = {
     stackNames,
     all: has('--all'),
     context,
@@ -278,4 +299,6 @@ export function parseCommonArgs(args: string[], verb?: Verb): CommonArgs {
     verbose: has('--verbose') || has('-v'),
     waitMs,
   };
+  parsed.noPrompt = has('--no-prompt');
+  return parsed;
 }
