@@ -1,3 +1,10 @@
+## [0.13.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.13.2...v0.13.3) (2026-07-12)
+
+
+### Bug Fixes
+
+* **diff:** surface out-of-band EKS EndpointPublicAccess private-only flip (part of [#660](https://github.com/go-to-k/cdk-real-drift/issues/660)) ([#1518](https://github.com/go-to-k/cdk-real-drift/issues/1518)) ([e3467b5](https://github.com/go-to-k/cdk-real-drift/commit/e3467b5a153c8019a9bb3635e2502ab45d9de865))
+
 ## [0.13.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.13.1...v0.13.2) (2026-07-12)
 
 
