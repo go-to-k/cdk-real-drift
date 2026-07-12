@@ -226,6 +226,23 @@ const MEANINGFUL_WHEN_OFF_NESTED: Record<
   // an untouched `false`), so an undeclared live `false` is unambiguously an out-of-band
   // disable of dual-stack delivery. Unconditionally meaningful when off.
   'AWS::CloudFront::Distribution': { 'DistributionConfig.IPV6Enabled': () => true },
+  // #660 item 3: an Athena WorkGroup enforces its config and publishes CloudWatch metrics by
+  // default on every clean deploy (the `WorkGroupConfiguration.EnforceWorkGroupConfiguration`
+  // and `.PublishCloudWatchMetricsEnabled` `true` pins). `WorkGroupConfiguration` is a
+  // `DESCEND_UNDECLARED_OBJECT_PATHS` object: an out-of-band `update-work-group` flipping either
+  // leaf `false` breaks the whole-object `KNOWN_DEFAULTS` equality, so the object descends
+  // per-leaf and the lone `false` leaf is swallowed by `isTrivialEmpty(false)` before the pin
+  // gate — the disable stays invisible (live-verified 2026-07-12 A/B on `Cdkrd660AthenaVerify`:
+  // base reports nothing after each flip, fix surfaces `actual=false`). Both are unconditionally
+  // meaningful when off: EnforceWorkGroupConfiguration=false lets clients override the
+  // workgroup's result-location/encryption settings, and PublishCloudWatchMetricsEnabled=false
+  // silently stops query metrics. A user who wants either off DECLARES it (compared in the
+  // declared loop); an undeclared `false` is an out-of-band relaxation. No restore/import path
+  // yields an untouched `false` (a WorkGroup has no snapshot lineage).
+  'AWS::Athena::WorkGroup': {
+    'WorkGroupConfiguration.EnforceWorkGroupConfiguration': () => true,
+    'WorkGroupConfiguration.PublishCloudWatchMetricsEnabled': () => true,
+  },
 };
 
 // #1092/#1485: GuardDuty protection Features (and their nested AdditionalConfiguration members)
