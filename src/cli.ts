@@ -50,6 +50,12 @@ OPTIONS
   --fail                      (check) exit 1 on drift + never prompt — for
                               scripts/CI (same convention as \`cdk diff --fail\`);
                               without it, check REPORTS drift but exits 0
+  --no-prompt                 (check) never open the interactive resolve menu —
+                              report only, exit 0 even on drift. The exit-0 twin of
+                              --fail's suppression, for a report-only script run
+                              ATTACHED to a terminal (where the TTY gate alone would
+                              still prompt and could hang). Non-TTY runs never prompt
+                              anyway; with --fail, --fail's exit-1 wins
   --strict                    (check) exit 1 when coverage is INCOMPLETE — any
                               resource skipped (unread) or a nested stack not
                               recursed into. A loud coverage warning always prints;
@@ -89,8 +95,8 @@ OPTIONS
   --help, -h    --version, -v   (bare \`cdkrd -v\` prints the version; inside a verb,
                               \`-v\` is the short alias for --verbose, e.g. check -v)
 
-  Automation: check --fail / record --yes / ignore --yes / revert --yes (or
-  --dry-run); non-TTY runs never prompt.
+  Automation: check --fail (or --no-prompt for exit-0 report-only) / record --yes /
+  ignore --yes / revert --yes (or --dry-run); non-TTY runs never prompt.
 
 EXIT CODES
   check:  0 = clean (or drift without --fail)   1 = drift (--fail) / incomplete coverage (--strict)   2 = error

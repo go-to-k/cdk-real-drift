@@ -355,6 +355,13 @@ CI (with `--yes`).
   the flag).
 - **`--fail`** (the `cdk diff --fail` / `cdk drift --fail` convention) exits `1` on
   drift and suppresses all prompts. It's the one flag for scripts and CI.
+- **`--no-prompt`** is the **prompt** axis, orthogonal to `--fail`'s exit-code axis:
+  it suppresses the interactive resolve menu (report-only) but keeps exit `0` on
+  drift. Reach for it when a script runs `check` **attached to a terminal** (both
+  stdin+stdout are a TTY, so the TTY gate alone would still prompt and could hang)
+  yet must not fail the job on drift. A non-TTY run (real CI, a pipe, redirected
+  output) never prompts anyway, so this only matters for the terminal-attached case;
+  combined with `--fail`, `--fail`'s exit `1` wins.
 - **`--strict`** is the orthogonal **coverage** axis: it exits `1` when a run was
   incomplete (a resource skipped for an ACTIONABLE reason — a CC-unsupported type
   with no override, a read error / throttle / AccessDenied — or a nested stack not
@@ -401,6 +408,7 @@ CI (with `--yes`).
 | `--all`                    | target every stack the app defines (the default when no `<stack>` is named; cannot be combined with named stacks — a `<stack> ... --all` invocation errors)                                                                                                                                                                                            |
 | `--json`                   | machine-readable output (see [JSON contract](#json-output-contract))                                                                                                                                                                                                                                                                                   |
 | `--fail`                   | (check) exit 1 on drift and never prompt; for scripts/CI. Without it, check reports drift but exits 0                                                                                                                                                                                                                                                  |
+| `--no-prompt`              | (check) never open the interactive resolve menu (report-only), but keep exit 0 on drift — the exit-0 twin of `--fail`'s prompt suppression, for a report-only script attached to a terminal. Non-TTY never prompts anyway; with `--fail`, `--fail`'s exit 1 wins                                                                                       |
 | `--strict`                 | (check) exit 1 when coverage is incomplete. A coverage gap is always surfaced loudly; `--strict` makes it CI-failing. Orthogonal to `--fail`                                                                                                                                                                                                           |
 | `--show-all`               | (check) inventory mode: show all current undeclared state, ignoring the baseline                                                                                                                                                                                                                                                                       |
 | `--verbose` / `-v`         | (check) expand the `info:` footer tiers / (revert) expand the not-revertable summary to full lists; (record) itemizes nested sub-keys in the multiselect. `-v` means `--verbose` **inside a verb** (`check -v`); a bare `cdkrd -v` (no verb) prints the version                                                                                        |
@@ -422,7 +430,7 @@ error (they select which comparison runs, so a combination is contradictory).
 ### Interactive prompts (TTY only, CI is never prompted)
 
 Every option runs exactly the same code as the standalone commands. Prompts are
-skipped under `--json`, `--show-all`, `--pre-deploy`, `--fail`, `--yes`, and the
+skipped under `--json`, `--show-all`, `--pre-deploy`, `--fail`, `--no-prompt`, `--yes`, and the
 scope filters `--declared-only` / `--undeclared-only` (a filtered finding set must
 never become a snapshot-complete baseline via the inline Record — use the standalone
 `record` verb, which sees the unfiltered state, #779). A non-TTY run
