@@ -935,6 +935,10 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   `AWS::SageMaker::EndpointConfig` — its production-variant model wiring, plus the
   tags a separate `ListTags` call supplies since `DescribeEndpointConfig` omits
   them),
+  `sagemaker:DescribeMonitoringSchedule` + `sagemaker:ListTags` (read an
+  `AWS::SageMaker::MonitoringSchedule` — the Cloud Control read omits `Tags`, so
+  a declared `Tags` false-flagged as drift on every tagged schedule; a separate
+  `ListTags` call supplies them),
   `codebuild:BatchGetProjects` (reads an `AWS::CodeBuild::Project`) +
   `codebuild:BatchGetReportGroups` (reads an `AWS::CodeBuild::ReportGroup`),
   `dax:DescribeClusters` + `dax:DescribeParameterGroups` + `dax:DescribeParameters` +
