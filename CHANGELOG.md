@@ -1,3 +1,10 @@
+## [0.13.6](https://github.com/go-to-k/cdk-real-drift/compare/v0.13.5...v0.13.6) (2026-07-12)
+
+
+### Bug Fixes
+
+* **revert:** converge out-of-band disable of restore-risk version-upgrade booleans (part of [#660](https://github.com/go-to-k/cdk-real-drift/issues/660)) ([#1521](https://github.com/go-to-k/cdk-real-drift/issues/1521)) ([068e7ca](https://github.com/go-to-k/cdk-real-drift/commit/068e7cad53d81714be9576394fd4fefaeba4a477))
+
 ## [0.13.5](https://github.com/go-to-k/cdk-real-drift/compare/v0.13.4...v0.13.5) (2026-07-12)
 
 
