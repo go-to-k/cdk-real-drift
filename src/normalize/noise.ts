@@ -16,6 +16,13 @@ import { TAG_PROPERTY_NAMES } from './cc-api-strip.js';
 // entries were all OBSERVED on real default-config stacks during dogfooding.
 export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::IAM::Role': { MaxSessionDuration: 3600, Path: '/', Description: '' },
+  // A DataQuality monitoring job definition that declares no StoppingCondition reads back the
+  // AWS default `{MaxRuntimeInSeconds:3600}` (a fully-undeclared top-level object, so
+  // KNOWN_DEFAULTS not KNOWN_DEFAULT_PATHS). Equality-gated: a user who caps the runtime to a
+  // different value DECLARES StoppingCondition (compared in the declared loop), and an
+  // out-of-band change away from 3600 still surfaces. Live-verified 2026-07-12 on
+  // Cdkrd915MonSchedVerify (us-east-1). #1523.
+  'AWS::SageMaker::DataQualityJobDefinition': { StoppingCondition: { MaxRuntimeInSeconds: 3600 } },
   // A server certificate declared without a Path reads back "/" (the IAM default),
   // exactly like Role/kin above. Equality-gated, so an out-of-band UpdateServerCertificate
   // path move still surfaces. Live-confirmed (#910).
@@ -1743,6 +1750,19 @@ export const KNOWN_DEFAULT_ONE_OF_PATHS: Record<string, Record<string, readonly 
 // constant first-run default (12000/4000) and folds via KNOWN_DEFAULTS above —
 // equality-gated, so a warmed-up table still surfaces.
 export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
+  // A DataQuality monitoring job whose (partially-declared) input reads back the two
+  // AWS-filled transfer defaults the schema documents — `S3DataDistributionType`
+  // ("Defaults to FullyReplicated") and `S3InputMode` ("Defaults to File") — under whichever
+  // input variant is used. Equality-gated, so a user who declares `ShardedByS3Key` / `Pipe`
+  // (or an out-of-band change to one) still surfaces. Live-verified 2026-07-12 on
+  // Cdkrd915MonSchedVerify (BatchTransformInput); the EndpointInput variant shares the
+  // identical schema-documented defaults. #1523.
+  'AWS::SageMaker::DataQualityJobDefinition': {
+    'DataQualityJobInput.BatchTransformInput.S3DataDistributionType': 'FullyReplicated',
+    'DataQualityJobInput.BatchTransformInput.S3InputMode': 'File',
+    'DataQualityJobInput.EndpointInput.S3DataDistributionType': 'FullyReplicated',
+    'DataQualityJobInput.EndpointInput.S3InputMode': 'File',
+  },
   // A lambda TargetGroup's declared `Targets` element reads back an AWS-filled
   // `AvailabilityZone: "all"` husk (a lambda target has no AZ) that the template never declares —
   // the #618 in-element husk class. Equality-gated: a real target with a specific AZ still
