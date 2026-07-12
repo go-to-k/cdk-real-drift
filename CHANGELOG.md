@@ -1,3 +1,10 @@
+## [0.13.9](https://github.com/go-to-k/cdk-real-drift/compare/v0.13.8...v0.13.9) (2026-07-12)
+
+
+### Bug Fixes
+
+* **read:** SDK override for SageMaker MonitoringSchedule to read Tags ([#1523](https://github.com/go-to-k/cdk-real-drift/issues/1523)) ([#1525](https://github.com/go-to-k/cdk-real-drift/issues/1525)) ([05c7886](https://github.com/go-to-k/cdk-real-drift/commit/05c7886a0b5e3bb9b41aac6b966131b193dc3cb9))
+
 ## [0.13.8](https://github.com/go-to-k/cdk-real-drift/compare/v0.13.7...v0.13.8) (2026-07-12)
 
 
