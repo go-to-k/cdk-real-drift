@@ -1,3 +1,10 @@
+## [0.12.108](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.107...v0.12.108) (2026-07-12)
+
+
+### Bug Fixes
+
+* **read:** sync classify/gather default-SG registration + guard ([#1499](https://github.com/go-to-k/cdk-real-drift/issues/1499), [#640](https://github.com/go-to-k/cdk-real-drift/issues/640)) ([#1513](https://github.com/go-to-k/cdk-real-drift/issues/1513)) ([5b03fdd](https://github.com/go-to-k/cdk-real-drift/commit/5b03fddf1cbec96f82eebcbd8b6e61862ee71883))
+
 ## [0.12.107](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.106...v0.12.107) (2026-07-11)
 
 
