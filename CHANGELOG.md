@@ -1,3 +1,10 @@
+## [0.13.8](https://github.com/go-to-k/cdk-real-drift/compare/v0.13.7...v0.13.8) (2026-07-12)
+
+
+### Bug Fixes
+
+* **noise:** fold SageMaker DataQualityJobDefinition constant defaults ([#1523](https://github.com/go-to-k/cdk-real-drift/issues/1523)) ([#1524](https://github.com/go-to-k/cdk-real-drift/issues/1524)) ([70be1fc](https://github.com/go-to-k/cdk-real-drift/commit/70be1fcd6833a6d4fd2216b478a1d6648f2c4d3b))
+
 ## [0.13.7](https://github.com/go-to-k/cdk-real-drift/compare/v0.13.6...v0.13.7) (2026-07-12)
 
 
