@@ -1,3 +1,10 @@
+# [0.13.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.109...v0.13.0) (2026-07-12)
+
+
+### Features
+
+* **check:** add --no-prompt for exit-0 report-only runs ([#1515](https://github.com/go-to-k/cdk-real-drift/issues/1515)) ([8c87e6a](https://github.com/go-to-k/cdk-real-drift/commit/8c87e6a157c54ca53b83b2a7f2cf784e2af4c59c))
+
 ## [0.12.109](https://github.com/go-to-k/cdk-real-drift/compare/v0.12.108...v0.12.109) (2026-07-12)
 
 
