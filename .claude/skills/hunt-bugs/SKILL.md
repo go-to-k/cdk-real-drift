@@ -500,6 +500,25 @@ the sentinel by hand to bypass the gate.
   DECLARED dimension is FP-free; undeclared mis-classification is snapshotted away.
   To probe it, `check` BEFORE record and read the `atDefault`/`unresolved`/`[Not
 Recorded]` breakdown with `--verbose`.
+- **An FN detect-test needs a `record` between the clean first check and the
+  out-of-band mutation.** Without a baseline, the mutated value surfaces only as
+  `[Potential Drift]` and `check --fail` still exits 0 — the test false-fails on the
+  exit-code assert even though detection worked (hit live on the MediaConvert Queue
+  pause, #1526). Sequence: deploy → first check CLEAN → `record --yes` → mutate →
+  `check --fail` MUST exit 1 (confirmed drift) → restore → CLEAN.
+- **A harvested corpus case can embed a credential-shaped physical id that
+  git-secrets rightly blocks at commit.** An `AWS::IAM::AccessKey` case's physicalId
+  IS a real `AKIA…` id (the corpus recorder strips account ids, not access-key ids).
+  Sanitize before committing: replace every occurrence with AWS's documented example
+  id `AKIAIOSFODNN7EXAMPLE` (consistent replace keeps the case self-consistent;
+  corpus-replay only needs internal equality) and re-run `corpus-replay` (#1526 PR).
+- **When a reader's physical-id-shape assumption breaks (name vs ARN), grep the
+  SAME service family's sibling readers for the identical assumption — in both
+  directions.** readSageMakerEndpointConfig passed the ARN physical id as the bare
+  name and ValidationExceptioned on every read (#1527) while its sibling
+  readSageMakerMonitoringSchedule had already fixed exactly that (#1523) — the fix
+  existed one function away. A physical-id shape is per-type but the MISTAKE is
+  per-family; audit siblings before shipping a one-type fix.
 - **Immutable props can't drift.** Don't treat an `unresolved`/unverifiable
   create-only property (Subnet `AvailabilityZone` via `Fn::Select(Fn::GetAZs)`, NAT
   `AllocationId` via `Fn::GetAtt` EIP) as a bug — it's correctly classified. And
