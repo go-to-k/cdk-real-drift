@@ -1,0 +1,61 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntPublicNs5EFC76F3",
+    "resourceType": "AWS::ServiceDiscovery::PublicDnsNamespace",
+    "physicalId": "ns-tn6g37nbeg3jrbke",
+    "constructPath": "CdkrdHunt0713CloudmapPub/HuntPublicNs",
+    "declared": {
+      "Name": "cdkrd-hunt-x9z7q.com",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Name": "cdkrd-hunt-x9z7q.com",
+    "Arn": "arn:aws:servicediscovery:us-east-1:111111111111:namespace/ns-tn6g37nbeg3jrbke",
+    "Id": "ns-tn6g37nbeg3jrbke",
+    "Tags": [
+      {
+        "Key": "aws:cloudformation:stack-name",
+        "Value": "CdkrdHunt0713CloudmapPub"
+      },
+      {
+        "Key": "aws:cloudformation:logical-id",
+        "Value": "HuntPublicNs5EFC76F3"
+      },
+      {
+        "Key": "aws:cloudformation:stack-id",
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0713CloudmapPub/0ad74660-7e06-11f1-b367-12a157b5d713"
+      },
+      {
+        "Key": "cdkrd:ephemeral",
+        "Value": "1"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "HostedZoneId", "Id"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn", "HostedZoneId", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

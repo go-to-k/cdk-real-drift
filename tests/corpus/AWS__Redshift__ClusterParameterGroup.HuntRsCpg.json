@@ -1,0 +1,52 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntRsCpg",
+    "resourceType": "AWS::Redshift::ClusterParameterGroup",
+    "physicalId": "cdkrdhunt-rscpg",
+    "constructPath": "CdkrdHunt0713CaseIdents2/HuntRsCpg",
+    "declared": {
+      "Description": "cdkrd hunt mixed-case redshift cluster parameter group",
+      "ParameterGroupFamily": "redshift-1.0",
+      "ParameterGroupName": "CdkrdHunt-RsCpg",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Description": "cdkrd hunt mixed-case redshift cluster parameter group",
+    "Parameters": [],
+    "ParameterGroupName": "cdkrdhunt-rscpg",
+    "ParameterGroupFamily": "redshift-1.0",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["Description", "ParameterGroupFamily", "ParameterGroupName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Description", "ParameterGroupFamily", "ParameterGroupName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["Parameters"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

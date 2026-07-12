@@ -556,6 +556,26 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('#1541: RDS DBInstance BackupRetentionPeriod (SET-DEFAULT) -> add op writing the 1 default, not a no-op remove', () => {
+    // ModifyDBInstance keeps the existing value for any omitted property, so a bare
+    // `remove` of an out-of-band undeclared BackupRetentionPeriod is a silent no-op
+    // (live-proven on CdkrdHunt0713RdsMariadb: value stayed 3). Revert must write the
+    // KNOWN_DEFAULTS `1` explicitly.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::RDS::DBInstance',
+      path: 'BackupRetentionPeriod',
+      actual: 3,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/BackupRetentionPeriod',
+      value: 1,
+      prior: 3,
+    });
+  });
+
   it('Lambda Alias Description (SET-DEFAULT) -> add op writing the empty-string default, not a no-op remove', () => {
     // AWS::Lambda::Alias Description is in REVERT_SET_DEFAULT_PATHS: UpdateAlias leaves the
     // description UNCHANGED when it is OMITTED, so a bare `remove` is a silent no-op (Cloud
