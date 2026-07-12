@@ -248,6 +248,22 @@ const MEANINGFUL_WHEN_OFF: Record<string, Record<string, (ctx: OffStateContext) 
     AutoMinorVersionUpgrade: notRestored('SnapshotName', 'SnapshotArns'),
   },
   'AWS::Redshift::Cluster': { AllowVersionUpgrade: notRestored('SnapshotIdentifier') },
+  // #1530: a ClientVPN endpoint is created with disconnect-on-session-timeout ON — a fresh
+  // endpoint that declares no DisconnectOnSessionTimeout always reads back true (the
+  // KNOWN_DEFAULTS pin, live-confirmed on a fresh barest endpoint 2026-07-12). An undeclared
+  // false is an out-of-band `modify-client-vpn-endpoint --no-disconnect-on-session-timeout`
+  // that lets a timed-out session linger — live-proven invisible without this gate (the FN
+  // this entry fixes). No restore/import path yields an untouched false. Unconditional.
+  'AWS::EC2::ClientVpnEndpoint': { DisconnectOnSessionTimeout: () => true },
+  // #1530: both ImageBuilder pins below were added as first-run-FP folds with their off-flip
+  // FN explicitly documented as deferred ("would need a MEANINGFUL_WHEN_OFF entry", #911) —
+  // this is that entry. A fresh pipeline reads EnhancedImageMetadataEnabled=true and a fresh
+  // infrastructure configuration reads TerminateInstanceOnFailure=true (both live-confirmed,
+  // #911); each is OOB-mutable (update-image-pipeline / update-infrastructure-configuration)
+  // and has no restore/import path, so an undeclared false is a real out-of-band disable —
+  // TerminateInstanceOnFailure=false silently starts leaking build instances on failure.
+  'AWS::ImageBuilder::ImagePipeline': { EnhancedImageMetadataEnabled: () => true },
+  'AWS::ImageBuilder::InfrastructureConfiguration': { TerminateInstanceOnFailure: () => true },
 };
 
 // #660 item 3: the NESTED twin of MEANINGFUL_WHEN_OFF. The table above gates TOP-LEVEL
@@ -301,6 +317,24 @@ const MEANINGFUL_WHEN_OFF_NESTED: Record<
   // lineage that could yield an untouched `false`, so no predicate is needed.
   'AWS::EKS::Cluster': {
     'ResourcesVpcConfig.EndpointPublicAccess': () => true,
+  },
+  // #1530: an ECS service that ENABLES the deployment circuit breaker reads back the AWS-filled
+  // sub-default ResetOnHealthyTask=true (the KNOWN_DEFAULT_PATHS pin, live-observed on a fresh
+  // Fargate service). An out-of-band UpdateService flipping it false is swallowed by
+  // isTrivialEmpty before the nested pin gate — invisible. Gate on the breaker actually being
+  // ENABLED (declared or live): a disabled/undeclared breaker's untouched false sub-field is a
+  // legitimate creation-time shape, not an out-of-band disable, so it stays folded.
+  'AWS::ECS::Service': {
+    'DeploymentConfiguration.DeploymentCircuitBreaker.ResetOnHealthyTask': ({ declared, live }) => {
+      const enabled = (v: unknown): boolean =>
+        typeof v === 'object' &&
+        v !== null &&
+        (v as Record<string, Record<string, unknown>>)['DeploymentCircuitBreaker']?.['Enable'] ===
+          true;
+      return (
+        enabled(declared['DeploymentConfiguration']) || enabled(live['DeploymentConfiguration'])
+      );
+    },
   },
 };
 
@@ -419,6 +453,12 @@ export const DEFAULT_SG_LIST_PATHS: Record<string, string> = {
   // sibling `SecurityGroups` — an echo of the declared SGs or "default" — needs SG id→name
   // resolution to gate safely and stays undeclared for a follow-up; #640.)
   'AWS::EC2::Instance': 'SecurityGroupIds',
+  // #1532: a DAX cluster that declares no SecurityGroupIds is placed into its subnet-group
+  // VPC's default SG and reads back that single SG id — the same AWS first-run default the
+  // ALB/ENI/Neptune/MQ cases fold. It is OOB-mutable (`dax update-cluster
+  // --security-group-ids`), so a value-independent fold would hide a rogue SG swap/append.
+  // Same derived VPC-default-SG gate: fold a single default SG, surface an append/swap.
+  'AWS::DAX::Cluster': 'SecurityGroupIds',
 };
 /** #1269 fold decision for an UNDECLARED default-SUBNET list (RedshiftServerless Workgroup
  *  SubnetIds). Unlike the SG gate (which folds only a SINGLE default SG), a workgroup placed into

@@ -512,6 +512,25 @@ Recorded]` breakdown with `--verbose`.
   Sanitize before committing: replace every occurrence with AWS's documented example
   id `AKIAIOSFODNN7EXAMPLE` (consistent replace keeps the case self-consistent;
   corpus-replay only needs internal equality) and re-run `corpus-replay` (#1526 PR).
+- **An off-flip FN candidate is real ONLY for a STANDALONE-boolean pin — object/array
+  pins are not swallowed.** `isTrivialEmpty` drops a bare `false`/`""`/`[]`/`{}`; a
+  `true` pinned INSIDE an object/array whose siblings are non-trivial (`ReadWriteType:
+"All"`, `SSEAlgorithm:"AES256"`, `VersionNumber:1`) survives the flip — the flipped
+  shape breaks the pin equality and surfaces normally. An offline audit of "unpaired
+  true-pins" (the #1530 hunt) overcounted 9→4 for exactly this reason: before filing,
+  check the pinned `true` stands ALONE at its path, and drop pins on immutable-revision
+  resources (ECS TaskDefinition) that cannot drift out of band.
+- **A corpus promotion can PIN a live FP as `expected` — eyeball declared-tier findings
+  before promoting.** The #1507 hunt promoted three RDS cases whose `expected` carried
+  the mixed-case-name declared FP (`CdkrdHunt-Mixed-CPG` vs `cdkrdhunt-mixed-cpg`), so
+  `corpus-replay` asserted the WRONG behavior until #1531. A declared finding on a
+  name/identifier path where declared and live differ only by case (or another pure
+  normalization) is a red flag: that is a bug to file, not an expectation to record.
+- **A `KNOWN_DEFAULTS` pin containing an ARRAY must carry the exact live element
+  shape.** `matchesKnownDefault` is subset-tolerant for OBJECT keys but strict
+  deep-equality for arrays — trivially-empty element sub-keys (`CidrListAliases: []`,
+  `CommonName: ""`) must be IN the pin or it never matches (hit on the Lightsail
+  `Networking` default-firewall pin, #1533). Copy the array verbatim from the live read.
 - **When a reader's physical-id-shape assumption breaks (name vs ARN), grep the
   SAME service family's sibling readers for the identical assumption — in both
   directions.** readSageMakerEndpointConfig passed the ARN physical id as the bare

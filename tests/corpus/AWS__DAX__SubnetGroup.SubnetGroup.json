@@ -1,0 +1,38 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SubnetGroup",
+    "resourceType": "AWS::DAX::SubnetGroup",
+    "physicalId": "subnetgroup-3ljm3aov3poh",
+    "constructPath": "CdkrdHuntDax0712c/SubnetGroup",
+    "declared": {
+      "Description": "cdkrd hunt",
+      "SubnetIds": ["subnet-04ebaa172a23d6add"]
+    }
+  },
+  "liveRaw": {
+    "SubnetGroupName": "subnetgroup-3ljm3aov3poh",
+    "Description": "cdkrd hunt",
+    "SubnetIds": ["subnet-04ebaa172a23d6add"]
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["SubnetGroupName"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["SubnetGroupName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

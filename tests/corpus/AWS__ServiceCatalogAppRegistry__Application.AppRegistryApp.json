@@ -1,0 +1,50 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "AppRegistryApp",
+    "resourceType": "AWS::ServiceCatalogAppRegistry::Application",
+    "physicalId": "03ugzd0rnwvpar531fhtgh503o",
+    "constructPath": "CdkrdHuntMiscBarest0712c/AppRegistryApp",
+    "declared": {
+      "Name": "cdkrd-hunt-appreg-0712c",
+      "Tags": {
+        "cdkrd:ephemeral": "1"
+      }
+    }
+  },
+  "liveRaw": {
+    "ApplicationName": "cdkrd-hunt-appreg-0712c",
+    "ApplicationTagKey": "awsApplication",
+    "ApplicationTagValue": "arn:aws:resource-groups:us-east-1:111111111111:group/cdkrd-hunt-appreg-0712c/03ugzd0rnwvpar531fhtgh503o",
+    "Id": "03ugzd0rnwvpar531fhtgh503o",
+    "Arn": "arn:aws:servicecatalog:us-east-1:111111111111:/applications/03ugzd0rnwvpar531fhtgh503o",
+    "Tags": {
+      "aws:cloudformation:stack-name": "CdkrdHuntMiscBarest0712c",
+      "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHuntMiscBarest0712c/c60bc740-7dfb-11f1-bf59-12f1b2ea4589",
+      "cdkrd:ephemeral": "1",
+      "aws:cloudformation:logical-id": "AppRegistryApp",
+      "aws:servicecatalog:applicationName": "cdkrd-hunt-appreg-0712c"
+    },
+    "Name": "cdkrd-hunt-appreg-0712c"
+  },
+  "schema": {
+    "readOnly": ["ApplicationName", "ApplicationTagKey", "ApplicationTagValue", "Arn", "Id"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["ApplicationName", "ApplicationTagKey", "ApplicationTagValue", "Arn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

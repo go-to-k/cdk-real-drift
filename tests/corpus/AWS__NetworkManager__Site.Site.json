@@ -1,0 +1,51 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Site",
+    "resourceType": "AWS::NetworkManager::Site",
+    "physicalId": "global-network-014914d5c119d2d12|site-0d3f736b4455cedb7",
+    "constructPath": "CdkrdHuntMiscBarest20712c/Site",
+    "declared": {
+      "GlobalNetworkId": "global-network-014914d5c119d2d12",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "SiteId": "site-0d3f736b4455cedb7",
+    "GlobalNetworkId": "global-network-014914d5c119d2d12",
+    "SiteArn": "arn:aws:networkmanager::111111111111:site/global-network-014914d5c119d2d12/site-0d3f736b4455cedb7",
+    "State": "AVAILABLE",
+    "CreatedAt": "2026-07-12T14:58:12Z",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["CreatedAt", "SiteArn", "SiteId", "State"],
+    "writeOnly": [],
+    "createOnly": ["GlobalNetworkId"],
+    "readOnlyPaths": ["CreatedAt", "SiteArn", "SiteId", "State"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["GlobalNetworkId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

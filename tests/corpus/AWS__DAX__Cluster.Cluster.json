@@ -1,0 +1,113 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Cluster",
+    "resourceType": "AWS::DAX::Cluster",
+    "physicalId": "cluster-qceilwg5tvcy",
+    "constructPath": "CdkrdHuntDax0712c/Cluster",
+    "declared": {
+      "IAMRoleARN": "arn:aws:iam::111111111111:role/CdkrdHuntDax0712c-DaxRole-AImtmx51xTJN",
+      "NodeType": "dax.t3.small",
+      "ReplicationFactor": 1,
+      "SubnetGroupName": "subnetgroup-3ljm3aov3poh",
+      "Tags": {
+        "cdkrd:ephemeral": "1"
+      }
+    }
+  },
+  "liveRaw": {
+    "ClusterName": "cluster-qceilwg5tvcy",
+    "NodeType": "dax.t3.small",
+    "IAMRoleARN": "arn:aws:iam::111111111111:role/CdkrdHuntDax0712c-DaxRole-AImtmx51xTJN",
+    "PreferredMaintenanceWindow": "sun:04:00-sun:05:00",
+    "SubnetGroupName": "subnetgroup-3ljm3aov3poh",
+    "ClusterEndpointEncryptionType": "NONE",
+    "SecurityGroupIds": ["sg-03b54b1df3bfbc3c6"],
+    "ParameterGroupName": "default.dax1.0",
+    "Tags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn", "ClusterDiscoveryEndpoint", "ClusterDiscoveryEndpointURL", "Id"],
+    "writeOnly": [],
+    "createOnly": [
+      "ClusterEndpointEncryptionType",
+      "ClusterName",
+      "IAMRoleARN",
+      "NetworkType",
+      "NodeType",
+      "SSESpecification",
+      "SubnetGroupName"
+    ],
+    "readOnlyPaths": ["Arn", "ClusterDiscoveryEndpoint", "ClusterDiscoveryEndpointURL", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "ClusterEndpointEncryptionType",
+      "ClusterName",
+      "IAMRoleARN",
+      "NetworkType",
+      "NodeType",
+      "SSESpecification",
+      "SubnetGroupName"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::DAX::Cluster",
+      "path": "ReplicationFactor",
+      "note": "declared but not returned by live read",
+      "physicalId": "cluster-qceilwg5tvcy",
+      "constructPath": "CdkrdHuntDax0712c/Cluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::DAX::Cluster",
+      "path": "PreferredMaintenanceWindow",
+      "actual": "sun:04:00-sun:05:00",
+      "physicalId": "cluster-qceilwg5tvcy",
+      "constructPath": "CdkrdHuntDax0712c/Cluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::DAX::Cluster",
+      "path": "ClusterEndpointEncryptionType",
+      "actual": "NONE",
+      "physicalId": "cluster-qceilwg5tvcy",
+      "constructPath": "CdkrdHuntDax0712c/Cluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::DAX::Cluster",
+      "path": "SecurityGroupIds",
+      "actual": ["sg-03b54b1df3bfbc3c6"],
+      "physicalId": "cluster-qceilwg5tvcy",
+      "constructPath": "CdkrdHuntDax0712c/Cluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Cluster",
+      "resourceType": "AWS::DAX::Cluster",
+      "path": "ParameterGroupName",
+      "actual": "default.dax1.0",
+      "physicalId": "cluster-qceilwg5tvcy",
+      "constructPath": "CdkrdHuntDax0712c/Cluster"
+    }
+  ]
+}

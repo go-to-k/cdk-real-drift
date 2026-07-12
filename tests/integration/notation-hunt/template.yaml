@@ -1,0 +1,61 @@
+# Raw-CloudFormation notation fixture for the cdk-real-drift hunt: exercises the CFn-aware
+# YAML codec + intrinsic resolution on the DEPLOYED template (short-form tags, Conditions,
+# Mappings, Parameters, nested Fn combinations) over common free types. Deployed with plain
+# `aws cloudformation deploy` (no CDK synth); the sibling app.ts exists only so cdkrd can
+# discover the stack by name.
+Parameters:
+  RetentionDays:
+    Type: Number
+    Default: 3600
+  EnableVersioning:
+    Type: String
+    Default: "no"
+    AllowedValues: ["yes", "no"]
+Conditions:
+  Versioned: !Equals [!Ref EnableVersioning, "yes"]
+Mappings:
+  Env:
+    prod:
+      TagValue: production
+    dev:
+      TagValue: development
+Resources:
+  Q:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AWS::StackName}-q"
+      MessageRetentionPeriod: !Ref RetentionDays
+      Tags:
+        - Key: env
+          Value: !FindInMap [Env, dev, TagValue]
+        - Key: joined
+          Value: !Join ["-", [!Select [0, !Split ["-", !Ref "AWS::StackName"]], "x"]]
+  B:
+    Type: AWS::S3::Bucket
+    Properties:
+      VersioningConfiguration: !If
+        - Versioned
+        - Status: Enabled
+        - !Ref AWS::NoValue
+      Tags:
+        - Key: arnish
+          Value: !Sub "arn:${AWS::Partition}:s3:::${AWS::StackName}"
+  R:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: !Sub "states.${AWS::URLSuffix}"
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: p
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                Resource: !GetAtt Q.Arn

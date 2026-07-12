@@ -1,0 +1,53 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ParamGroup",
+    "resourceType": "AWS::DAX::ParameterGroup",
+    "physicalId": "paramgroup-r6li5eqclgc1",
+    "constructPath": "CdkrdHuntDax0712c/ParamGroup",
+    "declared": {
+      "Description": "cdkrd hunt"
+    }
+  },
+  "liveRaw": {
+    "ParameterGroupName": "paramgroup-r6li5eqclgc1",
+    "Description": "cdkrd hunt",
+    "ParameterNameValues": {
+      "query-ttl-millis": "300000",
+      "record-ttl-millis": "300000"
+    }
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["ParameterGroupName"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ParameterGroupName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "ParamGroup",
+      "resourceType": "AWS::DAX::ParameterGroup",
+      "path": "ParameterNameValues",
+      "actual": {
+        "query-ttl-millis": "300000",
+        "record-ttl-millis": "300000"
+      },
+      "physicalId": "paramgroup-r6li5eqclgc1",
+      "constructPath": "CdkrdHuntDax0712c/ParamGroup"
+    }
+  ]
+}

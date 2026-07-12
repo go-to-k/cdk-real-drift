@@ -1,0 +1,190 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Ls",
+    "resourceType": "AWS::Lightsail::Instance",
+    "physicalId": "cdkrd-hunt-ls-0712c",
+    "constructPath": "CdkrdHuntMiscBarest20712c/Ls",
+    "declared": {
+      "BlueprintId": "amazon_linux_2023",
+      "BundleId": "nano_3_0",
+      "InstanceName": "cdkrd-hunt-ls-0712c",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "SshKeyName": "LightsailDefaultKeyPair",
+    "KeyPairName": "LightsailDefaultKeyPair",
+    "IsStaticIp": false,
+    "PrivateIpAddress": "172.26.5.232",
+    "UserName": "ec2-user",
+    "BlueprintId": "amazon_linux_2023",
+    "Networking": {
+      "Ports": [
+        {
+          "FromPort": 22,
+          "AccessDirection": "inbound",
+          "CidrListAliases": [],
+          "ToPort": 22,
+          "Ipv6Cidrs": ["::/0"],
+          "AccessFrom": "Anywhere (0.0.0.0/0 and ::/0)",
+          "Protocol": "tcp",
+          "AccessType": "public",
+          "Cidrs": ["0.0.0.0/0"],
+          "CommonName": ""
+        },
+        {
+          "FromPort": 80,
+          "AccessDirection": "inbound",
+          "CidrListAliases": [],
+          "ToPort": 80,
+          "Ipv6Cidrs": ["::/0"],
+          "AccessFrom": "Anywhere (0.0.0.0/0 and ::/0)",
+          "Protocol": "tcp",
+          "AccessType": "public",
+          "Cidrs": ["0.0.0.0/0"],
+          "CommonName": ""
+        }
+      ],
+      "MonthlyTransfer": {
+        "GbPerMonthAllocated": "1024"
+      }
+    },
+    "AvailabilityZone": "us-east-1a",
+    "AddOns": [],
+    "ResourceType": "Instance",
+    "Ipv6Addresses": ["2600:1f18:1950:a100:ca33:531a:2537:2d67"],
+    "PublicIpAddress": "44.223.7.106",
+    "InstanceName": "cdkrd-hunt-ls-0712c",
+    "BundleId": "nano_3_0",
+    "SupportCode": "116137269522/i-0790f437125f62f26",
+    "State": {
+      "Code": 16,
+      "Name": "running"
+    },
+    "InstanceArn": "arn:aws:lightsail:us-east-1:111111111111:Instance/1cfbd92c-e08a-4816-b6cc-0b1029638f36",
+    "Hardware": {
+      "CpuCount": 2,
+      "RamSizeInGb": 1,
+      "Disks": []
+    },
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "Location": {
+      "RegionName": "us-east-1",
+      "AvailabilityZone": "us-east-1a"
+    }
+  },
+  "schema": {
+    "readOnly": [
+      "InstanceArn",
+      "Ipv6Addresses",
+      "IsStaticIp",
+      "PrivateIpAddress",
+      "PublicIpAddress",
+      "ResourceType",
+      "SshKeyName",
+      "SupportCode",
+      "UserName"
+    ],
+    "writeOnly": ["UserData"],
+    "createOnly": ["AvailabilityZone", "BlueprintId", "BundleId", "InstanceName"],
+    "readOnlyPaths": [
+      "Hardware.CpuCount",
+      "Hardware.RamSizeInGb",
+      "InstanceArn",
+      "Ipv6Addresses",
+      "IsStaticIp",
+      "Location.AvailabilityZone",
+      "Location.RegionName",
+      "Networking.MonthlyTransfer.GbPerMonthAllocated",
+      "PrivateIpAddress",
+      "PublicIpAddress",
+      "ResourceType",
+      "SshKeyName",
+      "State.Code",
+      "State.Name",
+      "SupportCode",
+      "UserName"
+    ],
+    "writeOnlyPaths": ["UserData"],
+    "createOnlyPaths": ["AvailabilityZone", "BlueprintId", "BundleId", "InstanceName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["Ipv6Addresses"],
+    "unorderedObjectArrayPaths": ["AddOns", "Hardware.Disks", "Networking.Ports"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Ls",
+      "resourceType": "AWS::Lightsail::Instance",
+      "path": "KeyPairName",
+      "actual": "LightsailDefaultKeyPair",
+      "physicalId": "cdkrd-hunt-ls-0712c",
+      "constructPath": "CdkrdHuntMiscBarest20712c/Ls"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Ls",
+      "resourceType": "AWS::Lightsail::Instance",
+      "path": "Networking",
+      "actual": {
+        "Ports": [
+          {
+            "FromPort": 22,
+            "AccessDirection": "inbound",
+            "CidrListAliases": [],
+            "ToPort": 22,
+            "Ipv6Cidrs": ["::/0"],
+            "AccessFrom": "Anywhere (0.0.0.0/0 and ::/0)",
+            "Protocol": "tcp",
+            "AccessType": "public",
+            "Cidrs": ["0.0.0.0/0"],
+            "CommonName": ""
+          },
+          {
+            "FromPort": 80,
+            "AccessDirection": "inbound",
+            "CidrListAliases": [],
+            "ToPort": 80,
+            "Ipv6Cidrs": ["::/0"],
+            "AccessFrom": "Anywhere (0.0.0.0/0 and ::/0)",
+            "Protocol": "tcp",
+            "AccessType": "public",
+            "Cidrs": ["0.0.0.0/0"],
+            "CommonName": ""
+          }
+        ],
+        "MonthlyTransfer": {}
+      },
+      "physicalId": "cdkrd-hunt-ls-0712c",
+      "constructPath": "CdkrdHuntMiscBarest20712c/Ls"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Ls",
+      "resourceType": "AWS::Lightsail::Instance",
+      "path": "AvailabilityZone",
+      "actual": "us-east-1a",
+      "physicalId": "cdkrd-hunt-ls-0712c",
+      "constructPath": "CdkrdHuntMiscBarest20712c/Ls"
+    }
+  ]
+}

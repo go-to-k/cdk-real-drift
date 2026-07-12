@@ -1,0 +1,88 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "RbinRule",
+    "resourceType": "AWS::Rbin::Rule",
+    "physicalId": "arn:aws:rbin:us-east-1:111111111111:rule/SPGgLUFPS1a",
+    "constructPath": "CdkrdHuntMiscBarest0712c/RbinRule",
+    "declared": {
+      "ResourceType": "EBS_SNAPSHOT",
+      "RetentionPeriod": {
+        "RetentionPeriodUnit": "DAYS",
+        "RetentionPeriodValue": 7
+      },
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Status": "available",
+    "Identifier": "SPGgLUFPS1a",
+    "Description": "",
+    "ResourceTags": [],
+    "ExcludeResourceTags": [],
+    "ResourceType": "EBS_SNAPSHOT",
+    "Arn": "arn:aws:rbin:us-east-1:111111111111:rule/SPGgLUFPS1a",
+    "RetentionPeriod": {
+      "RetentionPeriodUnit": "DAYS",
+      "RetentionPeriodValue": 7
+    },
+    "LockState": "unlocked",
+    "Tags": [
+      {
+        "Value": "RbinRule",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      },
+      {
+        "Value": "CdkrdHuntMiscBarest0712c",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHuntMiscBarest0712c/c60bc740-7dfb-11f1-bf59-12f1b2ea4589",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "Identifier", "LockState"],
+    "writeOnly": ["LockConfiguration"],
+    "createOnly": ["ResourceType"],
+    "readOnlyPaths": ["Arn", "Identifier", "LockState"],
+    "writeOnlyPaths": [
+      "LockConfiguration",
+      "LockConfiguration.UnlockDelayUnit",
+      "LockConfiguration.UnlockDelayValue"
+    ],
+    "createOnlyPaths": ["ResourceType"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["ExcludeResourceTags", "ResourceTags"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "RbinRule",
+      "resourceType": "AWS::Rbin::Rule",
+      "path": "Status",
+      "actual": "available",
+      "physicalId": "arn:aws:rbin:us-east-1:111111111111:rule/SPGgLUFPS1a",
+      "constructPath": "CdkrdHuntMiscBarest0712c/RbinRule"
+    }
+  ]
+}

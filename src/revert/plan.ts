@@ -329,6 +329,13 @@ export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   'AWS::ElastiCache::ReplicationGroup\0AutoMinorVersionUpgrade',
   'AWS::MemoryDB::Cluster\0AutoMinorVersionUpgrade',
   'AWS::Redshift::Cluster\0AllowVersionUpgrade',
+  // #1532: DAX has no ResetParameterGroup API, so a `remove` revert of an out-of-band
+  // parameter change is un-expressible (the SDK writer throws). The engine defaults ARE a
+  // stable constant (KNOWN_DEFAULTS: query/record TTL 300000), so write them back explicitly
+  // — UpdateParameterGroup applies a set op fine; only the unset state is inexpressible.
+  // Live-proven 2026-07-12: an out-of-band query-ttl-millis=60000 was detected but the
+  // `remove` revert failed with "cannot be cleared"; the set-default write converges.
+  'AWS::DAX::ParameterGroup\0ParameterNameValues',
 ]);
 
 // Set-default values for REVERT_SET_DEFAULT_PATHS entries whose default is a plain constant

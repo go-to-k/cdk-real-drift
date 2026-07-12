@@ -100,6 +100,10 @@ export const DEFAULT_SG_LIST_TYPES: ReadonlySet<string> = new Set([
   // never fired the prefetch → defaultSgIds empty → an OOB `ec2 modify-instance-attribute --groups`
   // swap/append was silently NOT detected. Register it so the derived gate keeps its detection.
   'AWS::EC2::Instance',
+  // #1532: a DAX cluster's undeclared SecurityGroupIds default is the subnet-group VPC's
+  // default SG — registered in classify DEFAULT_SG_LIST_PATHS, so the prefetch must fire when
+  // a DAX cluster is present or the OOB-swap gate loses its default-SG ids.
+  'AWS::DAX::Cluster',
 ]);
 
 // #1269: types whose undeclared SubnetIds default to ALL of the account's DEFAULT-VPC subnets —
