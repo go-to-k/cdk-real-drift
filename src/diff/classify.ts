@@ -4809,6 +4809,31 @@ export function classifyResource(
         continue;
       }
     }
+    // #1499: an AWS::RDS::DBInstance that declares no `PubliclyAccessible` reads back the value
+    // RDS DERIVES at creation from its subnet-group/VPC placement: `true` for a default-VPC
+    // instance (its subnet group is the account's `default` group), `false` for a custom
+    // subnet-group / private-VPC placement (per the RDS docs). Neither a constant nor a
+    // value-independent fold is right — pinning `true` FPs every custom-VPC instance (the common
+    // production shape); value-independent HIDES the security-DANGEROUS out-of-band flip. Tier-2
+    // derived and equality-gated on the effective DBSubnetGroupName (declared preferred, else the
+    // live echo, which KNOWN_DEFAULTS folds to "default"): `"default"` → true, any custom group →
+    // false. The dangerous transition — a private/custom-VPC instance made public out of band
+    // (`modify-db-instance --publicly-accessible`) — reads live `true`, never matches the derived
+    // `false`, so it surfaces as undeclared. (A default-VPC instance disabled to `false` is a bare
+    // undeclared `false` swallowed by isTrivialEmpty below like any non-MEANINGFUL_WHEN_OFF
+    // off-state — the safe direction, and #660 territory, not this derived fold's concern.)
+    if (resourceType === 'AWS::RDS::DBInstance' && k === 'PubliclyAccessible') {
+      const subnetGroup =
+        (declared.DBSubnetGroupName as string | undefined) ??
+        (live.DBSubnetGroupName as string | undefined);
+      if (typeof subnetGroup === 'string') {
+        const derived = subnetGroup === 'default';
+        if (v === derived) {
+          findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
+          continue;
+        }
+      }
+    }
     // A live value that is an AWS-MANAGED default resource NAME, recognized by its reserved
     // `default.` / `default:` prefix (an RDS instance's default parameter/option group) rather
     // than a constant — a CUSTOM group name never carries the prefix, so it still surfaces.
