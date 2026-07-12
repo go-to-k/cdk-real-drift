@@ -2114,8 +2114,15 @@ const readSageMakerEndpointConfig: OverrideReader = async ({
   region,
   accountId,
 }) => {
-  const name = str(physicalId) ?? str(declared.EndpointConfigName);
-  if (!name) return undefined;
+  // The CFn PhysicalResourceId is the endpoint-config ARN
+  // (arn:…:endpoint-config/<name>), but DescribeEndpointConfig requires the BARE name —
+  // passing the ARN ValidationExceptions and the whole resource skips (the reader never
+  // worked for a CFn-created config; live-confirmed 2026-07-12). Extract the last ARN
+  // segment — the readSageMakerMonitoringSchedule (#1523) shape; a non-ARN physical id
+  // (or the declared name) passes through unchanged.
+  const raw = str(physicalId) ?? str(declared.EndpointConfigName);
+  if (!raw) return undefined;
+  const name = raw.startsWith('arn:') ? (raw.split('/').pop() ?? raw) : raw;
   const c = new SageMakerClient({ region, ...READ_RETRY });
   // A deleted config throws ValidationException ("Could not find endpoint configuration") →
   // the router maps it to `deleted`; it is not swallowed as an empty model.

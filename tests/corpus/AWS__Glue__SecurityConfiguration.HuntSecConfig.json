@@ -1,0 +1,49 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntSecConfig",
+    "resourceType": "AWS::Glue::SecurityConfiguration",
+    "physicalId": "cdkrd-hunt-glue-secconfig",
+    "constructPath": "CdkRealDriftIntegReportGroupSecConfigMin/HuntSecConfig",
+    "declared": {
+      "EncryptionConfiguration": {
+        "S3Encryptions": [
+          {
+            "S3EncryptionMode": "SSE-S3"
+          }
+        ]
+      },
+      "Name": "cdkrd-hunt-glue-secconfig"
+    }
+  },
+  "liveRaw": {
+    "Name": "cdkrd-hunt-glue-secconfig",
+    "EncryptionConfiguration": {
+      "S3Encryptions": [
+        {
+          "S3EncryptionMode": "SSE-S3"
+        }
+      ]
+    }
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

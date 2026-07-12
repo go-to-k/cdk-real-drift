@@ -1,0 +1,108 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntEpc",
+    "resourceType": "AWS::SageMaker::EndpointConfig",
+    "physicalId": "arn:aws:sagemaker:us-east-1:111111111111:endpoint-config/HuntEpc-DhHc8drF9UQu",
+    "constructPath": "CdkRealDriftIntegSmEpcMin/HuntEpc",
+    "declared": {
+      "ProductionVariants": [
+        {
+          "InitialInstanceCount": 1,
+          "InstanceType": "ml.t2.medium",
+          "ModelName": "HuntModel-gv2gcUBdX0FA",
+          "VariantName": "AllTraffic"
+        }
+      ],
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "EndpointConfigName": "HuntEpc-DhHc8drF9UQu",
+    "ProductionVariants": [
+      {
+        "VariantName": "AllTraffic",
+        "ModelName": "HuntModel-gv2gcUBdX0FA",
+        "InitialInstanceCount": 1,
+        "InstanceType": "ml.t2.medium",
+        "InitialVariantWeight": 1
+      }
+    ],
+    "EnableNetworkIsolation": false,
+    "Tags": [
+      {
+        "Key": "aws:cloudformation:stack-name",
+        "Value": "CdkRealDriftIntegSmEpcMin"
+      },
+      {
+        "Key": "aws:cloudformation:logical-id",
+        "Value": "HuntEpc"
+      },
+      {
+        "Key": "aws:cloudformation:stack-id",
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegSmEpcMin/6b395e10-7df4-11f1-b579-123782941c49"
+      },
+      {
+        "Key": "cdkrd:ephemeral",
+        "Value": "1"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": [
+      "AsyncInferenceConfig",
+      "DataCaptureConfig",
+      "EnableNetworkIsolation",
+      "EndpointConfigName",
+      "ExecutionRoleArn",
+      "ExplainerConfig",
+      "KmsKeyId",
+      "ProductionVariants",
+      "ShadowProductionVariants",
+      "VpcConfig"
+    ],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "AsyncInferenceConfig",
+      "DataCaptureConfig",
+      "EnableNetworkIsolation",
+      "EndpointConfigName",
+      "ExecutionRoleArn",
+      "ExplainerConfig",
+      "KmsKeyId",
+      "ProductionVariants",
+      "ShadowProductionVariants",
+      "VpcConfig"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "generated",
+      "logicalId": "HuntEpc",
+      "resourceType": "AWS::SageMaker::EndpointConfig",
+      "path": "EndpointConfigName",
+      "actual": "HuntEpc-DhHc8drF9UQu",
+      "physicalId": "arn:aws:sagemaker:us-east-1:111111111111:endpoint-config/HuntEpc-DhHc8drF9UQu",
+      "constructPath": "CdkRealDriftIntegSmEpcMin/HuntEpc"
+    }
+  ]
+}

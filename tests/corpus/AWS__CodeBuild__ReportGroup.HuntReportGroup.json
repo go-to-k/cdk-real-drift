@@ -1,0 +1,76 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntReportGroup",
+    "resourceType": "AWS::CodeBuild::ReportGroup",
+    "physicalId": "arn:aws:codebuild:us-east-1:111111111111:report-group/HuntReportGroup-iovthJjjZgUG",
+    "constructPath": "CdkRealDriftIntegReportGroupSecConfigMin/HuntReportGroup",
+    "declared": {
+      "ExportConfig": {
+        "ExportConfigType": "NO_EXPORT"
+      },
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "Type": "TEST"
+    }
+  },
+  "liveRaw": {
+    "Name": "HuntReportGroup-iovthJjjZgUG",
+    "Type": "TEST",
+    "ExportConfig": {
+      "ExportConfigType": "NO_EXPORT"
+    },
+    "Tags": [
+      {
+        "Key": "aws:cloudformation:stack-name",
+        "Value": "CdkRealDriftIntegReportGroupSecConfigMin"
+      },
+      {
+        "Key": "aws:cloudformation:logical-id",
+        "Value": "HuntReportGroup"
+      },
+      {
+        "Key": "aws:cloudformation:stack-id",
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegReportGroupSecConfigMin/af10afa0-7df2-11f1-a89c-0affd06347cb"
+      },
+      {
+        "Key": "cdkrd:ephemeral",
+        "Value": "1"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": [],
+    "createOnly": ["Name", "Type"],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name", "Type"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "generated",
+      "logicalId": "HuntReportGroup",
+      "resourceType": "AWS::CodeBuild::ReportGroup",
+      "path": "Name",
+      "actual": "HuntReportGroup-iovthJjjZgUG",
+      "physicalId": "arn:aws:codebuild:us-east-1:111111111111:report-group/HuntReportGroup-iovthJjjZgUG",
+      "constructPath": "CdkRealDriftIntegReportGroupSecConfigMin/HuntReportGroup"
+    }
+  ]
+}

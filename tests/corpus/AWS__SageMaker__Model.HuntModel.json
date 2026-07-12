@@ -1,0 +1,105 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntModel",
+    "resourceType": "AWS::SageMaker::Model",
+    "physicalId": "arn:aws:sagemaker:us-east-1:111111111111:model/HuntModel-gv2gcUBdX0FA",
+    "constructPath": "CdkRealDriftIntegSmEpcMin/HuntModel",
+    "declared": {
+      "ExecutionRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSmEpcMin-HuntSmRole222CBC48-OLqxsu6oCblL",
+      "PrimaryContainer": {
+        "Image": "683313688378.dkr.ecr.us-east-1.amazonaws.com/sagemaker-scikit-learn:1.2-1-cpu-py3"
+      },
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "ModelArn": "arn:aws:sagemaker:us-east-1:111111111111:model/HuntModel-gv2gcUBdX0FA",
+    "EnableNetworkIsolation": false,
+    "ExecutionRoleArn": "arn:aws:iam::111111111111:role/CdkRealDriftIntegSmEpcMin-HuntSmRole222CBC48-OLqxsu6oCblL",
+    "PrimaryContainer": {
+      "Mode": "SingleModel",
+      "Image": "683313688378.dkr.ecr.us-east-1.amazonaws.com/sagemaker-scikit-learn:1.2-1-cpu-py3"
+    },
+    "ModelName": "HuntModel-gv2gcUBdX0FA",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegSmEpcMin",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntModel",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegSmEpcMin/6b395e10-7df4-11f1-b579-123782941c49",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["ModelArn"],
+    "writeOnly": [],
+    "createOnly": [
+      "Containers",
+      "EnableNetworkIsolation",
+      "ExecutionRoleArn",
+      "InferenceExecutionConfig",
+      "ModelName",
+      "PrimaryContainer",
+      "VpcConfig"
+    ],
+    "readOnlyPaths": ["ModelArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "Containers",
+      "EnableNetworkIsolation",
+      "ExecutionRoleArn",
+      "InferenceExecutionConfig",
+      "ModelName",
+      "PrimaryContainer",
+      "VpcConfig"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["VpcConfig.SecurityGroupIds", "VpcConfig.Subnets"],
+    "unorderedObjectArrayPaths": ["Containers"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "generated",
+      "logicalId": "HuntModel",
+      "resourceType": "AWS::SageMaker::Model",
+      "path": "ModelName",
+      "actual": "HuntModel-gv2gcUBdX0FA",
+      "physicalId": "arn:aws:sagemaker:us-east-1:111111111111:model/HuntModel-gv2gcUBdX0FA",
+      "constructPath": "CdkRealDriftIntegSmEpcMin/HuntModel"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntModel",
+      "resourceType": "AWS::SageMaker::Model",
+      "path": "PrimaryContainer.Mode",
+      "actual": "SingleModel",
+      "nested": true,
+      "physicalId": "arn:aws:sagemaker:us-east-1:111111111111:model/HuntModel-gv2gcUBdX0FA",
+      "constructPath": "CdkRealDriftIntegSmEpcMin/HuntModel"
+    }
+  ]
+}

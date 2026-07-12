@@ -1,0 +1,139 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntJobTemplate",
+    "resourceType": "AWS::MediaConvert::JobTemplate",
+    "physicalId": "cdkrd-hunt-mc-jobtemplate",
+    "constructPath": "CdkRealDriftIntegMediaConvertMin/HuntJobTemplate",
+    "declared": {
+      "Name": "cdkrd-hunt-mc-jobtemplate",
+      "SettingsJson": {
+        "OutputGroups": [
+          {
+            "Name": "File Group",
+            "OutputGroupSettings": {
+              "Type": "FILE_GROUP_SETTINGS",
+              "FileGroupSettings": {}
+            },
+            "Outputs": [
+              {
+                "ContainerSettings": {
+                  "Container": "MP4"
+                },
+                "AudioDescriptions": [
+                  {
+                    "CodecSettings": {
+                      "Codec": "AAC",
+                      "AacSettings": {
+                        "Bitrate": 96000,
+                        "CodingMode": "CODING_MODE_2_0",
+                        "SampleRate": 48000
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "Tags": {
+        "cdkrd:ephemeral": "1"
+      }
+    }
+  },
+  "liveRaw": {
+    "Name": "cdkrd-hunt-mc-jobtemplate",
+    "Priority": 0,
+    "StatusUpdateInterval": "SECONDS_60",
+    "AccelerationSettings": {
+      "Mode": "DISABLED"
+    },
+    "SettingsJson": {
+      "OutputGroups": [
+        {
+          "Name": "File Group",
+          "OutputGroupSettings": {
+            "FileGroupSettings": {},
+            "Type": "FILE_GROUP_SETTINGS"
+          },
+          "Outputs": [
+            {
+              "AudioDescriptions": [
+                {
+                  "CodecSettings": {
+                    "AacSettings": {
+                      "Bitrate": 96000,
+                      "CodingMode": "CODING_MODE_2_0",
+                      "SampleRate": 48000
+                    },
+                    "Codec": "AAC"
+                  }
+                }
+              ],
+              "ContainerSettings": {
+                "Container": "MP4"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "Tags": {
+      "aws:cloudformation:logical-id": "HuntJobTemplate",
+      "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegMediaConvertMin/542a0180-7df3-11f1-adce-0e08da467277",
+      "aws:cloudformation:stack-name": "CdkRealDriftIntegMediaConvertMin",
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntJobTemplate",
+      "resourceType": "AWS::MediaConvert::JobTemplate",
+      "path": "Priority",
+      "actual": 0,
+      "physicalId": "cdkrd-hunt-mc-jobtemplate",
+      "constructPath": "CdkRealDriftIntegMediaConvertMin/HuntJobTemplate"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntJobTemplate",
+      "resourceType": "AWS::MediaConvert::JobTemplate",
+      "path": "StatusUpdateInterval",
+      "actual": "SECONDS_60",
+      "physicalId": "cdkrd-hunt-mc-jobtemplate",
+      "constructPath": "CdkRealDriftIntegMediaConvertMin/HuntJobTemplate"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntJobTemplate",
+      "resourceType": "AWS::MediaConvert::JobTemplate",
+      "path": "AccelerationSettings",
+      "actual": {
+        "Mode": "DISABLED"
+      },
+      "physicalId": "cdkrd-hunt-mc-jobtemplate",
+      "constructPath": "CdkRealDriftIntegMediaConvertMin/HuntJobTemplate"
+    }
+  ]
+}
