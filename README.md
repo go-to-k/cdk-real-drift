@@ -166,6 +166,34 @@ result: 1 drift(s) (undeclared=1)
 `record` covers live-only state only, not a `[CFn-Declared Drift]`; the other
 verbs are in [The model](#the-model-one-verb-you-run-three-it-offers).
 
+### Fixing it in code instead
+
+record / revert / ignore all treat your CDK code as fixed. The fourth remedy —
+often the right one for a change you want to _keep_ — is to **adopt the drift
+into your CDK code**: if someone bumped a Lambda's memory to 2048 during an
+incident and that's simply correct now, declare it.
+
+[`--pre-deploy`](#--pre-deploy) is the verification loop for that edit, because
+it compares live state against your **local synth** instead of the deployed
+template:
+
+```console
+$ npx cdkrd check                # 1. drift: Handler.MemorySize desired=1024 actual=2048
+# 2. the live value is right → set memorySize: 2048 in your CDK code
+$ npx cdkrd check --pre-deploy   # 3. finding gone: local code now matches reality
+$ npx cdk deploy                 # 4. now a no-op for that property — nothing clobbered
+$ npx cdkrd check                # 5. clean against the updated deployed template
+```
+
+If step 3 still shows the finding, your code doesn't match live yet (`desired`
+is what your code would set) — fix and re-run before deploying. The deploy in
+step 4 is what updates the **deployed** template to declare the value, so the
+day-to-day `check` (which compares against it) comes back clean in step 5.
+
+This also works for a `[Potential / CFn-Undeclared Drift]` value you'd rather
+own in code than `record`: declaring the property moves it into the declared
+tier, and step 3 confirms your declaration matches what's live.
+
 ### In CI
 
 Run `npx cdkrd check --fail`. It's read-only, never prompts, and exits 1 on drift;
@@ -501,8 +529,9 @@ result: 1 drift(s) (declared=1)
 ```
 
 `desired` is what your local code is about to set; `actual` is live now: someone
-bumped memory to 2048 out of band. Port it into code (or decide it should go away)
-before deploying. As a pipeline gate:
+bumped memory to 2048 out of band. Port it into code (the step-by-step loop is in
+[Fixing it in code instead](#fixing-it-in-code-instead)) or decide it should go
+away before deploying. As a pipeline gate:
 
 ```yaml
 - run: npx cdkrd check --pre-deploy --fail # block the deploy on clobber risk
