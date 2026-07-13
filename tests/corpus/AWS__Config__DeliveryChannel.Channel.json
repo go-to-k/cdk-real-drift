@@ -1,0 +1,36 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Channel",
+    "resourceType": "AWS::Config::DeliveryChannel",
+    "physicalId": "CdkRealDriftIntegConfigRecorder-Channel-K3WG0CKR7OZD",
+    "constructPath": "CdkRealDriftIntegConfigRecorder/Channel",
+    "declared": {
+      "S3BucketName": "cdkrealdriftintegconfigreco-deliverybucketa9ae6474-btwqtarrrrrf"
+    }
+  },
+  "liveRaw": {
+    "Name": "CdkRealDriftIntegConfigRecorder-Channel-K3WG0CKR7OZD",
+    "S3BucketName": "cdkrealdriftintegconfigreco-deliverybucketa9ae6474-btwqtarrrrrf"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-west-2",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

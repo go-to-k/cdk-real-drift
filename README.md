@@ -878,6 +878,15 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   resource name, and `ListTagsForResource` reads each resource's tags, which the
   `Get*` responses omit — without it a declared `Tags` false-flagged as drift on
   every tagged MediaConvert resource),
+  `config:DescribeConfigurationRecorders` + `config:DescribeDeliveryChannels`
+  (read an `AWS::Config::ConfigurationRecorder` /
+  `AWS::Config::DeliveryChannel` — the account/region compliance-baseline
+  SINGLETONS a large fraction of accounts deploy, NON_PROVISIONABLE with Cloud
+  Control `UnsupportedActionException`; the physical id IS the recorder / channel
+  name, and the reader projects the CFn-declarable surface — the recorder's
+  undeclared `RecordingGroup.RecordingStrategy` mirror and `RecordingMode` default
+  fold to atDefault, so a fresh recorder is clean while a recording-scope change
+  still surfaces),
   `ssm:DescribeParameters` (supplements the Cloud Control read of an
   `AWS::SSM::Parameter` with its writeOnly `Description` / `AllowedPattern`),
   `elasticache:DescribeReplicationGroups` + `elasticache:DescribeCacheClusters`

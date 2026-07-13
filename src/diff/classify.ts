@@ -1475,6 +1475,40 @@ function dynamoGsiWarmThroughputAtDefault(
   );
 }
 
+// #1553: an AWS::Config::ConfigurationRecorder's undeclared
+// `RecordingGroup.RecordingStrategy` ({UseOnly:"…"}) is an AWS-DERIVED reflection of the
+// recording group, never an independent setting — AWS computes it from the group:
+// ALL_SUPPORTED_RESOURCE_TYPES when AllSupported, EXCLUSION_BY_RESOURCE_TYPES when an exclusion
+// list is set, else INCLUSION_BY_RESOURCE_TYPES (resourceTypes). Tier-2 DERIVED fold: compute
+// the expected UseOnly from the LIVE sibling RecordingGroup and equality-gate. A real
+// out-of-band recording-scope change flips AllSupported / ResourceTypes / ExclusionByResourceTypes
+// (which surface on their OWN paths) AND the strategy consistently — so the mirror keeps folding
+// while the meaningful change is still detected. Live-verified 2026-07-13 (us-west-2).
+function configRecordingStrategyAtDefault(
+  resourceType: string,
+  schemaPath: string,
+  value: unknown,
+  live: Record<string, unknown>
+): boolean {
+  if (resourceType !== 'AWS::Config::ConfigurationRecorder') return false;
+  if (schemaPath !== 'RecordingGroup.RecordingStrategy') return false;
+  const rg = live.RecordingGroup;
+  if (!isNestedObject(rg)) return false;
+  const group = rg as Record<string, unknown>;
+  const excl = isNestedObject(group.ExclusionByResourceTypes)
+    ? (group.ExclusionByResourceTypes as Record<string, unknown>).ResourceTypes
+    : undefined;
+  const useOnly =
+    group.AllSupported === true
+      ? 'ALL_SUPPORTED_RESOURCE_TYPES'
+      : Array.isArray(excl) && excl.length > 0
+        ? 'EXCLUSION_BY_RESOURCE_TYPES'
+        : Array.isArray(group.ResourceTypes) && group.ResourceTypes.length > 0
+          ? 'INCLUSION_BY_RESOURCE_TYPES'
+          : undefined;
+  return useOnly !== undefined && deepEqual(value, { UseOnly: useOnly });
+}
+
 // #705: a Classic ELB (ElasticLoadBalancing::LoadBalancer) with an HTTPS/SSL listener but no
 // declared SSL policy reads back an AWS-assigned SSL negotiation policy. The whole `Policies`
 // array was folded value-independently, which made an out-of-band SSL-policy DOWNGRADE (an older
@@ -3693,7 +3727,10 @@ export function classifyResource(
       (resourceType === 'AWS::Events::EventBusPolicy' &&
         schemaPath === 'Statement.*.Sid' &&
         typeof value === 'string' &&
-        value === declared['StatementId']);
+        value === declared['StatementId']) ||
+      // #1553: a Config recorder's undeclared RecordingGroup.RecordingStrategy mirror, derived
+      // from the live sibling RecordingGroup and equality-gated (helper above).
+      configRecordingStrategyAtDefault(resourceType, schemaPath, value, live);
     const tier = atDefault
       ? 'atDefault'
       : // R142: a GENERATED_PATHS value folds as `generated` ONLY when it echoes a
