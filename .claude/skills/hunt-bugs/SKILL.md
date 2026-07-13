@@ -521,6 +521,23 @@ Recorded]` breakdown with `--verbose`.
   exit-code assert even though detection worked (hit live on the MediaConvert Queue
   pause, #1526). Sequence: deploy → first check CLEAN → `record --yes` → mutate →
   `check --fail` MUST exit 1 (confirmed drift) → restore → CLEAN.
+- **An UNDECLARED-atDefault prop's OOB change is only caught via "appeared since record",
+  which needs the resource `complete` — and a DECLARED write-only prop (secret/password/key)
+  used to break that.** `record` snapshots only undeclared NON-default values; a prop at its
+  AWS default folds `atDefault` and is NOT recorded, so a later OOB change to it is caught
+  ONLY by the R62 "appeared since record" mechanism — which fires ONLY when the resource is
+  `complete`. A resource that DECLARES a write-only property (RDS `MasterUserPassword`, any
+  secret/token/key) surfaced a write-only `readGap` that (pre-#1582) marked it NOT complete,
+  silently disabling that detection — so mutating an undeclared-atDefault prop on it read
+  `[Not Recorded]`, `check --fail` exited 0, and it looked like a fold bug when it was a
+  completeness gap. When an undeclared-prop FN detect-test on a resource that declares a
+  secret/password unexpectedly MISSES: (1) don't assume a fold/classify bug — check whether
+  the pure `classify` surfaces it offline (it did here) and whether the resource is `complete`
+  (a `readGap=N` in the `info:` footer is the tell); (2) a MUTABLE prop that AWS applies as an
+  ONLINE modify (RDS CopyTagsToSnapshot/MonitoringInterval, no reboot) keeps the instance
+  `available`, so `aws … wait …-available` returns before the change propagates — poll
+  `describe` (AND `cloudcontrol get-resource`, a different surface) until the value flips
+  before asserting. The write-only-readGap→incomplete FN was live-found this way (#1582).
 - **A harvested corpus case can embed a credential-shaped physical id that
   git-secrets rightly blocks at commit.** An `AWS::IAM::AccessKey` case's physicalId
   IS a real `AKIA…` id (the corpus recorder strips account ids, not access-key ids).
