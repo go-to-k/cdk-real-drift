@@ -1,3 +1,10 @@
+## [0.17.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.17.0...v0.17.1) (2026-07-13)
+
+
+### Bug Fixes
+
+* fold barest Glue Job first-run FPs and fix Glue capacity-echo + ApiGatewayV2 SelectionExpression revert failures ([#1570](https://github.com/go-to-k/cdk-real-drift/issues/1570)) ([778ecb7](https://github.com/go-to-k/cdk-real-drift/commit/778ecb7ce874d89b272522917c6a8f7837851452))
+
 # [0.17.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.16.3...v0.17.0) (2026-07-13)
 
 
