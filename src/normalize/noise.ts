@@ -1906,6 +1906,20 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     'DataQualityJobInput.EndpointInput.S3DataDistributionType': 'FullyReplicated',
     'DataQualityJobInput.EndpointInput.S3InputMode': 'File',
   },
+  // A barest MonitoringSchedule with an INLINE MonitoringJobDefinition reads back two
+  // AWS-filled defaults (live-verified on a fresh BatchTransformInput schedule, us-east-1
+  // 2026-07-13, sagemaker-monitoring-min): `MonitoringType: "DataQuality"` — the type AWS
+  // assigns an inline definition (the named-definition style DECLARES MonitoringType, which
+  // then compares in the declared dimension) — and the job definition's
+  // `StoppingCondition: {MaxRuntimeInSeconds: 3600}`, the same schema-documented default the
+  // sibling AWS::SageMaker::DataQualityJobDefinition pins top-level in KNOWN_DEFAULTS.
+  // Equality-gated: an out-of-band type flip or a capped runtime still surfaces.
+  'AWS::SageMaker::MonitoringSchedule': {
+    'MonitoringScheduleConfig.MonitoringType': 'DataQuality',
+    'MonitoringScheduleConfig.MonitoringJobDefinition.StoppingCondition': {
+      MaxRuntimeInSeconds: 3600,
+    },
+  },
   // A SageMaker model whose container definition declares only the Image reads back the
   // AWS-filled `Mode: "SingleModel"` — the constant creation default for a container that
   // never declares it (the only other value, MultiModel, is an explicit opt-in). Both the
