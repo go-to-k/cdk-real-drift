@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Detect integration test (real AWS) for a CFn-managed AWS Config recorder (#1553).
+# Detect+revert integration test (real AWS) for a CFn-managed AWS Config recorder (#1553).
 # Deploy -> record -> broaden the recorder's recordingGroup.resourceTypes out of band
 # (someone widens what Config records) -> check MUST DETECT the declared drift ->
-# revert reports NOT-revertable (the recorder reader is READ-ONLY; a
-# PutConfigurationRecorder revert writer is deferred).
+# revert MUST restore ["AWS::S3::Bucket"] via the PutConfigurationRecorder SDK writer
+# (Cloud Control cannot write this type: UnsupportedActionException) -> check MUST be CLEAN.
 #
 # recordingGroup is a declared, mutable property; a live put-configuration-recorder
 # change is exactly the divergence cdkrd should catch. Singleton pre-check + capped
@@ -65,21 +65,12 @@ rc=${PIPESTATUS[0]}
 [ "$rc" -eq 1 ] || fail "expected drift exit 1, got $rc"
 grep -qi "IAM::User\|ResourceTypes\|recordingGroup" /tmp/cdkrd-recorder-detect.out || fail "widened recordingGroup not reported"
 
-echo "=== [$STACK] revert reports NOT-revertable (reader is read-only, #1553) ==="
-$CLI revert "$STACK" --region "$REGION" --dry-run | tee /tmp/cdkrd-recorder-revert.out
-grep -qi "NOT revertable" /tmp/cdkrd-recorder-revert.out || fail "expected a NOT-revertable report (recorder revert writer is deferred)"
+echo "=== [$STACK] revert MUST restore [AWS::S3::Bucket] (PutConfigurationRecorder SDK writer) ==="
+$CLI revert "$STACK" --region "$REGION" --yes | tee /tmp/cdkrd-recorder-revert.out
+grep -qi "reverted:" /tmp/cdkrd-recorder-revert.out || fail "revert did not report success"
 
-echo "=== [$STACK] restore recordingGroup to declared state (SDK) ==="
-cat > /tmp/cdkrd-recorder-clean.json <<JSON
-{ "name": "${REC_NAME}", "roleARN": "${REC_ROLE}",
-  "recordingGroup": { "allSupported": false, "includeGlobalResourceTypes": false,
-    "resourceTypes": ["AWS::S3::Bucket"] } }
-JSON
-aws configservice put-configuration-recorder --region "$REGION" \
-  --configuration-recorder "file:///tmp/cdkrd-recorder-clean.json" || fail "restore"
-
-echo "=== [$STACK] check MUST be CLEAN after restore ==="
+echo "=== [$STACK] check MUST be CLEAN after revert ==="
 $CLI check "$STACK" --region "$REGION" --fail
-[ $? -eq 0 ] || fail "expected CLEAN (exit 0) after restore"
+[ $? -eq 0 ] || fail "expected CLEAN (exit 0) after revert"
 
-echo "INTEG PASS ($STACK detect)"
+echo "INTEG PASS ($STACK detect+revert)"

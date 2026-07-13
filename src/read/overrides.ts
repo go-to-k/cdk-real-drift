@@ -3228,9 +3228,9 @@ const readAcmCertificate: OverrideReader = async ({ physicalId, declared, region
 // dropped. An empty ExclusionByResourceTypes / RecordingModeOverrides list is the same as
 // unset → omitted so undeclared recorders carry no empty-husk noise. RecordingStrategy.UseOnly
 // is an AWS-DERIVED reflection of the recording group (folded to atDefault via a derived default
-// when undeclared; still compared when the user declares it). Read-ONLY for now (a
-// PutConfigurationRecorder revert writer is deferred). A deleted recorder → empty list →
-// ResourceGoneError → the router maps it to `deleted`.
+// when undeclared; still compared when the user declares it). Revertable via the
+// PutConfigurationRecorder SDK writer (SDK_WRITERS, revert/writers.ts). A deleted recorder →
+// empty list → ResourceGoneError → the router maps it to `deleted`.
 const readConfigConfigurationRecorder: OverrideReader = async ({ physicalId, region }) => {
   const name = str(physicalId);
   if (!name) return undefined;

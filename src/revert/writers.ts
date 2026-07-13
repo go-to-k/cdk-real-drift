@@ -125,9 +125,13 @@ import {
   PutUserPolicyCommand,
 } from '@aws-sdk/client-iam';
 import {
+  type ConfigurationRecorder,
   ConfigServiceClient,
   DescribeConfigRulesCommand,
   PutConfigRuleCommand,
+  PutConfigurationRecorderCommand,
+  type RecordingModeOverride,
+  type ResourceType,
 } from '@aws-sdk/client-config-service';
 import { KafkaClient, UpdateConfigurationCommand } from '@aws-sdk/client-kafka';
 import {
@@ -1302,6 +1306,61 @@ const writeConfigRuleInputParameters: SdkWriter = async (ctx, ops) => {
     new PutConfigRuleCommand({
       ConfigRule: { ...rest, InputParameters: configInputParametersString(op.value) },
     })
+  );
+};
+
+// AWS::Config::ConfigurationRecorder — NON_PROVISIONABLE: Cloud Control throws
+// UnsupportedActionException for its read AND write (#1553), so a declared drift (a changed
+// RecordingGroup / RecordingMode / RoleARN — e.g. someone widening what Config records out of
+// band) is reverted via config:PutConfigurationRecorder, a whole-recorder UPSERT. desiredModel
+// re-reads the live recorder (the SDK override) and applies the revert ops, so we PUT the
+// reverted-to-declared model, mapped PascalCase(CFn) -> camelCase(SDK). The recorder Name
+// (createOnly) and RoleARN are preserved from the live read. RecordingStrategy is OMITTED from
+// the PUT — AWS DERIVES it from the recording group and rejects an inconsistent one, so leaving
+// it out lets AWS recompute it (the same value the reader folds atDefault). Live-verified
+// 2026-07-13 (us-west-2). A whole-resource writer (SDK_WRITERS), so any declared-prop drift on
+// the recorder routes here.
+const writeConfigConfigurationRecorder: SdkWriter = async (ctx, ops) => {
+  const desired = await desiredModel('AWS::Config::ConfigurationRecorder', ctx, ops);
+  const name = str(desired.Name) ?? str(ctx.physicalId);
+  const roleARN = str(desired.RoleARN);
+  if (!name) throw new Error('cannot resolve Config recorder name for revert');
+  if (!roleARN) throw new Error('cannot resolve Config recorder RoleARN for revert');
+  const recorder: ConfigurationRecorder = { name, roleARN };
+  const rg = desired.RecordingGroup as Record<string, unknown> | undefined;
+  if (rg) {
+    const group: NonNullable<ConfigurationRecorder['recordingGroup']> = {};
+    if (typeof rg.AllSupported === 'boolean') group.allSupported = rg.AllSupported;
+    if (typeof rg.IncludeGlobalResourceTypes === 'boolean')
+      group.includeGlobalResourceTypes = rg.IncludeGlobalResourceTypes;
+    if (Array.isArray(rg.ResourceTypes)) group.resourceTypes = rg.ResourceTypes as ResourceType[];
+    const excl = rg.ExclusionByResourceTypes as Record<string, unknown> | undefined;
+    if (excl && Array.isArray(excl.ResourceTypes) && excl.ResourceTypes.length > 0)
+      group.exclusionByResourceTypes = { resourceTypes: excl.ResourceTypes as ResourceType[] };
+    // RecordingStrategy is intentionally omitted — AWS re-derives it from the group above.
+    recorder.recordingGroup = group;
+  }
+  const rm = desired.RecordingMode as Record<string, unknown> | undefined;
+  if (rm && str(rm.RecordingFrequency)) {
+    const mode: NonNullable<ConfigurationRecorder['recordingMode']> = {
+      recordingFrequency: rm.RecordingFrequency as NonNullable<
+        ConfigurationRecorder['recordingMode']
+      >['recordingFrequency'],
+    };
+    const overrides = rm.RecordingModeOverrides;
+    if (Array.isArray(overrides) && overrides.length > 0)
+      mode.recordingModeOverrides = overrides.map((o): RecordingModeOverride => {
+        const oo = o as Record<string, unknown>;
+        return {
+          resourceTypes: oo.ResourceTypes as ResourceType[],
+          recordingFrequency: oo.RecordingFrequency as RecordingModeOverride['recordingFrequency'],
+          ...(str(oo.Description) ? { description: oo.Description as string } : {}),
+        };
+      });
+    recorder.recordingMode = mode;
+  }
+  await new ConfigServiceClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
+    new PutConfigurationRecorderCommand({ ConfigurationRecorder: recorder })
   );
 };
 
@@ -2804,6 +2863,7 @@ export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::Events::EventBusPolicy': writeEventBusPolicy,
   'AWS::IAM::Policy': writeIamPolicy,
   'AWS::IAM::ManagedPolicy': writeIamManagedPolicy,
+  'AWS::Config::ConfigurationRecorder': writeConfigConfigurationRecorder,
 };
 
 // Property-scoped SDK writers: CC-writable types where ONE property must be
