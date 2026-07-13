@@ -1,0 +1,51 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (hunt 2026-07-13, #1557): fresh minimal AWS::DMS::ReplicationSubnetGroup — already first-run clean (its physical id IS the identifier, so isGeneratedName folds it). Locked as a regression guard alongside the #1557 DMS family.",
+  "resource": {
+    "logicalId": "HuntDmsSng",
+    "resourceType": "AWS::DMS::ReplicationSubnetGroup",
+    "physicalId": "huntdmssng-epnnheykqkgw4fho",
+    "constructPath": "CdkrdHunt0713cVpcKin/HuntDmsSng",
+    "declared": {
+      "ReplicationSubnetGroupDescription": "cdkrd hunt minimal subnet group",
+      "SubnetIds": ["subnet-0f109dac292613e2e", "subnet-084af4a709de7def4"],
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "ReplicationSubnetGroupIdentifier": "huntdmssng-epnnheykqkgw4fho",
+    "ReplicationSubnetGroupDescription": "cdkrd hunt minimal subnet group",
+    "SubnetIds": ["subnet-084af4a709de7def4", "subnet-0f109dac292613e2e"],
+    "Tags": [
+      {
+        "Key": "cdkrd:ephemeral",
+        "Value": "1"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["ReplicationSubnetGroupIdentifier"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ReplicationSubnetGroupIdentifier"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

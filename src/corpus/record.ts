@@ -111,6 +111,11 @@ export interface CorpusCase {
     // AWS::GlobalAccelerator::EndpointGroup case (carried by its declared ListenerArn), so replay
     // reproduces the HealthCheckPort derive. Optional for back-compat (non-EndpointGroup cases lack it).
     siblingListenerPorts?: Record<string, number>;
+    // #1557: the per-class DMS DefaultAllocatedStorage (dms:DescribeOrderableReplicationInstances),
+    // present only on an AWS::DMS::ReplicationInstance case and carrying ONLY the declared class's
+    // entry, so replay reproduces the derived AllocatedStorage fold. Without it a fresh-harvested RI
+    // replays the undeclared default storage as false drift. Optional for back-compat.
+    accountDefaults?: { dmsAllocatedStorageDefaults?: Record<string, number> };
   };
   expected: Finding[]; // what classifyResource produced at record time (reviewed at commit)
 }
@@ -149,6 +154,7 @@ export function buildCorpusCase(
     clusterEchoModel?: Record<string, Record<string, unknown>>;
     rdsOptionSettingDefaults?: Record<string, Record<string, Record<string, string | null>>>;
     siblingListenerPorts?: Record<string, number>;
+    accountDefaults?: { dmsAllocatedStorageDefaults?: Record<string, number> };
   },
   findings: Finding[]
 ): CorpusCase {
@@ -210,6 +216,21 @@ export function buildCorpusCase(
     typeof listenerArn === 'string' && opts.siblingListenerPorts?.[listenerArn] !== undefined
       ? { [listenerArn]: opts.siblingListenerPorts[listenerArn] }
       : undefined;
+  // #1557: carry ONLY this ReplicationInstance's declared-class DefaultAllocatedStorage entry, so
+  // replay reproduces the derived AllocatedStorage fold without bloating the case with the full map.
+  const dmsClass =
+    resource.resourceType === 'AWS::DMS::ReplicationInstance'
+      ? (resource.declared as Record<string, unknown>)?.ReplicationInstanceClass
+      : undefined;
+  const dmsStorageDefault =
+    typeof dmsClass === 'string' &&
+    opts.accountDefaults?.dmsAllocatedStorageDefaults?.[dmsClass] !== undefined
+      ? {
+          dmsAllocatedStorageDefaults: {
+            [dmsClass]: opts.accountDefaults.dmsAllocatedStorageDefaults[dmsClass],
+          },
+        }
+      : undefined;
   const c: CorpusCase = {
     corpusVersion: 1,
     resource: {
@@ -255,6 +276,7 @@ export function buildCorpusCase(
         ? { rdsOptionSettingDefaults: { [resource.physicalId]: rdsOptCatalog } }
         : {}),
       ...(gaListenerPort ? { siblingListenerPorts: gaListenerPort } : {}),
+      ...(dmsStorageDefault ? { accountDefaults: dmsStorageDefault } : {}),
     },
     expected: findings,
   };

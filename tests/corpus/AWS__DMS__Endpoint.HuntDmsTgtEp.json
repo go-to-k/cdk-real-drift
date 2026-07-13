@@ -1,0 +1,109 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (hunt 2026-07-13, #1557): fresh minimal AWS::DMS::Endpoint (target). Twin of HuntDmsSrcEp — the generated EndpointIdentifier must fold.",
+  "resource": {
+    "logicalId": "HuntDmsTgtEp",
+    "resourceType": "AWS::DMS::Endpoint",
+    "physicalId": "arn:aws:dms:us-east-1:111111111111:endpoint:MWT6C3BEIZEXRN6TOYFPHG3DO4",
+    "constructPath": "CdkrdHunt0713cVpcKin/HuntDmsTgtEp",
+    "declared": {
+      "EndpointType": "target",
+      "EngineName": "mysql",
+      "Password": "hunt-dummy-password",
+      "Port": 3306,
+      "ServerName": "tgt.cdkrd-hunt.invalid",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "Username": "hunt"
+    }
+  },
+  "liveRaw": {
+    "EndpointIdentifier": "huntdmstgtep-ldkuxwu271r866iu",
+    "EndpointType": "TARGET",
+    "EngineName": "mysql",
+    "Username": "hunt",
+    "ServerName": "tgt.cdkrd-hunt.invalid",
+    "Port": 3306,
+    "KmsKeyId": "arn:aws:kms:us-east-1:111111111111:key/8b0bca8d-7f3f-4f19-bebf-bf6c72f3f1e6",
+    "SslMode": "none",
+    "Tags": [
+      {
+        "Key": "aws:cloudformation:stack-name",
+        "Value": "CdkrdHunt0713cVpcKin"
+      },
+      {
+        "Key": "aws:cloudformation:logical-id",
+        "Value": "HuntDmsTgtEp"
+      },
+      {
+        "Key": "aws:cloudformation:stack-id",
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0713cVpcKin/040c5620-7e8a-11f1-9687-1252ffbd3b8f"
+      },
+      {
+        "Key": "cdkrd:ephemeral",
+        "Value": "1"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["ExternalId", "Id"],
+    "writeOnly": [],
+    "createOnly": ["KmsKeyId", "ResourceIdentifier"],
+    "readOnlyPaths": ["ExternalId", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["KmsKeyId", "ResourceIdentifier"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntDmsTgtEp",
+      "resourceType": "AWS::DMS::Endpoint",
+      "path": "KmsKeyId",
+      "actual": "arn:aws:kms:us-east-1:111111111111:key/8b0bca8d-7f3f-4f19-bebf-bf6c72f3f1e6",
+      "physicalId": "arn:aws:dms:us-east-1:111111111111:endpoint:MWT6C3BEIZEXRN6TOYFPHG3DO4",
+      "constructPath": "CdkrdHunt0713cVpcKin/HuntDmsTgtEp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntDmsTgtEp",
+      "resourceType": "AWS::DMS::Endpoint",
+      "path": "SslMode",
+      "actual": "none",
+      "physicalId": "arn:aws:dms:us-east-1:111111111111:endpoint:MWT6C3BEIZEXRN6TOYFPHG3DO4",
+      "constructPath": "CdkrdHunt0713cVpcKin/HuntDmsTgtEp"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "HuntDmsTgtEp",
+      "resourceType": "AWS::DMS::Endpoint",
+      "path": "EndpointIdentifier",
+      "actual": "huntdmstgtep-ldkuxwu271r866iu",
+      "physicalId": "arn:aws:dms:us-east-1:111111111111:endpoint:MWT6C3BEIZEXRN6TOYFPHG3DO4",
+      "constructPath": "CdkrdHunt0713cVpcKin/HuntDmsTgtEp"
+    },
+    {
+      "tier": "readGap",
+      "logicalId": "HuntDmsTgtEp",
+      "resourceType": "AWS::DMS::Endpoint",
+      "path": "Password",
+      "note": "declared but not returned by live read",
+      "physicalId": "arn:aws:dms:us-east-1:111111111111:endpoint:MWT6C3BEIZEXRN6TOYFPHG3DO4",
+      "constructPath": "CdkrdHunt0713cVpcKin/HuntDmsTgtEp"
+    }
+  ]
+}

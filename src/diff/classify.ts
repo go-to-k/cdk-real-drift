@@ -230,6 +230,16 @@ const MEANINGFUL_WHEN_OFF: Record<string, Record<string, (ctx: OffStateContext) 
   // the same default). An undeclared Enabled=false is an out-of-band DISABLE that silently
   // stops the pipeline, so it is unconditionally meaningful.
   'AWS::Lambda::EventSourceMapping': { Enabled: () => true },
+  // #1557: a fresh DMS ReplicationInstance is ALWAYS created with AutoMinorVersionUpgrade=true and
+  // PubliclyAccessible=true (the KNOWN_DEFAULTS pins). Unlike an RDS/Neptune DBInstance there is NO
+  // snapshot/restore source for a replication instance, so no clean-deploy path yields an untouched
+  // `false` — an undeclared `false` is unambiguously an out-of-band disable (a privacy tightening,
+  // or an auto-upgrade opt-out), so both are unconditionally meaningful when off. A user who wants
+  // either off DECLARES it (compared in the declared loop). Live-confirmed (hunt 2026-07-13).
+  'AWS::DMS::ReplicationInstance': {
+    AutoMinorVersionUpgrade: () => true,
+    PubliclyAccessible: () => true,
+  },
   // #660: health checks can only be disabled for LAMBDA target groups — ModifyTargetGroup
   // rejects HealthCheckEnabled=false for every other target type ("Health check enabled
   // must be true for target groups with target type 'instance'", live-confirmed
@@ -492,6 +502,13 @@ export const DEFAULT_SG_LIST_PATHS: Record<string, string> = {
   // --security-group-ids`), so a value-independent fold would hide a rogue SG swap/append.
   // Same derived VPC-default-SG gate: fold a single default SG, surface an append/swap.
   'AWS::DAX::Cluster': 'SecurityGroupIds',
+  // #1557: a DMS ReplicationInstance that declares no VpcSecurityGroupIds is placed into its
+  // subnet-group VPC's default SG and reads back that single SG id — the same AWS first-run
+  // default the ALB/ENI/Neptune/RDS cases fold. It is OOB-mutable (`dms
+  // modify-replication-instance --vpc-security-group-ids`), so a value-independent fold would
+  // hide a rogue SG swap/append. Same derived VPC-default-SG gate: fold a single default SG,
+  // surface an append/swap. Keep in sync with gather.ts DEFAULT_SG_LIST_TYPES.
+  'AWS::DMS::ReplicationInstance': 'VpcSecurityGroupIds',
 };
 /** #1269 fold decision for an UNDECLARED default-SUBNET list (RedshiftServerless Workgroup
  *  SubnetIds). Unlike the SG gate (which folds only a SINGLE default SG), a workgroup placed into
@@ -588,6 +605,14 @@ export interface AccountDefaults {
   // MetadataOptions — a hardened account (hop limit 1, tokens enforced, …) folds its clean deploy.
   // Undefined when nothing is set at account level → the constant stands.
   instanceMetadataDefaults?: Record<string, string | number>;
+  // dms:DescribeOrderableReplicationInstances `DefaultAllocatedStorage` keyed by
+  // ReplicationInstanceClass — a DMS ReplicationInstance that declares no AllocatedStorage reads
+  // back a class-dependent default (dms.c6i.large → 100), NOT the generic "50 GB" the docs cite.
+  // classify equality-gates the live AllocatedStorage against this DERIVED value for the declared
+  // class (folding a clean deploy but surfacing an out-of-band storage change). A class absent
+  // here (lookup denied/unavailable) → the fold falls through to plain `undeclared` — today's
+  // behavior. #1557.
+  dmsAllocatedStorageDefaults?: Record<string, number>;
 }
 
 // #1070: for a handful of undeclared properties the value AWS assigns at creation is a function of
@@ -4876,6 +4901,30 @@ export function classifyResource(
       if (rgDerived !== undefined) {
         findings.push({
           tier: matchesKnownDefault(v, rgDerived.value) ? 'atDefault' : 'undeclared',
+          logicalId,
+          resourceType,
+          path: k,
+          actual: v,
+        });
+        continue;
+      }
+    }
+    // #1557: a DMS ReplicationInstance's undeclared AllocatedStorage is a DETERMINISTIC FUNCTION of
+    // the declared ReplicationInstanceClass (dms.c6i.large → 100), NOT a fixed constant — the docs'
+    // generic "50 GB" is not per-class truth. gather.ts prefetched the per-class
+    // DefaultAllocatedStorage via dms:DescribeOrderableReplicationInstances; fold atDefault when the
+    // live value equals the derived default (equality-gated — an out-of-band `modify-replication-
+    // instance --allocated-storage` still surfaces). Authoritative when the lookup resolved; a class
+    // absent (denied/unavailable) falls through to plain `undeclared` — today's behavior.
+    if (resourceType === 'AWS::DMS::ReplicationInstance' && k === 'AllocatedStorage') {
+      const cls = declared['ReplicationInstanceClass'];
+      const derived =
+        typeof cls === 'string'
+          ? opts.accountDefaults?.dmsAllocatedStorageDefaults?.[cls]
+          : undefined;
+      if (derived !== undefined) {
+        findings.push({
+          tier: matchesKnownDefault(v, derived) ? 'atDefault' : 'undeclared',
           logicalId,
           resourceType,
           path: k,
