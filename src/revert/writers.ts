@@ -206,6 +206,11 @@ import {
 import { ChangeResourceRecordSetsCommand, Route53Client } from '@aws-sdk/client-route-53';
 import { DeleteBucketPolicyCommand, PutBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
 import {
+  type MonitoringScheduleConfig,
+  SageMakerClient,
+  UpdateMonitoringScheduleCommand,
+} from '@aws-sdk/client-sagemaker';
+import {
   DeleteResourcePolicyCommand as SecretsDeleteResourcePolicyCommand,
   SecretsManagerClient,
 } from '@aws-sdk/client-secrets-manager';
@@ -707,6 +712,34 @@ const writeServiceDiscoveryService: SdkWriter = async (ctx, ops) => {
     throw new Error(
       `ServiceDiscovery Service ${id}: UpdateService cannot express ${[...unExpressible].join(', ')} (create-only / immutable)${anyExpressible ? ' — the other drifted values were reverted' : ''}`
     );
+};
+
+// AWS::SageMaker::MonitoringSchedule — read via the readSageMakerMonitoringSchedule SDK
+// override (#1523/#1577; CC read omits Tags so it is SDK-override-read), which parks it behind
+// the plan.ts CC-gap bar ("type not revertable yet") until a whole-resource SDK writer exists.
+// sagemaker:UpdateMonitoringSchedule is the only mutating API and it takes the FULL
+// MonitoringScheduleConfig (MonitoringScheduleName is create-only) — so reconstruct the desired
+// model (current read + revert ops applied) and re-PUT its whole MonitoringScheduleConfig, the
+// same full-desired-shape pattern as writeServiceDiscoveryHttpNamespace / writeConfigConfigurationRecorder.
+// Live-verified 2026-07-13 (us-east-1): an out-of-band ScheduleExpression cron change reverts back.
+const writeSageMakerMonitoringSchedule: SdkWriter = async (ctx, ops) => {
+  // The CFn physical id is the schedule ARN (arn:…:monitoring-schedule/<name>) but
+  // UpdateMonitoringSchedule wants the BARE name — mirror the reader's ARN-tail extraction (#1523).
+  const raw = str(ctx.physicalId) ?? str(ctx.declared['MonitoringScheduleName']);
+  if (!raw) throw new Error('cannot resolve MonitoringSchedule name for revert');
+  const name = raw.startsWith('arn:') ? (raw.split('/').pop() ?? raw) : raw;
+  const desired = await desiredModel('AWS::SageMaker::MonitoringSchedule', ctx, ops);
+  const config = desired.MonitoringScheduleConfig;
+  if (config === undefined || config === null)
+    throw new Error(
+      'SageMaker MonitoringSchedule revert requires the full MonitoringScheduleConfig, which the live read did not return; update it manually'
+    );
+  await new SageMakerClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
+    new UpdateMonitoringScheduleCommand({
+      MonitoringScheduleName: name,
+      MonitoringScheduleConfig: config as MonitoringScheduleConfig,
+    })
+  );
 };
 
 // AWS::DocDB::DBCluster — Cloud Control cannot read OR write this type
@@ -2927,6 +2960,7 @@ export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::DocDB::DBInstance': writeDocDbInstance,
   'AWS::ServiceDiscovery::HttpNamespace': writeServiceDiscoveryHttpNamespace,
   'AWS::ServiceDiscovery::Service': writeServiceDiscoveryService,
+  'AWS::SageMaker::MonitoringSchedule': writeSageMakerMonitoringSchedule,
   'AWS::S3::BucketPolicy': writeS3BucketPolicy,
   'AWS::SNS::TopicPolicy': writeSnsTopicPolicy,
   'AWS::SQS::QueuePolicy': writeSqsQueuePolicy,
