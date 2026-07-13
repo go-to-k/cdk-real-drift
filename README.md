@@ -1121,6 +1121,10 @@ Description / State / ExecutionRoleArn / PolicyDetails shape is re-supplied in
 place, since Cloud Control has no handler for the type),
 `docdb:ModifyDBCluster` / `ModifyDBInstance`,
 `config:DescribeConfigRules` / `config:PutConfigRule`,
+`config:PutConfigurationRecorder` (reverts an
+`AWS::Config::ConfigurationRecorder` — a whole-recorder upsert re-supplying the
+declared RecordingGroup / RecordingMode / RoleARN, since Cloud Control cannot
+write the type),
 `ecs:UpdateService` (reverts an `AWS::ECS::Service` `ServiceConnectConfiguration` /
 `VolumeConfigurations` drift — the whole writeOnly prop is re-supplied, since Cloud
 Control cannot sub-path patch it),
