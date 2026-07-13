@@ -212,6 +212,7 @@ import {
 import {
   ServiceDiscoveryClient,
   UpdateHttpNamespaceCommand,
+  UpdateServiceCommand as SdUpdateServiceCommand,
 } from '@aws-sdk/client-servicediscovery';
 import { SetTopicAttributesCommand, SNSClient } from '@aws-sdk/client-sns';
 import { SetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
@@ -630,10 +631,8 @@ const writeElbTargetGroupAttributes: SdkWriter = async (ctx, ops) => {
 // type (UnsupportedActionException), so revert goes through Cloud Map's own
 // UpdateHttpNamespace, whose ONLY mutable field is Description (Name is immutable).
 // Reconstruct the desired model (current read + revert ops) and write its Description
-// back. (Sibling AWS::ServiceDiscovery::Service is intentionally NOT revertable: a
-// service in an HTTP/API-only namespace cannot be updated at all — UpdateService
-// throws InvalidInput "Service in API-only namespace cannot be updated" — so there is
-// nothing to revert; a DNS-namespace service writer can be added if a real gap surfaces.)
+// back. (The sibling AWS::ServiceDiscovery::Service DNS-namespace writer is below —
+// the real gap the earlier note anticipated surfaced as #1573.)
 const writeServiceDiscoveryHttpNamespace: SdkWriter = async (ctx, ops) => {
   const id = str(ctx.physicalId);
   if (!id) throw new Error('cannot resolve namespace id for revert');
@@ -644,6 +643,70 @@ const writeServiceDiscoveryHttpNamespace: SdkWriter = async (ctx, ops) => {
       Namespace: { Description: (str(m.Description) ?? '') as string },
     })
   );
+};
+
+// AWS::ServiceDiscovery::Service — the whole ServiceDiscovery family is a CC gap (read via
+// the GetService override), so revert routes here (#1573: an out-of-band UpdateService TTL
+// change detected but reported "type not revertable yet"). servicediscovery:UpdateService's
+// ServiceChange carries ONLY Description / DnsConfig.DnsRecords / HealthCheckConfig, and it
+// is a REPLACE: an existing one of those three omitted from the request is DELETED — so the
+// request always carries the FULL desired trio from desiredModel, never just the drifted
+// field (a `remove` op then converges by omission). Everything else the reader projects
+// (Name / Type / NamespaceId / DnsConfig.RoutingPolicy / DnsConfig.NamespaceId /
+// HealthCheckCustomConfig) is create-only or immutable via UpdateService — collected and
+// thrown ONCE (#804) so those findings stay honestly FAILED instead of silently "reverted".
+// A service in an HTTP/API-only namespace cannot be updated at all (UpdateService throws
+// InvalidInput "Service in API-only namespace cannot be updated") — detected up front via
+// the read-back Type and barred honestly without the doomed call.
+const SD_SERVICE_MUTABLE_TOPS = new Set(['Description', 'DnsConfig', 'HealthCheckConfig']);
+const writeServiceDiscoveryService: SdkWriter = async (ctx, ops) => {
+  const id = str(ctx.physicalId);
+  if (!id) throw new Error('cannot resolve Cloud Map service id for revert');
+  const desired = await desiredModel('AWS::ServiceDiscovery::Service', ctx, ops);
+  if (desired.Type === 'HTTP')
+    throw new Error(
+      `ServiceDiscovery Service ${id} lives in an API-only (HTTP) namespace — UpdateService cannot modify it, so its drift is not revertable`
+    );
+  const unExpressible = new Set<string>();
+  let anyExpressible = false;
+  for (const op of ops) {
+    const top = opTopSeg(op.path);
+    if (!SD_SERVICE_MUTABLE_TOPS.has(top)) {
+      unExpressible.add(top);
+      continue;
+    }
+    // Within DnsConfig only DnsRecords is updatable — a RoutingPolicy / NamespaceId op
+    // cannot converge through UpdateService.
+    const sub = op.path.replace(/^\//, '').split('/')[1] ?? '';
+    if (top === 'DnsConfig' && sub !== 'DnsRecords' && sub !== '') {
+      unExpressible.add(`DnsConfig/${sub}`);
+      continue;
+    }
+    anyExpressible = true;
+  }
+  if (anyExpressible) {
+    const service: Record<string, unknown> = {};
+    if (str(desired.Description)) service.Description = desired.Description;
+    const dns = desired.DnsConfig as Record<string, unknown> | undefined;
+    const records = dns && Array.isArray(dns.DnsRecords) ? dns.DnsRecords : undefined;
+    if (records && records.length > 0) {
+      service.DnsConfig = {
+        DnsRecords: records.map((r) => {
+          const rec = r as Record<string, unknown>;
+          return { Type: rec.Type, TTL: typeof rec.TTL === 'number' ? rec.TTL : Number(rec.TTL) };
+        }),
+      };
+    }
+    if (desired.HealthCheckConfig !== undefined)
+      service.HealthCheckConfig = desired.HealthCheckConfig;
+    await new ServiceDiscoveryClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
+      new SdUpdateServiceCommand({ Id: id, Service: service })
+    );
+  }
+  if (unExpressible.size > 0)
+    throw new Error(
+      `ServiceDiscovery Service ${id}: UpdateService cannot express ${[...unExpressible].join(', ')} (create-only / immutable)${anyExpressible ? ' — the other drifted values were reverted' : ''}`
+    );
 };
 
 // AWS::DocDB::DBCluster — Cloud Control cannot read OR write this type
@@ -2863,6 +2926,7 @@ export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::DocDB::DBCluster': writeDocDbCluster,
   'AWS::DocDB::DBInstance': writeDocDbInstance,
   'AWS::ServiceDiscovery::HttpNamespace': writeServiceDiscoveryHttpNamespace,
+  'AWS::ServiceDiscovery::Service': writeServiceDiscoveryService,
   'AWS::S3::BucketPolicy': writeS3BucketPolicy,
   'AWS::SNS::TopicPolicy': writeSnsTopicPolicy,
   'AWS::SQS::QueuePolicy': writeSqsQueuePolicy,

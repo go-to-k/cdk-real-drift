@@ -101,8 +101,10 @@ import {
 } from '@aws-sdk/client-sns';
 import {
   GetNamespaceCommand,
+  GetServiceCommand,
   ServiceDiscoveryClient,
   UpdateHttpNamespaceCommand,
+  UpdateServiceCommand as SdUpdateServiceCommand,
 } from '@aws-sdk/client-servicediscovery';
 import {
   ChangeResourceRecordSetsCommand,
@@ -2498,6 +2500,127 @@ describe('ServiceDiscovery HttpNamespace writer (CC read+write gap)', () => {
     await expect(
       SDK_WRITERS['AWS::ServiceDiscovery::HttpNamespace'](ctx({ physicalId: '' }), [descOp('x')])
     ).rejects.toThrow(/namespace id/);
+  });
+});
+
+describe('ServiceDiscovery Service writer (#1573)', () => {
+  const SVCID = 'srv-larvapfwzod2rbjj';
+  // The GetService mock mirrors the REAL live echo shape (harvested corpus case
+  // AWS__ServiceDiscovery__Service.NsSvcFBBB2FA7 — a private-DNS-namespace L2 service),
+  // not the declared template: Type DNS_HTTP + DnsConfig carrying NamespaceId /
+  // RoutingPolicy echoes alongside the DnsRecords.
+  const liveService = (over: Record<string, unknown> = {}) => ({
+    Service: {
+      Id: SVCID,
+      Name: 'hunt-svc',
+      NamespaceId: 'ns-xd4yucfbkz52j6v2',
+      Type: 'DNS_HTTP',
+      DnsConfig: {
+        NamespaceId: 'ns-xd4yucfbkz52j6v2',
+        RoutingPolicy: 'MULTIVALUE',
+        DnsRecords: [{ Type: 'A', TTL: 300 }], // 300 = the DRIFTED live value
+      },
+      ...over,
+    },
+  });
+  const ttlOp: PatchOp = {
+    op: 'add',
+    path: '/DnsConfig/DnsRecords/0/TTL',
+    value: 60,
+    prior: 300,
+    human: 'DnsConfig.DnsRecords.0.TTL -> deployed-template value',
+  };
+
+  it('reverts a drifted DnsRecords TTL via UpdateService, sending the FULL desired DnsConfig', async () => {
+    serviceDiscovery.on(GetServiceCommand).resolves(liveService() as never);
+    serviceDiscovery.on(SdUpdateServiceCommand).resolves({ OperationId: 'op-1' });
+
+    await SDK_WRITERS['AWS::ServiceDiscovery::Service'](ctx({ physicalId: SVCID }), [ttlOp]);
+
+    const calls = serviceDiscovery.commandCalls(SdUpdateServiceCommand);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.args[0].input).toEqual({
+      Id: SVCID,
+      Service: { DnsConfig: { DnsRecords: [{ Type: 'A', TTL: 60 }] } },
+    });
+  });
+
+  it('carries the existing Description alongside the DnsConfig (UpdateService REPLACE-safety)', async () => {
+    serviceDiscovery
+      .on(GetServiceCommand)
+      .resolves(liveService({ Description: 'keep me' }) as never);
+    serviceDiscovery.on(SdUpdateServiceCommand).resolves({ OperationId: 'op-1' });
+
+    await SDK_WRITERS['AWS::ServiceDiscovery::Service'](ctx({ physicalId: SVCID }), [ttlOp]);
+
+    // An UpdateService request that OMITS an existing Description would DELETE it — the
+    // writer must always send the full mutable trio, not just the drifted field.
+    expect(serviceDiscovery.commandCalls(SdUpdateServiceCommand)[0]!.args[0].input).toEqual({
+      Id: SVCID,
+      Service: {
+        Description: 'keep me',
+        DnsConfig: { DnsRecords: [{ Type: 'A', TTL: 60 }] },
+      },
+    });
+  });
+
+  it('converges a removed out-of-band Description by OMITTING it from the request', async () => {
+    serviceDiscovery.on(GetServiceCommand).resolves(liveService({ Description: 'ROGUE' }) as never);
+    serviceDiscovery.on(SdUpdateServiceCommand).resolves({ OperationId: 'op-1' });
+
+    await SDK_WRITERS['AWS::ServiceDiscovery::Service'](ctx({ physicalId: SVCID }), [
+      { op: 'remove', path: '/Description', human: 'Description -> unset' },
+    ]);
+
+    // UpdateService deletes an omitted existing configuration — exactly the desired end state.
+    expect(serviceDiscovery.commandCalls(SdUpdateServiceCommand)[0]!.args[0].input).toEqual({
+      Id: SVCID,
+      Service: { DnsConfig: { DnsRecords: [{ Type: 'A', TTL: 300 }] } },
+    });
+  });
+
+  it('bars a service in an API-only (HTTP) namespace up front — UpdateService cannot modify it', async () => {
+    serviceDiscovery
+      .on(GetServiceCommand)
+      .resolves({ Service: { Id: SVCID, Name: 'api-svc', Type: 'HTTP' } } as never);
+
+    await expect(
+      SDK_WRITERS['AWS::ServiceDiscovery::Service'](ctx({ physicalId: SVCID }), [
+        { op: 'add', path: '/Description', value: 'x', human: 'Description' },
+      ])
+    ).rejects.toThrow(/API-only/);
+    expect(serviceDiscovery.commandCalls(SdUpdateServiceCommand)).toHaveLength(0);
+  });
+
+  it('throws naming an inexpressible op (DnsConfig.RoutingPolicy) without a doomed call', async () => {
+    serviceDiscovery.on(GetServiceCommand).resolves(liveService() as never);
+
+    await expect(
+      SDK_WRITERS['AWS::ServiceDiscovery::Service'](ctx({ physicalId: SVCID }), [
+        { op: 'add', path: '/DnsConfig/RoutingPolicy', value: 'WEIGHTED', human: 'RoutingPolicy' },
+      ])
+    ).rejects.toThrow(/DnsConfig\/RoutingPolicy/);
+    expect(serviceDiscovery.commandCalls(SdUpdateServiceCommand)).toHaveLength(0);
+  });
+
+  it('applies the expressible sibling op BEFORE throwing on the inexpressible one (#804)', async () => {
+    serviceDiscovery.on(GetServiceCommand).resolves(liveService() as never);
+    serviceDiscovery.on(SdUpdateServiceCommand).resolves({ OperationId: 'op-1' });
+
+    await expect(
+      SDK_WRITERS['AWS::ServiceDiscovery::Service'](ctx({ physicalId: SVCID }), [
+        ttlOp,
+        { op: 'add', path: '/NamespaceId', value: 'ns-other', human: 'NamespaceId' },
+      ])
+    ).rejects.toThrow(/NamespaceId/);
+    // The convergeable TTL revert still went out.
+    expect(serviceDiscovery.commandCalls(SdUpdateServiceCommand)).toHaveLength(1);
+  });
+
+  it('throws when the service id is unresolvable', async () => {
+    await expect(
+      SDK_WRITERS['AWS::ServiceDiscovery::Service'](ctx({ physicalId: '' }), [ttlOp])
+    ).rejects.toThrow(/service id/);
   });
 });
 
