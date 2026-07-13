@@ -576,6 +576,91 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  // #1588: the remaining ModifyDBInstance revert-no-op twins of #1541 — same selective-modify
+  // semantics (an omitted property keeps its existing value), so a bare `remove` revert of an
+  // out-of-band, undeclared, KNOWN_DEFAULTS-folded change is a silent no-op. Each is now in
+  // REVERT_SET_DEFAULT_PATHS, so revert writes the KNOWN_DEFAULTS default back explicitly.
+  // Live-proven on Cdkrd1588Verify (us-east-1, 2026-07-14).
+  it('#1588: RDS DBInstance MultiAZ (SET-DEFAULT) -> add op writing the false default, not a no-op remove', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::RDS::DBInstance',
+      path: 'MultiAZ',
+      actual: true,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/MultiAZ',
+      value: false,
+      prior: true,
+    });
+  });
+
+  it('#1588: RDS DBInstance EnablePerformanceInsights (SET-DEFAULT) -> add op writing the false default, not a no-op remove', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::RDS::DBInstance',
+      path: 'EnablePerformanceInsights',
+      actual: true,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/EnablePerformanceInsights',
+      value: false,
+      prior: true,
+    });
+  });
+
+  it('#1588: RDS DBInstance MonitoringInterval (SET-DEFAULT) -> add op writing the 0 default, not a no-op remove', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::RDS::DBInstance',
+      path: 'MonitoringInterval',
+      actual: 60,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/MonitoringInterval',
+      value: 0,
+      prior: 60,
+    });
+  });
+
+  it('#1588: RDS DBInstance CopyTagsToSnapshot (SET-DEFAULT) -> add op writing the false default, not a no-op remove', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::RDS::DBInstance',
+      path: 'CopyTagsToSnapshot',
+      actual: true,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/CopyTagsToSnapshot',
+      value: false,
+      prior: true,
+    });
+  });
+
+  it('#1588: RDS DBInstance CACertificateIdentifier (SET-DEFAULT) -> add op writing the rds-ca-rsa2048-g1 default, not a no-op remove', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::RDS::DBInstance',
+      path: 'CACertificateIdentifier',
+      actual: 'rds-ca-rsa4096-g1',
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/CACertificateIdentifier',
+      value: 'rds-ca-rsa2048-g1',
+      prior: 'rds-ca-rsa4096-g1',
+    });
+  });
+
   it('Kinesis Stream RetentionPeriodHours (SET-DEFAULT) -> add op writing the 24 default, not a no-op remove', () => {
     // RetentionPeriodHours is changed only by the dedicated
     // Increase/DecreaseStreamRetentionPeriod APIs — the Cloud Control Stream update handler
