@@ -1111,6 +1111,11 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     MaintenanceTrackName: 'current',
     KmsKeyId: 'AWS_OWNED_KMS_KEY',
     NumberOfNodes: 1,
+    // A cluster that declares no ClusterSubnetGroupName (default-VPC placement) reads back
+    // the literal subnet group name "default" (#1590, live-verified on a barest L1 cluster —
+    // every prior fixture/corpus case declared it, hiding the first-run FP). Equality-gated:
+    // an out-of-band move to a real subnet group no longer matches and surfaces.
+    ClusterSubnetGroupName: 'default',
   },
   // #1492: a Redshift ScheduledAction that declares no `Enable` reads back `true` — AWS enables a
   // new schedule by default. Stable constant → equality-gated fold; an out-of-band
@@ -1805,6 +1810,28 @@ export const KNOWN_DEFAULT_ONE_OF: Record<string, Record<string, readonly unknow
   'AWS::Glue::Job': {
     Timeout: [2880, 480],
   },
+  // #1593: a domain that declares no DomainEndpointOptions reads back the whole options
+  // object AWS materializes at creation, and its TLSSecurityPolicy member is ERA-dependent
+  // (the S3 TransitionDefaultMinimumObjectSize class): a fresh 2026 domain reads
+  // Policy-Min-TLS-1-2-2019-07 (live-proven, opensearch-multiaz-min 2026-07-14), domains
+  // created before the 2024 TLS-default bump read the documented prior default
+  // Policy-Min-TLS-1-0-2019-07. Both trios are AWS-assigned, never user intent when
+  // undeclared; equality-gating the SET preserves detection — an out-of-band EnforceHTTPS
+  // enable, a custom endpoint, or any third TLS policy breaks both pins and surfaces.
+  'AWS::OpenSearchService::Domain': {
+    DomainEndpointOptions: [
+      {
+        CustomEndpointEnabled: false,
+        EnforceHTTPS: false,
+        TLSSecurityPolicy: 'Policy-Min-TLS-1-2-2019-07',
+      },
+      {
+        CustomEndpointEnabled: false,
+        EnforceHTTPS: false,
+        TLSSecurityPolicy: 'Policy-Min-TLS-1-0-2019-07',
+      },
+    ],
+  },
 };
 
 // The NESTED-path twin of KNOWN_DEFAULT_ONE_OF (#979): a nested undeclared value whose AWS
@@ -1851,6 +1878,15 @@ export const KNOWN_DEFAULT_ONE_OF_PATHS: Record<string, Record<string, readonly 
       [{ ImageType: 'ECS_AL2023' }],
       [{ ImageType: 'ECS_AL2' }],
     ],
+  },
+  // #1593: an EBS-backed domain that declares no VolumeType reads back the era default —
+  // "gp3" for domains created after OpenSearch's late-2023 gp3 default switch (live-proven
+  // on a fresh minimal Multi-AZ domain, opensearch-multiaz-min 2026-07-14), "gp2" for
+  // older-era domains (the documented prior default). A user who DECLARES a volume type is
+  // compared in the declared dimension; an out-of-band switch to io1/io2 or any third type
+  // still surfaces.
+  'AWS::OpenSearchService::Domain': {
+    'EBSOptions.VolumeType': ['gp3', 'gp2'],
   },
 };
 
@@ -2267,6 +2303,11 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     // when the template leaves them unset — server defaults, not user intent.
     'EBSOptions.Iops': 3000,
     'EBSOptions.Throughput': 125,
+    // A zone-aware domain that declares ZoneAwarenessEnabled=true but no explicit
+    // ZoneAwarenessConfig reads back the materialized 2-AZ default (#1593, live-proven on
+    // opensearch-multiaz-min 2026-07-14 — the Multi-AZ variant axis was previously
+    // undeployed). Equality-gated: an out-of-band 3-AZ move breaks the pin and surfaces.
+    'ClusterConfig.ZoneAwarenessConfig': { AvailabilityZoneCount: 2 },
   },
   'AWS::KinesisFirehose::DeliveryStream': {
     // S3 backup is Disabled by default when a destination declares no backup mode.
@@ -2700,9 +2741,23 @@ export const ENGINE_DEFAULTS: Record<string, Record<string, (engine: string) => 
     LicenseModel: rdsDefaultLicense,
     // SQL Server materializes its default collation when none is declared — live-confirmed
     // "SQL_Latin1_General_CP1_CI_AS" on a fresh minimal sqlserver-ex (rds-sqlserver-min,
-    // 2026-07-12). CharacterSetName is create-only; a user-chosen collation is DECLARED and
-    // compared in the declared loop. Other engines expose no such echo → undefined.
-    CharacterSetName: (e) => (/sqlserver/.test(e) ? 'SQL_Latin1_General_CP1_CI_AS' : undefined),
+    // 2026-07-12). Oracle likewise materializes its default database character set
+    // "AL32UTF8" — live-confirmed on a fresh minimal oracle-se2 (rds-oracle-min,
+    // 2026-07-14, #1591). CharacterSetName is create-only; a user-chosen collation /
+    // charset is DECLARED and compared in the declared loop. Other engines expose no such
+    // echo → undefined.
+    CharacterSetName: (e) =>
+      /sqlserver/.test(e)
+        ? 'SQL_Latin1_General_CP1_CI_AS'
+        : /oracle/.test(e)
+          ? 'AL32UTF8'
+          : undefined,
+    // Oracle-only creation defaults, live-confirmed on the same minimal oracle-se2 (#1591):
+    // the national character set "AL16UTF16", and the default SID "ORCL" (DBName) — the
+    // other engine families create no default database, so neither key echoes there.
+    // Equality-gated: a non-default charset / SID still surfaces.
+    NcharCharacterSetName: (e) => (/oracle/.test(e) ? 'AL16UTF16' : undefined),
+    DBName: (e) => (/oracle/.test(e) ? 'ORCL' : undefined),
   },
   'AWS::RDS::DBCluster': {
     StorageType: (e) => (e.startsWith('aurora') ? 'aurora' : undefined),
@@ -3760,7 +3815,12 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
     'AvailabilityZone',
     'ClusterVersion',
   ]),
-  'AWS::OpenSearchService::Domain': new Set(['OffPeakWindowOptions']),
+  //   AWS::OpenSearchService::Domain.EngineVersion — a domain that pins no version reads back
+  //   the current GA engine version AWS assigns at creation (OpenSearch_3.5 on 2026-07-14,
+  //   #1593) and AWS moves that default over time — the same class as Redshift ClusterVersion /
+  //   ECS Service PlatformVersion above. A user who cares about the version DECLARES it (then
+  //   compared in the declared dimension); undeclared, the assigned version is AWS's choice.
+  'AWS::OpenSearchService::Domain': new Set(['OffPeakWindowOptions', 'EngineVersion']),
   //   AWS::AmazonMQ::Broker.MaintenanceWindowStartTime — a broker that declares no window reads
   //   back an AWS-assigned one as an OBJECT ({DayOfWeek, TimeOfDay, TimeZone}); value-independent
   //   folds the whole top-level property whatever its shape, so the assigned window is not first-
@@ -4716,9 +4776,15 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
   // "cdkrdhunt-rscpg" — the same stored-lowercased identifier family as the RDS
   // parameter/option groups (#1531). Two names differing beyond case are a genuine
   // replacement and still surface. Observed live (case-idents2-min, 2026-07-13; #1539).
-  // ClusterSubnetGroup has no declarable name; Cluster's ClusterIdentifier is CDK-lowered
-  // already and unprobed — add it here only with live proof.
+  // ClusterSubnetGroup has no declarable name.
   'AWS::Redshift::ClusterParameterGroup': new Set(['ParameterGroupName']),
+  // Redshift also lowercases the CLUSTER identifier itself, and the CFn handler passes a
+  // mixed-case ClusterIdentifier through (unlike the MemoryDB family, whose handlers reject
+  // mixed case server-side — probed 2026-07-14 via Cloud Control: SubnetGroup/User/ACL all
+  // "must contain only lowercase", unreachable, no entries needed). A template declaring
+  // "CdkrdHunt-Mixed-RsCluster" reads back "cdkrdhunt-mixed-rscluster" — declared-tier FP on
+  // every check. Observed live (case-idents3-min, 2026-07-14; #1589).
+  'AWS::Redshift::Cluster': new Set(['ClusterIdentifier']),
   'AWS::DMS::ReplicationInstance': new Set(['ReplicationInstanceIdentifier']),
   'AWS::DMS::ReplicationSubnetGroup': new Set(['ReplicationSubnetGroupIdentifier']),
   // DMS Endpoint `EndpointType` — the CFn/CDK value is lowercase (`source` /

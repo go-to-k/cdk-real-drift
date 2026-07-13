@@ -648,6 +648,15 @@ create-parameter-group` both ACCEPT a mixed-case identifier (storing it lowercas
   service lowercase?"), but only a CFn DEPLOY proves reachability; a handler rejection
   is itself the determination (record it in the fixture comment). The inverse also
   held: Redshift's and Batch's handlers pass mixed case through, and both FP'd.
+  **Cheaper still: `aws cloudcontrol create-resource` exercises the SAME CFn/CC handler
+  with NO stack and NO fixture** — a rejection comes back as a FAILED progress event in
+  seconds, and an acceptance gives you the stored echo via `get-resource` before you
+  `delete-resource`. The 2026-07-14 hunt determined the whole remaining MemoryDB family
+  (SubnetGroup/User/ACL all reject: "must contain only lowercase") and Cassandra
+  Keyspace (accepts AND preserves case — no FP either way) for zero deploys; reserve
+  the paid CFn fixture for the types the handler lets THROUGH (Redshift::Cluster
+  ClusterIdentifier, #1589). Tag the probe resource `cdkrd:ephemeral=1` in its desired
+  state and delete it immediately.
 - **An undeclared-revert "proof" is void if the CDK L2 declares the leaf.** Before
   claiming a revert no-op / convergence proof for an UNDECLARED property, read the
   DEPLOYED template: mutating a value the L2 silently declared (RDS
@@ -675,6 +684,17 @@ create-parameter-group` both ACCEPT a mixed-case identifier (storing it lowercas
   declared value out of band (e.g. `aws route53 change-resource-record-sets`) and
   asserting `check --fail` exits 1, then restore it manually; note the revert gap as a
   future `SDK_WRITERS` candidate rather than treating it as a regression.
+- **Read the revert's convergence REPORT text, not just the live value — the report
+  layer has its own bug class.** A revert whose target converges perfectly can still
+  print a false `NOT reverted: …MasterUserPassword — the default-value write was a
+no-op` for the write-only RE-INCLUDE op every password-declaring resource carries
+  (the CC read-modify-write contract): a write-only path re-reads as `readGap` with no
+  live value on either side, so a persistence check built on `deepEqual(pre, post)` is
+  vacuously true (#1594, live-hit on an aurora-pg Sv2 revert 2026-07-14). When a revert
+  probe passes on the live value, ALSO grep its output for `NOT reverted:` /
+  `could not be confirmed` on paths you never drifted — an unverifiable (readGap) path
+  must never drive a "value persists" verdict, and fixtures that only assert
+  `check --fail` exit codes ride right past this class.
 - **A clean result IS a result — but it must still leave an asset.** "6 common+rich
   stacks, zero FPs, detection+revert verified" is a legitimate, valuable outcome. Do
   NOT manufacture a fix to have something to show. The deliverable of a bug-free

@@ -1,0 +1,502 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntOracle",
+    "resourceType": "AWS::RDS::DBInstance",
+    "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+    "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle",
+    "declared": {
+      "AllocatedStorage": "20",
+      "DBInstanceClass": "db.t3.small",
+      "Engine": "oracle-se2",
+      "LicenseModel": "license-included",
+      "MasterUserPassword": "CdkrdHuntPassw0rd1",
+      "MasterUsername": "huntadmin",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "DatabaseInsightsMode": "standard",
+    "StorageEncrypted": false,
+    "StatusInfos": [],
+    "CertificateDetails": {
+      "ValidTill": "2029-07-13T18:25:31Z",
+      "CAIdentifier": "rds-ca-rsa2048-g1"
+    },
+    "Port": "1521",
+    "AdditionalStorageVolumes": [],
+    "StorageThroughput": 0,
+    "DbiResourceId": "db-C7QUZK2T5AI3SGHLHCHKWCOA3M",
+    "ReadReplicaDBClusterIdentifiers": [],
+    "MonitoringInterval": 0,
+    "DBParameterGroupName": "default.oracle-se2-19",
+    "DBInstanceArn": "arn:aws:rds:us-east-1:111111111111:db:cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+    "Endpoint": {
+      "Address": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc.caxxotukouxo.us-east-1.rds.amazonaws.com",
+      "Port": "1521",
+      "HostedZoneId": "Z2R2ITUGPM61AM"
+    },
+    "LatestRestorableTime": "2026-07-13T18:33:40Z",
+    "MultiAZ": false,
+    "Engine": "oracle-se2",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0714RdsOracle",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntOracle",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0714RdsOracle/e15e8810-7ee7-11f1-b098-0e2903357f0d",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "IsStorageConfigUpgradeAvailable": false,
+    "EngineVersion": "19.0.0.0.ru-2026-04.rur-2026-04.r1",
+    "StorageType": "gp2",
+    "DBInstanceStatus": "available",
+    "DBInstanceClass": "db.t3.small",
+    "AvailabilityZone": "us-east-1f",
+    "OptionGroupName": "default:oracle-se2-19",
+    "EnablePerformanceInsights": false,
+    "ReadReplicaDBInstanceIdentifiers": [],
+    "AutoMinorVersionUpgrade": true,
+    "DBSubnetGroupName": "default",
+    "DeletionProtection": false,
+    "DBInstanceIdentifier": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+    "AllocatedStorage": "20",
+    "MasterUserSecret": {},
+    "NcharCharacterSetName": "AL16UTF16",
+    "DBSecurityGroups": [],
+    "MasterUsername": "huntadmin",
+    "PubliclyAccessible": true,
+    "CharacterSetName": "AL32UTF8",
+    "AssociatedRoles": [],
+    "InstanceCreateTime": "2026-07-13T18:33:34.439Z",
+    "ProcessorFeatures": [],
+    "PreferredBackupWindow": "09:19-09:49",
+    "NetworkType": "IPV4",
+    "DedicatedLogVolume": false,
+    "CopyTagsToSnapshot": false,
+    "LicenseModel": "license-included",
+    "PreferredMaintenanceWindow": "tue:04:26-tue:04:56",
+    "BackupTarget": "region",
+    "CACertificateIdentifier": "rds-ca-rsa2048-g1",
+    "ManageMasterUserPassword": false,
+    "VPCSecurityGroups": ["sg-0a26e23e2310ee0c9"],
+    "DBName": "ORCL",
+    "EnableIAMDatabaseAuthentication": false,
+    "BackupRetentionPeriod": 1,
+    "EnableCloudwatchLogsExports": []
+  },
+  "schema": {
+    "readOnly": [
+      "AutomaticRestartTime",
+      "CertificateDetails",
+      "DBInstanceArn",
+      "DBInstanceStatus",
+      "DbiResourceId",
+      "Endpoint",
+      "InstanceCreateTime",
+      "IsStorageConfigUpgradeAvailable",
+      "LatestRestorableTime",
+      "ListenerEndpoint",
+      "PercentProgress",
+      "ReadReplicaDBClusterIdentifiers",
+      "ReadReplicaDBInstanceIdentifiers",
+      "ResumeFullAutomationModeTime",
+      "SecondaryAvailabilityZone",
+      "StatusInfos"
+    ],
+    "writeOnly": [
+      "AllowMajorVersionUpgrade",
+      "ApplyImmediately",
+      "AutomaticBackupReplicationKmsKeyId",
+      "CertificateRotationRestart",
+      "DBSnapshotIdentifier",
+      "DeleteAutomatedBackups",
+      "MasterUserAuthenticationType",
+      "MasterUserPassword",
+      "RestoreTime",
+      "SourceDBInstanceAutomatedBackupsArn",
+      "SourceDBInstanceIdentifier",
+      "SourceDbiResourceId",
+      "SourceRegion",
+      "TdeCredentialPassword",
+      "UseDefaultProcessorFeatures",
+      "UseLatestRestorableTime"
+    ],
+    "createOnly": [
+      "BackupTarget",
+      "CharacterSetName",
+      "CustomIAMInstanceProfile",
+      "DBClusterIdentifier",
+      "DBInstanceIdentifier",
+      "DBName",
+      "DBSubnetGroupName",
+      "DBSystemId",
+      "KmsKeyId",
+      "MasterUsername",
+      "NcharCharacterSetName",
+      "SourceRegion",
+      "StorageEncrypted",
+      "Timezone"
+    ],
+    "readOnlyPaths": [
+      "AutomaticRestartTime",
+      "CertificateDetails",
+      "CertificateDetails.CAIdentifier",
+      "CertificateDetails.ValidTill",
+      "DBInstanceArn",
+      "DBInstanceStatus",
+      "DbiResourceId",
+      "Endpoint",
+      "Endpoint.Address",
+      "Endpoint.HostedZoneId",
+      "Endpoint.Port",
+      "InstanceCreateTime",
+      "IsStorageConfigUpgradeAvailable",
+      "LatestRestorableTime",
+      "ListenerEndpoint",
+      "ListenerEndpoint.Address",
+      "ListenerEndpoint.HostedZoneId",
+      "ListenerEndpoint.Port",
+      "MasterUserSecret.SecretArn",
+      "PercentProgress",
+      "ReadReplicaDBClusterIdentifiers",
+      "ReadReplicaDBInstanceIdentifiers",
+      "ResumeFullAutomationModeTime",
+      "SecondaryAvailabilityZone",
+      "StatusInfos"
+    ],
+    "writeOnlyPaths": [
+      "AllowMajorVersionUpgrade",
+      "ApplyImmediately",
+      "AutomaticBackupReplicationKmsKeyId",
+      "CertificateRotationRestart",
+      "DBSnapshotIdentifier",
+      "DeleteAutomatedBackups",
+      "MasterUserAuthenticationType",
+      "MasterUserPassword",
+      "RestoreTime",
+      "SourceDBInstanceAutomatedBackupsArn",
+      "SourceDBInstanceIdentifier",
+      "SourceDbiResourceId",
+      "SourceRegion",
+      "TdeCredentialPassword",
+      "UseDefaultProcessorFeatures",
+      "UseLatestRestorableTime"
+    ],
+    "createOnlyPaths": [
+      "BackupTarget",
+      "CharacterSetName",
+      "CustomIAMInstanceProfile",
+      "DBClusterIdentifier",
+      "DBInstanceIdentifier",
+      "DBName",
+      "DBSubnetGroupName",
+      "DBSystemId",
+      "KmsKeyId",
+      "MasterUsername",
+      "NcharCharacterSetName",
+      "SourceRegion",
+      "StorageEncrypted",
+      "Timezone"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "MasterUserPassword",
+      "note": "write-only — cannot be read back",
+      "writeOnly": true,
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "DatabaseInsightsMode",
+      "actual": "standard",
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "StorageEncrypted",
+      "actual": false,
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "Port",
+      "actual": "1521",
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "StorageThroughput",
+      "actual": 0,
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "MonitoringInterval",
+      "actual": 0,
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "DBParameterGroupName",
+      "actual": "default.oracle-se2-19",
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "MultiAZ",
+      "actual": false,
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "EngineVersion",
+      "actual": "19.0.0.0.ru-2026-04.rur-2026-04.r1",
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "StorageType",
+      "actual": "gp2",
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "AvailabilityZone",
+      "actual": "us-east-1f",
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "OptionGroupName",
+      "actual": "default:oracle-se2-19",
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "EnablePerformanceInsights",
+      "actual": false,
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "AutoMinorVersionUpgrade",
+      "actual": true,
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "DBSubnetGroupName",
+      "actual": "default",
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "NcharCharacterSetName",
+      "actual": "AL16UTF16",
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "PubliclyAccessible",
+      "actual": true,
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "CharacterSetName",
+      "actual": "AL32UTF8",
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "PreferredBackupWindow",
+      "actual": "09:19-09:49",
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "NetworkType",
+      "actual": "IPV4",
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "DedicatedLogVolume",
+      "actual": false,
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "CopyTagsToSnapshot",
+      "actual": false,
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "PreferredMaintenanceWindow",
+      "actual": "tue:04:26-tue:04:56",
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "BackupTarget",
+      "actual": "region",
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "CACertificateIdentifier",
+      "actual": "rds-ca-rsa2048-g1",
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "ManageMasterUserPassword",
+      "actual": false,
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "VPCSecurityGroups",
+      "actual": ["sg-0a26e23e2310ee0c9"],
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "DBName",
+      "actual": "ORCL",
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "EnableIAMDatabaseAuthentication",
+      "actual": false,
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOracle",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "BackupRetentionPeriod",
+      "actual": 1,
+      "physicalId": "cdkrdhunt0714rdsoracle-huntoracle-gjuzhvg0yfrc",
+      "constructPath": "CdkrdHunt0714RdsOracle/HuntOracle"
+    }
+  ]
+}

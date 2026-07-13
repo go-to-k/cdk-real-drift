@@ -1656,8 +1656,15 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
       const key = `${item.logicalId}\0${dotted}`;
       if (!preActual.has(key)) continue;
       const pre = preActual.get(key);
+      // #1594: a readGap re-read carries NO live value (a write-only path — e.g. the
+      // MasterUserPassword re-include op every RDS revert adds for the CC
+      // read-modify-write contract — re-reads as readGap with `actual` undefined on both
+      // sides), so it can prove nothing about persistence; without this exclusion the
+      // vacuous deepEqual(undefined, undefined) flagged the re-include as a false
+      // "NOT reverted" no-op on every such revert.
       const post0 = post.find(
-        (f) => f.logicalId === item.logicalId && f.path === dotted && !isDrift(f)
+        (f) =>
+          f.logicalId === item.logicalId && f.path === dotted && !isDrift(f) && f.tier !== 'readGap'
       );
       // Same non-drift persisted-value proof for both op kinds: the pre-revert value is
       // still live after a SUCCESSFUL apply. For `add`, additionally require the live value
