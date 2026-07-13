@@ -1,3 +1,10 @@
+## [0.17.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.17.2...v0.17.3) (2026-07-13)
+
+
+### Bug Fixes
+
+* **diff:** fold ClientVpnEndpoint VpcId and SecurityGroupIds materialized by an in-stack target network association ([#1575](https://github.com/go-to-k/cdk-real-drift/issues/1575)) ([51c30db](https://github.com/go-to-k/cdk-real-drift/commit/51c30dbd533b43c5e4db26a9f18b884a86f4d819))
+
 ## [0.17.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.17.1...v0.17.2) (2026-07-13)
 
 
