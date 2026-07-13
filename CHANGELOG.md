@@ -1,3 +1,10 @@
+## [0.18.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.2...v0.18.3) (2026-07-13)
+
+
+### Bug Fixes
+
+* **revert:** ECR Repository ImageTagMutability revert converges via REVERT_SET_DEFAULT_PATHS ([#1580](https://github.com/go-to-k/cdk-real-drift/issues/1580)) ([#1581](https://github.com/go-to-k/cdk-real-drift/issues/1581)) ([40e5803](https://github.com/go-to-k/cdk-real-drift/commit/40e5803363c826e5f348318148ce137b88d70e2b))
+
 ## [0.18.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.1...v0.18.2) (2026-07-13)
 
 
