@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-integ-revert-toggle-converge",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Revert-convergence fixture (Events::Rule State, Kinesis::Stream RetentionPeriodHours) for the cdk-real-drift bug hunt. Run via verify.sh + verify-detect.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module"
+}

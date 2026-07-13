@@ -1,0 +1,186 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Fn",
+    "resourceType": "AWS::Lambda::Function",
+    "physicalId": "CdkrdHuntLambdaImg0713-Fn-Hcv0zV8RdoHY",
+    "constructPath": "CdkrdHuntLambdaImg0713/Fn",
+    "declared": {
+      "Code": {
+        "ImageUri": "111111111111.dkr.ecr.us-east-1.amazonaws.com/cdkrd-hunt-lambdaimg0713@sha256:4b4fdd3135d850561e19abd904d2b35f452b1e17dc8702c06601c9ac022a306e"
+      },
+      "PackageType": "Image",
+      "Role": "arn:aws:iam::111111111111:role/CdkrdHuntLambdaImg0713-FnRole-iahlIwfJp0PE",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "MemorySize": 128,
+    "Description": "",
+    "TracingConfig": {
+      "Mode": "PassThrough"
+    },
+    "Timeout": 3,
+    "SnapStartResponse": {
+      "OptimizationStatus": "Off",
+      "ApplyOn": "None"
+    },
+    "Code": {},
+    "Role": "arn:aws:iam::111111111111:role/CdkrdHuntLambdaImg0713-FnRole-iahlIwfJp0PE",
+    "FileSystemConfigs": [],
+    "FunctionName": "CdkrdHuntLambdaImg0713-Fn-Hcv0zV8RdoHY",
+    "PackageType": "Image",
+    "LoggingConfig": {
+      "LogFormat": "Text",
+      "LogGroup": "/aws/lambda/CdkrdHuntLambdaImg0713-Fn-Hcv0zV8RdoHY"
+    },
+    "RecursiveLoop": "Terminate",
+    "Arn": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdHuntLambdaImg0713-Fn-Hcv0zV8RdoHY",
+    "EphemeralStorage": {
+      "Size": 512
+    },
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      },
+      {
+        "Value": "Fn",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "CdkrdHuntLambdaImg0713",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHuntLambdaImg0713/e7f9f250-7eaf-11f1-a115-0e1cc0145a99",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ],
+    "Architectures": ["x86_64"],
+    "CodeSha256": "4b4fdd3135d850561e19abd904d2b35f452b1e17dc8702c06601c9ac022a306e"
+  },
+  "schema": {
+    "readOnly": ["Arn", "SnapStartResponse"],
+    "writeOnly": ["PublishToLatestPublished", "SnapStart"],
+    "createOnly": ["FunctionName", "PackageType", "TenancyConfig"],
+    "readOnlyPaths": [
+      "Arn",
+      "SnapStartResponse",
+      "SnapStartResponse.ApplyOn",
+      "SnapStartResponse.OptimizationStatus"
+    ],
+    "writeOnlyPaths": [
+      "Code.ImageUri",
+      "Code.S3Bucket",
+      "Code.S3Key",
+      "Code.S3ObjectStorageMode",
+      "Code.S3ObjectVersion",
+      "Code.SourceKMSKeyArn",
+      "Code.ZipFile",
+      "PublishToLatestPublished",
+      "SnapStart",
+      "SnapStart.ApplyOn"
+    ],
+    "createOnlyPaths": ["FunctionName", "PackageType", "TenancyConfig"],
+    "defaults": {},
+    "defaultPaths": {
+      "DurableConfig.RetentionPeriodInDays": 14
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": ["Environment.Variables"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Fn",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "MemorySize",
+      "actual": 128,
+      "physicalId": "CdkrdHuntLambdaImg0713-Fn-Hcv0zV8RdoHY",
+      "constructPath": "CdkrdHuntLambdaImg0713/Fn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Fn",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "TracingConfig",
+      "actual": {
+        "Mode": "PassThrough"
+      },
+      "physicalId": "CdkrdHuntLambdaImg0713-Fn-Hcv0zV8RdoHY",
+      "constructPath": "CdkrdHuntLambdaImg0713/Fn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Fn",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "Timeout",
+      "actual": 3,
+      "physicalId": "CdkrdHuntLambdaImg0713-Fn-Hcv0zV8RdoHY",
+      "constructPath": "CdkrdHuntLambdaImg0713/Fn"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "Fn",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "LoggingConfig",
+      "actual": {
+        "LogFormat": "Text",
+        "LogGroup": "/aws/lambda/CdkrdHuntLambdaImg0713-Fn-Hcv0zV8RdoHY"
+      },
+      "physicalId": "CdkrdHuntLambdaImg0713-Fn-Hcv0zV8RdoHY",
+      "constructPath": "CdkrdHuntLambdaImg0713/Fn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Fn",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "RecursiveLoop",
+      "actual": "Terminate",
+      "physicalId": "CdkrdHuntLambdaImg0713-Fn-Hcv0zV8RdoHY",
+      "constructPath": "CdkrdHuntLambdaImg0713/Fn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Fn",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "EphemeralStorage",
+      "actual": {
+        "Size": 512
+      },
+      "physicalId": "CdkrdHuntLambdaImg0713-Fn-Hcv0zV8RdoHY",
+      "constructPath": "CdkrdHuntLambdaImg0713/Fn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Fn",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "Architectures",
+      "actual": ["x86_64"],
+      "physicalId": "CdkrdHuntLambdaImg0713-Fn-Hcv0zV8RdoHY",
+      "constructPath": "CdkrdHuntLambdaImg0713/Fn"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "Fn",
+      "resourceType": "AWS::Lambda::Function",
+      "path": "CodeSha256",
+      "actual": "4b4fdd3135d850561e19abd904d2b35f452b1e17dc8702c06601c9ac022a306e",
+      "physicalId": "CdkrdHuntLambdaImg0713-Fn-Hcv0zV8RdoHY",
+      "constructPath": "CdkrdHuntLambdaImg0713/Fn"
+    }
+  ]
+}

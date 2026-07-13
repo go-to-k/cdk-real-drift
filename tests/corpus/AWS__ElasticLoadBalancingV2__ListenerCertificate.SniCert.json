@@ -1,0 +1,45 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SniCert",
+    "resourceType": "AWS::ElasticLoadBalancingV2::ListenerCertificate",
+    "physicalId": "Cdkrd-SniCe-OSCKIRJQLDAF",
+    "constructPath": "CdkrdHuntListenerCert0713/SniCert",
+    "declared": {
+      "Certificates": [
+        {
+          "CertificateArn": "arn:aws:acm:us-east-1:111111111111:certificate/81992ef5-85de-4419-8aec-1036293c4133"
+        }
+      ],
+      "ListenerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/app/CdkrdHun-Alb-n6TSDuPfX7Fd/e16caa1be9d9cba5/e55c237a5c74c07a"
+    }
+  },
+  "liveRaw": {
+    "ListenerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/app/CdkrdHun-Alb-n6TSDuPfX7Fd/e16caa1be9d9cba5/e55c237a5c74c07a",
+    "Certificates": [
+      {
+        "CertificateArn": "arn:aws:acm:us-east-1:111111111111:certificate/81992ef5-85de-4419-8aec-1036293c4133"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["ListenerArn"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ListenerArn"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
