@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-integ-revert-noop-probe2",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Barest EventSourceMapping/ApiGatewayV2 fixture probing revert-convergence. Run via verify.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module"
+}

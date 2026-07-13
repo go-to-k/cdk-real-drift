@@ -387,6 +387,16 @@ export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // (the fields default to ABSENT, so KNOWN_DEFAULTS has no source).
   'AWS::ApiGatewayV2::IntegrationResponse\0TemplateSelectionExpression',
   'AWS::ApiGatewayV2::RouteResponse\0ModelSelectionExpression',
+  // #1585: the same ApiGatewayV2 omit-ignored update family, live-proven on
+  // revert-noop-probe2 2026-07-14. UpdateApi keeps an omitted DisableExecuteApiEndpoint
+  // (flipped false->true out of band, a `remove` revert reported reverted yet
+  // `get-api` stayed true) and UpdateRoute keeps an omitted AuthorizationType (flipped
+  // NONE->AWS_IAM, `remove` reverted yet `get-route` stayed AWS_IAM). Write their
+  // KNOWN_DEFAULTS defaults (false / "NONE") back explicitly so revert converges.
+  // (Contrast AWS::Lambda::EventSourceMapping Enabled, verified same run to CONVERGE via
+  // a bare `remove` — UpdateEventSourceMapping re-enables on omit — so it needs NO entry.)
+  'AWS::ApiGatewayV2::Api\0DisableExecuteApiEndpoint',
+  'AWS::ApiGatewayV2::Route\0AuthorizationType',
   // Kinesis RetentionPeriodHours is changed only by the dedicated
   // Increase/DecreaseStreamRetentionPeriod APIs — the Cloud Control Stream update handler
   // ignores an OMITTED RetentionPeriodHours, so a bare `remove` revert of an out-of-band

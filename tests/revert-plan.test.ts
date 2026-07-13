@@ -1477,6 +1477,60 @@ describe('buildRevertPlan', () => {
     expect(plan.items[0]!.ops[0]).toMatchObject({ op: 'remove', path: '/VisibilityTimeout' });
   });
 
+  it('#1585: ApiGatewayV2 Api DisableExecuteApiEndpoint (SET-DEFAULT) -> add op writing false, not a no-op remove', () => {
+    // #1585 (live-proven on revert-noop-probe2 2026-07-14): flipped false->true out of band,
+    // `revert` planned a `remove`, reported reverted, yet `get-api` stayed true. Same
+    // ApiGatewayV2 omit-ignored update family as #1567. Write the false default (from
+    // KNOWN_DEFAULTS) explicitly.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::ApiGatewayV2::Api',
+      path: 'DisableExecuteApiEndpoint',
+      actual: true,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/DisableExecuteApiEndpoint',
+      value: false,
+      prior: true,
+    });
+  });
+
+  it('#1585: ApiGatewayV2 Route AuthorizationType (SET-DEFAULT) -> add op writing NONE, not a no-op remove', () => {
+    // #1585 (live-proven on revert-noop-probe2 2026-07-14): flipped NONE->AWS_IAM out of band,
+    // `revert` planned a `remove`, reported reverted, yet `get-route` stayed AWS_IAM.
+    // UpdateRoute ignores an omitted AuthorizationType — write the "NONE" default (from
+    // KNOWN_DEFAULTS) explicitly.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::ApiGatewayV2::Route',
+      path: 'AuthorizationType',
+      actual: 'AWS_IAM',
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/AuthorizationType',
+      value: 'NONE',
+      prior: 'AWS_IAM',
+    });
+  });
+
+  it('#1585 control: Lambda EventSourceMapping Enabled is NOT a set-default path (converges via bare remove) -> remove op', () => {
+    // The non-uniformity guard: EventSourceMapping Enabled was live-verified to converge via a
+    // bare `remove` (UpdateEventSourceMapping re-enables on omit), so it must stay OFF
+    // REVERT_SET_DEFAULT_PATHS — a future entry here would be wrong.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::Lambda::EventSourceMapping',
+      path: 'Enabled',
+      actual: false,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({ op: 'remove', path: '/Enabled' });
+  });
+
   it('RolesAnywhere Profile DurationSeconds (SET-DEFAULT) -> add op writing 3600, not a no-op remove', () => {
     // Follow-up to #619: UpdateProfile IGNORES an omitted DurationSeconds (live-proven — a
     // profile duration changed to 7200, then `revert --remove-unrecorded` reported reverted,
