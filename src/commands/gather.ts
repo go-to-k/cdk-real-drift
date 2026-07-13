@@ -432,7 +432,12 @@ export async function readAddedModel(
   cfn: CloudFormationClient,
   c: AddedChild,
   schemas: Map<string, SchemaInfo>,
-  oaiCanonicalIds: Record<string, string>
+  oaiCanonicalIds: Record<string, string>,
+  // #1551: needed to drive the type's SDK_OVERRIDES reader on the CC-failure path;
+  // optional so identity-snippet-only callers/tests stay source-compatible (without
+  // them the override attempt is skipped and the snippet degrade stands).
+  region?: string,
+  accountId?: string
 ): Promise<{ model: Record<string, unknown>; ok: boolean }> {
   // Normalize a raw live model with the (cached) child-type schema. Only re-cache a SUCCESSFUL
   // fetch: a DescribeType failure returns an EMPTY schema (#751 — schema-strip itself does not
@@ -466,6 +471,27 @@ export async function readAddedModel(
     const raw = JSON.parse(g.ResourceDescription?.Properties ?? '{}') as Record<string, unknown>;
     return normalizeWith(raw);
   } catch {
+    // #1551: a CC-gap added child (a type whose declared reads go through SDK_OVERRIDES —
+    // observed on an out-of-band AWS::Glue::Table) always lands here, degrading to the
+    // identity snippet with `modelReadFailed` — so `record` could never snapshot its real
+    // model and a LATER change to the added child stayed invisible. Try the type's
+    // override reader before degrading: `physicalId` is the enumerator's CC-composite
+    // identifier (the same form the reader consumes for declared resources), and the
+    // snippet stands in for `declared` (readers only key on identity fields from it).
+    const override = SDK_OVERRIDES[c.resourceType];
+    if (override && region !== undefined && accountId !== undefined) {
+      try {
+        const raw = await override({
+          physicalId: c.identifier,
+          declared: c.live,
+          region,
+          accountId,
+        });
+        if (raw !== undefined) return normalizeWith(raw);
+      } catch {
+        // fall through to the snippet degrade below
+      }
+    }
     return { model: c.live, ok: false };
   }
 }
@@ -1643,7 +1669,15 @@ export async function gatherFindings(
           });
           continue;
         }
-        const read = await readAddedModel(cc, cfn, c, schemas, oaiCanonicalIds);
+        const read = await readAddedModel(
+          cc,
+          cfn,
+          c,
+          schemas,
+          oaiCanonicalIds,
+          region,
+          desired.accountId
+        );
         findings.push(addedFinding(r, c, read));
       }
     } catch (e) {
