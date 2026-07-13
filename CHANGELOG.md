@@ -1,3 +1,10 @@
+## [0.18.4](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.3...v0.18.4) (2026-07-13)
+
+
+### Bug Fixes
+
+* **revert:** SQS MaximumMessageSize + Lambda Url InvokeMode revert converge ([#1583](https://github.com/go-to-k/cdk-real-drift/issues/1583)) ([#1584](https://github.com/go-to-k/cdk-real-drift/issues/1584)) ([4bf8ba4](https://github.com/go-to-k/cdk-real-drift/commit/4bf8ba4af1297d69af67a5dfc9f4322f6bcb1a2f))
+
 ## [0.18.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.2...v0.18.3) (2026-07-13)
 
 
