@@ -23,6 +23,13 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // out-of-band change away from 3600 still surfaces. Live-verified 2026-07-12 on
   // Cdkrd915MonSchedVerify (us-east-1). #1523.
   'AWS::SageMaker::DataQualityJobDefinition': { StoppingCondition: { MaxRuntimeInSeconds: 3600 } },
+  // A Config ConfigurationRecorder that declares no RecordingMode reads back the AWS default
+  // `{RecordingFrequency:"CONTINUOUS"}` (a fully-undeclared top-level object, so KNOWN_DEFAULTS
+  // not KNOWN_DEFAULT_PATHS). Equality-gated (subset-tolerant): a user who sets DAILY recording
+  // DECLARES RecordingMode (compared in the declared loop), and an out-of-band switch away from
+  // CONTINUOUS — or an added per-type RecordingModeOverride — no longer matches and surfaces.
+  // Live-verified 2026-07-13 on CdkRealDriftIntegConfigRecorder (us-west-2). #1553.
+  'AWS::Config::ConfigurationRecorder': { RecordingMode: { RecordingFrequency: 'CONTINUOUS' } },
   // A server certificate declared without a Path reads back "/" (the IAM default),
   // exactly like Role/kin above. Equality-gated, so an out-of-band UpdateServerCertificate
   // path move still surfaces. Live-confirmed (#910).

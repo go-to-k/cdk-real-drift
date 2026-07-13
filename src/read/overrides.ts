@@ -133,6 +133,11 @@ import {
   MediaConvertClient,
 } from '@aws-sdk/client-mediaconvert';
 import {
+  ConfigServiceClient,
+  DescribeConfigurationRecordersCommand,
+  DescribeDeliveryChannelsCommand,
+} from '@aws-sdk/client-config-service';
+import {
   ElasticLoadBalancingV2Client,
   GetTrustStoreCaCertificatesBundleCommand,
 } from '@aws-sdk/client-elastic-load-balancing-v2';
@@ -3213,6 +3218,84 @@ const readAcmCertificate: OverrideReader = async ({ physicalId, declared, region
   return model;
 };
 
+// AWS::Config::ConfigurationRecorder — NON_PROVISIONABLE (Cloud Control returns
+// UnsupportedActionException for its read action; #1553). An account/region SINGLETON that a
+// large fraction of accounts deploy as a compliance baseline, previously SKIPPED (falsely
+// clean). The CFn physical id (Ref) IS the recorder Name, which
+// config:DescribeConfigurationRecorders accepts via ConfigurationRecorderNames. Project the
+// CFn-declarable surface (Name/RoleARN/RecordingGroup/RecordingMode), camelCase(SDK) ->
+// PascalCase(CFn). The SDK's `arn` and `recordingScope` are NOT in the CFn resource schema →
+// dropped. An empty ExclusionByResourceTypes / RecordingModeOverrides list is the same as
+// unset → omitted so undeclared recorders carry no empty-husk noise. RecordingStrategy.UseOnly
+// is an AWS-DERIVED reflection of the recording group (folded to atDefault via a derived default
+// when undeclared; still compared when the user declares it). Read-ONLY for now (a
+// PutConfigurationRecorder revert writer is deferred). A deleted recorder → empty list →
+// ResourceGoneError → the router maps it to `deleted`.
+const readConfigConfigurationRecorder: OverrideReader = async ({ physicalId, region }) => {
+  const name = str(physicalId);
+  if (!name) return undefined;
+  const c = new ConfigServiceClient({ region, ...READ_RETRY });
+  const r = (
+    await c.send(new DescribeConfigurationRecordersCommand({ ConfigurationRecorderNames: [name] }))
+  ).ConfigurationRecorders?.[0];
+  if (!r) throw new ResourceGoneError(`Config ConfigurationRecorder ${name} absent`);
+  const model: Record<string, unknown> = {};
+  if (str(r.name)) model.Name = r.name;
+  if (str(r.roleARN)) model.RoleARN = r.roleARN;
+  if (r.recordingGroup) {
+    const g = r.recordingGroup;
+    const rg: Record<string, unknown> = {};
+    if (typeof g.allSupported === 'boolean') rg.AllSupported = g.allSupported;
+    if (typeof g.includeGlobalResourceTypes === 'boolean')
+      rg.IncludeGlobalResourceTypes = g.includeGlobalResourceTypes;
+    if (Array.isArray(g.resourceTypes)) rg.ResourceTypes = g.resourceTypes;
+    const excl = g.exclusionByResourceTypes?.resourceTypes;
+    if (Array.isArray(excl) && excl.length > 0)
+      rg.ExclusionByResourceTypes = { ResourceTypes: excl };
+    if (str(g.recordingStrategy?.useOnly))
+      rg.RecordingStrategy = { UseOnly: g.recordingStrategy?.useOnly };
+    model.RecordingGroup = rg;
+  }
+  if (r.recordingMode) {
+    const m = r.recordingMode;
+    const rm: Record<string, unknown> = {};
+    if (str(m.recordingFrequency)) rm.RecordingFrequency = m.recordingFrequency;
+    if (Array.isArray(m.recordingModeOverrides) && m.recordingModeOverrides.length > 0)
+      rm.RecordingModeOverrides = m.recordingModeOverrides.map((o) => ({
+        ResourceTypes: o.resourceTypes,
+        RecordingFrequency: o.recordingFrequency,
+        ...(str(o.description) ? { Description: o.description } : {}),
+      }));
+    if (Object.keys(rm).length > 0) model.RecordingMode = rm;
+  }
+  return model;
+};
+
+// AWS::Config::DeliveryChannel — NON_PROVISIONABLE (Cloud Control UnsupportedActionException;
+// #1553). Account/region SINGLETON paired with the recorder, previously SKIPPED. The CFn
+// physical id (Ref) IS the channel Name, which config:DescribeDeliveryChannels accepts via
+// DeliveryChannelNames. Project the CFn-declarable surface (Name/S3BucketName/S3KeyPrefix/
+// S3KmsKeyArn/SnsTopicARN/ConfigSnapshotDeliveryProperties), camelCase → PascalCase; absent
+// optional fields are omitted. Read-ONLY. A deleted channel → empty list → ResourceGoneError →
+// `deleted`.
+const readConfigDeliveryChannel: OverrideReader = async ({ physicalId, region }) => {
+  const name = str(physicalId);
+  if (!name) return undefined;
+  const c = new ConfigServiceClient({ region, ...READ_RETRY });
+  const d = (await c.send(new DescribeDeliveryChannelsCommand({ DeliveryChannelNames: [name] })))
+    .DeliveryChannels?.[0];
+  if (!d) throw new ResourceGoneError(`Config DeliveryChannel ${name} absent`);
+  const model: Record<string, unknown> = {};
+  if (str(d.name)) model.Name = d.name;
+  if (str(d.s3BucketName)) model.S3BucketName = d.s3BucketName;
+  if (str(d.s3KeyPrefix)) model.S3KeyPrefix = d.s3KeyPrefix;
+  if (str(d.s3KmsKeyArn)) model.S3KmsKeyArn = d.s3KmsKeyArn;
+  if (str(d.snsTopicARN)) model.SnsTopicARN = d.snsTopicARN;
+  const freq = d.configSnapshotDeliveryProperties?.deliveryFrequency;
+  if (str(freq)) model.ConfigSnapshotDeliveryProperties = { DeliveryFrequency: freq };
+  return model;
+};
+
 export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::CertificateManager::Certificate': readAcmCertificate,
   'AWS::SES::ReceiptRuleSet': readSesReceiptRuleSet,
@@ -3265,6 +3348,8 @@ export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::SageMaker::MonitoringSchedule': readSageMakerMonitoringSchedule,
   'AWS::Logs::MetricFilter': readMetricFilter,
   'AWS::Scheduler::Schedule': readSchedulerSchedule,
+  'AWS::Config::ConfigurationRecorder': readConfigConfigurationRecorder,
+  'AWS::Config::DeliveryChannel': readConfigDeliveryChannel,
 };
 
 // ---------------------------------------------------------------------------
