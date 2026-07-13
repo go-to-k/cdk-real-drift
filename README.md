@@ -1184,6 +1184,10 @@ Control cannot sub-path patch it),
 `servicediscovery:UpdateService` (reverts an `AWS::ServiceDiscovery::Service`'s
 `Description` / `DnsConfig.DnsRecords` / `HealthCheckConfig` — a DNS-namespace
 service; an API-only (HTTP) namespace service cannot be updated),
+`sagemaker:UpdateMonitoringSchedule` (reverts an
+`AWS::SageMaker::MonitoringSchedule`'s `MonitoringScheduleConfig` — e.g. an
+out-of-band `ScheduleExpression` cron change; the API re-PUTs the whole config,
+which cdkrd reconstructs from the live read),
 `cognito-sync:SetCognitoEvents` (reverts an `AWS::Cognito::IdentityPool`'s
 writeOnly `CognitoEvents`),
 `kinesisvideo:UpdateDataRetention` / `kinesisvideo:UpdateSignalingChannel` /
