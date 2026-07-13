@@ -596,7 +596,25 @@ describe('noise suppressors', () => {
       'ExtendedS3DestinationConfiguration.EncryptionConfiguration': {
         NoEncryptionConfig: 'NoEncryption',
       },
+      'ExtendedS3DestinationConfiguration.BufferingHints': {
+        IntervalInSeconds: 300,
+        SizeInMBs: 5,
+      },
     });
+  });
+
+  it('#1556 Firehose undeclared-default folds: DeliveryStreamType + BufferingHints', () => {
+    // A minimal DeliveryStream declaring only the two required nested props (BucketARN +
+    // RoleARN) and NO DeliveryStreamType reads back the service defaults DirectPut and the
+    // 300 s / 5 MB buffering hints — both must fold, tier-1 equality-gated constants.
+    expect(KNOWN_DEFAULTS['AWS::KinesisFirehose::DeliveryStream']).toEqual({
+      DeliveryStreamType: 'DirectPut',
+    });
+    expect(
+      KNOWN_DEFAULT_PATHS['AWS::KinesisFirehose::DeliveryStream'][
+        'ExtendedS3DestinationConfiguration.BufferingHints'
+      ]
+    ).toEqual({ IntervalInSeconds: 300, SizeInMBs: 5 });
   });
 
   it('DocDB + VolumeAttachment constant defaults (offline measure-noise sweep)', () => {

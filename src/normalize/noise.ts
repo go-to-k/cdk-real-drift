@@ -16,6 +16,12 @@ import { TAG_PROPERTY_NAMES } from './cc-api-strip.js';
 // entries were all OBSERVED on real default-config stacks during dogfooding.
 export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::IAM::Role': { MaxSessionDuration: 3600, Path: '/', Description: '' },
+  // A DeliveryStream that declares no source configuration reads back DeliveryStreamType
+  // "DirectPut" (the service default). CloudFormation requires declaring the type whenever a
+  // Kinesis/MSK source configuration is present, so the undeclared case is always DirectPut —
+  // a tier-1 constant. Equality-gated, so an out-of-band type change still surfaces. Observed
+  // live (hunt 2026-07-13, #1556).
+  'AWS::KinesisFirehose::DeliveryStream': { DeliveryStreamType: 'DirectPut' },
   // A DataQuality monitoring job definition that declares no StoppingCondition reads back the
   // AWS default `{MaxRuntimeInSeconds:3600}` (a fully-undeclared top-level object, so
   // KNOWN_DEFAULTS not KNOWN_DEFAULT_PATHS). Equality-gated: a user who caps the runtime to a
@@ -2202,6 +2208,13 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     'ExtendedS3DestinationConfiguration.CompressionFormat': 'UNCOMPRESSED',
     'ExtendedS3DestinationConfiguration.EncryptionConfiguration': {
       NoEncryptionConfig: 'NoEncryption',
+    },
+    // A destination declaring no BufferingHints reads back the documented Firehose
+    // buffering defaults: 300 s / 5 MB. Equality-gated, so an out-of-band buffering
+    // change still surfaces. Observed live (hunt 2026-07-13, #1556).
+    'ExtendedS3DestinationConfiguration.BufferingHints': {
+      IntervalInSeconds: 300,
+      SizeInMBs: 5,
     },
   },
   'AWS::Athena::WorkGroup': {
