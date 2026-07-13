@@ -1,3 +1,10 @@
+## [0.16.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.16.2...v0.16.3) (2026-07-13)
+
+
+### Bug Fixes
+
+* **noise:** fold first-run FPs for ELBv2 Listener SslPolicy + Glue Crawler policies + IoT TopicRule SQL version ([#1559](https://github.com/go-to-k/cdk-real-drift/issues/1559), [#1562](https://github.com/go-to-k/cdk-real-drift/issues/1562)) ([#1563](https://github.com/go-to-k/cdk-real-drift/issues/1563)) ([e18bae7](https://github.com/go-to-k/cdk-real-drift/commit/e18bae718978d809d9e91c0a1feddcc75087ae51))
+
 ## [0.16.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.16.1...v0.16.2) (2026-07-13)
 
 
