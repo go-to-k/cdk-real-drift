@@ -245,6 +245,20 @@ resource_gone() {
           { [ "$nst" = "deleted" ] || [ "$nst" = "deleting" ] || [ "$nst" = "None" ]; } && return 0
           return 1
           ;;
+        *:transit-gateway/tgw-*)
+          # Same terminal-state lag for a deleted TRANSIT GATEWAY itself (2026-07-13
+          # follow-up: a TGW orphaned by an attachment-race delstack, then deleted, stayed
+          # visible as State "deleted" + in the tag index). The `-attachment` /
+          # `-route-table` ARNs use the segments `transit-gateway-attachment/` /
+          # `transit-gateway-route-table/`, which this `transit-gateway/` glob never
+          # matches, so their arms below stay reachable.
+          id="${arn##*/}"
+          local tgst
+          tgst="$(aws ec2 describe-transit-gateways --transit-gateway-ids "$id" --region "$REGION" \
+            --query 'TransitGateways[0].State' --output text 2>/dev/null)" || return 0
+          { [ "$tgst" = "deleted" ] || [ "$tgst" = "deleting" ] || [ "$tgst" = "None" ]; } && return 0
+          return 1
+          ;;
         *:transit-gateway-attachment/tgw-attach-*)
           # Same terminal-state lag for a deleted TGW attachment (2026-07-13 hunt).
           id="${arn##*/}"
