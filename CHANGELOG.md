@@ -1,3 +1,10 @@
+## [0.14.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.14.0...v0.14.1) (2026-07-13)
+
+
+### Bug Fixes
+
+* **read:** read an added CC-gap child's full model via its SDK override ([#1551](https://github.com/go-to-k/cdk-real-drift/issues/1551)) ([#1552](https://github.com/go-to-k/cdk-real-drift/issues/1552)) ([a4b8c2c](https://github.com/go-to-k/cdk-real-drift/commit/a4b8c2cc3bc77105c1077684751754e7227c0ea2))
+
 # [0.14.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.13.13...v0.14.0) (2026-07-13)
 
 
