@@ -1,0 +1,159 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntSchedule",
+    "resourceType": "AWS::SageMaker::MonitoringSchedule",
+    "physicalId": "arn:aws:sagemaker:us-east-1:111111111111:monitoring-schedule/cdkrd-hunt-monsched-0713",
+    "constructPath": "CdkrdHuntSmMonSched0713/Schedule",
+    "declared": {
+      "MonitoringScheduleConfig": {
+        "MonitoringJobDefinition": {
+          "MonitoringAppSpecification": {
+            "ImageUri": "156813124566.dkr.ecr.us-east-1.amazonaws.com/sagemaker-model-monitor-analyzer"
+          },
+          "MonitoringInputs": [
+            {
+              "BatchTransformInput": {
+                "DataCapturedDestinationS3Uri": "s3://cdkrdhuntsmmonsched0713-data666c94c7-cfeuxltvufjg/capture",
+                "DatasetFormat": {
+                  "Csv": {
+                    "Header": false
+                  }
+                },
+                "LocalPath": "/opt/ml/processing/input"
+              }
+            }
+          ],
+          "MonitoringOutputConfig": {
+            "MonitoringOutputs": [
+              {
+                "S3Output": {
+                  "LocalPath": "/opt/ml/processing/output",
+                  "S3Uri": "s3://cdkrdhuntsmmonsched0713-data666c94c7-cfeuxltvufjg/out"
+                }
+              }
+            ]
+          },
+          "MonitoringResources": {
+            "ClusterConfig": {
+              "InstanceCount": 1,
+              "InstanceType": "ml.m5.large",
+              "VolumeSizeInGB": 20
+            }
+          },
+          "RoleArn": "arn:aws:iam::111111111111:role/CdkrdHuntSmMonSched0713-MonitorRole437F0C3A-Kd8B3RQqKpJa"
+        },
+        "ScheduleConfig": {
+          "ScheduleExpression": "cron(0 23 ? * * *)"
+        }
+      },
+      "MonitoringScheduleName": "cdkrd-hunt-monsched-0713",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "MonitoringScheduleName": "cdkrd-hunt-monsched-0713",
+    "MonitoringScheduleConfig": {
+      "ScheduleConfig": {
+        "ScheduleExpression": "cron(0 23 ? * * *)"
+      },
+      "MonitoringJobDefinition": {
+        "MonitoringInputs": [
+          {
+            "BatchTransformInput": {
+              "DataCapturedDestinationS3Uri": "s3://cdkrdhuntsmmonsched0713-data666c94c7-cfeuxltvufjg/capture",
+              "DatasetFormat": {
+                "Csv": {
+                  "Header": false
+                }
+              },
+              "LocalPath": "/opt/ml/processing/input",
+              "S3InputMode": "File",
+              "S3DataDistributionType": "FullyReplicated"
+            }
+          }
+        ],
+        "MonitoringOutputConfig": {
+          "MonitoringOutputs": [
+            {
+              "S3Output": {
+                "S3Uri": "s3://cdkrdhuntsmmonsched0713-data666c94c7-cfeuxltvufjg/out",
+                "LocalPath": "/opt/ml/processing/output",
+                "S3UploadMode": "EndOfJob"
+              }
+            }
+          ]
+        },
+        "MonitoringResources": {
+          "ClusterConfig": {
+            "InstanceCount": 1,
+            "InstanceType": "ml.m5.large",
+            "VolumeSizeInGB": 20
+          }
+        },
+        "MonitoringAppSpecification": {
+          "ImageUri": "156813124566.dkr.ecr.us-east-1.amazonaws.com/sagemaker-model-monitor-analyzer"
+        },
+        "RoleArn": "arn:aws:iam::111111111111:role/CdkrdHuntSmMonSched0713-MonitorRole437F0C3A-Kd8B3RQqKpJa",
+        "StoppingCondition": {
+          "MaxRuntimeInSeconds": 3600
+        }
+      },
+      "MonitoringType": "DataQuality"
+    },
+    "Tags": [
+      {
+        "Key": "cdkrd:ephemeral",
+        "Value": "1"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["CreationTime", "LastModifiedTime", "MonitoringScheduleArn"],
+    "writeOnly": [],
+    "createOnly": ["MonitoringScheduleName"],
+    "readOnlyPaths": ["CreationTime", "LastModifiedTime", "MonitoringScheduleArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["MonitoringScheduleName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": ["MonitoringScheduleConfig.MonitoringJobDefinition.Environment"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSchedule",
+      "resourceType": "AWS::SageMaker::MonitoringSchedule",
+      "path": "MonitoringScheduleConfig.MonitoringJobDefinition.StoppingCondition",
+      "actual": {
+        "MaxRuntimeInSeconds": 3600
+      },
+      "nested": true,
+      "physicalId": "arn:aws:sagemaker:us-east-1:111111111111:monitoring-schedule/cdkrd-hunt-monsched-0713",
+      "constructPath": "CdkrdHuntSmMonSched0713/Schedule"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntSchedule",
+      "resourceType": "AWS::SageMaker::MonitoringSchedule",
+      "path": "MonitoringScheduleConfig.MonitoringType",
+      "actual": "DataQuality",
+      "nested": true,
+      "physicalId": "arn:aws:sagemaker:us-east-1:111111111111:monitoring-schedule/cdkrd-hunt-monsched-0713",
+      "constructPath": "CdkrdHuntSmMonSched0713/Schedule"
+    }
+  ]
+}
