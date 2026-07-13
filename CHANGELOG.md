@@ -1,3 +1,10 @@
+## [0.18.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.0...v0.18.1) (2026-07-13)
+
+
+### Bug Fixes
+
+* **noise:** fold SageMaker MonitoringSchedule inline-definition defaults (MonitoringType + StoppingCondition) ([#1578](https://github.com/go-to-k/cdk-real-drift/issues/1578)) ([0cc409b](https://github.com/go-to-k/cdk-real-drift/commit/0cc409b76ade71815ce03f6fcf09cb554f24a081))
+
 # [0.18.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.17.3...v0.18.0) (2026-07-13)
 
 
