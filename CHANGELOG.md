@@ -1,3 +1,10 @@
+# [0.17.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.16.3...v0.17.0) (2026-07-13)
+
+
+### Features
+
+* **read:** SDK override reader for AWS::ElasticLoadBalancingV2::ListenerCertificate ([#1560](https://github.com/go-to-k/cdk-real-drift/issues/1560)) ([#1565](https://github.com/go-to-k/cdk-real-drift/issues/1565)) ([8f7d1be](https://github.com/go-to-k/cdk-real-drift/commit/8f7d1be6e474f7c5d92b8ef197c15c3010b64810))
+
 ## [0.16.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.16.2...v0.16.3) (2026-07-13)
 
 
