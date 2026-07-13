@@ -1,0 +1,152 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (hunt 2026-07-13, #1556): fresh-deploy minimal AWS::KinesisFirehose::DeliveryStream declaring ONLY the two required nested props (BucketARN + RoleARN inside S3DestinationConfiguration) and NO DeliveryStreamType. The undeclared-default first-run path no other fixture exercised: live reads back DeliveryStreamType=\"DirectPut\" (service default) and ExtendedS3DestinationConfiguration.BufferingHints={300,5} (documented Firehose buffering defaults), both of which must fold atDefault. A change in this case's expected means the normalize/classify semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "HuntStream",
+    "resourceType": "AWS::KinesisFirehose::DeliveryStream",
+    "physicalId": "CdkrdHunt0713cFirehoseMin-HuntStream-abcDEFghiJKL",
+    "constructPath": "CdkrdHunt0713cFirehoseMin/HuntStream",
+    "declared": {
+      "S3DestinationConfiguration": {
+        "BucketARN": "arn:aws:s3:::cdkrdhunt0713cfirehosemin-huntbucket-uznwhjxebzxy",
+        "RoleARN": "arn:aws:iam::111111111111:role/CdkrdHunt0713cFirehoseMin-HuntFhRole-pTvsbEFAnRrY"
+      }
+    }
+  },
+  "liveRaw": {
+    "DeliveryStreamType": "DirectPut",
+    "DeliveryStreamName": "CdkrdHunt0713cFirehoseMin-HuntStream-abcDEFghiJKL",
+    "Arn": "arn:aws:firehose:us-east-1:111111111111:deliverystream/CdkrdHunt0713cFirehoseMin-HuntStream-abcDEFghiJKL",
+    "ExtendedS3DestinationConfiguration": {
+      "BucketARN": "arn:aws:s3:::cdkrdhunt0713cfirehosemin-huntbucket-uznwhjxebzxy",
+      "BufferingHints": {
+        "IntervalInSeconds": 300,
+        "SizeInMBs": 5
+      },
+      "CompressionFormat": "UNCOMPRESSED",
+      "EncryptionConfiguration": {
+        "NoEncryptionConfig": "NoEncryption"
+      },
+      "CloudWatchLoggingOptions": {
+        "Enabled": false
+      },
+      "RoleARN": "arn:aws:iam::111111111111:role/CdkrdHunt0713cFirehoseMin-HuntFhRole-pTvsbEFAnRrY",
+      "S3BackupMode": "Disabled"
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [
+      "AmazonOpenSearchServerlessDestinationConfiguration",
+      "AmazonopensearchserviceDestinationConfiguration",
+      "DatabaseSourceConfiguration",
+      "ElasticsearchDestinationConfiguration",
+      "IcebergDestinationConfiguration",
+      "KinesisStreamSourceConfiguration",
+      "MSKSourceConfiguration",
+      "S3DestinationConfiguration",
+      "SnowflakeDestinationConfiguration"
+    ],
+    "createOnly": [
+      "DatabaseSourceConfiguration",
+      "DeliveryStreamName",
+      "DeliveryStreamType",
+      "DirectPutSourceConfiguration",
+      "KinesisStreamSourceConfiguration",
+      "MSKSourceConfiguration"
+    ],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [
+      "AmazonOpenSearchServerlessDestinationConfiguration",
+      "AmazonopensearchserviceDestinationConfiguration",
+      "DatabaseSourceConfiguration",
+      "DirectPutSourceConfiguration.ThroughputHintInMBs",
+      "ElasticsearchDestinationConfiguration",
+      "ElasticsearchDestinationConfiguration.CloudWatchLoggingOptions.Enabled",
+      "ExtendedS3DestinationConfiguration.CustomTimeZone",
+      "ExtendedS3DestinationConfiguration.FileExtension",
+      "S3DestinationConfiguration",
+      "SnowflakeDestinationConfiguration",
+      "SnowflakeDestinationConfiguration.SnowflakeVpcConfiguration"
+    ],
+    "createOnlyPaths": [
+      "DatabaseSourceConfiguration",
+      "DeliveryStreamName",
+      "DeliveryStreamType",
+      "DirectPutSourceConfiguration",
+      "KinesisStreamSourceConfiguration",
+      "MSKSourceConfiguration"
+    ],
+    "defaults": {}
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntStream",
+      "resourceType": "AWS::KinesisFirehose::DeliveryStream",
+      "path": "DeliveryStreamType",
+      "actual": "DirectPut",
+      "physicalId": "CdkrdHunt0713cFirehoseMin-HuntStream-abcDEFghiJKL",
+      "constructPath": "CdkrdHunt0713cFirehoseMin/HuntStream"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntStream",
+      "resourceType": "AWS::KinesisFirehose::DeliveryStream",
+      "path": "ExtendedS3DestinationConfiguration.BufferingHints",
+      "actual": {
+        "IntervalInSeconds": 300,
+        "SizeInMBs": 5
+      },
+      "nested": true,
+      "physicalId": "CdkrdHunt0713cFirehoseMin-HuntStream-abcDEFghiJKL",
+      "constructPath": "CdkrdHunt0713cFirehoseMin/HuntStream"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntStream",
+      "resourceType": "AWS::KinesisFirehose::DeliveryStream",
+      "path": "ExtendedS3DestinationConfiguration.CompressionFormat",
+      "actual": "UNCOMPRESSED",
+      "nested": true,
+      "physicalId": "CdkrdHunt0713cFirehoseMin-HuntStream-abcDEFghiJKL",
+      "constructPath": "CdkrdHunt0713cFirehoseMin/HuntStream"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntStream",
+      "resourceType": "AWS::KinesisFirehose::DeliveryStream",
+      "path": "ExtendedS3DestinationConfiguration.EncryptionConfiguration",
+      "actual": {
+        "NoEncryptionConfig": "NoEncryption"
+      },
+      "nested": true,
+      "physicalId": "CdkrdHunt0713cFirehoseMin-HuntStream-abcDEFghiJKL",
+      "constructPath": "CdkrdHunt0713cFirehoseMin/HuntStream"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntStream",
+      "resourceType": "AWS::KinesisFirehose::DeliveryStream",
+      "path": "ExtendedS3DestinationConfiguration.S3BackupMode",
+      "actual": "Disabled",
+      "nested": true,
+      "physicalId": "CdkrdHunt0713cFirehoseMin-HuntStream-abcDEFghiJKL",
+      "constructPath": "CdkrdHunt0713cFirehoseMin/HuntStream"
+    },
+    {
+      "tier": "readGap",
+      "logicalId": "HuntStream",
+      "resourceType": "AWS::KinesisFirehose::DeliveryStream",
+      "path": "S3DestinationConfiguration",
+      "note": "write-only — cannot be read back",
+      "physicalId": "CdkrdHunt0713cFirehoseMin-HuntStream-abcDEFghiJKL",
+      "constructPath": "CdkrdHunt0713cFirehoseMin/HuntStream"
+    }
+  ]
+}
