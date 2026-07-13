@@ -305,7 +305,8 @@
       "path": "LaunchTemplate",
       "note": "write-only — cannot be read back",
       "physicalId": "i-0b7c750351d0a5aa6",
-      "constructPath": "CdkRealDriftIntegEc2Rich/Host"
+      "constructPath": "CdkRealDriftIntegEc2Rich/Host",
+      "writeOnly": true
     },
     {
       "tier": "unresolved",

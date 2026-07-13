@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-integ-rds-appeared-writeonly",
+  "private": true,
+  "version": "0.0.0",
+  "description": "#1582 regression: a resource declaring a write-only property must still detect an appeared-since-record undeclared change. Run via verify.sh + verify-detect.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module"
+}

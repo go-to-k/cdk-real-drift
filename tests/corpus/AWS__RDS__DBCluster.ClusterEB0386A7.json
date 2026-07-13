@@ -186,7 +186,8 @@
       "path": "MasterUserPassword",
       "note": "write-only — cannot be read back",
       "physicalId": "cdkrealdriftintegaurorarich-clustereb0386a7-o3epflljsjiq",
-      "constructPath": "CdkRealDriftIntegAuroraRich/Cluster"
+      "constructPath": "CdkRealDriftIntegAuroraRich/Cluster",
+      "writeOnly": true
     },
     {
       "tier": "unresolved",

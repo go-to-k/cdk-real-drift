@@ -178,7 +178,8 @@
       "path": "CacheSubnetGroupName",
       "note": "write-only — cannot be read back",
       "physicalId": "cdkrd-ec-rich",
-      "constructPath": "CdkRealDriftIntegElastiCacheRich/ReplicationGroup"
+      "constructPath": "CdkRealDriftIntegElastiCacheRich/ReplicationGroup",
+      "writeOnly": true
     },
     {
       "tier": "readGap",
@@ -187,7 +188,8 @@
       "path": "SecurityGroupIds",
       "note": "write-only — cannot be read back",
       "physicalId": "cdkrd-ec-rich",
-      "constructPath": "CdkRealDriftIntegElastiCacheRich/ReplicationGroup"
+      "constructPath": "CdkRealDriftIntegElastiCacheRich/ReplicationGroup",
+      "writeOnly": true
     },
     {
       "tier": "atDefault",

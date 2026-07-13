@@ -72,6 +72,13 @@ export interface Finding {
   // "changed since record" off the degraded snippet (it suppresses a recorded one until
   // a clean read, like a transiently-skipped resource). Self-heals on the next check.
   modelReadFailed?: boolean;
+  // readGap tier only (#1582): the readGap is a DECLARED WRITE-ONLY property (expectedly
+  // unreadable), NOT a genuine coverage gap in the readable model. Unlike a real readGap it
+  // must NOT disqualify the resource from `completeResources` — the undeclared readable model
+  // is still fully snapshot, so "appeared since record" detection stays enabled. Without this,
+  // any resource declaring a write-only prop (RDS MasterUserPassword, secrets/tokens) can never
+  // detect an out-of-band appeared-since-record undeclared value (a false negative).
+  writeOnly?: boolean;
   // declared tier only (R111): set to 'unresolved' on an IAM Role `Policies` finding
   // when the role's sibling AWS::IAM::Policy names could NOT be resolved, so classify
   // left the sibling-managed (DefaultPolicy) entries in the live array. The revert plan

@@ -146,7 +146,8 @@
       "path": "S3DestinationConfiguration",
       "note": "write-only — cannot be read back",
       "physicalId": "CdkrdHunt0713cFirehoseMin-HuntStream-abcDEFghiJKL",
-      "constructPath": "CdkrdHunt0713cFirehoseMin/HuntStream"
+      "constructPath": "CdkrdHunt0713cFirehoseMin/HuntStream",
+      "writeOnly": true
     }
   ]
 }

@@ -64,7 +64,8 @@
       "path": "ExtensionIdentifier",
       "note": "write-only — cannot be read back",
       "physicalId": "qza1zzu",
-      "constructPath": "CdkRealDriftHunt0708DVpMisc/HuntExtAssoc"
+      "constructPath": "CdkRealDriftHunt0708DVpMisc/HuntExtAssoc",
+      "writeOnly": true
     },
     {
       "tier": "readGap",
@@ -73,7 +74,8 @@
       "path": "ResourceIdentifier",
       "note": "write-only — cannot be read back",
       "physicalId": "qza1zzu",
-      "constructPath": "CdkRealDriftHunt0708DVpMisc/HuntExtAssoc"
+      "constructPath": "CdkRealDriftHunt0708DVpMisc/HuntExtAssoc",
+      "writeOnly": true
     },
     {
       "tier": "atDefault",

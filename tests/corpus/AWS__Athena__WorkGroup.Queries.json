@@ -71,7 +71,8 @@
       "path": "RecursiveDeleteOption",
       "note": "write-only — cannot be read back",
       "physicalId": "cdkrd-harvest",
-      "constructPath": "CdkrdIntegHarvest/Queries"
+      "constructPath": "CdkrdIntegHarvest/Queries",
+      "writeOnly": true
     },
     {
       "tier": "atDefault",

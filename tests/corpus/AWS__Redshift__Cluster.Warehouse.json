@@ -35,7 +35,8 @@
       "resourceType": "AWS::Redshift::Cluster",
       "path": "MasterUserPassword",
       "note": "write-only — cannot be read back",
-      "physicalId": "corpus-warehouse"
+      "physicalId": "corpus-warehouse",
+      "writeOnly": true
     },
     {
       "tier": "readGap",

@@ -842,6 +842,30 @@ describe('baseline', () => {
       expect(computeCompleteResources(['Gap'], findings, [])).toEqual([]);
     });
 
+    it('#1582: a WRITE-ONLY readGap does NOT block completeness; a genuine one still does', () => {
+      // A declared write-only property (RDS MasterUserPassword, secrets/tokens/keys) surfaces
+      // as a readGap flagged `writeOnly` — it is EXPECTEDLY unreadable and does NOT mean the
+      // readable undeclared model was unread, so the resource stays complete and "appeared
+      // since record" detection remains enabled for it. Without this a resource declaring any
+      // write-only prop could never detect an out-of-band appeared-since-record undeclared
+      // value (a false negative). A GENUINE readGap (no `writeOnly`) still blocks.
+      const findings: Finding[] = [
+        {
+          tier: 'readGap',
+          logicalId: 'WriteOnly',
+          resourceType: 'AWS::RDS::DBInstance',
+          path: 'MasterUserPassword',
+          note: 'write-only — cannot be read back',
+          writeOnly: true,
+        },
+        { tier: 'readGap', logicalId: 'Genuine', resourceType: 'T', path: 'P' },
+      ];
+      // WriteOnly stays complete (its readable model was fully snapshot); Genuine is excluded.
+      expect(computeCompleteResources(['WriteOnly', 'Genuine'], findings, [])).toEqual([
+        'WriteOnly',
+      ]);
+    });
+
     it('a resource with one of two values recorded is NOT complete', () => {
       const findings = [undeclared('A', 'P', 1), undeclared('A', 'Q', 2)];
       const recorded = [{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: 1 }];

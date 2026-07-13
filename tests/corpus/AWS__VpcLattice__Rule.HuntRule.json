@@ -103,7 +103,8 @@
       "path": "ListenerIdentifier",
       "note": "write-only — cannot be read back",
       "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:service/svc-07215226a6b16ea1b/listener/listener-0881ae4b2367b2037/rule/rule-0262d24c9a9335dd9",
-      "constructPath": "CdkRealDriftIntegLatticeListener/HuntRule"
+      "constructPath": "CdkRealDriftIntegLatticeListener/HuntRule",
+      "writeOnly": true
     },
     {
       "tier": "readGap",
@@ -112,7 +113,8 @@
       "path": "ServiceIdentifier",
       "note": "write-only — cannot be read back",
       "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:service/svc-07215226a6b16ea1b/listener/listener-0881ae4b2367b2037/rule/rule-0262d24c9a9335dd9",
-      "constructPath": "CdkRealDriftIntegLatticeListener/HuntRule"
+      "constructPath": "CdkRealDriftIntegLatticeListener/HuntRule",
+      "writeOnly": true
     }
   ]
 }

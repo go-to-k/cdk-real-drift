@@ -58,7 +58,8 @@
       "path": "ResourceArn",
       "note": "write-only — cannot be read back",
       "physicalId": "cdkrd-hunt-cf-access",
-      "constructPath": "CdkRealDriftIntegCfKvsLogsDel/DeliverySource"
+      "constructPath": "CdkRealDriftIntegCfKvsLogsDel/DeliverySource",
+      "writeOnly": true
     }
   ]
 }

@@ -247,7 +247,8 @@
       "path": "NumNodeGroups",
       "note": "write-only — cannot be read back",
       "physicalId": "cdh1logc9nwhco4c",
-      "constructPath": "CdkRealDriftIntegElastiCacheCmeMin/HuntCmeRg"
+      "constructPath": "CdkRealDriftIntegElastiCacheCmeMin/HuntCmeRg",
+      "writeOnly": true
     },
     {
       "tier": "atDefault",

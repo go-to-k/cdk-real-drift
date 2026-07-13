@@ -122,7 +122,8 @@
       "path": "MasterUserPassword",
       "note": "write-only — cannot be read back",
       "physicalId": "cluster-htpccw5gbpx7",
-      "constructPath": "CdkRealDriftIntegRedshiftProbe/Cluster"
+      "constructPath": "CdkRealDriftIntegRedshiftProbe/Cluster",
+      "writeOnly": true
     },
     {
       "tier": "atDefault",

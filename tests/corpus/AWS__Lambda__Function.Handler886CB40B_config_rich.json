@@ -139,7 +139,8 @@
       "path": "SnapStart",
       "note": "write-only — cannot be read back",
       "physicalId": "CdkRealDriftIntegLambdaConfigRich-Handler886CB40B-ngKYSKhJ4Uyj",
-      "constructPath": "CdkRealDriftIntegLambdaConfigRich/Handler"
+      "constructPath": "CdkRealDriftIntegLambdaConfigRich/Handler",
+      "writeOnly": true
     },
     {
       "tier": "atDefault",

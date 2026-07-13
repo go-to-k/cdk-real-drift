@@ -83,7 +83,8 @@
       "path": "Definition",
       "note": "write-only — cannot be read back",
       "physicalId": "arn:aws:states:ap-northeast-1:111111111111:stateMachine:cdkrd-fp-def-object",
-      "constructPath": "CdkRealDriftIntegSfnDefinitionObject/Machine"
+      "constructPath": "CdkRealDriftIntegSfnDefinitionObject/Machine",
+      "writeOnly": true
     },
     {
       "tier": "atDefault",

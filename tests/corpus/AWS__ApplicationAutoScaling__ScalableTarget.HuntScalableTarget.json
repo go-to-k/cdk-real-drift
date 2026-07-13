@@ -94,7 +94,8 @@
       "path": "RoleARN",
       "note": "write-only — cannot be read back",
       "physicalId": "table/CdkrdHunt0713FormatProbes-HuntTable71D348F5-1XKF7YYNYVE2I|dynamodb:table:ReadCapacityUnits|dynamodb",
-      "constructPath": "CdkrdHunt0713FormatProbes/HuntScalableTarget"
+      "constructPath": "CdkrdHunt0713FormatProbes/HuntScalableTarget",
+      "writeOnly": true
     }
   ]
 }

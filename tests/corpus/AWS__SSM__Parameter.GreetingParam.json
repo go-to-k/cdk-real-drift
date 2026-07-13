@@ -45,7 +45,8 @@
       "path": "Description",
       "note": "write-only — cannot be read back",
       "physicalId": "/app/greeting",
-      "constructPath": "Stack/GreetingParam"
+      "constructPath": "Stack/GreetingParam",
+      "writeOnly": true
     },
     {
       "tier": "readGap",

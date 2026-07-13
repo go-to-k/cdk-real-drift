@@ -104,7 +104,8 @@
       "path": "SourceParameters",
       "note": "write-only — cannot be read back",
       "physicalId": "cdkrd-pipe-rich",
-      "constructPath": "CdkRealDriftIntegPipesRich/Pipe"
+      "constructPath": "CdkRealDriftIntegPipesRich/Pipe",
+      "writeOnly": true
     }
   ]
 }

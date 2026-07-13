@@ -85,7 +85,8 @@
       "path": "MessageAction",
       "note": "write-only — cannot be read back",
       "physicalId": "cdkrd-readgap-user",
-      "constructPath": "CdkRealDriftIntegCognitoUserPoolUserRich/User"
+      "constructPath": "CdkRealDriftIntegCognitoUserPoolUserRich/User",
+      "writeOnly": true
     },
     {
       "tier": "atDefault",

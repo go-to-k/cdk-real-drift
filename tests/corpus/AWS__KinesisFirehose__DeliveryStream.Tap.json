@@ -124,7 +124,8 @@
       "path": "S3DestinationConfiguration",
       "note": "write-only — cannot be read back",
       "physicalId": "CdkrdIntegHarvest3-Tap-tX2SzyWziKT4",
-      "constructPath": "CdkrdIntegHarvest3/Tap"
+      "constructPath": "CdkrdIntegHarvest3/Tap",
+      "writeOnly": true
     },
     {
       "tier": "atDefault",

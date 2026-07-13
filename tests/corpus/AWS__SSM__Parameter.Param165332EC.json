@@ -46,7 +46,8 @@
       "path": "Description",
       "note": "write-only — cannot be read back",
       "physicalId": "/cdkrd/harvest5/config",
-      "constructPath": "CdkrdIntegHarvest5/Param"
+      "constructPath": "CdkrdIntegHarvest5/Param",
+      "writeOnly": true
     },
     {
       "tier": "atDefault",

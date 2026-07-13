@@ -228,7 +228,8 @@
       "path": "DeleteAutomatedBackups",
       "note": "write-only — cannot be read back",
       "physicalId": "cdkrealdriftintegrdssgset-db5d02a0a9-chowsuaceqaa",
-      "constructPath": "CdkRealDriftIntegRdsSgSet/Db"
+      "constructPath": "CdkRealDriftIntegRdsSgSet/Db",
+      "writeOnly": true
     },
     {
       "tier": "readGap",
@@ -237,7 +238,8 @@
       "path": "MasterUserPassword",
       "note": "write-only — cannot be read back",
       "physicalId": "cdkrealdriftintegrdssgset-db5d02a0a9-chowsuaceqaa",
-      "constructPath": "CdkRealDriftIntegRdsSgSet/Db"
+      "constructPath": "CdkRealDriftIntegRdsSgSet/Db",
+      "writeOnly": true
     },
     {
       "tier": "unresolved",

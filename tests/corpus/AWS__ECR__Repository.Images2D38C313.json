@@ -78,7 +78,8 @@
       "path": "EmptyOnDelete",
       "note": "write-only — cannot be read back",
       "physicalId": "cdkrdintegharvest-images2d38c313-8s5jtwfzwsmg",
-      "constructPath": "CdkrdIntegHarvest/Images"
+      "constructPath": "CdkrdIntegHarvest/Images",
+      "writeOnly": true
     },
     {
       "tier": "atDefault",

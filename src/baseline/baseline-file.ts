@@ -444,7 +444,12 @@ export function computeCompleteResources(
   // deleting the ignore rule returns the value to `unrecorded`, never false "appeared".
   const blockedByIgnore = new Set<string>();
   for (const f of findings) {
-    if (f.tier === 'skipped' || f.tier === 'deleted' || f.tier === 'readGap')
+    // #1582: a WRITE-ONLY readGap (a declared, expectedly-unreadable secret/token/password —
+    // e.g. RDS MasterUserPassword) does NOT mean the readable undeclared model was unread, so it
+    // must NOT block completeness — otherwise "appeared since record" detection is silently
+    // disabled for every resource declaring a write-only prop (a false negative). A GENUINE
+    // readGap (Cloud Control could not read a declared prop back) still blocks.
+    if (f.tier === 'skipped' || f.tier === 'deleted' || (f.tier === 'readGap' && !f.writeOnly))
       blocked.add(f.logicalId);
     if (f.tier === 'undeclared' && !recordedKeys.has(recordedKey(f))) blocked.add(f.logicalId);
     // #1277: only DEMOTE for an ignored value that originated `undeclared`. `record`

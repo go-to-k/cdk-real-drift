@@ -49,7 +49,8 @@
       "path": "NoPasswordRequired",
       "note": "write-only — cannot be read back",
       "physicalId": "cdkrd-hunt-default",
-      "constructPath": "CdkRealDriftIntegCacheUsers/HuntEcDefaultUser"
+      "constructPath": "CdkRealDriftIntegCacheUsers/HuntEcDefaultUser",
+      "writeOnly": true
     }
   ]
 }

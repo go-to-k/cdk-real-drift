@@ -92,7 +92,8 @@
       "path": "StartCanaryAfterCreation",
       "note": "write-only — cannot be read back",
       "physicalId": "cdkrd-canary",
-      "constructPath": "CdkRealDriftIntegSyntheticsRich/Canary"
+      "constructPath": "CdkRealDriftIntegSyntheticsRich/Canary",
+      "writeOnly": true
     },
     {
       "tier": "atDefault",

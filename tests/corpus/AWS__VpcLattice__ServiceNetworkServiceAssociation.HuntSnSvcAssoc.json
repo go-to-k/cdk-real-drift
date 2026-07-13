@@ -91,7 +91,8 @@
       "path": "ServiceIdentifier",
       "note": "write-only — cannot be read back",
       "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:servicenetworkserviceassociation/snsa-00731c74e0ef3793e",
-      "constructPath": "CdkRealDriftIntegLatticeListener/HuntSnSvcAssoc"
+      "constructPath": "CdkRealDriftIntegLatticeListener/HuntSnSvcAssoc",
+      "writeOnly": true
     },
     {
       "tier": "readGap",
@@ -100,7 +101,8 @@
       "path": "ServiceNetworkIdentifier",
       "note": "write-only — cannot be read back",
       "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:servicenetworkserviceassociation/snsa-00731c74e0ef3793e",
-      "constructPath": "CdkRealDriftIntegLatticeListener/HuntSnSvcAssoc"
+      "constructPath": "CdkRealDriftIntegLatticeListener/HuntSnSvcAssoc",
+      "writeOnly": true
     }
   ]
 }
