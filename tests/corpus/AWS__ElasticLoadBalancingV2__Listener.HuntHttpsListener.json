@@ -1,0 +1,187 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (hunt 2026-07-13, #1559): fresh minimal HTTPS AWS::ElasticLoadBalancingV2::Listener (Port 443, one cert, fixed-response default action, NO SslPolicy declared). The service-default SslPolicy \"ELBSecurityPolicy-2016-08\" must fold to zero potential drift. A change in expected means the fold semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "HuntHttpsListener",
+    "resourceType": "AWS::ElasticLoadBalancingV2::Listener",
+    "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/app/CdkrdH-HuntA-Golk3pFIpYJQ/44241ce06ca63b2f/8fb984eef60270b4",
+    "constructPath": "CdkrdHunt0713r2AlbCerts/HuntHttpsListener",
+    "declared": {
+      "Certificates": [
+        {
+          "CertificateArn": "arn:aws:acm:us-east-1:111111111111:certificate/8877b33a-0a0c-4f57-9bf5-43d68eac96df"
+        }
+      ],
+      "DefaultActions": [
+        {
+          "FixedResponseConfig": {
+            "ContentType": "text/plain",
+            "MessageBody": "cdkrd hunt",
+            "StatusCode": "200"
+          },
+          "Type": "fixed-response"
+        }
+      ],
+      "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/CdkrdH-HuntA-Golk3pFIpYJQ/44241ce06ca63b2f",
+      "Port": 443,
+      "Protocol": "HTTPS"
+    }
+  },
+  "liveRaw": {
+    "ListenerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/app/CdkrdH-HuntA-Golk3pFIpYJQ/44241ce06ca63b2f/8fb984eef60270b4",
+    "MutualAuthentication": {
+      "Mode": "off"
+    },
+    "ListenerAttributes": [
+      {
+        "Value": "",
+        "Key": "routing.http.request.x_amzn_tls_cipher_suite.header_name"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.request.x_amzn_mtls_clientcert_serial_number.header_name"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.access_control_allow_origin.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.content_security_policy.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.request.x_amzn_mtls_clientcert_leaf.header_name"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.request.x_amzn_tls_version.header_name"
+      },
+      {
+        "Value": "true",
+        "Key": "routing.http.response.server.enabled"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.access_control_allow_headers.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.x_frame_options.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.access_control_allow_methods.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.request.x_amzn_mtls_clientcert_issuer.header_name"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.request.x_amzn_mtls_clientcert.header_name"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.request.x_amzn_mtls_clientcert_validity.header_name"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.access_control_allow_credentials.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.request.x_amzn_mtls_clientcert_subject.header_name"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.x_content_type_options.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.access_control_expose_headers.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.strict_transport_security.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.access_control_max_age.header_value"
+      }
+    ],
+    "SslPolicy": "ELBSecurityPolicy-2016-08",
+    "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/CdkrdH-HuntA-Golk3pFIpYJQ/44241ce06ca63b2f",
+    "DefaultActions": [
+      {
+        "FixedResponseConfig": {
+          "ContentType": "text/plain",
+          "StatusCode": "200",
+          "MessageBody": "cdkrd hunt"
+        },
+        "Type": "fixed-response"
+      }
+    ],
+    "Port": 443,
+    "Certificates": [
+      {
+        "CertificateArn": "arn:aws:acm:us-east-1:111111111111:certificate/8877b33a-0a0c-4f57-9bf5-43d68eac96df"
+      }
+    ],
+    "Protocol": "HTTPS"
+  },
+  "schema": {
+    "readOnly": ["ListenerArn"],
+    "writeOnly": [],
+    "createOnly": ["LoadBalancerArn"],
+    "readOnlyPaths": ["ListenerArn"],
+    "writeOnlyPaths": ["DefaultActions.*.AuthenticateOidcConfig.ClientSecret"],
+    "createOnlyPaths": ["LoadBalancerArn"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": [
+      "DefaultActions.*.AuthenticateCognitoConfig.AuthenticationRequestExtraParams",
+      "DefaultActions.*.AuthenticateOidcConfig.AuthenticationRequestExtraParams"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntHttpsListener",
+      "resourceType": "AWS::ElasticLoadBalancingV2::Listener",
+      "path": "ListenerAttributes[routing.http.response.server.enabled]",
+      "actual": "true",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/app/CdkrdH-HuntA-Golk3pFIpYJQ/44241ce06ca63b2f/8fb984eef60270b4",
+      "constructPath": "CdkrdHunt0713r2AlbCerts/HuntHttpsListener"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntHttpsListener",
+      "resourceType": "AWS::ElasticLoadBalancingV2::Listener",
+      "path": "MutualAuthentication",
+      "actual": {
+        "Mode": "off"
+      },
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/app/CdkrdH-HuntA-Golk3pFIpYJQ/44241ce06ca63b2f/8fb984eef60270b4",
+      "constructPath": "CdkrdHunt0713r2AlbCerts/HuntHttpsListener"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntHttpsListener",
+      "resourceType": "AWS::ElasticLoadBalancingV2::Listener",
+      "path": "SslPolicy",
+      "actual": "ELBSecurityPolicy-2016-08",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/app/CdkrdH-HuntA-Golk3pFIpYJQ/44241ce06ca63b2f/8fb984eef60270b4",
+      "constructPath": "CdkrdHunt0713r2AlbCerts/HuntHttpsListener"
+    }
+  ]
+}

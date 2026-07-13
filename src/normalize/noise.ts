@@ -541,6 +541,13 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     // A listener that declares no mutual-TLS config reads back the "off" default.
     // Observed live on an HTTPS listener.
     MutualAuthentication: { Mode: 'off' },
+    // An HTTPS/TLS listener that declares no SslPolicy reads back the ELBv2 service
+    // default security policy "ELBSecurityPolicy-2016-08" (live-observed on a fresh
+    // 2026-07-13 HTTPS listener; the same default applies to an NLB TLS listener, and
+    // a GWLB / NLB-TCP listener never materializes SslPolicy). Equality-gated, so an
+    // out-of-band ModifyListener to a different policy (e.g. ELBSecurityPolicy-TLS13-
+    // 1-2-2021-06) no longer matches and re-surfaces (live-proven). #1559.
+    SslPolicy: 'ELBSecurityPolicy-2016-08',
   },
   'AWS::EC2::NatGateway': {
     ConnectivityType: 'public',
@@ -1397,6 +1404,15 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // Lake Formation still surfaces.
   'AWS::Glue::Crawler': {
     LakeFormationConfiguration: { AccountId: '', UseLakeFormationCredentials: false },
+    // A crawler that declares no SchemaChangePolicy / RecrawlPolicy reads back Glue's
+    // documented defaults: update-in-database + deprecate-in-database, and recrawl
+    // everything. Whole-object equality-gated, so configuring either (e.g. LOG delete
+    // behavior, or CRAWL_NEW_FOLDERS_ONLY) still surfaces. Observed live (#1562).
+    SchemaChangePolicy: {
+      UpdateBehavior: 'UPDATE_IN_DATABASE',
+      DeleteBehavior: 'DEPRECATE_IN_DATABASE',
+    },
+    RecrawlPolicy: { RecrawlBehavior: 'CRAWL_EVERYTHING' },
   },
   // A config-change-triggered ConfigRule reads back EvaluationModes [{Mode:"DETECTIVE"}]
   // (the default) when the template does not declare it. Observed live on the
@@ -1861,6 +1877,12 @@ export const KNOWN_DEFAULT_ONE_OF_PATHS: Record<string, Record<string, readonly 
 // constant first-run default (12000/4000) and folds via KNOWN_DEFAULTS above —
 // equality-gated, so a warmed-up table still surfaces.
 export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
+  // An IoT TopicRule that declares TopicRulePayload with only Sql + Actions reads back the
+  // default `AwsIotSqlVersion: "2015-10-08"` — the older, stable compat default IoT assigns
+  // when the version is unspecified (NOT a moving GA value). TopicRulePayload is partially
+  // declared, so it is descended and the leaf folds per-leaf. Equality-gated, so a rule that
+  // declares (or is changed out of band to) 2016-03-23 still surfaces. Observed live (#1562).
+  'AWS::IoT::TopicRule': { 'TopicRulePayload.AwsIotSqlVersion': '2015-10-08' },
   // A DataQuality monitoring job whose (partially-declared) input reads back the two
   // AWS-filled transfer defaults the schema documents — `S3DataDistributionType`
   // ("Defaults to FullyReplicated") and `S3InputMode` ("Defaults to File") — under whichever

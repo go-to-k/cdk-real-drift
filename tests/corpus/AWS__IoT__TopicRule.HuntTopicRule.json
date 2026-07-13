@@ -1,0 +1,106 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (hunt 2026-07-13, #1562): fresh minimal AWS::IoT::TopicRule (TopicRulePayload with only Sql + one Action). The default AwsIotSqlVersion \"2015-10-08\" must fold to zero potential drift (nested per-leaf under the partially-declared TopicRulePayload).",
+  "resource": {
+    "logicalId": "HuntTopicRule",
+    "resourceType": "AWS::IoT::TopicRule",
+    "physicalId": "HuntTopicRule_qcEJ4WbkWaoh",
+    "constructPath": "CdkrdHunt0713r2JsonDoc/HuntTopicRule",
+    "declared": {
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "TopicRulePayload": {
+        "Actions": [
+          {
+            "CloudwatchLogs": {
+              "LogGroupName": "CdkrdHunt0713r2JsonDoc-HuntIotLg-szXXPa2PrGW3",
+              "RoleArn": "arn:aws:iam::111111111111:role/CdkrdHunt0713r2JsonDoc-HuntIotRole-nfbCIwRXVh13"
+            }
+          }
+        ],
+        "Sql": "SELECT * FROM 'cdkrd/hunt'"
+      }
+    }
+  },
+  "liveRaw": {
+    "TopicRulePayload": {
+      "RuleDisabled": false,
+      "AwsIotSqlVersion": "2015-10-08",
+      "Actions": [
+        {
+          "CloudwatchLogs": {
+            "LogGroupName": "CdkrdHunt0713r2JsonDoc-HuntIotLg-szXXPa2PrGW3",
+            "RoleArn": "arn:aws:iam::111111111111:role/CdkrdHunt0713r2JsonDoc-HuntIotRole-nfbCIwRXVh13"
+          }
+        }
+      ],
+      "Sql": "SELECT * FROM 'cdkrd/hunt'"
+    },
+    "Arn": "arn:aws:iot:us-east-1:111111111111:rule/HuntTopicRule_qcEJ4WbkWaoh",
+    "RuleName": "HuntTopicRule_qcEJ4WbkWaoh",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["RuleName"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["RuleName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": [
+      "TopicRulePayload.Actions.*.Kafka.ClientProperties",
+      "TopicRulePayload.ErrorAction.Kafka.ClientProperties"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {
+      "alias/aws/acm": "b3729196-d9c5-4e2a-9e8e-d733b92c8317",
+      "alias/aws/appflow": "a2152495-1376-4c30-9183-7ee24ad10386",
+      "alias/aws/backup": "b405e2ab-23b0-48e9-834e-aa3aeeded51d",
+      "alias/aws/cloud9": "c656784b-cd79-45fa-a302-4670428047dc",
+      "alias/aws/codeartifact": "f4915da2-dabd-4aaa-a58b-6cc98c3bcbc6",
+      "alias/aws/codecommit": "f4b560a8-2769-4fdc-95ce-67e234814090",
+      "alias/aws/dms": "8b0bca8d-7f3f-4f19-bebf-bf6c72f3f1e6",
+      "alias/aws/dynamodb": "e6ab85f6-b5b2-4f38-9782-d1d3f0ca9bad",
+      "alias/aws/ebs": "76039e55-2469-4c94-95ab-e12d8615bb98",
+      "alias/aws/elasticfilesystem": "ed4a6b88-bcd1-43fe-beff-35a748bded74",
+      "alias/aws/es": "db99576a-7bcf-4386-a93e-0334efbed006",
+      "alias/aws/kinesis": "51c70be1-ec2a-4e9f-ae04-aa16f1bfdcad",
+      "alias/aws/lambda": "67e127ea-46c8-4b0b-b3de-18a40e8a84a4",
+      "alias/aws/lightsail": "4085ed99-9004-436f-b8c6-e81417e55591",
+      "alias/aws/rds": "9ee8feba-ae18-445a-bcab-306f7748fb6c",
+      "alias/aws/s3": "b471f899-bf30-4944-a7d9-70f37d183eaa",
+      "alias/aws/secretsmanager": "6419a4af-eac7-4cb3-babe-297fdceba8a1",
+      "alias/aws/sns": "aa9c1b5f-821f-418a-a1b1-a60435b7dc1c",
+      "alias/aws/ssm": "4040fe62-b533-4a5d-ab2c-6301fb6bbd2a"
+    },
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntTopicRule",
+      "resourceType": "AWS::IoT::TopicRule",
+      "path": "TopicRulePayload.AwsIotSqlVersion",
+      "actual": "2015-10-08",
+      "nested": true,
+      "physicalId": "HuntTopicRule_qcEJ4WbkWaoh",
+      "constructPath": "CdkrdHunt0713r2JsonDoc/HuntTopicRule"
+    }
+  ]
+}
