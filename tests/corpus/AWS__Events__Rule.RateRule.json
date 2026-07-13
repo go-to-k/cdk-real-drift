@@ -1,0 +1,88 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "RateRule",
+    "resourceType": "AWS::Events::Rule",
+    "physicalId": "CdkrdHuntGrabBag0713-RateRule-yCBB2Cf88Ugv",
+    "constructPath": "CdkrdHuntGrabBag0713/RateRule",
+    "declared": {
+      "ScheduleExpression": "rate(1 hour)",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "EventBusName": "default",
+    "ScheduleExpression": "rate(1 hour)",
+    "State": "ENABLED",
+    "Targets": [],
+    "Id": "CdkrdHuntGrabBag0713-RateRule-yCBB2Cf88Ugv",
+    "Arn": "arn:aws:events:us-east-1:111111111111:rule/CdkrdHuntGrabBag0713-RateRule-yCBB2Cf88Ugv",
+    "Tags": [
+      {
+        "Value": "CdkrdHuntGrabBag0713",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "RateRule",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHuntGrabBag0713/b7465e80-7ea2-11f1-9f99-0eb114bf7ab9",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "Name": "CdkrdHuntGrabBag0713-RateRule-yCBB2Cf88Ugv"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": [
+      "Targets.*.HttpParameters.HeaderParameters",
+      "Targets.*.HttpParameters.QueryStringParameters",
+      "Targets.*.InputTransformer.InputPathsMap"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "RateRule",
+      "resourceType": "AWS::Events::Rule",
+      "path": "EventBusName",
+      "actual": "default",
+      "physicalId": "CdkrdHuntGrabBag0713-RateRule-yCBB2Cf88Ugv",
+      "constructPath": "CdkrdHuntGrabBag0713/RateRule"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "RateRule",
+      "resourceType": "AWS::Events::Rule",
+      "path": "State",
+      "actual": "ENABLED",
+      "physicalId": "CdkrdHuntGrabBag0713-RateRule-yCBB2Cf88Ugv",
+      "constructPath": "CdkrdHuntGrabBag0713/RateRule"
+    }
+  ]
+}

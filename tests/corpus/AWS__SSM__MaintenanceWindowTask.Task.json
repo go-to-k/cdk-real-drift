@@ -1,0 +1,70 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Task",
+    "resourceType": "AWS::SSM::MaintenanceWindowTask",
+    "physicalId": "6c58f90f-3400-48c3-b662-47bcbc8b8d0a",
+    "constructPath": "CdkrdHuntSsmMw0713/Task",
+    "declared": {
+      "MaxConcurrency": "1",
+      "MaxErrors": "1",
+      "Priority": 1,
+      "Targets": [
+        {
+          "Key": "WindowTargetIds",
+          "Values": ["9640c104-5555-4d3c-b816-3d6f77750f59"]
+        }
+      ],
+      "TaskArn": "AWS-RunShellScript",
+      "TaskType": "RUN_COMMAND",
+      "WindowId": "mw-02f08595f3853346e"
+    }
+  },
+  "liveRaw": {
+    "MaxErrors": "1",
+    "WindowTaskId": "6c58f90f-3400-48c3-b662-47bcbc8b8d0a",
+    "ServiceRoleArn": "arn:aws:iam::111111111111:role/aws-service-role/ssm.amazonaws.com/AWSServiceRoleForAmazonSSM",
+    "WindowId": "mw-02f08595f3853346e",
+    "Priority": 1,
+    "TaskParameters": {},
+    "TaskType": "RUN_COMMAND",
+    "MaxConcurrency": "1",
+    "Targets": [
+      {
+        "Values": ["9640c104-5555-4d3c-b816-3d6f77750f59"],
+        "Key": "WindowTargetIds"
+      }
+    ],
+    "TaskArn": "AWS-RunShellScript"
+  },
+  "schema": {
+    "readOnly": ["WindowTaskId"],
+    "writeOnly": [],
+    "createOnly": ["TaskType", "WindowId"],
+    "readOnlyPaths": ["WindowTaskId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["TaskType", "WindowId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Task",
+      "resourceType": "AWS::SSM::MaintenanceWindowTask",
+      "path": "ServiceRoleArn",
+      "actual": "arn:aws:iam::111111111111:role/aws-service-role/ssm.amazonaws.com/AWSServiceRoleForAmazonSSM",
+      "physicalId": "6c58f90f-3400-48c3-b662-47bcbc8b8d0a",
+      "constructPath": "CdkrdHuntSsmMw0713/Task"
+    }
+  ]
+}

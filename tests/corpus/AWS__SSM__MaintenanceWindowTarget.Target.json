@@ -1,0 +1,50 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Target",
+    "resourceType": "AWS::SSM::MaintenanceWindowTarget",
+    "physicalId": "9640c104-5555-4d3c-b816-3d6f77750f59",
+    "constructPath": "CdkrdHuntSsmMw0713/Target",
+    "declared": {
+      "ResourceType": "INSTANCE",
+      "Targets": [
+        {
+          "Key": "tag:cdkrd",
+          "Values": ["hunt"]
+        }
+      ],
+      "WindowId": "mw-02f08595f3853346e"
+    }
+  },
+  "liveRaw": {
+    "WindowId": "mw-02f08595f3853346e",
+    "ResourceType": "INSTANCE",
+    "Targets": [
+      {
+        "Values": ["hunt"],
+        "Key": "tag:cdkrd"
+      }
+    ],
+    "WindowTargetId": "9640c104-5555-4d3c-b816-3d6f77750f59"
+  },
+  "schema": {
+    "readOnly": ["WindowTargetId"],
+    "writeOnly": [],
+    "createOnly": ["WindowId"],
+    "readOnlyPaths": ["WindowTargetId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["WindowId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

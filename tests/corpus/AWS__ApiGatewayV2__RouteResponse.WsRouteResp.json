@@ -1,0 +1,42 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "WsRouteResp",
+    "resourceType": "AWS::ApiGatewayV2::RouteResponse",
+    "physicalId": "ysm3tp",
+    "constructPath": "CdkrdHuntWsApi0713/WsRouteResp",
+    "declared": {
+      "ApiId": "jt9zvy5llc",
+      "RouteId": "lf89px5",
+      "RouteResponseKey": "$default"
+    }
+  },
+  "liveRaw": {
+    "RouteResponseKey": "$default",
+    "ResponseParameters": {},
+    "RouteResponseId": "ysm3tp",
+    "RouteId": "lf89px5",
+    "ApiId": "jt9zvy5llc",
+    "ResponseModels": {}
+  },
+  "schema": {
+    "readOnly": ["RouteResponseId"],
+    "writeOnly": [],
+    "createOnly": ["ApiId", "RouteId"],
+    "readOnlyPaths": ["RouteResponseId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ApiId", "RouteId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

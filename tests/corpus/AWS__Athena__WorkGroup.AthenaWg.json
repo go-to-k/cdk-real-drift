@@ -1,0 +1,106 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "AthenaWg",
+    "resourceType": "AWS::Athena::WorkGroup",
+    "physicalId": "cdkrd-hunt-wg-0713",
+    "constructPath": "CdkrdHuntGrabBag0713/AthenaWg",
+    "declared": {
+      "Name": "cdkrd-hunt-wg-0713",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "WorkGroupConfiguration": {
+      "EnforceWorkGroupConfiguration": true,
+      "EngineVersion": {
+        "SelectedEngineVersion": "AUTO",
+        "EffectiveEngineVersion": "Athena engine version 3"
+      },
+      "PublishCloudWatchMetricsEnabled": true,
+      "RequesterPaysEnabled": false
+    },
+    "State": "ENABLED",
+    "CreationTime": "1783937287",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "Name": "cdkrd-hunt-wg-0713"
+  },
+  "schema": {
+    "readOnly": ["CreationTime"],
+    "writeOnly": ["RecursiveDeleteOption", "WorkGroupConfigurationUpdates"],
+    "createOnly": ["Name"],
+    "readOnlyPaths": [
+      "CreationTime",
+      "WorkGroupConfiguration.EngineVersion.EffectiveEngineVersion",
+      "WorkGroupConfigurationUpdates.EngineVersion.EffectiveEngineVersion"
+    ],
+    "writeOnlyPaths": [
+      "RecursiveDeleteOption",
+      "WorkGroupConfiguration.AdditionalConfiguration",
+      "WorkGroupConfiguration.EngineConfiguration.AdditionalConfigs",
+      "WorkGroupConfiguration.EngineConfiguration.CoordinatorDpuSize",
+      "WorkGroupConfiguration.EngineConfiguration.DefaultExecutorDpuSize",
+      "WorkGroupConfiguration.EngineConfiguration.MaxConcurrentDpus",
+      "WorkGroupConfiguration.EngineConfiguration.SparkProperties",
+      "WorkGroupConfigurationUpdates"
+    ],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": [
+      "WorkGroupConfiguration.EngineConfiguration.AdditionalConfigs",
+      "WorkGroupConfiguration.EngineConfiguration.Classifications.*.Properties",
+      "WorkGroupConfiguration.EngineConfiguration.SparkProperties",
+      "WorkGroupConfiguration.MonitoringConfiguration.CloudWatchLoggingConfiguration.LogTypes",
+      "WorkGroupConfigurationUpdates.EngineConfiguration.AdditionalConfigs",
+      "WorkGroupConfigurationUpdates.EngineConfiguration.Classifications.*.Properties",
+      "WorkGroupConfigurationUpdates.EngineConfiguration.SparkProperties",
+      "WorkGroupConfigurationUpdates.MonitoringConfiguration.CloudWatchLoggingConfiguration.LogTypes"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "AthenaWg",
+      "resourceType": "AWS::Athena::WorkGroup",
+      "path": "WorkGroupConfiguration",
+      "actual": {
+        "EnforceWorkGroupConfiguration": true,
+        "EngineVersion": {
+          "SelectedEngineVersion": "AUTO"
+        },
+        "PublishCloudWatchMetricsEnabled": true,
+        "RequesterPaysEnabled": false
+      },
+      "physicalId": "cdkrd-hunt-wg-0713",
+      "constructPath": "CdkrdHuntGrabBag0713/AthenaWg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "AthenaWg",
+      "resourceType": "AWS::Athena::WorkGroup",
+      "path": "State",
+      "actual": "ENABLED",
+      "physicalId": "cdkrd-hunt-wg-0713",
+      "constructPath": "CdkrdHuntGrabBag0713/AthenaWg"
+    }
+  ]
+}

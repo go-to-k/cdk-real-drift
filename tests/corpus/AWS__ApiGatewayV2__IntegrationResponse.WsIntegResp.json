@@ -1,0 +1,42 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "WsIntegResp",
+    "resourceType": "AWS::ApiGatewayV2::IntegrationResponse",
+    "physicalId": "236eb93",
+    "constructPath": "CdkrdHuntWsApi0713/WsIntegResp",
+    "declared": {
+      "ApiId": "jt9zvy5llc",
+      "IntegrationId": "ic5d7an",
+      "IntegrationResponseKey": "$default"
+    }
+  },
+  "liveRaw": {
+    "ResponseTemplates": {},
+    "ResponseParameters": {},
+    "IntegrationResponseId": "236eb93",
+    "IntegrationId": "ic5d7an",
+    "IntegrationResponseKey": "$default",
+    "ApiId": "jt9zvy5llc"
+  },
+  "schema": {
+    "readOnly": ["IntegrationResponseId"],
+    "writeOnly": [],
+    "createOnly": ["ApiId", "IntegrationId"],
+    "readOnlyPaths": ["IntegrationResponseId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ApiId", "IntegrationId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

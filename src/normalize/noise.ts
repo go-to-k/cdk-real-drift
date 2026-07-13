@@ -1254,10 +1254,10 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::Glue::Job': {
     JobMode: 'SCRIPT',
     MaxRetries: 0,
-    // A job that declares neither reads back Glue's constant defaults: a 2880-minute
-    // (48h) timeout and single-concurrency execution. Equality-gated: a custom timeout or
-    // concurrency no longer matches and surfaces.
-    Timeout: 2880,
+    // A job that declares no ExecutionProperty reads back Glue's constant single-concurrency
+    // default. Equality-gated: a custom concurrency no longer matches and surfaces.
+    // (Timeout — 2880 for jobs created in the 48h-default era, 480 for new jobs after AWS
+    // moved the create-time default — is era-dependent → KNOWN_DEFAULT_ONE_OF, #1566.)
     ExecutionProperty: { MaxConcurrentRuns: 1 },
   },
   // #653 corpus-mining batch — constant service defaults on clean deploys of covered types.
@@ -1795,6 +1795,16 @@ export const KNOWN_DEFAULT_ONE_OF: Record<string, Record<string, readonly unknow
   'AWS::SecurityHub::Hub': {
     ControlFindingGenerator: ['SECURITY_CONTROL', 'STANDARD_CONTROL'],
   },
+  // #1566: a Glue job that declares no Timeout reads back the create-time default, and AWS
+  // MOVED that default: jobs created in the original era read 2880 (48h), a fresh minimal
+  // glueetl job now reads 480 (live-proven 2026-07-13). Both are stable constants but the
+  // discriminator — when the job was created — is off the resource's model (the same era class
+  // as SecurityHub above / S3 TransitionDefaultMinimumObjectSize, #1249). Folding the set keeps
+  // clean jobs of either era at zero first-run drift; a user who DECLARES a timeout is compared
+  // in the declared dimension, and any THIRD value (a real out-of-band change) still surfaces.
+  'AWS::Glue::Job': {
+    Timeout: [2880, 480],
+  },
 };
 
 // The NESTED-path twin of KNOWN_DEFAULT_ONE_OF (#979): a nested undeclared value whose AWS
@@ -2160,6 +2170,14 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     // (true) for EVERY container. Equality-gated: a container that sets Essential: false
     // no longer matches and surfaces, and an out-of-band change still surfaces. #711.
     'ContainerDefinitions.*.Essential': true,
+  },
+  'AWS::Glue::Job': {
+    // A glueetl job that declares no Command.PythonVersion reads back the vestigial stored
+    // constant "2" — even on a Glue 5.x job whose actual runtime is Python 3; the echo is a
+    // legacy stored marker, not the running interpreter. Equality-gated: a declared version is
+    // compared in the declared loop, and an out-of-band change away from "2" surfaces. #1566,
+    // live-proven on a barest glueetl job 2026-07-13.
+    'Command.PythonVersion': '2',
   },
   'AWS::Glue::Database': {
     'DatabaseInput.CreateTableDefaultPermissions': [
@@ -3584,7 +3602,30 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   value-independent so every DPU value folds without a table (a job that instead DECLARES
   //   MaxCapacity — a Python-shell job — goes through the declared loop, compared). Observed live
   //   first-run on my-app-Exporter (five G.1X ETL jobs + one G.025X streaming job), no edit.
-  'AWS::Glue::Job': new Set(['MaxCapacity', 'AllocatedCapacity']),
+  //   AWS::Glue::Job.GlueVersion — a job that declares no GlueVersion reads back the current GA
+  //   version AWS assigns at creation ("5.1" today), which AWS advances over time (4.0 → 5.0 →
+  //   5.1 …) — the GA-engine-version class: not a constant we can pin, not derivable from the
+  //   declared inputs. Undeclared → the user delegated the version to AWS, so whatever it
+  //   assigned is not user intent; a user who cares DECLARES GlueVersion (the existing corpus
+  //   case does exactly that), which is then compared in the declared loop. #1566, live-proven
+  //   on a barest glueetl job 2026-07-13.
+  //   AWS::Glue::Job.WorkerType / .NumberOfWorkers — the OTHER HALF of the sizing-echo set
+  //   (#1569): the service normalizes a job's capacity to the modern representation on EVERY
+  //   UpdateJob — including the one a normal CloudFormation stack update performs — so an
+  //   undeclared WorkerType/NumberOfWorkers pair materializes out of nowhere after any update
+  //   (live-proven 2026-07-13: a barest job reads back neither; both appeared right after an
+  //   update-job that did not mention them). The trio (MaxCapacity/AllocatedCapacity/
+  //   WorkerType/NumberOfWorkers) is ONE service-normalized sizing; folding the pair loses no
+  //   detection the MaxCapacity fold above has not already traded away, and it is irremovable
+  //   anyway (a `remove` revert is a structural no-op — the sizing cannot be unset). A user
+  //   who cares DECLARES the sizing, compared in the declared loop.
+  'AWS::Glue::Job': new Set([
+    'MaxCapacity',
+    'AllocatedCapacity',
+    'GlueVersion',
+    'WorkerType',
+    'NumberOfWorkers',
+  ]),
   //   AWS::EC2::SecurityGroupIngress.SourceSecurityGroupName / ::SecurityGroupEgress
   //   .DestinationSecurityGroupName — a rule that references its peer group by id
   //   (`SourceSecurityGroupId` / `DestinationSecurityGroupId`, the CDK default) declares no peer
