@@ -108,7 +108,8 @@
       "path": "AutoPrepare",
       "note": "write-only — cannot be read back",
       "physicalId": "9W8IFJ9ZK0",
-      "constructPath": "CdkRealDriftHunt0708Bedrock/Agent"
+      "constructPath": "CdkRealDriftHunt0708Bedrock/Agent",
+      "writeOnly": true
     },
     {
       "tier": "atDefault",

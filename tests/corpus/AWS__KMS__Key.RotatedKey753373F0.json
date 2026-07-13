@@ -112,7 +112,8 @@
       "path": "RotationPeriodInDays",
       "note": "write-only — cannot be read back",
       "physicalId": "mrk-4f84e44c22a340f1a3f36dc8568e4b2b",
-      "constructPath": "CdkRealDriftIntegKmsRich/RotatedKey"
+      "constructPath": "CdkRealDriftIntegKmsRich/RotatedKey",
+      "writeOnly": true
     },
     {
       "tier": "atDefault",

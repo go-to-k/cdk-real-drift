@@ -65,7 +65,8 @@
       "path": "AutoPublish",
       "note": "write-only — cannot be read back",
       "physicalId": "arn:aws:cloudfront::111111111111:function/cdkrd-hunt-kvs-fn",
-      "constructPath": "CdkRealDriftIntegCfKvsLogsDel/Fn"
+      "constructPath": "CdkRealDriftIntegCfKvsLogsDel/Fn",
+      "writeOnly": true
     }
   ]
 }

@@ -375,7 +375,8 @@
       "path": "EnabledMfas",
       "note": "write-only — cannot be read back",
       "physicalId": "us-east-1_DPFFObGj8",
-      "constructPath": "CdkRealDriftIntegCognitoUserPoolRich/Pool"
+      "constructPath": "CdkRealDriftIntegCognitoUserPoolRich/Pool",
+      "writeOnly": true
     },
     {
       "tier": "atDefault",

@@ -3045,6 +3045,10 @@ export function classifyResource(
         resourceType,
         path: k,
         note: 'write-only — cannot be read back',
+        // #1582: an EXPECTEDLY-unreadable declared write-only key, not a coverage gap — so it
+        // must NOT disqualify the resource from `completeResources` (which would silently
+        // disable "appeared since record" detection for it). See Finding.writeOnly.
+        writeOnly: true,
       });
     }
   }

@@ -158,7 +158,8 @@
       "path": "EngineVersion",
       "note": "write-only — cannot be read back",
       "physicalId": "b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86",
-      "constructPath": "CdkRealDriftIntegAmazonMqVersionFp/Broker"
+      "constructPath": "CdkRealDriftIntegAmazonMqVersionFp/Broker",
+      "writeOnly": true
     },
     {
       "tier": "readGap",
@@ -167,7 +168,8 @@
       "path": "Users",
       "note": "write-only — cannot be read back",
       "physicalId": "b-ef12f21b-b6f6-41f8-9282-e98ffc5c0c86",
-      "constructPath": "CdkRealDriftIntegAmazonMqVersionFp/Broker"
+      "constructPath": "CdkRealDriftIntegAmazonMqVersionFp/Broker",
+      "writeOnly": true
     },
     {
       "tier": "atDefault",

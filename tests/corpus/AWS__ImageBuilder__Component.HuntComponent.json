@@ -89,7 +89,8 @@
       "path": "Data",
       "note": "write-only — cannot be read back",
       "physicalId": "arn:aws:imagebuilder:us-east-1:111111111111:component/cdkrd-hunt-component/1.0.0/1",
-      "constructPath": "CdkRealDriftIntegFreeMiscMin/HuntComponent"
+      "constructPath": "CdkRealDriftIntegFreeMiscMin/HuntComponent",
+      "writeOnly": true
     }
   ]
 }

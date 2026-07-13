@@ -88,7 +88,8 @@
       "path": "ModelSource",
       "note": "write-only — cannot be read back",
       "physicalId": "arn:aws:bedrock:us-east-1:111111111111:application-inference-profile/dgsnhongtx0l",
-      "constructPath": "CdkRealDriftHunt0708Bedrock/Aip"
+      "constructPath": "CdkRealDriftHunt0708Bedrock/Aip",
+      "writeOnly": true
     }
   ]
 }

@@ -264,7 +264,8 @@
       "path": "DeleteAutomatedBackups",
       "note": "write-only — cannot be read back",
       "physicalId": "cdkdriftintegharvest13-databaseb269d8bb-zbfb79ingqnm",
-      "constructPath": "CdkdriftIntegHarvest13/Database"
+      "constructPath": "CdkdriftIntegHarvest13/Database",
+      "writeOnly": true
     },
     {
       "tier": "readGap",
@@ -273,7 +274,8 @@
       "path": "MasterUserPassword",
       "note": "write-only — cannot be read back",
       "physicalId": "cdkdriftintegharvest13-databaseb269d8bb-zbfb79ingqnm",
-      "constructPath": "CdkdriftIntegHarvest13/Database"
+      "constructPath": "CdkdriftIntegHarvest13/Database",
+      "writeOnly": true
     },
     {
       "tier": "unresolved",

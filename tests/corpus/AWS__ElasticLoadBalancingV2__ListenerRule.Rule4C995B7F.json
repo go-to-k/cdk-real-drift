@@ -105,7 +105,8 @@
       "path": "ListenerArn",
       "note": "write-only — cannot be read back",
       "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener-rule/app/CdkRea-Alb16-ZOGq8SCU7OMY/ae1fe96c6ac55de6/7a6edcf8edb8f8b6/f7898cec75295d48",
-      "constructPath": "CdkRealDriftIntegElbv2ListenerRuleRich/Rule"
+      "constructPath": "CdkRealDriftIntegElbv2ListenerRuleRich/Rule",
+      "writeOnly": true
     }
   ]
 }

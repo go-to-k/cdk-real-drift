@@ -473,7 +473,8 @@
       "path": "MasterUserPassword",
       "note": "write-only — cannot be read back",
       "physicalId": "cdkrealdriftintegrdssqlservermin-huntsqlserver-0gcv1zrepyqb",
-      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer"
+      "constructPath": "CdkRealDriftIntegRdsSqlServerMin/HuntSqlServer",
+      "writeOnly": true
     },
     {
       "tier": "atDefault",

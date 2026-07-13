@@ -236,7 +236,8 @@
       "path": "DeleteAutomatedBackups",
       "note": "write-only — cannot be read back",
       "physicalId": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
-      "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb"
+      "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb",
+      "writeOnly": true
     },
     {
       "tier": "readGap",
@@ -245,7 +246,8 @@
       "path": "MasterUserPassword",
       "note": "write-only — cannot be read back",
       "physicalId": "cdkrdhunt0713rdsmariadb-huntmariadbfc079fd5-bldhi0ooippa",
-      "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb"
+      "constructPath": "CdkrdHunt0713RdsMariadb/HuntMariaDb",
+      "writeOnly": true
     },
     {
       "tier": "atDefault",

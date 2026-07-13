@@ -50,7 +50,8 @@
       "path": "RoleARN",
       "note": "write-only — cannot be read back",
       "physicalId": "table/CdkrdIntegHarvest4-Sessions8896A56D-1AME3ENAZ10B2|dynamodb:table:ReadCapacityUnits|dynamodb",
-      "constructPath": "CdkrdIntegHarvest4/ReadTarget"
+      "constructPath": "CdkrdIntegHarvest4/ReadTarget",
+      "writeOnly": true
     }
   ]
 }

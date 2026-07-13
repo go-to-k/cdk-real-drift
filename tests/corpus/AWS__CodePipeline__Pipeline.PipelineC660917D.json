@@ -185,7 +185,8 @@
       "path": "RestartExecutionOnUpdate",
       "note": "write-only — cannot be read back",
       "physicalId": "cdkrd-pipeline-rich",
-      "constructPath": "CdkRealDriftIntegCodepipelineRich/Pipeline"
+      "constructPath": "CdkRealDriftIntegCodepipelineRich/Pipeline",
+      "writeOnly": true
     },
     {
       "tier": "atDefault",

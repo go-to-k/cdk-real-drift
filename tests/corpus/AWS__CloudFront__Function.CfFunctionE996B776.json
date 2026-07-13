@@ -68,7 +68,8 @@
       "path": "AutoPublish",
       "note": "write-only — cannot be read back",
       "physicalId": "arn:aws:cloudfront::111111111111:function/cdkrd-fn",
-      "constructPath": "CdkdriftIntegHarvest10/CfFunction"
+      "constructPath": "CdkdriftIntegHarvest10/CfFunction",
+      "writeOnly": true
     }
   ]
 }

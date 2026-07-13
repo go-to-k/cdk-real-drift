@@ -79,7 +79,8 @@
       "path": "RecursiveDeleteOption",
       "note": "write-only — cannot be read back",
       "physicalId": "cdkrd-integ-athena-descend",
-      "constructPath": "CdkRealDriftIntegAthenaDescend/WgDescend"
+      "constructPath": "CdkRealDriftIntegAthenaDescend/WgDescend",
+      "writeOnly": true
     },
     {
       "tier": "atDefault",

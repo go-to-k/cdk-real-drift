@@ -474,7 +474,8 @@
       "path": "MasterUserPassword",
       "note": "write-only — cannot be read back",
       "physicalId": "cdkrealdriftintegrdspostgresmin-huntpostgres-tfql7rya1joc",
-      "constructPath": "CdkRealDriftIntegRdsPostgresMin/HuntPostgres"
+      "constructPath": "CdkRealDriftIntegRdsPostgresMin/HuntPostgres",
+      "writeOnly": true
     },
     {
       "tier": "atDefault",

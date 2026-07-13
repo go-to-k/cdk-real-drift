@@ -63,7 +63,8 @@
       "path": "ResolveConflicts",
       "note": "write-only — cannot be read back",
       "physicalId": "cdkrd-eks|vpc-cni",
-      "constructPath": "CdkRealDriftIntegEksRich/Addon"
+      "constructPath": "CdkRealDriftIntegEksRich/Addon",
+      "writeOnly": true
     },
     {
       "tier": "atDefault",

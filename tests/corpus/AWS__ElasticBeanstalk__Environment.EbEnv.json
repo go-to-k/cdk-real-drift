@@ -90,7 +90,8 @@
       "path": "OptionSettings",
       "note": "write-only — cannot be read back",
       "physicalId": "cdkrd-hunt-eb-env",
-      "constructPath": "CdkRealDriftIntegEbRich/EbEnv"
+      "constructPath": "CdkRealDriftIntegEbRich/EbEnv",
+      "writeOnly": true
     },
     {
       "tier": "atDefault",

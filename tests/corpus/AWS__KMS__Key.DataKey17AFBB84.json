@@ -84,7 +84,8 @@
       "path": "PendingWindowInDays",
       "note": "write-only — cannot be read back",
       "physicalId": "f989c1f9-fd8b-4a78-a71d-a69a1e096af1",
-      "constructPath": "CdkrdIntegHarvest3/DataKey"
+      "constructPath": "CdkrdIntegHarvest3/DataKey",
+      "writeOnly": true
     },
     {
       "tier": "atDefault",

@@ -81,7 +81,8 @@
       "path": "ServiceIdentifier",
       "note": "write-only — cannot be read back",
       "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:service/svc-07215226a6b16ea1b/listener/listener-0881ae4b2367b2037",
-      "constructPath": "CdkRealDriftIntegLatticeListener/HuntListener"
+      "constructPath": "CdkRealDriftIntegLatticeListener/HuntListener",
+      "writeOnly": true
     }
   ]
 }

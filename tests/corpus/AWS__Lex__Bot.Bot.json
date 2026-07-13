@@ -199,7 +199,8 @@
       "path": "AutoBuildBotLocales",
       "note": "write-only — cannot be read back",
       "physicalId": "YVVVR3Y3FN",
-      "constructPath": "CdkRealDriftIntegLexStructural/Bot"
+      "constructPath": "CdkRealDriftIntegLexStructural/Bot",
+      "writeOnly": true
     }
   ]
 }

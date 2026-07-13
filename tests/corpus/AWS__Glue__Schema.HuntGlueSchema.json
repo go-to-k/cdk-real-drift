@@ -75,7 +75,8 @@
       "path": "SchemaDefinition",
       "note": "write-only — cannot be read back",
       "physicalId": "arn:aws:glue:us-east-1:111111111111:schema/cdkrd-hunt-registry/cdkrd-hunt-schema",
-      "constructPath": "CdkRealDriftIntegMisc0Cov3/HuntGlueSchema"
+      "constructPath": "CdkRealDriftIntegMisc0Cov3/HuntGlueSchema",
+      "writeOnly": true
     },
     {
       "tier": "atDefault",

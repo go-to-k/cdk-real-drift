@@ -69,7 +69,8 @@
       "path": "SourceParameters",
       "note": "write-only — cannot be read back",
       "physicalId": "cdkrd-harvest6",
-      "constructPath": "CdkrdIntegHarvest6/Pipe"
+      "constructPath": "CdkrdIntegHarvest6/Pipe",
+      "writeOnly": true
     },
     {
       "tier": "atDefault",

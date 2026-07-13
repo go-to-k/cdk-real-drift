@@ -47,7 +47,8 @@
       "path": "AuthenticationMode",
       "note": "write-only — cannot be read back",
       "physicalId": "cdkrd-hunt-mdb-user",
-      "constructPath": "CdkRealDriftIntegCacheUsers/HuntMdbUser"
+      "constructPath": "CdkRealDriftIntegCacheUsers/HuntMdbUser",
+      "writeOnly": true
     }
   ]
 }

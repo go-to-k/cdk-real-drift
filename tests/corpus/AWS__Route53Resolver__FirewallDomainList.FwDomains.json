@@ -78,7 +78,8 @@
       "path": "Domains",
       "note": "write-only — cannot be read back",
       "physicalId": "rslvr-fdl-fae10c927473462b",
-      "constructPath": "CdkdriftIntegHarvest8/FwDomains"
+      "constructPath": "CdkdriftIntegHarvest8/FwDomains",
+      "writeOnly": true
     }
   ]
 }

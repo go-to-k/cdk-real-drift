@@ -93,7 +93,8 @@
       "path": "ReplaceComputeEnvironment",
       "note": "write-only — cannot be read back",
       "physicalId": "arn:aws:batch:us-east-1:111111111111:compute-environment/FargateCE1DBBBD09-54Uxta4Aiy4unKOi",
-      "constructPath": "CdkRealDriftIntegBatchRich/FargateCE"
+      "constructPath": "CdkRealDriftIntegBatchRich/FargateCE",
+      "writeOnly": true
     },
     {
       "tier": "readGap",
@@ -102,7 +103,8 @@
       "path": "UpdatePolicy",
       "note": "write-only — cannot be read back",
       "physicalId": "arn:aws:batch:us-east-1:111111111111:compute-environment/FargateCE1DBBBD09-54Uxta4Aiy4unKOi",
-      "constructPath": "CdkRealDriftIntegBatchRich/FargateCE"
+      "constructPath": "CdkRealDriftIntegBatchRich/FargateCE",
+      "writeOnly": true
     },
     {
       "tier": "atDefault",

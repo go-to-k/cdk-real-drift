@@ -47,7 +47,8 @@
       "path": "LaunchTemplateData",
       "note": "write-only — cannot be read back",
       "physicalId": "lt-07d78df03ff0277ba",
-      "constructPath": "CdkrdIntegHarvest6/LaunchTpl"
+      "constructPath": "CdkrdIntegHarvest6/LaunchTpl",
+      "writeOnly": true
     }
   ]
 }
