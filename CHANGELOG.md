@@ -1,3 +1,10 @@
+# [0.15.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.14.1...v0.15.0) (2026-07-13)
+
+
+### Features
+
+* **read:** SDK override readers for Config ConfigurationRecorder + DeliveryChannel ([#1553](https://github.com/go-to-k/cdk-real-drift/issues/1553)) ([#1554](https://github.com/go-to-k/cdk-real-drift/issues/1554)) ([870c72a](https://github.com/go-to-k/cdk-real-drift/commit/870c72a5216a09d8c280fcc4b5157fd28f2a746e))
+
 ## [0.14.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.14.0...v0.14.1) (2026-07-13)
 
 
