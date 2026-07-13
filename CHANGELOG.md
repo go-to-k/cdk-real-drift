@@ -1,3 +1,10 @@
+## [0.16.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.16.1...v0.16.2) (2026-07-13)
+
+
+### Bug Fixes
+
+* **check:** fold 14 first-run FPs on minimal DMS ReplicationInstance/Endpoint/ReplicationTask ([#1557](https://github.com/go-to-k/cdk-real-drift/issues/1557)) ([#1561](https://github.com/go-to-k/cdk-real-drift/issues/1561)) ([362b55e](https://github.com/go-to-k/cdk-real-drift/commit/362b55ea98c96310d84208653a06c577e072ca6d))
+
 ## [0.16.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.16.0...v0.16.1) (2026-07-13)
 
 
