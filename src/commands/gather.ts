@@ -21,6 +21,10 @@ import {
   DescribeOptionGroupOptionsCommand,
   RDSClient,
 } from '@aws-sdk/client-rds';
+import {
+  DatabaseMigrationServiceClient,
+  DescribeOrderableReplicationInstancesCommand,
+} from '@aws-sdk/client-database-migration-service';
 import { GetServiceSettingCommand, SSMClient } from '@aws-sdk/client-ssm';
 import { buildCorpusCase, CORPUS_DIR_ENV, recordCorpusCase } from '../corpus/record.js';
 import { type Desired, loadDesired } from '../desired/template-adapter.js';
@@ -104,6 +108,10 @@ export const DEFAULT_SG_LIST_TYPES: ReadonlySet<string> = new Set([
   // default SG — registered in classify DEFAULT_SG_LIST_PATHS, so the prefetch must fire when
   // a DAX cluster is present or the OOB-swap gate loses its default-SG ids.
   'AWS::DAX::Cluster',
+  // #1557: a DMS ReplicationInstance that declares no VpcSecurityGroupIds reads back its
+  // subnet-group VPC's default SG — registered in classify DEFAULT_SG_LIST_PATHS, so the prefetch
+  // must fire when a replication instance is present or the OOB-swap gate loses its default-SG ids.
+  'AWS::DMS::ReplicationInstance',
 ]);
 
 // #1269: types whose undeclared SubnetIds default to ALL of the account's DEFAULT-VPC subnets —
@@ -281,6 +289,44 @@ async function fetchRdsDefaultCaIdentifier(region: string): Promise<string | und
   } catch {
     return undefined;
   }
+}
+
+// #1557: dms:DescribeOrderableReplicationInstances — the per-class DefaultAllocatedStorage a DMS
+// ReplicationInstance materializes when it declares no AllocatedStorage (dms.c6i.large → 100, NOT
+// the generic "50 GB" the docs cite). Paginates the orderable catalog once and maps each
+// ReplicationInstanceClass to its DefaultAllocatedStorage (the value is stable across engine
+// versions for a class, so last-seen wins). classify equality-gates the live storage against the
+// declared class's default. Cached per region, FAIL OPEN (empty map on error → the fold falls
+// through to plain `undeclared`, today's behavior).
+const dmsAllocatedStorageDefaultsCache = new Map<string, Record<string, number>>();
+export async function fetchDmsAllocatedStorageDefaults(
+  region: string
+): Promise<Record<string, number>> {
+  const cached = dmsAllocatedStorageDefaultsCache.get(region);
+  if (cached) return cached;
+  const map: Record<string, number> = {};
+  try {
+    const c = new DatabaseMigrationServiceClient({ region, ...READ_RETRY });
+    let marker: string | undefined;
+    do {
+      const r = await c.send(
+        new DescribeOrderableReplicationInstancesCommand({ Marker: marker, MaxRecords: 100 })
+      );
+      for (const o of r.OrderableReplicationInstances ?? []) {
+        if (
+          typeof o.ReplicationInstanceClass === 'string' &&
+          typeof o.DefaultAllocatedStorage === 'number'
+        ) {
+          map[o.ReplicationInstanceClass] = o.DefaultAllocatedStorage;
+        }
+      }
+      marker = r.Marker;
+    } while (marker);
+  } catch {
+    // fail open — leave whatever was collected (possibly empty)
+  }
+  dmsAllocatedStorageDefaultsCache.set(region, map);
+  return map;
 }
 
 // #1070 item 3: ec2:GetInstanceMetadataDefaults — the account-level IMDS defaults the owner set
@@ -1793,6 +1839,14 @@ export async function gatherFindings(
   ) {
     const v = await fetchRdsDefaultCaIdentifier(region);
     if (v !== undefined) accountDefaults.rdsDefaultCaIdentifier = v;
+  }
+  // #1557: prefetch the per-class DefaultAllocatedStorage when the stack declares any DMS
+  // ReplicationInstance, so classify can DERIVE-gate the undeclared AllocatedStorage fold against
+  // the declared class's real default (fold a clean deploy, surface an OOB storage change). Empty
+  // (denied/unavailable) → the fold falls through to plain `undeclared`.
+  if (desired.resources.some((r) => r.resourceType === 'AWS::DMS::ReplicationInstance')) {
+    const m = await fetchDmsAllocatedStorageDefaults(region);
+    if (Object.keys(m).length > 0) accountDefaults.dmsAllocatedStorageDefaults = m;
   }
   const classifyOpts = {
     accountId: desired.accountId,

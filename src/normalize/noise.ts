@@ -107,6 +107,20 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // undeclared drift. Observed live on a fresh minimal mysql source endpoint
   // (case-idents-min, 2026-07-12; #1490).
   'AWS::DMS::Endpoint': { SslMode: 'none' },
+  // A DMS replication instance that declares no NetworkType reads back "IPV4" (the constant
+  // service default; IPV6 is an explicit opt-in). The two `true` booleans are always-on
+  // creation defaults — CreateReplicationInstance materializes AutoMinorVersionUpgrade=true
+  // and PubliclyAccessible=true on every fresh instance (create even fails without an
+  // IGW-attached VPC because PubliclyAccessible defaults true). ReplicationInstance has NO
+  // restore-from-snapshot source, so an undeclared `false` is unambiguously an out-of-band
+  // disable — the MEANINGFUL_WHEN_OFF companions below surface it unconditionally. All three
+  // equality-gated: a user who pins a different value DECLARES it (compared in the declared
+  // loop). Observed live (hunt 2026-07-13, #1557).
+  'AWS::DMS::ReplicationInstance': {
+    AutoMinorVersionUpgrade: true,
+    PubliclyAccessible: true,
+    NetworkType: 'IPV4',
+  },
   // A MediaConvert queue that declares only its Name reads back the two constant
   // creation defaults: PricingPlan "ON_DEMAND" (the only value CreateQueue assigns
   // undeclared; RESERVED requires an explicit reservation plan) and Status "ACTIVE".
@@ -2766,6 +2780,18 @@ export const GENERATED_TOPLEVEL_PATHS: Record<string, ReadonlySet<string>> = {
   // AWS-minted identity, not user intent; a Secret that DECLARES a Name carries it in the
   // template and never reaches this loop.
   'AWS::SecretsManager::Secret': new Set(['Name']),
+  // A DMS ReplicationInstance / Endpoint / ReplicationTask whose *Identifier the template omits
+  // reads back a CloudFormation-generated `<logicalId-lowercased>-<random>` name. The generic
+  // isGeneratedName rule keys on the resource's CFn PhysicalResourceId, but these DMS types'
+  // physical id is an ARN (`arn:aws:dms:…:rep|endpoint|task:…`), not the identifier, so it never
+  // matches and the echoed identifier floods the first run as undeclared — the same per-type gap
+  // AWS::ElasticLoadBalancingV2::TargetGroup.Name solved. The identifier is the AWS-minted
+  // identity, never user intent when undeclared (a user who pins one DECLARES it and it is
+  // compared in the declared loop). ReplicationSubnetGroup is absent here: its physical id IS the
+  // identifier, so isGeneratedName already folds it. Observed live (hunt 2026-07-13, #1557).
+  'AWS::DMS::ReplicationInstance': new Set(['ReplicationInstanceIdentifier']),
+  'AWS::DMS::Endpoint': new Set(['EndpointIdentifier']),
+  'AWS::DMS::ReplicationTask': new Set(['ReplicationTaskIdentifier']),
   // NOTE: AWS::ElasticLoadBalancingV2::TargetGroup.Targets is NOT folded here (#891). A blanket
   // fold hid an out-of-band `elbv2 register-targets` pointing a listener's production traffic at
   // an attacker-controlled instance/IP — a live (non-empty) Targets membership read CLEAN and
@@ -3448,6 +3474,32 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   DECLARES KmsKeyId and is compared in the declared loop. Observed live on a fresh
   //   minimal endpoint (case-idents-min, 2026-07-12; #1490).
   'AWS::DMS::Endpoint': new Set(['KmsKeyId']),
+  //   AWS::DMS::ReplicationInstance — a fresh instance materializes four undeclared values that
+  //   cannot be pinned or derived:
+  //     EngineVersion — the current GA DMS engine (e.g. "3.5.4"), which AWS moves over time
+  //       (the DocDB/Neptune/RDS GA-version class). A DECLARED version is compared in the
+  //       declared loop.
+  //     AvailabilityZone — the zone AWS placed the instance in at creation (the RDS/Neptune/
+  //       Lightsail AvailabilityZone class).
+  //     PreferredMaintenanceWindow — the RANDOMLY-assigned weekly slot (the RDS/DAX window class).
+  //     KmsKeyId — the AWS-managed `aws/dms` key ARN materialized at creation (create-only), the
+  //       exact twin of the DMS::Endpoint.KmsKeyId entry above and the #533 assigned-KmsKeyId class.
+  //   Each is never user intent when undeclared; a user who cares DECLARES it (compared in the
+  //   declared loop). Observed live (hunt 2026-07-13, #1557).
+  'AWS::DMS::ReplicationInstance': new Set([
+    'EngineVersion',
+    'AvailabilityZone',
+    'PreferredMaintenanceWindow',
+    'KmsKeyId',
+  ]),
+  //   AWS::DMS::ReplicationTask.ReplicationTaskSettings — a task that declares no settings reads
+  //   back the FULL AWS-materialized task-settings document (Logging.LogComponents, StreamBuffer
+  //   /ErrorBehavior/FullLoad/TargetMetadata/ControlTables/ChangeProcessing sub-objects, ~150
+  //   leaves) whose content and shape vary by engine version — not a fixed constant, and a
+  //   per-leaf pin would churn on every engine bump. A user who tunes any setting DECLARES
+  //   ReplicationTaskSettings (compared in the declared loop). Observed live (hunt 2026-07-13,
+  //   #1557).
+  'AWS::DMS::ReplicationTask': new Set(['ReplicationTaskSettings']),
   //   AWS::DAX::Cluster.PreferredMaintenanceWindow — a cluster that declares no window reads
   //   back the RANDOMLY-assigned weekly slot AWS chose at creation (live first-run on a fresh
   //   barest cluster, #1532) — the same per-resource assigned-window shape as the RDS/DocDB/

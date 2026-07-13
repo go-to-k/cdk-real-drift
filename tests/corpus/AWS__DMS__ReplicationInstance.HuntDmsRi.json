@@ -1,0 +1,189 @@
+{
+  "corpusVersion": 1,
+  "description": "RECORDED LIVE (hunt 2026-07-13, #1557): fresh minimal AWS::DMS::ReplicationInstance (only ReplicationInstanceClass + ReplicationSubnetGroupIdentifier declared). Exercises the full undeclared-default surface a fresh instance materializes: the generated ReplicationInstanceIdentifier, the NetworkType/AutoMinorVersionUpgrade/PubliclyAccessible constant defaults, the class-derived AllocatedStorage (opts.accountDefaults.dmsAllocatedStorageDefaults), the default-VPC SG, the AWS-assigned KmsKeyId, and the moving EngineVersion/AvailabilityZone/PreferredMaintenanceWindow. All must fold to zero potential drift. A change in expected means the fold semantics for this type changed — review it.",
+  "resource": {
+    "logicalId": "HuntDmsRi",
+    "resourceType": "AWS::DMS::ReplicationInstance",
+    "physicalId": "arn:aws:dms:us-east-1:111111111111:rep:2AWWXYNVBFCVPAC4SBILMZXHCA",
+    "constructPath": "CdkrdHunt0713cVpcKin/HuntDmsRi",
+    "declared": {
+      "ReplicationInstanceClass": "dms.c6i.large",
+      "ReplicationSubnetGroupIdentifier": "huntdmssng-epnnheykqkgw4fho",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "ReplicationInstanceIdentifier": "huntdmsri-q2z2kglbegpum1mf",
+    "ReplicationInstanceClass": "dms.c6i.large",
+    "AllocatedStorage": 100,
+    "MultiAZ": false,
+    "EngineVersion": "3.5.4",
+    "AutoMinorVersionUpgrade": true,
+    "PubliclyAccessible": true,
+    "AvailabilityZone": "us-east-1a",
+    "PreferredMaintenanceWindow": "fri:08:20-fri:08:50",
+    "KmsKeyId": "arn:aws:kms:us-east-1:111111111111:key/8b0bca8d-7f3f-4f19-bebf-bf6c72f3f1e6",
+    "NetworkType": "IPV4",
+    "ReplicationSubnetGroupIdentifier": "huntdmssng-epnnheykqkgw4fho",
+    "VpcSecurityGroupIds": ["sg-0394d4b516f73dee8"],
+    "Tags": [
+      {
+        "Key": "aws:cloudformation:stack-name",
+        "Value": "CdkrdHunt0713cVpcKin"
+      },
+      {
+        "Key": "aws:cloudformation:logical-id",
+        "Value": "HuntDmsRi"
+      },
+      {
+        "Key": "aws:cloudformation:stack-id",
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0713cVpcKin/040c5620-7e8a-11f1-9687-1252ffbd3b8f"
+      },
+      {
+        "Key": "cdkrd:ephemeral",
+        "Value": "1"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [
+      "Id",
+      "ReplicationInstancePrivateIpAddresses",
+      "ReplicationInstancePublicIpAddresses"
+    ],
+    "writeOnly": [],
+    "createOnly": [
+      "DnsNameServers",
+      "KmsKeyId",
+      "PubliclyAccessible",
+      "ReplicationSubnetGroupIdentifier",
+      "ResourceIdentifier"
+    ],
+    "readOnlyPaths": [
+      "Id",
+      "ReplicationInstancePrivateIpAddresses",
+      "ReplicationInstancePublicIpAddresses"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "DnsNameServers",
+      "KmsKeyId",
+      "PubliclyAccessible",
+      "ReplicationSubnetGroupIdentifier",
+      "ResourceIdentifier"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "accountDefaults": {
+      "dmsAllocatedStorageDefaults": {
+        "dms.c6i.large": 100
+      }
+    }
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntDmsRi",
+      "resourceType": "AWS::DMS::ReplicationInstance",
+      "path": "AllocatedStorage",
+      "actual": 100,
+      "physicalId": "arn:aws:dms:us-east-1:111111111111:rep:2AWWXYNVBFCVPAC4SBILMZXHCA",
+      "constructPath": "CdkrdHunt0713cVpcKin/HuntDmsRi"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntDmsRi",
+      "resourceType": "AWS::DMS::ReplicationInstance",
+      "path": "AutoMinorVersionUpgrade",
+      "actual": true,
+      "physicalId": "arn:aws:dms:us-east-1:111111111111:rep:2AWWXYNVBFCVPAC4SBILMZXHCA",
+      "constructPath": "CdkrdHunt0713cVpcKin/HuntDmsRi"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntDmsRi",
+      "resourceType": "AWS::DMS::ReplicationInstance",
+      "path": "AvailabilityZone",
+      "actual": "us-east-1a",
+      "physicalId": "arn:aws:dms:us-east-1:111111111111:rep:2AWWXYNVBFCVPAC4SBILMZXHCA",
+      "constructPath": "CdkrdHunt0713cVpcKin/HuntDmsRi"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntDmsRi",
+      "resourceType": "AWS::DMS::ReplicationInstance",
+      "path": "EngineVersion",
+      "actual": "3.5.4",
+      "physicalId": "arn:aws:dms:us-east-1:111111111111:rep:2AWWXYNVBFCVPAC4SBILMZXHCA",
+      "constructPath": "CdkrdHunt0713cVpcKin/HuntDmsRi"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntDmsRi",
+      "resourceType": "AWS::DMS::ReplicationInstance",
+      "path": "KmsKeyId",
+      "actual": "arn:aws:kms:us-east-1:111111111111:key/8b0bca8d-7f3f-4f19-bebf-bf6c72f3f1e6",
+      "physicalId": "arn:aws:dms:us-east-1:111111111111:rep:2AWWXYNVBFCVPAC4SBILMZXHCA",
+      "constructPath": "CdkrdHunt0713cVpcKin/HuntDmsRi"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntDmsRi",
+      "resourceType": "AWS::DMS::ReplicationInstance",
+      "path": "NetworkType",
+      "actual": "IPV4",
+      "physicalId": "arn:aws:dms:us-east-1:111111111111:rep:2AWWXYNVBFCVPAC4SBILMZXHCA",
+      "constructPath": "CdkrdHunt0713cVpcKin/HuntDmsRi"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntDmsRi",
+      "resourceType": "AWS::DMS::ReplicationInstance",
+      "path": "PreferredMaintenanceWindow",
+      "actual": "fri:08:20-fri:08:50",
+      "physicalId": "arn:aws:dms:us-east-1:111111111111:rep:2AWWXYNVBFCVPAC4SBILMZXHCA",
+      "constructPath": "CdkrdHunt0713cVpcKin/HuntDmsRi"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntDmsRi",
+      "resourceType": "AWS::DMS::ReplicationInstance",
+      "path": "PubliclyAccessible",
+      "actual": true,
+      "physicalId": "arn:aws:dms:us-east-1:111111111111:rep:2AWWXYNVBFCVPAC4SBILMZXHCA",
+      "constructPath": "CdkrdHunt0713cVpcKin/HuntDmsRi"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntDmsRi",
+      "resourceType": "AWS::DMS::ReplicationInstance",
+      "path": "VpcSecurityGroupIds",
+      "actual": ["sg-0394d4b516f73dee8"],
+      "physicalId": "arn:aws:dms:us-east-1:111111111111:rep:2AWWXYNVBFCVPAC4SBILMZXHCA",
+      "constructPath": "CdkrdHunt0713cVpcKin/HuntDmsRi"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "HuntDmsRi",
+      "resourceType": "AWS::DMS::ReplicationInstance",
+      "path": "ReplicationInstanceIdentifier",
+      "actual": "huntdmsri-q2z2kglbegpum1mf",
+      "physicalId": "arn:aws:dms:us-east-1:111111111111:rep:2AWWXYNVBFCVPAC4SBILMZXHCA",
+      "constructPath": "CdkrdHunt0713cVpcKin/HuntDmsRi"
+    }
+  ]
+}
