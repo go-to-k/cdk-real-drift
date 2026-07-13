@@ -211,6 +211,14 @@ export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // planned a `remove`, reported CLEAN, yet live `get-monitor` stayed INACTIVE). Write the
   // "ACTIVE" default (from KNOWN_DEFAULTS) back explicitly so revert converges.
   'AWS::InternetMonitor::Monitor\0Status',
+  // ECR Repository UpdateResource IGNORES an omitted ImageTagMutability (live-proven on
+  // echo-barest 2026-07-14, #1580: a barest repo flipped to IMMUTABLE out of band, then
+  // `revert` planned a `remove`, Cloud Control reported `reverted: Repo`, yet
+  // `describe-repositories` stayed IMMUTABLE — the convergence re-read reported "1 drift
+  // remain"). The ECR CC handler does a partial update, so an omitted ImageTagMutability
+  // keeps the current value instead of reconciling to the MUTABLE default. Write the
+  // "MUTABLE" default (from KNOWN_DEFAULTS) back explicitly so revert converges.
+  'AWS::ECR::Repository\0ImageTagMutability',
   // RolesAnywhere UpdateProfile IGNORES an omitted DurationSeconds (live-proven follow-up to
   // the #619 fold: a profile's session duration changed out of band to 7200, then
   // `revert --remove-unrecorded` planned a `remove`, reported reverted, yet live `get-profile`

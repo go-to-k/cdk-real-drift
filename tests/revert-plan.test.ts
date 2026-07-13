@@ -1401,6 +1401,27 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('#1580: ECR Repository ImageTagMutability (SET-DEFAULT) -> add op writing MUTABLE, not a no-op remove', () => {
+    // #1580 (live-proven on echo-barest 2026-07-14): a barest ECR repo flipped to IMMUTABLE
+    // out of band, then `revert` planned a `remove`, Cloud Control reported `reverted: Repo`,
+    // yet `describe-repositories` stayed IMMUTABLE ("1 drift remain"). The ECR CC handler does
+    // a partial update, so an omitted ImageTagMutability keeps the current value. Revert must
+    // write the "MUTABLE" default (from KNOWN_DEFAULTS) explicitly so it converges.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::ECR::Repository',
+      path: 'ImageTagMutability',
+      actual: 'IMMUTABLE',
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/ImageTagMutability',
+      value: 'MUTABLE',
+      prior: 'IMMUTABLE',
+    });
+  });
+
   it('RolesAnywhere Profile DurationSeconds (SET-DEFAULT) -> add op writing 3600, not a no-op remove', () => {
     // Follow-up to #619: UpdateProfile IGNORES an omitted DurationSeconds (live-proven — a
     // profile duration changed to 7200, then `revert --remove-unrecorded` reported reverted,
