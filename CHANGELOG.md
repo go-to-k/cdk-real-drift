@@ -1,3 +1,10 @@
+# [0.18.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.17.3...v0.18.0) (2026-07-13)
+
+
+### Features
+
+* **revert:** SDK writer for AWS::ServiceDiscovery::Service via UpdateService ([#1576](https://github.com/go-to-k/cdk-real-drift/issues/1576)) ([eef279b](https://github.com/go-to-k/cdk-real-drift/commit/eef279b14465cccb15c37aa75a0033ad6b85bd5a))
+
 ## [0.17.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.17.2...v0.17.3) (2026-07-13)
 
 
