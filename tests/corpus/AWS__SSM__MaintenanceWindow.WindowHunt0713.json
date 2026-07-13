@@ -1,0 +1,68 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Window",
+    "resourceType": "AWS::SSM::MaintenanceWindow",
+    "physicalId": "mw-02f08595f3853346e",
+    "constructPath": "CdkrdHuntSsmMw0713/Window",
+    "declared": {
+      "AllowUnassociatedTargets": false,
+      "Cutoff": 1,
+      "Duration": 2,
+      "Name": "cdkrd-hunt-mw-0713",
+      "Schedule": "rate(7 days)",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "WindowId": "mw-02f08595f3853346e",
+    "AllowUnassociatedTargets": false,
+    "Cutoff": 1,
+    "Schedule": "rate(7 days)",
+    "Duration": 2,
+    "Tags": [
+      {
+        "Value": "CdkrdHuntSsmMw0713",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Window",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHuntSsmMw0713/b8285a10-7ea2-11f1-855c-0e071378db9b",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "Name": "cdkrd-hunt-mw-0713"
+  },
+  "schema": {
+    "readOnly": ["WindowId"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["WindowId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

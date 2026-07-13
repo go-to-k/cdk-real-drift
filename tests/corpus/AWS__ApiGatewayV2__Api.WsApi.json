@@ -1,0 +1,103 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "WsApi",
+    "resourceType": "AWS::ApiGatewayV2::Api",
+    "physicalId": "jt9zvy5llc",
+    "constructPath": "CdkrdHuntWsApi0713/WsApi",
+    "declared": {
+      "Name": "cdkrd-hunt-ws-0713",
+      "ProtocolType": "WEBSOCKET",
+      "RouteSelectionExpression": "$request.body.action",
+      "Tags": {
+        "cdkrd:ephemeral": "1"
+      }
+    }
+  },
+  "liveRaw": {
+    "IpAddressType": "ipv4",
+    "RouteSelectionExpression": "$request.body.action",
+    "ProtocolType": "WEBSOCKET",
+    "ApiEndpoint": "wss://jt9zvy5llc.execute-api.us-east-1.amazonaws.com",
+    "DisableExecuteApiEndpoint": false,
+    "ApiId": "jt9zvy5llc",
+    "Tags": {
+      "aws:cloudformation:stack-name": "CdkrdHuntWsApi0713",
+      "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHuntWsApi0713/b62adc60-7ea2-11f1-9653-12831bddd0eb",
+      "cdkrd:ephemeral": "1",
+      "aws:cloudformation:logical-id": "WsApi"
+    },
+    "Name": "cdkrd-hunt-ws-0713",
+    "ApiKeySelectionExpression": "$request.header.x-api-key"
+  },
+  "schema": {
+    "readOnly": ["ApiEndpoint", "ApiId"],
+    "writeOnly": [
+      "BasePath",
+      "Body",
+      "BodyS3Location",
+      "CredentialsArn",
+      "DisableSchemaValidation",
+      "FailOnWarnings",
+      "RouteKey",
+      "Target"
+    ],
+    "createOnly": ["ProtocolType"],
+    "readOnlyPaths": ["ApiEndpoint", "ApiId"],
+    "writeOnlyPaths": [
+      "BasePath",
+      "Body",
+      "BodyS3Location",
+      "BodyS3Location.Bucket",
+      "BodyS3Location.Etag",
+      "BodyS3Location.Key",
+      "BodyS3Location.Version",
+      "CredentialsArn",
+      "DisableSchemaValidation",
+      "FailOnWarnings",
+      "RouteKey",
+      "Target"
+    ],
+    "createOnlyPaths": ["ProtocolType"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "WsApi",
+      "resourceType": "AWS::ApiGatewayV2::Api",
+      "path": "IpAddressType",
+      "actual": "ipv4",
+      "physicalId": "jt9zvy5llc",
+      "constructPath": "CdkrdHuntWsApi0713/WsApi"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "WsApi",
+      "resourceType": "AWS::ApiGatewayV2::Api",
+      "path": "DisableExecuteApiEndpoint",
+      "actual": false,
+      "physicalId": "jt9zvy5llc",
+      "constructPath": "CdkrdHuntWsApi0713/WsApi"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "WsApi",
+      "resourceType": "AWS::ApiGatewayV2::Api",
+      "path": "ApiKeySelectionExpression",
+      "actual": "$request.header.x-api-key",
+      "physicalId": "jt9zvy5llc",
+      "constructPath": "CdkrdHuntWsApi0713/WsApi"
+    }
+  ]
+}

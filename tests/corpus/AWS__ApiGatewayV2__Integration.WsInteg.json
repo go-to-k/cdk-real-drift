@@ -1,0 +1,88 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "WsInteg",
+    "resourceType": "AWS::ApiGatewayV2::Integration",
+    "physicalId": "ic5d7an",
+    "constructPath": "CdkrdHuntWsApi0713/WsInteg",
+    "declared": {
+      "ApiId": "jt9zvy5llc",
+      "IntegrationType": "MOCK",
+      "RequestTemplates": {
+        "200": "{\"statusCode\":200}"
+      },
+      "TemplateSelectionExpression": "200"
+    }
+  },
+  "liveRaw": {
+    "PayloadFormatVersion": "1.0",
+    "TemplateSelectionExpression": "200",
+    "ConnectionType": "INTERNET",
+    "RequestTemplates": {
+      "200": "{\"statusCode\":200}"
+    },
+    "ResponseParameters": {},
+    "TimeoutInMillis": 29000,
+    "IntegrationId": "ic5d7an",
+    "ApiId": "jt9zvy5llc",
+    "IntegrationType": "MOCK",
+    "PassthroughBehavior": "WHEN_NO_MATCH"
+  },
+  "schema": {
+    "readOnly": ["IntegrationId"],
+    "writeOnly": [],
+    "createOnly": ["ApiId"],
+    "readOnlyPaths": ["IntegrationId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ApiId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": ["RequestParameters", "RequestTemplates", "ResponseParameters"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "WsInteg",
+      "resourceType": "AWS::ApiGatewayV2::Integration",
+      "path": "PayloadFormatVersion",
+      "actual": "1.0",
+      "physicalId": "ic5d7an",
+      "constructPath": "CdkrdHuntWsApi0713/WsInteg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "WsInteg",
+      "resourceType": "AWS::ApiGatewayV2::Integration",
+      "path": "ConnectionType",
+      "actual": "INTERNET",
+      "physicalId": "ic5d7an",
+      "constructPath": "CdkrdHuntWsApi0713/WsInteg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "WsInteg",
+      "resourceType": "AWS::ApiGatewayV2::Integration",
+      "path": "TimeoutInMillis",
+      "actual": 29000,
+      "physicalId": "ic5d7an",
+      "constructPath": "CdkrdHuntWsApi0713/WsInteg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "WsInteg",
+      "resourceType": "AWS::ApiGatewayV2::Integration",
+      "path": "PassthroughBehavior",
+      "actual": "WHEN_NO_MATCH",
+      "physicalId": "ic5d7an",
+      "constructPath": "CdkrdHuntWsApi0713/WsInteg"
+    }
+  ]
+}

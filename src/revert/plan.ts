@@ -357,6 +357,15 @@ export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // Live-proven 2026-07-12: an out-of-band query-ttl-millis=60000 was detected but the
   // `remove` revert failed with "cannot be cleared"; the set-default write converges.
   'AWS::DAX::ParameterGroup\0ParameterNameValues',
+  // #1567: the ApiGatewayV2 Response-type update handlers keep an omitted
+  // *SelectionExpression — a bare `remove` revert of an out-of-band expression reports
+  // SUCCESS yet the live value persists (live-proven on a WebSocket API 2026-07-13:
+  // TemplateSelectionExpression "200" and ModelSelectionExpression "huntexpr" both survived
+  // a `remove`). Writing an explicit empty string clears the value to null (also
+  // live-proven), so revert as a set-'' — the value comes from REVERT_SET_DEFAULT_VALUES
+  // (the fields default to ABSENT, so KNOWN_DEFAULTS has no source).
+  'AWS::ApiGatewayV2::IntegrationResponse\0TemplateSelectionExpression',
+  'AWS::ApiGatewayV2::RouteResponse\0ModelSelectionExpression',
 ]);
 
 // Set-default values for REVERT_SET_DEFAULT_PATHS entries whose default is a plain constant
@@ -374,6 +383,10 @@ const REVERT_SET_DEFAULT_VALUES: Record<string, unknown> = {
   // (no KNOWN_DEFAULTS source); its revert set-default value is the plain constant `false` so
   // the endpoint patch keeps both access flags (EKS rejects a partial endpoint update).
   'AWS::EKS::Cluster\0ResourcesVpcConfig.EndpointPrivateAccess': false,
+  // #1567: an explicit '' clears an ApiGatewayV2 *SelectionExpression the provider refuses
+  // to reset on absence (both fields default to absent — no KNOWN_DEFAULTS source).
+  'AWS::ApiGatewayV2::IntegrationResponse\0TemplateSelectionExpression': '',
+  'AWS::ApiGatewayV2::RouteResponse\0ModelSelectionExpression': '',
 };
 
 /**

@@ -933,6 +933,78 @@ describe('Glue Job writer (CC UpdateResource rejects MaxCapacity+WorkerType)', (
     expect(input.JobUpdate.MaxCapacity).toBe(10);
   });
 
+  it('#1568: sends only ONE capacity form for a non-WorkerType job — GetJob echoes BOTH', async () => {
+    // A real GetJob returns BOTH MaxCapacity and its deprecated duplicate
+    // AllocatedCapacity (live-proven on a barest glueetl job), and UpdateJob rejects a
+    // JobUpdate carrying both ("Please set only Allocated Capacity or Max Capacity."),
+    // which made EVERY revert on a non-WorkerType job fail. The writer must keep
+    // MaxCapacity and drop the AllocatedCapacity duplicate.
+    glue.on(GetJobCommand).resolves({
+      Job: {
+        Name: 'j',
+        Role: 'arn:aws:iam::111111111111:role/r',
+        Command: { Name: 'glueetl', ScriptLocation: 's3://b/s.py' },
+        Timeout: 999,
+        MaxCapacity: 10,
+        AllocatedCapacity: 10, // deprecated duplicate — must NOT be re-sent
+      },
+    } as never);
+    glue.on(UpdateJobCommand).resolves({});
+    await SDK_WRITERS['AWS::Glue::Job'](ctx({ physicalId: 'j' }), [timeoutOp(480)]);
+    const input = glue.commandCalls(UpdateJobCommand)[0]!.args[0].input as unknown as {
+      JobUpdate: Record<string, unknown>;
+    };
+    expect(input.JobUpdate.MaxCapacity).toBe(10);
+    expect('AllocatedCapacity' in input.JobUpdate).toBe(false);
+  });
+
+  it('#1568: an op REMOVING WorkerType lands in the fixed one-capacity branch', async () => {
+    // Reverting an out-of-band WorkerType (undeclared, not in baseline) removes it from
+    // the model — the post-ops job is a non-WorkerType job, whose GetJob echo pair must
+    // still collapse to a single capacity form.
+    glue.on(GetJobCommand).resolves({
+      Job: {
+        Name: 'j',
+        Role: 'arn:aws:iam::111111111111:role/r',
+        Command: { Name: 'glueetl', ScriptLocation: 's3://b/s.py' },
+        WorkerType: 'G.1X',
+        NumberOfWorkers: 10,
+        MaxCapacity: 10,
+        AllocatedCapacity: 10,
+      },
+    } as never);
+    glue.on(UpdateJobCommand).resolves({});
+    await SDK_WRITERS['AWS::Glue::Job'](ctx({ physicalId: 'j' }), [
+      { op: 'remove', path: '/WorkerType', human: 'WorkerType -> remove' },
+      { op: 'remove', path: '/NumberOfWorkers', human: 'NumberOfWorkers -> remove' },
+    ]);
+    const input = glue.commandCalls(UpdateJobCommand)[0]!.args[0].input as unknown as {
+      JobUpdate: Record<string, unknown>;
+    };
+    expect('WorkerType' in input.JobUpdate).toBe(false);
+    expect(input.JobUpdate.MaxCapacity).toBe(10);
+    expect('AllocatedCapacity' in input.JobUpdate).toBe(false);
+  });
+
+  it('#1568: an ancient AllocatedCapacity-only job still round-trips its capacity', async () => {
+    glue.on(GetJobCommand).resolves({
+      Job: {
+        Name: 'j',
+        Role: 'arn:aws:iam::111111111111:role/r',
+        Command: { Name: 'glueetl' },
+        Timeout: 20,
+        AllocatedCapacity: 2,
+      },
+    } as never);
+    glue.on(UpdateJobCommand).resolves({});
+    await SDK_WRITERS['AWS::Glue::Job'](ctx({ physicalId: 'j' }), [timeoutOp(10)]);
+    const input = glue.commandCalls(UpdateJobCommand)[0]!.args[0].input as unknown as {
+      JobUpdate: Record<string, unknown>;
+    };
+    expect(input.JobUpdate.AllocatedCapacity).toBe(2);
+    expect('MaxCapacity' in input.JobUpdate).toBe(false);
+  });
+
   it('throws when the job name is unresolvable', async () => {
     await expect(
       SDK_WRITERS['AWS::Glue::Job'](ctx({ physicalId: '', declared: {} }), [timeoutOp(10)])

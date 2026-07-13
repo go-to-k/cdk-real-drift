@@ -1,0 +1,65 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "WsRoute",
+    "resourceType": "AWS::ApiGatewayV2::Route",
+    "physicalId": "lf89px5",
+    "constructPath": "CdkrdHuntWsApi0713/WsRoute",
+    "declared": {
+      "ApiId": "jt9zvy5llc",
+      "RouteKey": "$default",
+      "RouteResponseSelectionExpression": "$default",
+      "Target": "integrations/ic5d7an"
+    }
+  },
+  "liveRaw": {
+    "Target": "integrations/ic5d7an",
+    "RouteResponseSelectionExpression": "$default",
+    "RequestModels": {},
+    "AuthorizationScopes": [],
+    "ApiKeyRequired": false,
+    "RouteKey": "$default",
+    "RouteId": "lf89px5",
+    "AuthorizationType": "NONE",
+    "ApiId": "jt9zvy5llc"
+  },
+  "schema": {
+    "readOnly": ["RouteId"],
+    "writeOnly": ["AuthorizerId", "RequestParameters"],
+    "createOnly": ["ApiId"],
+    "readOnlyPaths": ["RouteId"],
+    "writeOnlyPaths": ["AuthorizerId", "RequestParameters"],
+    "createOnlyPaths": ["ApiId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "WsRoute",
+      "resourceType": "AWS::ApiGatewayV2::Route",
+      "path": "ApiKeyRequired",
+      "actual": false,
+      "physicalId": "lf89px5",
+      "constructPath": "CdkrdHuntWsApi0713/WsRoute"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "WsRoute",
+      "resourceType": "AWS::ApiGatewayV2::Route",
+      "path": "AuthorizationType",
+      "actual": "NONE",
+      "physicalId": "lf89px5",
+      "constructPath": "CdkrdHuntWsApi0713/WsRoute"
+    }
+  ]
+}

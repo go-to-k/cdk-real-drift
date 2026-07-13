@@ -1,0 +1,157 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "GlueJob",
+    "resourceType": "AWS::Glue::Job",
+    "physicalId": "GlueJob-llQDNP1s162l",
+    "constructPath": "CdkrdHuntGrabBag0713/GlueJob",
+    "declared": {
+      "Command": {
+        "Name": "glueetl",
+        "ScriptLocation": "s3://cdkrd-hunt-nonexistent/script.py"
+      },
+      "Role": "arn:aws:iam::111111111111:role/CdkrdHuntGrabBag0713-GlueRole-9x7azuFIo3ht",
+      "Tags": {
+        "cdkrd:ephemeral": "1"
+      }
+    }
+  },
+  "liveRaw": {
+    "MaxRetries": 0,
+    "JobMode": "SCRIPT",
+    "Timeout": 480,
+    "AllocatedCapacity": 10,
+    "JobRunQueuingEnabled": false,
+    "Name": "GlueJob-llQDNP1s162l",
+    "Role": "arn:aws:iam::111111111111:role/CdkrdHuntGrabBag0713-GlueRole-9x7azuFIo3ht",
+    "WorkerType": "G.1X",
+    "Command": {
+      "PythonVersion": "2",
+      "ScriptLocation": "s3://cdkrd-hunt-nonexistent/script.py",
+      "Name": "glueetl"
+    },
+    "GlueVersion": "5.1",
+    "ExecutionProperty": {
+      "MaxConcurrentRuns": 1
+    },
+    "NumberOfWorkers": 10,
+    "Tags": {
+      "cdkrd:ephemeral": "1"
+    },
+    "MaxCapacity": 10
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "GlueJob",
+      "resourceType": "AWS::Glue::Job",
+      "path": "MaxRetries",
+      "actual": 0,
+      "physicalId": "GlueJob-llQDNP1s162l",
+      "constructPath": "CdkrdHuntGrabBag0713/GlueJob"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "GlueJob",
+      "resourceType": "AWS::Glue::Job",
+      "path": "JobMode",
+      "actual": "SCRIPT",
+      "physicalId": "GlueJob-llQDNP1s162l",
+      "constructPath": "CdkrdHuntGrabBag0713/GlueJob"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "GlueJob",
+      "resourceType": "AWS::Glue::Job",
+      "path": "Timeout",
+      "actual": 480,
+      "physicalId": "GlueJob-llQDNP1s162l",
+      "constructPath": "CdkrdHuntGrabBag0713/GlueJob"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "GlueJob",
+      "resourceType": "AWS::Glue::Job",
+      "path": "AllocatedCapacity",
+      "actual": 10,
+      "physicalId": "GlueJob-llQDNP1s162l",
+      "constructPath": "CdkrdHuntGrabBag0713/GlueJob"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "GlueJob",
+      "resourceType": "AWS::Glue::Job",
+      "path": "WorkerType",
+      "actual": "G.1X",
+      "physicalId": "GlueJob-llQDNP1s162l",
+      "constructPath": "CdkrdHuntGrabBag0713/GlueJob"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "GlueJob",
+      "resourceType": "AWS::Glue::Job",
+      "path": "GlueVersion",
+      "actual": "5.1",
+      "physicalId": "GlueJob-llQDNP1s162l",
+      "constructPath": "CdkrdHuntGrabBag0713/GlueJob"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "GlueJob",
+      "resourceType": "AWS::Glue::Job",
+      "path": "ExecutionProperty",
+      "actual": {
+        "MaxConcurrentRuns": 1
+      },
+      "physicalId": "GlueJob-llQDNP1s162l",
+      "constructPath": "CdkrdHuntGrabBag0713/GlueJob"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "GlueJob",
+      "resourceType": "AWS::Glue::Job",
+      "path": "NumberOfWorkers",
+      "actual": 10,
+      "physicalId": "GlueJob-llQDNP1s162l",
+      "constructPath": "CdkrdHuntGrabBag0713/GlueJob"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "GlueJob",
+      "resourceType": "AWS::Glue::Job",
+      "path": "MaxCapacity",
+      "actual": 10,
+      "physicalId": "GlueJob-llQDNP1s162l",
+      "constructPath": "CdkrdHuntGrabBag0713/GlueJob"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "GlueJob",
+      "resourceType": "AWS::Glue::Job",
+      "path": "Command.PythonVersion",
+      "actual": "2",
+      "nested": true,
+      "physicalId": "GlueJob-llQDNP1s162l",
+      "constructPath": "CdkrdHuntGrabBag0713/GlueJob"
+    }
+  ]
+}

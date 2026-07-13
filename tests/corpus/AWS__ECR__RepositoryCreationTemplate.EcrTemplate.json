@@ -1,0 +1,64 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "EcrTemplate",
+    "resourceType": "AWS::ECR::RepositoryCreationTemplate",
+    "physicalId": "cdkrd-hunt-0713",
+    "constructPath": "CdkrdHuntGrabBag0713/EcrTemplate",
+    "declared": {
+      "AppliedFor": ["PULL_THROUGH_CACHE"],
+      "Prefix": "cdkrd-hunt-0713"
+    }
+  },
+  "liveRaw": {
+    "EncryptionConfiguration": {
+      "EncryptionType": "AES256"
+    },
+    "CreatedAt": "2026-07-13T10:08:06.764Z",
+    "AppliedFor": ["PULL_THROUGH_CACHE"],
+    "Prefix": "cdkrd-hunt-0713",
+    "UpdatedAt": "2026-07-13T10:08:06.764Z",
+    "ImageTagMutability": "MUTABLE"
+  },
+  "schema": {
+    "readOnly": ["CreatedAt", "UpdatedAt"],
+    "writeOnly": [],
+    "createOnly": ["Prefix"],
+    "readOnlyPaths": ["CreatedAt", "UpdatedAt"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Prefix"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["AppliedFor"],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "EcrTemplate",
+      "resourceType": "AWS::ECR::RepositoryCreationTemplate",
+      "path": "EncryptionConfiguration",
+      "actual": {
+        "EncryptionType": "AES256"
+      },
+      "physicalId": "cdkrd-hunt-0713",
+      "constructPath": "CdkrdHuntGrabBag0713/EcrTemplate"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EcrTemplate",
+      "resourceType": "AWS::ECR::RepositoryCreationTemplate",
+      "path": "ImageTagMutability",
+      "actual": "MUTABLE",
+      "physicalId": "cdkrd-hunt-0713",
+      "constructPath": "CdkrdHuntGrabBag0713/EcrTemplate"
+    }
+  ]
+}

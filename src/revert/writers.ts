@@ -888,10 +888,16 @@ const writeGlueJob: SdkWriter = async (ctx, ops) => {
   const update: Record<string, unknown> = {};
   for (const k of GLUE_JOB_UPDATE_FIELDS) if (m[k] !== undefined) update[k] = m[k];
   // MaxCapacity / AllocatedCapacity are mutually exclusive with WorkerType — include
-  // them ONLY for a non-WorkerType job (else update-job rejects sending both).
+  // capacity ONLY for a non-WorkerType job (else update-job rejects sending both). And
+  // even then include only ONE of the pair: GetJob echoes BOTH (AllocatedCapacity is the
+  // deprecated duplicate of MaxCapacity), and update-job rejects "Please set only
+  // Allocated Capacity or Max Capacity." when the JobUpdate carries both — which made
+  // EVERY revert on a non-WorkerType job fail (#1568, live-proven 2026-07-13 on a barest
+  // glueetl job). Prefer MaxCapacity; fall back to AllocatedCapacity only for an ancient
+  // job that carries nothing else.
   if (m.WorkerType === undefined) {
     if (m.MaxCapacity !== undefined) update.MaxCapacity = m.MaxCapacity;
-    if (m.AllocatedCapacity !== undefined) update.AllocatedCapacity = m.AllocatedCapacity;
+    else if (m.AllocatedCapacity !== undefined) update.AllocatedCapacity = m.AllocatedCapacity;
   }
   await c.send(new UpdateJobCommand({ JobName: name, JobUpdate: update as never }));
   // #804 — an op on a prop outside the JobUpdate field set (e.g. read-only CreatedOn, or a

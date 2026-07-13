@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-integ-ssmmw-hunt",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Fixture CDK app for the cdk-real-drift ssmmw-hunt false-positive integration test. Run via verify.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module"
+}

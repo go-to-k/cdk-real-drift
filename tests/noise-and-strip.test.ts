@@ -968,9 +968,11 @@ describe('noise suppressors', () => {
     expect(KNOWN_DEFAULTS['AWS::Glue::Job']).toEqual({
       JobMode: 'SCRIPT',
       MaxRetries: 0,
-      Timeout: 2880,
       ExecutionProperty: { MaxConcurrentRuns: 1 },
     });
+    // Timeout moved to the era ONE_OF — AWS advanced the create-time default 2880 -> 480
+    // (#1566); both eras fold, a third value surfaces.
+    expect(KNOWN_DEFAULT_ONE_OF['AWS::Glue::Job'].Timeout).toEqual([2880, 480]);
     // nested
     expect(KNOWN_DEFAULT_PATHS['AWS::WAFv2::WebACL']).toEqual({
       'Rules.*.Statement.RateBasedStatement.EvaluationWindowSec': 300,

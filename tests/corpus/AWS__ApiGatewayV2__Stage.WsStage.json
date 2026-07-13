@@ -1,0 +1,67 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "WsStage",
+    "resourceType": "AWS::ApiGatewayV2::Stage",
+    "physicalId": "hunt",
+    "constructPath": "CdkrdHuntWsApi0713/WsStage",
+    "declared": {
+      "ApiId": "jt9zvy5llc",
+      "StageName": "hunt",
+      "Tags": {
+        "cdkrd:ephemeral": "1"
+      }
+    }
+  },
+  "liveRaw": {
+    "RouteSettings": {},
+    "StageName": "hunt",
+    "StageVariables": {},
+    "ApiId": "jt9zvy5llc",
+    "DefaultRouteSettings": {
+      "LoggingLevel": "OFF",
+      "DataTraceEnabled": false,
+      "DetailedMetricsEnabled": false
+    },
+    "Tags": {
+      "aws:cloudformation:stack-name": "CdkrdHuntWsApi0713",
+      "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHuntWsApi0713/b62adc60-7ea2-11f1-9653-12831bddd0eb",
+      "cdkrd:ephemeral": "1",
+      "aws:cloudformation:logical-id": "WsStage"
+    }
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["ApiId", "StageName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ApiId", "StageName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "WsStage",
+      "resourceType": "AWS::ApiGatewayV2::Stage",
+      "path": "DefaultRouteSettings",
+      "actual": {
+        "LoggingLevel": "OFF",
+        "DataTraceEnabled": false,
+        "DetailedMetricsEnabled": false
+      },
+      "physicalId": "hunt",
+      "constructPath": "CdkrdHuntWsApi0713/WsStage"
+    }
+  ]
+}
