@@ -1,3 +1,10 @@
+## [0.18.8](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.7...v0.18.8) (2026-07-13)
+
+
+### Bug Fixes
+
+* **check,revert:** fold Redshift/oracle/Multi-AZ-OpenSearch first-run FPs and fix write-only re-include false no-op ([#1595](https://github.com/go-to-k/cdk-real-drift/issues/1595)) ([921b5dd](https://github.com/go-to-k/cdk-real-drift/commit/921b5ddf8ad6db0fb39e6defbf9a2bc1cdb398fb))
+
 ## [0.18.7](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.6...v0.18.7) (2026-07-13)
 
 
