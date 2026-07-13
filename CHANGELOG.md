@@ -1,3 +1,10 @@
+## [0.18.6](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.5...v0.18.6) (2026-07-13)
+
+
+### Bug Fixes
+
+* **revert:** ApiGatewayV2 Api DisableExecuteApiEndpoint + Route AuthorizationType revert converge ([#1585](https://github.com/go-to-k/cdk-real-drift/issues/1585)) ([#1587](https://github.com/go-to-k/cdk-real-drift/issues/1587)) ([a9e0069](https://github.com/go-to-k/cdk-real-drift/commit/a9e0069b9dfc6dbc06743484476deb9014231d60))
+
 ## [0.18.5](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.4...v0.18.5) (2026-07-13)
 
 
