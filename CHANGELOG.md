@@ -1,3 +1,10 @@
+## [0.18.5](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.4...v0.18.5) (2026-07-13)
+
+
+### Bug Fixes
+
+* **baseline:** declared write-only property no longer disables 'appeared since record' ([#1582](https://github.com/go-to-k/cdk-real-drift/issues/1582)) ([#1586](https://github.com/go-to-k/cdk-real-drift/issues/1586)) ([f5c5a47](https://github.com/go-to-k/cdk-real-drift/commit/f5c5a470e1dfce409be818d2b5f1741025c70509))
+
 ## [0.18.4](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.3...v0.18.4) (2026-07-13)
 
 
