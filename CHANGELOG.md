@@ -1,3 +1,10 @@
+## [0.17.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.17.1...v0.17.2) (2026-07-13)
+
+
+### Bug Fixes
+
+* **revert:** converge Kinesis Stream RetentionPeriodHours revert ([#1571](https://github.com/go-to-k/cdk-real-drift/issues/1571)) ([#1572](https://github.com/go-to-k/cdk-real-drift/issues/1572)) ([621c652](https://github.com/go-to-k/cdk-real-drift/commit/621c652d0b8630a6b03aaac3dfd5f004f76b0a96))
+
 ## [0.17.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.17.0...v0.17.1) (2026-07-13)
 
 
