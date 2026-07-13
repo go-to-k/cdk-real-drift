@@ -1,3 +1,10 @@
+# [0.16.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.15.0...v0.16.0) (2026-07-13)
+
+
+### Features
+
+* **revert:** PutConfigurationRecorder writer for AWS::Config::ConfigurationRecorder ([#1553](https://github.com/go-to-k/cdk-real-drift/issues/1553)) ([#1555](https://github.com/go-to-k/cdk-real-drift/issues/1555)) ([e015c18](https://github.com/go-to-k/cdk-real-drift/commit/e015c1886aa5c7d87032e76c947517a47a2f0ad8))
+
 # [0.15.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.14.1...v0.15.0) (2026-07-13)
 
 
