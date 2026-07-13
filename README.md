@@ -1181,6 +1181,9 @@ Control cannot sub-path patch it),
 `AWS::Glue::Job` / `Classifier` / `Workflow`),
 `servicediscovery:UpdateHttpNamespace` (reverts an
 `AWS::ServiceDiscovery::HttpNamespace` `Description`),
+`servicediscovery:UpdateService` (reverts an `AWS::ServiceDiscovery::Service`'s
+`Description` / `DnsConfig.DnsRecords` / `HealthCheckConfig` — a DNS-namespace
+service; an API-only (HTTP) namespace service cannot be updated),
 `cognito-sync:SetCognitoEvents` (reverts an `AWS::Cognito::IdentityPool`'s
 writeOnly `CognitoEvents`),
 `kinesisvideo:UpdateDataRetention` / `kinesisvideo:UpdateSignalingChannel` /
