@@ -1422,6 +1422,61 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('#1583: SQS Queue MaximumMessageSize (SET-DEFAULT) -> add op writing 1048576, not a no-op remove', () => {
+    // #1583 (live-proven on revert-noop-probe 2026-07-14): mutated 1048576->262144 out of
+    // band, then `revert` planned a `remove`, reported reverted, yet the queue stayed 262144.
+    // NON-UNIFORM within SQS: the other four folded scalars converge via a bare `remove`, so
+    // ONLY MaximumMessageSize needs the explicit set-default write (1048576 from KNOWN_DEFAULTS).
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::SQS::Queue',
+      path: 'MaximumMessageSize',
+      actual: 262144,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/MaximumMessageSize',
+      value: 1048576,
+      prior: 262144,
+    });
+  });
+
+  it('#1583: Lambda Url InvokeMode (SET-DEFAULT) -> add op writing BUFFERED, not a no-op remove', () => {
+    // #1583 (live-proven on revert-noop-probe 2026-07-14): a URL flipped BUFFERED->RESPONSE_STREAM
+    // out of band, then `revert` planned a `remove`, reported reverted, yet the URL stayed
+    // RESPONSE_STREAM. UpdateFunctionUrlConfig ignores an omitted InvokeMode — write the
+    // "BUFFERED" default (from KNOWN_DEFAULTS) explicitly so revert converges.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::Lambda::Url',
+      path: 'InvokeMode',
+      actual: 'RESPONSE_STREAM',
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/InvokeMode',
+      value: 'BUFFERED',
+      prior: 'RESPONSE_STREAM',
+    });
+  });
+
+  it('#1583 control: SQS VisibilityTimeout is NOT a set-default path (converges via bare remove) -> remove op', () => {
+    // The NON-UNIFORMITY guard: the other four SQS folded scalars were live-verified to
+    // converge via a bare `remove` (the CC handler resets them on omit), so they must stay
+    // OFF REVERT_SET_DEFAULT_PATHS — a future entry here would be wrong. VisibilityTimeout
+    // stands for the four.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::SQS::Queue',
+      path: 'VisibilityTimeout',
+      actual: 60,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({ op: 'remove', path: '/VisibilityTimeout' });
+  });
+
   it('RolesAnywhere Profile DurationSeconds (SET-DEFAULT) -> add op writing 3600, not a no-op remove', () => {
     // Follow-up to #619: UpdateProfile IGNORES an omitted DurationSeconds (live-proven — a
     // profile duration changed to 7200, then `revert --remove-unrecorded` reported reverted,

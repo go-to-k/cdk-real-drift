@@ -219,6 +219,19 @@ export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // keeps the current value instead of reconciling to the MUTABLE default. Write the
   // "MUTABLE" default (from KNOWN_DEFAULTS) back explicitly so revert converges.
   'AWS::ECR::Repository\0ImageTagMutability',
+  // SQS: an omitted MaximumMessageSize is NOT reset to the default on a revert patch
+  // (live-proven on revert-noop-probe 2026-07-14, #1583: mutated 1048576->262144 out of
+  // band, then `revert` planned a `remove`, reported reverted, yet the queue stayed
+  // 262144). NON-UNIFORM within SQS: the other four folded scalars (VisibilityTimeout,
+  // MessageRetentionPeriod, DelaySeconds, ReceiveMessageWaitTimeSeconds) DO converge via
+  // the bare `remove` (live-verified same run), so ONLY MaximumMessageSize needs an
+  // explicit set-default write (the 1048576 default from KNOWN_DEFAULTS).
+  'AWS::SQS::Queue\0MaximumMessageSize',
+  // Lambda UpdateFunctionUrlConfig IGNORES an omitted InvokeMode (live-proven on
+  // revert-noop-probe 2026-07-14, #1583: a URL flipped BUFFERED->RESPONSE_STREAM out of
+  // band, then `revert` planned a `remove`, reported reverted, yet the URL stayed
+  // RESPONSE_STREAM). Write the "BUFFERED" default (from KNOWN_DEFAULTS) back explicitly.
+  'AWS::Lambda::Url\0InvokeMode',
   // RolesAnywhere UpdateProfile IGNORES an omitted DurationSeconds (live-proven follow-up to
   // the #619 fold: a profile's session duration changed out of band to 7200, then
   // `revert --remove-unrecorded` planned a `remove`, reported reverted, yet live `get-profile`
