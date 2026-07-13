@@ -359,12 +359,24 @@ export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // on CdkrdHunt0713RdsMariadb (us-east-1, 2026-07-13): an out-of-band undeclared
   // BackupRetentionPeriod 1->3 survived a bare-`remove` revert that reported success (the
   // convergence re-read flagged it NOT reverted); with this entry the set-default `add 1`
-  // (from KNOWN_DEFAULTS) converges — live re-verified to 1. The remaining folded siblings
-  // on the same API (MultiAZ, CopyTagsToSnapshot, EnablePerformanceInsights,
-  // CACertificateIdentifier, MonitoringInterval) are expected twins — add each ONLY with
-  // its own live proof (note the CDK L2 declares CopyTagsToSnapshot, so proving it needs a
-  // raw-CFn/L1 fixture that leaves it undeclared).
+  // (from KNOWN_DEFAULTS) converges — live re-verified to 1.
   'AWS::RDS::DBInstance\0BackupRetentionPeriod',
+  // #1588: the remaining folded ModifyDBInstance siblings flagged as expected twins by the
+  // #1541 note — each now live-proven on Cdkrd1588Verify (us-east-1, 2026-07-14, a barest
+  // db.t3.medium mariadb with every twin left UNDECLARED). For each: an out-of-band enable
+  // (MultiAZ false->true, EnablePerformanceInsights false->true, MonitoringInterval 0->60,
+  // CopyTagsToSnapshot false->true) or CA swap (CACertificateIdentifier
+  // rds-ca-rsa2048-g1 -> rds-ca-rsa4096-g1) was DETECTED (appeared-since-record, post-#1586)
+  // yet survived a bare-`remove` revert (the live value persisted unchanged) — the
+  // ModifyDBInstance selective-modify keeps the existing value for an omitted property (the
+  // pre-fix binary's convergence re-read flagged it NOT reverted). With these entries the
+  // set-default `add <default>` (all sourced from KNOWN_DEFAULTS: false / false / 0 / false /
+  // rds-ca-rsa2048-g1) converges — each live re-verified back to its default.
+  'AWS::RDS::DBInstance\0MultiAZ',
+  'AWS::RDS::DBInstance\0EnablePerformanceInsights',
+  'AWS::RDS::DBInstance\0MonitoringInterval',
+  'AWS::RDS::DBInstance\0CopyTagsToSnapshot',
+  'AWS::RDS::DBInstance\0CACertificateIdentifier',
   'AWS::RDS::DBCluster\0AutoMinorVersionUpgrade',
   'AWS::Neptune::DBInstance\0AutoMinorVersionUpgrade',
   'AWS::ElastiCache::CacheCluster\0AutoMinorVersionUpgrade',
@@ -474,6 +486,16 @@ export const MOVING_REVERT_PINS: Record<string, MovingRevertPin> = {
     lastVerified: '2026-07-10',
     moveAxis:
       'RDS/DocDB rotate the default server CA on a published schedule; a bump makes revert write a superseded CA identifier (reboots the instance onto an old cert).',
+  },
+  // #1588: RDS::DBInstance CACertificateIdentifier is now a revert-write pin (added to
+  // REVERT_SET_DEFAULT_PATHS). Same moving default as the DocDB twin above — AWS advanced the
+  // default RDS server CA before (rds-ca-2019 -> rds-ca-rsa2048-g1) and will again, so track
+  // its staleness here (a revert-write pin's rot is not self-surfacing).
+  'AWS::RDS::DBInstance\0CACertificateIdentifier': {
+    value: 'rds-ca-rsa2048-g1',
+    lastVerified: '2026-07-14',
+    moveAxis:
+      'RDS rotates the default server CA on a published schedule; a bump makes revert write a superseded CA identifier (reboots the instance onto an old cert). Live-confirmed rds-ca-rsa2048-g1 is the fresh-instance default (us-east-1, 2026-07-14).',
   },
 };
 
