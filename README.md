@@ -916,6 +916,14 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   undeclared `RecordingGroup.RecordingStrategy` mirror and `RecordingMode` default
   fold to atDefault, so a fresh recorder is clean while a recording-scope change
   still surfaces),
+  `elasticloadbalancing:DescribeListenerCertificates` (reads an
+  `AWS::ElasticLoadBalancingV2::ListenerCertificate` — the SNI extra-cert
+  attachment whose registry type ships NO read handler at all, so Cloud Control
+  returns `UnsupportedActionException` and it was silently skipped; the reader
+  derives the listener ARN from the declared `ListenerArn` and projects this
+  resource's declared certs still present in the live non-default set, so a
+  declared cert removed out of band surfaces as drift while multiple attachments
+  on one listener stay false-positive-free),
   `ssm:DescribeParameters` (supplements the Cloud Control read of an
   `AWS::SSM::Parameter` with its writeOnly `Description` / `AllowedPattern`),
   `elasticache:DescribeReplicationGroups` + `elasticache:DescribeCacheClusters`
