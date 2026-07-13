@@ -138,6 +138,7 @@ import {
   DescribeDeliveryChannelsCommand,
 } from '@aws-sdk/client-config-service';
 import {
+  DescribeListenerCertificatesCommand,
   ElasticLoadBalancingV2Client,
   GetTrustStoreCaCertificatesBundleCommand,
 } from '@aws-sdk/client-elastic-load-balancing-v2';
@@ -3296,7 +3297,63 @@ const readConfigDeliveryChannel: OverrideReader = async ({ physicalId, region })
   return model;
 };
 
+// AWS::ElasticLoadBalancingV2::ListenerCertificate — the registry schema has NO handlers at all
+// (`describe-type` → Schema.handlers absent), so Cloud Control throws UnsupportedActionException and
+// the resource is silently Skipped (#1560). The CFn physical id is a composite, NOT the listener
+// ARN, so the reader derives the listener ARN from the resolved declared `ListenerArn` and reads the
+// live cert set via elbv2:DescribeListenerCertificates.
+//
+// SCOPING (FP-safe): DescribeListenerCertificates returns the listener's FULL cert set including its
+// DEFAULT cert (IsDefault=true) and EVERY extra (SNI) cert — and multiple ListenerCertificate
+// resources can target one listener, so echoing the whole live set per resource would false-positive
+// (each resource declares only its own subset). The model therefore projects ONLY this resource's
+// DECLARED certs that are still present in the live NON-DEFAULT set (declared ∩ live) — so a clean
+// deploy folds, and a declared cert REMOVED out of band (`elbv2 remove-listener-certificates`) drops
+// from the model and surfaces as declared drift. Detecting an ADDED rogue cert is deferred to a
+// CHILD_ENUMERATORS follow-up (the `added` tier), which the issue notes is the right home for it.
+const declaredCertArns = (declared: Record<string, unknown>): string[] => {
+  const list = Array.isArray(declared.Certificates) ? declared.Certificates : [];
+  const arns: string[] = [];
+  for (const c of list) {
+    const arn =
+      c && typeof c === 'object' ? str((c as Record<string, unknown>).CertificateArn) : undefined;
+    if (arn) arns.push(arn);
+  }
+  return arns;
+};
+const readElbv2ListenerCertificate: OverrideReader = async ({ declared, region }) => {
+  const listenerArn = str(declared.ListenerArn);
+  if (!listenerArn) return undefined; // unresolved parent ref → skip (unchanged behavior)
+  const c = new ElasticLoadBalancingV2Client({ region, ...READ_RETRY });
+  // PAGINATE: a listener can hold many certs; reading only page 1 could misread a PRESENT cert (on a
+  // later page) as absent → a FALSE removal. Follow Marker until exhausted.
+  const liveNonDefault = new Set<string>();
+  let marker: string | undefined;
+  do {
+    const r = await c.send(
+      new DescribeListenerCertificatesCommand({ ListenerArn: listenerArn, Marker: marker })
+    );
+    for (const cert of r.Certificates ?? []) {
+      if (cert.IsDefault !== true && str(cert.CertificateArn)) {
+        liveNonDefault.add(cert.CertificateArn as string);
+      }
+    }
+    marker = r.NextMarker;
+  } while (marker);
+  const model: Record<string, unknown> = {};
+  // Echo the parent listener arn (declared, resolved) so a declared ListenerArn compares rather than
+  // read-gapping — the describe call is scoped to it, so it is authoritative.
+  model.ListenerArn = listenerArn;
+  // Project this resource's declared certs that are still attached (live non-default set). Order-
+  // preserving against the declared list so the array compare is stable.
+  model.Certificates = declaredCertArns(declared)
+    .filter((arn) => liveNonDefault.has(arn))
+    .map((arn) => ({ CertificateArn: arn }));
+  return model;
+};
+
 export const SDK_OVERRIDES: Record<string, OverrideReader> = {
+  'AWS::ElasticLoadBalancingV2::ListenerCertificate': readElbv2ListenerCertificate,
   'AWS::CertificateManager::Certificate': readAcmCertificate,
   'AWS::SES::ReceiptRuleSet': readSesReceiptRuleSet,
   'AWS::SES::ReceiptRule': readSesReceiptRule,
