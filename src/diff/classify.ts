@@ -509,6 +509,15 @@ export const DEFAULT_SG_LIST_PATHS: Record<string, string> = {
   // hide a rogue SG swap/append. Same derived VPC-default-SG gate: fold a single default SG,
   // surface an append/swap. Keep in sync with gather.ts DEFAULT_SG_LIST_TYPES.
   'AWS::DMS::ReplicationInstance': 'VpcSecurityGroupIds',
+  // A ClientVpnEndpoint that declares no SecurityGroupIds gains its associated VPC's default SG
+  // the moment the FIRST target-network association lands (live-confirmed on a fresh barest
+  // endpoint + in-stack association, us-east-1 2026-07-13; the unassociated `clientvpn-barest`
+  // shape never materializes the field, which is why this stayed latent). It is OOB-mutable
+  // (`ec2 apply-security-groups-to-client-vpn-target-network`), so the same derived
+  // VPC-default-SG gate applies: fold the single default SG, surface an append/swap. Keep in
+  // sync with gather.ts DEFAULT_SG_LIST_TYPES. The association-echoed `VpcId` sibling is folded
+  // via siblingClientVpnEndpointVpcs below.
+  'AWS::EC2::ClientVpnEndpoint': 'SecurityGroupIds',
 };
 /** #1269 fold decision for an UNDECLARED default-SUBNET list (RedshiftServerless Workgroup
  *  SubnetIds). Unlike the SG gate (which folds only a SINGLE default SG), a workgroup placed into
@@ -2822,6 +2831,14 @@ export function classifyResource(
     // over-set and SURFACES, marked autoscalerGoverned so revert refuses (a write-back the scaler
     // re-adjusts would never converge). Absent → no fold (fail-open, the finding stays visible).
     scalableTargetBands?: Record<string, { path: string; min: number; max: number }[]>;
+    // Per ClientVpnEndpoint identity (logicalId + physicalId), the VPC id DERIVED from a declared
+    // sibling AWS::EC2::ClientVpnTargetNetworkAssociation (its SubnetId's in-stack Subnet.VpcId; see
+    // gather.ts buildClientVpnEndpointSiblingVpcs). The FIRST association materializes the endpoint's
+    // undeclared `VpcId` (and default SG) — a deterministic echo of the stack's own association, not
+    // drift — so classify folds a `VpcId` equal to the derived VPC to atDefault. `null` = an in-stack
+    // association exists but its VPC is not derivable (imported subnet) → fail open (fold any VpcId).
+    // NO entry = no declared association → a live VpcId is an out-of-band association echo, SURFACES.
+    siblingClientVpnEndpointVpcs?: Record<string, string | null>;
   } = {}
 ): Finding[] {
   const { logicalId, resourceType, physicalId, declared: declaredIn } = resource;
@@ -4788,6 +4805,35 @@ export function classifyResource(
         actual: v,
       });
       continue;
+    }
+    // A ClientVpnEndpoint's undeclared `VpcId` is materialized by the FIRST target-network
+    // association (live-confirmed on a fresh barest endpoint + in-stack association, us-east-1
+    // 2026-07-13) — a deterministic echo of the stack's own declared association, so fold it when
+    // it equals the sibling-derived VPC (tier 2; an out-of-band `modify-client-vpn-endpoint
+    // --vpc-id` move no longer matches and surfaces). `null` = association present but VPC not
+    // derivable (imported subnet) → fail open. NO map entry = no declared association → a live
+    // VpcId is an out-of-band association echo and falls through (surfaces as undeclared).
+    if (resourceType === 'AWS::EC2::ClientVpnEndpoint' && k === 'VpcId' && typeof v === 'string') {
+      // `null` is meaningful (fail-open fold), so probe key presence — `??` would skip past it.
+      const vpcMap = opts.siblingClientVpnEndpointVpcs;
+      const derived =
+        vpcMap === undefined
+          ? undefined
+          : logicalId in vpcMap
+            ? vpcMap[logicalId]
+            : physicalId !== undefined && physicalId in vpcMap
+              ? vpcMap[physicalId]
+              : undefined;
+      if (derived !== undefined) {
+        findings.push({
+          tier: derived === null || derived === v ? 'atDefault' : 'undeclared',
+          logicalId,
+          resourceType,
+          path: k,
+          actual: v,
+        });
+        continue;
+      }
     }
     // #1269: an UNDECLARED default-subnet list (RedshiftServerless Workgroup SubnetIds) — replaces
     // the old value-independent fold, which hid an out-of-band subnet re-placement. Fold atDefault

@@ -1,0 +1,51 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Rule",
+    "resourceType": "AWS::EC2::ClientVpnAuthorizationRule",
+    "physicalId": "Rule-5HQmcB8Cysby",
+    "constructPath": "CdkrdHuntCvpnKids0713/Rule",
+    "declared": {
+      "AuthorizeAllGroups": true,
+      "ClientVpnEndpointId": "cvpn-endpoint-0eb61aeb3a584e71a",
+      "TargetNetworkCidr": "10.42.0.0/16"
+    }
+  },
+  "liveRaw": {
+    "ClientVpnEndpointId": "cvpn-endpoint-0eb61aeb3a584e71a",
+    "TargetNetworkCidr": "10.42.0.0/16",
+    "AuthorizeAllGroups": true
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": [
+      "AccessGroupId",
+      "AuthorizeAllGroups",
+      "ClientVpnEndpointId",
+      "Description",
+      "TargetNetworkCidr"
+    ],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "AccessGroupId",
+      "AuthorizeAllGroups",
+      "ClientVpnEndpointId",
+      "Description",
+      "TargetNetworkCidr"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
