@@ -1,3 +1,10 @@
+# [0.14.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.13.13...v0.14.0) (2026-07-13)
+
+
+### Features
+
+* **read:** child enumerators for ASG, VPC NAT/flow-log, Cognito domain, Glue tables, TGW ([#1540](https://github.com/go-to-k/cdk-real-drift/issues/1540)) ([#1550](https://github.com/go-to-k/cdk-real-drift/issues/1550)) ([69a8c91](https://github.com/go-to-k/cdk-real-drift/commit/69a8c910c240aac7946041415b89d76685375244))
+
 ## [0.13.13](https://github.com/go-to-k/cdk-real-drift/compare/v0.13.12...v0.13.13) (2026-07-12)
 
 
