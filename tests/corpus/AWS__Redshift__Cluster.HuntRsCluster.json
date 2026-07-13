@@ -1,0 +1,281 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntRsCluster",
+    "resourceType": "AWS::Redshift::Cluster",
+    "physicalId": "cdkrdhunt-mixed-rscluster",
+    "constructPath": "CdkrdHunt0714CaseIdents3/HuntRsCluster",
+    "declared": {
+      "ClusterIdentifier": "CdkrdHunt-Mixed-RsCluster",
+      "ClusterType": "single-node",
+      "DBName": "huntdb",
+      "MasterUserPassword": "CdkrdHuntPassw0rd1",
+      "MasterUsername": "huntadmin",
+      "NodeType": "ra3.large",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "AutomatedSnapshotRetentionPeriod": 1,
+    "AvailabilityZoneRelocationStatus": "enabled",
+    "AquaConfigurationStatus": "auto",
+    "Encrypted": true,
+    "Port": 5439,
+    "NumberOfNodes": 1,
+    "EnhancedVpcRouting": false,
+    "ClusterParameterGroupName": "default.redshift-2.0",
+    "AllowVersionUpgrade": true,
+    "Endpoint": {
+      "Address": "cdkrdhunt-mixed-rscluster.c5qzh3zoxdm2.us-east-1.redshift.amazonaws.com",
+      "Port": "5439"
+    },
+    "VpcSecurityGroupIds": ["sg-0a26e23e2310ee0c9"],
+    "MaintenanceTrackName": "current",
+    "ClusterNamespaceArn": "arn:aws:redshift:us-east-1:111111111111:namespace:2f212b0e-506f-4270-879b-fbaf1c05302c",
+    "MultiAZ": false,
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "IamRoles": [],
+    "ClusterVersion": "1.0",
+    "KmsKeyId": "AWS_OWNED_KMS_KEY",
+    "AvailabilityZone": "us-east-1d",
+    "PreferredMaintenanceWindow": "wed:04:00-wed:04:30",
+    "ClusterType": "single-node",
+    "ClusterSecurityGroups": [],
+    "ClusterIdentifier": "cdkrdhunt-mixed-rscluster",
+    "ClusterSubnetGroupName": "default",
+    "LoggingProperties": {
+      "LogExports": []
+    },
+    "NodeType": "ra3.large",
+    "MasterUsername": "huntadmin",
+    "DBName": "huntdb",
+    "PubliclyAccessible": false,
+    "ManualSnapshotRetentionPeriod": -1
+  },
+  "schema": {
+    "readOnly": ["ClusterNamespaceArn", "DeferMaintenanceIdentifier", "MasterPasswordSecretArn"],
+    "writeOnly": [
+      "Classic",
+      "DeferMaintenance",
+      "DeferMaintenanceDuration",
+      "ManageMasterPassword",
+      "MasterUserPassword",
+      "SnapshotIdentifier"
+    ],
+    "createOnly": [
+      "ClusterIdentifier",
+      "ClusterSubnetGroupName",
+      "DBName",
+      "MasterUsername",
+      "OwnerAccount",
+      "SnapshotClusterIdentifier",
+      "SnapshotIdentifier"
+    ],
+    "readOnlyPaths": [
+      "ClusterNamespaceArn",
+      "DeferMaintenanceIdentifier",
+      "Endpoint.Address",
+      "Endpoint.Port",
+      "MasterPasswordSecretArn"
+    ],
+    "writeOnlyPaths": [
+      "Classic",
+      "DeferMaintenance",
+      "DeferMaintenanceDuration",
+      "ManageMasterPassword",
+      "MasterUserPassword",
+      "SnapshotIdentifier"
+    ],
+    "createOnlyPaths": [
+      "ClusterIdentifier",
+      "ClusterSubnetGroupName",
+      "DBName",
+      "MasterUsername",
+      "OwnerAccount",
+      "SnapshotClusterIdentifier",
+      "SnapshotIdentifier"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [
+      "ClusterSecurityGroups",
+      "IamRoles",
+      "LoggingProperties.LogExports",
+      "VpcSecurityGroupIds"
+    ],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "HuntRsCluster",
+      "resourceType": "AWS::Redshift::Cluster",
+      "path": "MasterUserPassword",
+      "note": "write-only — cannot be read back",
+      "writeOnly": true,
+      "physicalId": "cdkrdhunt-mixed-rscluster",
+      "constructPath": "CdkrdHunt0714CaseIdents3/HuntRsCluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntRsCluster",
+      "resourceType": "AWS::Redshift::Cluster",
+      "path": "AutomatedSnapshotRetentionPeriod",
+      "actual": 1,
+      "physicalId": "cdkrdhunt-mixed-rscluster",
+      "constructPath": "CdkrdHunt0714CaseIdents3/HuntRsCluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntRsCluster",
+      "resourceType": "AWS::Redshift::Cluster",
+      "path": "AvailabilityZoneRelocationStatus",
+      "actual": "enabled",
+      "physicalId": "cdkrdhunt-mixed-rscluster",
+      "constructPath": "CdkrdHunt0714CaseIdents3/HuntRsCluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntRsCluster",
+      "resourceType": "AWS::Redshift::Cluster",
+      "path": "AquaConfigurationStatus",
+      "actual": "auto",
+      "physicalId": "cdkrdhunt-mixed-rscluster",
+      "constructPath": "CdkrdHunt0714CaseIdents3/HuntRsCluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntRsCluster",
+      "resourceType": "AWS::Redshift::Cluster",
+      "path": "Encrypted",
+      "actual": true,
+      "physicalId": "cdkrdhunt-mixed-rscluster",
+      "constructPath": "CdkrdHunt0714CaseIdents3/HuntRsCluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntRsCluster",
+      "resourceType": "AWS::Redshift::Cluster",
+      "path": "Port",
+      "actual": 5439,
+      "physicalId": "cdkrdhunt-mixed-rscluster",
+      "constructPath": "CdkrdHunt0714CaseIdents3/HuntRsCluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntRsCluster",
+      "resourceType": "AWS::Redshift::Cluster",
+      "path": "NumberOfNodes",
+      "actual": 1,
+      "physicalId": "cdkrdhunt-mixed-rscluster",
+      "constructPath": "CdkrdHunt0714CaseIdents3/HuntRsCluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntRsCluster",
+      "resourceType": "AWS::Redshift::Cluster",
+      "path": "ClusterParameterGroupName",
+      "actual": "default.redshift-2.0",
+      "physicalId": "cdkrdhunt-mixed-rscluster",
+      "constructPath": "CdkrdHunt0714CaseIdents3/HuntRsCluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntRsCluster",
+      "resourceType": "AWS::Redshift::Cluster",
+      "path": "AllowVersionUpgrade",
+      "actual": true,
+      "physicalId": "cdkrdhunt-mixed-rscluster",
+      "constructPath": "CdkrdHunt0714CaseIdents3/HuntRsCluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntRsCluster",
+      "resourceType": "AWS::Redshift::Cluster",
+      "path": "VpcSecurityGroupIds",
+      "actual": ["sg-0a26e23e2310ee0c9"],
+      "physicalId": "cdkrdhunt-mixed-rscluster",
+      "constructPath": "CdkrdHunt0714CaseIdents3/HuntRsCluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntRsCluster",
+      "resourceType": "AWS::Redshift::Cluster",
+      "path": "MaintenanceTrackName",
+      "actual": "current",
+      "physicalId": "cdkrdhunt-mixed-rscluster",
+      "constructPath": "CdkrdHunt0714CaseIdents3/HuntRsCluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntRsCluster",
+      "resourceType": "AWS::Redshift::Cluster",
+      "path": "ClusterVersion",
+      "actual": "1.0",
+      "physicalId": "cdkrdhunt-mixed-rscluster",
+      "constructPath": "CdkrdHunt0714CaseIdents3/HuntRsCluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntRsCluster",
+      "resourceType": "AWS::Redshift::Cluster",
+      "path": "KmsKeyId",
+      "actual": "AWS_OWNED_KMS_KEY",
+      "physicalId": "cdkrdhunt-mixed-rscluster",
+      "constructPath": "CdkrdHunt0714CaseIdents3/HuntRsCluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntRsCluster",
+      "resourceType": "AWS::Redshift::Cluster",
+      "path": "AvailabilityZone",
+      "actual": "us-east-1d",
+      "physicalId": "cdkrdhunt-mixed-rscluster",
+      "constructPath": "CdkrdHunt0714CaseIdents3/HuntRsCluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntRsCluster",
+      "resourceType": "AWS::Redshift::Cluster",
+      "path": "PreferredMaintenanceWindow",
+      "actual": "wed:04:00-wed:04:30",
+      "physicalId": "cdkrdhunt-mixed-rscluster",
+      "constructPath": "CdkrdHunt0714CaseIdents3/HuntRsCluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntRsCluster",
+      "resourceType": "AWS::Redshift::Cluster",
+      "path": "ClusterSubnetGroupName",
+      "actual": "default",
+      "physicalId": "cdkrdhunt-mixed-rscluster",
+      "constructPath": "CdkrdHunt0714CaseIdents3/HuntRsCluster"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntRsCluster",
+      "resourceType": "AWS::Redshift::Cluster",
+      "path": "ManualSnapshotRetentionPeriod",
+      "actual": -1,
+      "physicalId": "cdkrdhunt-mixed-rscluster",
+      "constructPath": "CdkrdHunt0714CaseIdents3/HuntRsCluster"
+    }
+  ]
+}

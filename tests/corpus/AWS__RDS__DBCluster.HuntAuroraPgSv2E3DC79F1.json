@@ -1,0 +1,307 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntAuroraPgSv2E3DC79F1",
+    "resourceType": "AWS::RDS::DBCluster",
+    "physicalId": "cdkrdhunt0714aurorapgsv2-huntaurorapgsv2e3dc79f1-pv7mq4jgtwzs",
+    "constructPath": "CdkrdHunt0714AuroraPgSv2/HuntAuroraPgSv2",
+    "declared": {
+      "CopyTagsToSnapshot": true,
+      "DBClusterParameterGroupName": "default.aurora-postgresql16",
+      "DBSubnetGroupName": "cdkrdhunt0714aurorapgsv2-huntaurorapgsv2subnetscf8b1bcb-zegmpfqfjd7r",
+      "Engine": "aurora-postgresql",
+      "EngineVersion": "16.4",
+      "MasterUserPassword": "CdkrdHuntPassw0rd1",
+      "MasterUsername": "huntadmin",
+      "Port": 5432,
+      "ServerlessV2ScalingConfiguration": {
+        "MaxCapacity": 1,
+        "MinCapacity": 0.5
+      },
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "VpcSecurityGroupIds": ["sg-094b13a73404cd86d"]
+    }
+  },
+  "liveRaw": {
+    "DatabaseInsightsMode": "standard",
+    "StorageEncrypted": false,
+    "AssociatedRoles": [],
+    "EnableHttpEndpoint": false,
+    "EngineMode": "provisioned",
+    "Port": 5432,
+    "DBClusterIdentifier": "cdkrdhunt0714aurorapgsv2-huntaurorapgsv2e3dc79f1-pv7mq4jgtwzs",
+    "PreferredBackupWindow": "08:37-09:07",
+    "Endpoint": {
+      "Address": "cdkrdhunt0714aurorapgsv2-huntaurorapgsv2e3dc79f1-pv7mq4jgtwzs.cluster-caxxotukouxo.us-east-1.rds.amazonaws.com",
+      "Port": "5432"
+    },
+    "NetworkType": "IPV4",
+    "VpcSecurityGroupIds": ["sg-094b13a73404cd86d"],
+    "CopyTagsToSnapshot": true,
+    "Engine": "aurora-postgresql",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      },
+      {
+        "Value": "CdkrdHunt0714AuroraPgSv2",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntAuroraPgSv2E3DC79F1",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0714AuroraPgSv2/76fe67e0-7ee9-11f1-a272-0afff7023071",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ],
+    "EngineLifecycleSupport": "open-source-rds-extended-support",
+    "EngineVersion": "16.4",
+    "StorageType": "aurora",
+    "AvailabilityZones": ["us-east-1c", "us-east-1a", "us-east-1b"],
+    "ServerlessV2ScalingConfiguration": {
+      "MinCapacity": 0.5,
+      "MaxCapacity": 1
+    },
+    "StorageEncryptionType": "sse-rds",
+    "DBClusterArn": "arn:aws:rds:us-east-1:111111111111:cluster:cdkrdhunt0714aurorapgsv2-huntaurorapgsv2e3dc79f1-pv7mq4jgtwzs",
+    "EnableLocalWriteForwarding": false,
+    "PreferredMaintenanceWindow": "sat:07:48-sat:08:18",
+    "DBClusterResourceId": "cluster-KTO22VDHRMCQ6HINY7PH5K22YQ",
+    "AutoMinorVersionUpgrade": true,
+    "DBSubnetGroupName": "cdkrdhunt0714aurorapgsv2-huntaurorapgsv2subnetscf8b1bcb-zegmpfqfjd7r",
+    "DeletionProtection": false,
+    "AllocatedStorage": 1,
+    "ManageMasterUserPassword": false,
+    "MasterUserSecret": {},
+    "MasterUsername": "huntadmin",
+    "ReadEndpoint": {
+      "Address": "cdkrdhunt0714aurorapgsv2-huntaurorapgsv2e3dc79f1-pv7mq4jgtwzs.cluster-ro-caxxotukouxo.us-east-1.rds.amazonaws.com"
+    },
+    "EnableIAMDatabaseAuthentication": false,
+    "DBClusterParameterGroupName": "default.aurora-postgresql16",
+    "BackupRetentionPeriod": 1,
+    "EnableCloudwatchLogsExports": []
+  },
+  "schema": {
+    "readOnly": [
+      "DBClusterArn",
+      "DBClusterResourceId",
+      "Endpoint",
+      "ReadEndpoint",
+      "StorageEncryptionType",
+      "StorageThroughput"
+    ],
+    "writeOnly": [
+      "ClusterScalabilityType",
+      "DBInstanceParameterGroupName",
+      "DeleteAutomatedBackups",
+      "MasterUserAuthenticationType",
+      "MasterUserPassword",
+      "RestoreToTime",
+      "RestoreType",
+      "SnapshotIdentifier",
+      "SourceDBClusterIdentifier",
+      "SourceDbClusterResourceId",
+      "SourceRegion",
+      "UseLatestRestorableTime"
+    ],
+    "createOnly": [
+      "AvailabilityZones",
+      "ClusterScalabilityType",
+      "DBClusterIdentifier",
+      "DBSubnetGroupName",
+      "DBSystemId",
+      "DatabaseName",
+      "EngineMode",
+      "KmsKeyId",
+      "PubliclyAccessible",
+      "RestoreToTime",
+      "RestoreType",
+      "SnapshotIdentifier",
+      "SourceDBClusterIdentifier",
+      "SourceDbClusterResourceId",
+      "SourceRegion",
+      "StorageEncrypted",
+      "UseLatestRestorableTime"
+    ],
+    "readOnlyPaths": [
+      "DBClusterArn",
+      "DBClusterResourceId",
+      "Endpoint",
+      "Endpoint.Address",
+      "Endpoint.Port",
+      "MasterUserSecret.SecretArn",
+      "ReadEndpoint",
+      "ReadEndpoint.Address",
+      "StorageEncryptionType",
+      "StorageThroughput"
+    ],
+    "writeOnlyPaths": [
+      "ClusterScalabilityType",
+      "DBInstanceParameterGroupName",
+      "DeleteAutomatedBackups",
+      "MasterUserAuthenticationType",
+      "MasterUserPassword",
+      "RestoreToTime",
+      "RestoreType",
+      "SnapshotIdentifier",
+      "SourceDBClusterIdentifier",
+      "SourceDbClusterResourceId",
+      "SourceRegion",
+      "UseLatestRestorableTime"
+    ],
+    "createOnlyPaths": [
+      "AvailabilityZones",
+      "ClusterScalabilityType",
+      "DBClusterIdentifier",
+      "DBSubnetGroupName",
+      "DBSystemId",
+      "DatabaseName",
+      "EngineMode",
+      "KmsKeyId",
+      "PubliclyAccessible",
+      "RestoreToTime",
+      "RestoreType",
+      "SnapshotIdentifier",
+      "SourceDBClusterIdentifier",
+      "SourceDbClusterResourceId",
+      "SourceRegion",
+      "StorageEncrypted",
+      "UseLatestRestorableTime"
+    ],
+    "defaults": {
+      "BackupRetentionPeriod": 1
+    },
+    "defaultPaths": {
+      "BackupRetentionPeriod": 1
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "HuntAuroraPgSv2E3DC79F1",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "MasterUserPassword",
+      "note": "write-only — cannot be read back",
+      "writeOnly": true,
+      "physicalId": "cdkrdhunt0714aurorapgsv2-huntaurorapgsv2e3dc79f1-pv7mq4jgtwzs",
+      "constructPath": "CdkrdHunt0714AuroraPgSv2/HuntAuroraPgSv2"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAuroraPgSv2E3DC79F1",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "DatabaseInsightsMode",
+      "actual": "standard",
+      "physicalId": "cdkrdhunt0714aurorapgsv2-huntaurorapgsv2e3dc79f1-pv7mq4jgtwzs",
+      "constructPath": "CdkrdHunt0714AuroraPgSv2/HuntAuroraPgSv2"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAuroraPgSv2E3DC79F1",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "EngineMode",
+      "actual": "provisioned",
+      "physicalId": "cdkrdhunt0714aurorapgsv2-huntaurorapgsv2e3dc79f1-pv7mq4jgtwzs",
+      "constructPath": "CdkrdHunt0714AuroraPgSv2/HuntAuroraPgSv2"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAuroraPgSv2E3DC79F1",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "PreferredBackupWindow",
+      "actual": "08:37-09:07",
+      "physicalId": "cdkrdhunt0714aurorapgsv2-huntaurorapgsv2e3dc79f1-pv7mq4jgtwzs",
+      "constructPath": "CdkrdHunt0714AuroraPgSv2/HuntAuroraPgSv2"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAuroraPgSv2E3DC79F1",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "NetworkType",
+      "actual": "IPV4",
+      "physicalId": "cdkrdhunt0714aurorapgsv2-huntaurorapgsv2e3dc79f1-pv7mq4jgtwzs",
+      "constructPath": "CdkrdHunt0714AuroraPgSv2/HuntAuroraPgSv2"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAuroraPgSv2E3DC79F1",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "EngineLifecycleSupport",
+      "actual": "open-source-rds-extended-support",
+      "physicalId": "cdkrdhunt0714aurorapgsv2-huntaurorapgsv2e3dc79f1-pv7mq4jgtwzs",
+      "constructPath": "CdkrdHunt0714AuroraPgSv2/HuntAuroraPgSv2"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAuroraPgSv2E3DC79F1",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "StorageType",
+      "actual": "aurora",
+      "physicalId": "cdkrdhunt0714aurorapgsv2-huntaurorapgsv2e3dc79f1-pv7mq4jgtwzs",
+      "constructPath": "CdkrdHunt0714AuroraPgSv2/HuntAuroraPgSv2"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAuroraPgSv2E3DC79F1",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "AvailabilityZones",
+      "actual": ["us-east-1a", "us-east-1b", "us-east-1c"],
+      "physicalId": "cdkrdhunt0714aurorapgsv2-huntaurorapgsv2e3dc79f1-pv7mq4jgtwzs",
+      "constructPath": "CdkrdHunt0714AuroraPgSv2/HuntAuroraPgSv2"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAuroraPgSv2E3DC79F1",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "PreferredMaintenanceWindow",
+      "actual": "sat:07:48-sat:08:18",
+      "physicalId": "cdkrdhunt0714aurorapgsv2-huntaurorapgsv2e3dc79f1-pv7mq4jgtwzs",
+      "constructPath": "CdkrdHunt0714AuroraPgSv2/HuntAuroraPgSv2"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAuroraPgSv2E3DC79F1",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "AutoMinorVersionUpgrade",
+      "actual": true,
+      "physicalId": "cdkrdhunt0714aurorapgsv2-huntaurorapgsv2e3dc79f1-pv7mq4jgtwzs",
+      "constructPath": "CdkrdHunt0714AuroraPgSv2/HuntAuroraPgSv2"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAuroraPgSv2E3DC79F1",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "AllocatedStorage",
+      "actual": 1,
+      "physicalId": "cdkrdhunt0714aurorapgsv2-huntaurorapgsv2e3dc79f1-pv7mq4jgtwzs",
+      "constructPath": "CdkrdHunt0714AuroraPgSv2/HuntAuroraPgSv2"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAuroraPgSv2E3DC79F1",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "BackupRetentionPeriod",
+      "actual": 1,
+      "physicalId": "cdkrdhunt0714aurorapgsv2-huntaurorapgsv2e3dc79f1-pv7mq4jgtwzs",
+      "constructPath": "CdkrdHunt0714AuroraPgSv2/HuntAuroraPgSv2"
+    }
+  ]
+}

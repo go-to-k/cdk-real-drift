@@ -589,6 +589,8 @@ describe('noise suppressors', () => {
     expect(KNOWN_DEFAULT_PATHS['AWS::OpenSearchService::Domain']).toEqual({
       'EBSOptions.Iops': 3000,
       'EBSOptions.Throughput': 125,
+      // #1593: the 2-AZ config a zone-aware domain materializes when undeclared
+      'ClusterConfig.ZoneAwarenessConfig': { AvailabilityZoneCount: 2 },
     });
     expect(KNOWN_DEFAULT_PATHS['AWS::KinesisFirehose::DeliveryStream']).toEqual({
       'ExtendedS3DestinationConfiguration.S3BackupMode': 'Disabled',
