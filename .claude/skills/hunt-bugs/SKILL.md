@@ -297,6 +297,21 @@ is to add `${resourceType}\0${path}` to `REVERT_SET_DEFAULT_PATHS`
 converges — otherwise you ship a revert that claims success but leaves the value
 unchanged.
 
+**The revert-no-op class is NON-UNIFORM — a dedicated-toggle-API does NOT imply a
+no-op; live-prove EACH candidate, never predict from the API shape.** It is tempting
+to assume that a property changed only by a dedicated sub-API (Enable/DisableRule,
+Increase/DecreaseStreamRetentionPeriod, PutBackupPolicy, SetQueueAttributes) must
+no-op on an omitted `remove` — but the Cloud Control HANDLER often RECONCILES the full
+desired state and resets the property to its default when omitted. Live-proven
+2026-07-13 (#1571): of four dedicated-toggle siblings, only **`Kinesis::Stream`
+`RetentionPeriodHours`** actually no-oped (CC leaves it unchanged) and needed the RSDP
+entry; **`Events::Rule` State, `SQS::Queue` VisibilityTimeout, `EFS::FileSystem`
+BackupPolicy all CONVERGED via the bare `remove`** (the CC handler reset them). So a
+cheap combined fixture (several folded toggles in one stack) that mutates each out of
+band and asserts the LIVE value after revert is the only reliable test — the API shape
+is not a predictor. The `revert-toggle-converge` fixture is the reference (one fixed
+case + converge-via-remove controls).
+
 ### 5. Harvest the live read into the golden corpus (EVERY round — bug or not)
 
 This is the asset a hunt leaves behind even when it finds no bug. Every live read
@@ -568,6 +583,19 @@ Recorded]` breakdown with `--verbose`.
   `|| fail`), or guard with `set +e`.
 - **Always `npm install` + `cdk synth` before deploy** — a synth-time TS error is
   free to catch; a half-failed deploy is not.
+- **A container-image Lambda fixture MUST build with `docker build --provenance=false
+--sbom=false`.** Docker 24+ buildkit attaches OCI provenance/SBOM attestation layers
+  by default; Lambda rejects them at CREATE with `InvalidImage:
+UnsupportedImageLayerDetected` (the stack rolls back). The failure is NON-DETERMINISTIC
+  (a prior build sometimes slips through), so it reads as flakiness — pin the flags. Also
+  build `--platform linux/amd64` unless the function declares `Architectures: [arm64]` (a
+  barest function defaults to x86_64 and rejects an arm64 image). Push the image to a
+  dedicated ECR repo out of band and pass the `registry/repo@sha256:…` digest via env —
+  the barest `CfnFunction` then declares only `Code.ImageUri` + `PackageType: Image` +
+  `Role`, leaving the Image-variant defaults (Architectures, EphemeralStorage,
+  RecursiveLoop, LoggingConfig, RuntimeManagementConfig) undeclared to probe the fold
+  (`lambda-container-barest` is the reference; container Lambdas were a whole uncovered
+  variant axis until #1572).
 - **Deploy-time API validation differences across engine/mode variants are
   FINDINGS, not mere fixture bugs.** A minimal variant deploy that FAILS validation
   is telling you the variant's defaults differ (valkey RGs default
