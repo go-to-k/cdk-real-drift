@@ -58,6 +58,13 @@ import {
   type Stage as ApiGwV2Stage,
 } from '@aws-sdk/client-apigatewayv2';
 import {
+  AutoScalingClient,
+  DescribeLifecycleHooksCommand,
+  DescribeScheduledActionsCommand,
+  type LifecycleHook as AsgLifecycleHook,
+  type ScheduledUpdateGroupAction as AsgScheduledUpdateGroupAction,
+} from '@aws-sdk/client-auto-scaling';
+import {
   CloudWatchLogsClient,
   DescribeMetricFiltersCommand,
   DescribeSubscriptionFiltersCommand,
@@ -66,6 +73,7 @@ import {
 } from '@aws-sdk/client-cloudwatch-logs';
 import {
   CognitoIdentityProviderClient,
+  DescribeUserPoolCommand,
   type GroupType,
   ListGroupsCommand,
   ListIdentityProvidersCommand,
@@ -76,15 +84,21 @@ import {
   type UserPoolClientDescription,
 } from '@aws-sdk/client-cognito-identity-provider';
 import {
+  DescribeFlowLogsCommand,
   DescribeInternetGatewaysCommand,
+  DescribeNatGatewaysCommand,
   DescribeNetworkAclsCommand,
   DescribeRouteTablesCommand,
   DescribeSecurityGroupsCommand,
   DescribeSubnetsCommand,
+  DescribeTransitGatewayAttachmentsCommand,
+  DescribeTransitGatewayRouteTablesCommand,
   DescribeVpcEndpointsCommand,
   DescribeVpcsCommand,
   EC2Client,
+  type FlowLog as Ec2FlowLog,
   type InternetGateway as Ec2InternetGateway,
+  type NatGateway as Ec2NatGateway,
   type NetworkAcl as Ec2NetworkAcl,
   type NetworkAclEntry as Ec2NetworkAclEntry,
   type Route as Ec2Route,
@@ -93,6 +107,8 @@ import {
   type SecurityGroup as Ec2SecurityGroup,
   type Subnet as Ec2Subnet,
   type Tag as Ec2Tag,
+  type TransitGatewayAttachment as Ec2TransitGatewayAttachment,
+  type TransitGatewayRouteTable as Ec2TransitGatewayRouteTable,
   type Vpc as Ec2Vpc,
   type VpcEndpoint as Ec2VpcEndpoint,
 } from '@aws-sdk/client-ec2';
@@ -114,6 +130,7 @@ import {
   ListRulesCommand,
   type Rule as EventBridgeRule,
 } from '@aws-sdk/client-eventbridge';
+import { GetTablesCommand, GlueClient, type Table as GlueTable } from '@aws-sdk/client-glue';
 import {
   type AliasListEntry,
   type GrantListEntry,
@@ -289,7 +306,11 @@ export type ChildEnumerator = (ctx: EnumeratorContext) => Promise<AddedChild[]>;
 // resource policy attached with no declared AWS::S3::BucketPolicy, #835) the twentieth;
 // SQS queues (an out-of-band access policy set with no declared AWS::SQS::QueuePolicy, #835)
 // the twenty-first; Secrets Manager secrets (an out-of-band resource policy attached with no
-// declared AWS::SecretsManager::ResourcePolicy, #835) the twenty-second.
+// declared AWS::SecretsManager::ResourcePolicy, #835) the twenty-second; AutoScaling groups
+// (scheduled actions + lifecycle hooks, #1540) the twenty-third; Glue databases (tables,
+// #1540) the twenty-fourth; EC2 transit gateways (VPC attachments + route tables, #1540) the
+// twenty-fifth. #1540 also extended existing parents: EC2 VPCs gained NAT gateways + flow
+// logs, Cognito User Pools gained the hosted-UI domain.
 export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::S3::Bucket': enumerateS3BucketChildren,
   'AWS::SQS::Queue': enumerateSqsQueueChildren,
@@ -313,6 +334,9 @@ export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::EFS::FileSystem': enumerateEfsFileSystemChildren,
   'AWS::RDS::DBCluster': enumerateRdsClusterChildren,
   'AWS::Route53::HostedZone': enumerateRoute53HostedZoneChildren,
+  'AWS::AutoScaling::AutoScalingGroup': enumerateAutoScalingGroupChildren,
+  'AWS::Glue::Database': enumerateGlueDatabaseChildren,
+  'AWS::EC2::TransitGateway': enumerateTransitGatewayChildren,
 };
 
 // ── API Gateway ────────────────────────────────────────────────────────────
@@ -2817,6 +2841,42 @@ async function pageUserPoolIdentityProviders(
   return out;
 }
 
+// A UserPool also owns at most one prefix hosted-UI domain and at most one custom hosted-UI
+// domain (`AWS::Cognito::UserPoolDomain`, #1540). A console / CLI `create-user-pool-domain`
+// (someone stands up an out-of-band hosted-UI / OAuth endpoint on a declared pool — a
+// phishing-adjacent auth surface) is invisible to cdk drift / CFn drift detection. The pool's
+// own DescribeUserPool response DOES carry the domains (`UserPool.Domain` for the prefix
+// domain, `UserPool.CustomDomain` for the custom one), but the CC UserPool model does not
+// surface them as declarable properties, so there is no double-report to suppress. The CC
+// primaryIdentifier for AWS::Cognito::UserPoolDomain is the composite
+// `["/properties/UserPoolId","/properties/Domain"]`, so the `identifier` is the composite
+// `UserPoolId|Domain` — the same parent-first shape router.ts's CC_IDENTIFIER_ADAPTERS entry
+// (`compositeWith('UserPoolId')`) builds for a DECLARED domain's read. A domain's CFn
+// physical id (Ref) IS its Domain string.
+
+// Pure diff: declared domain strings + live inventory -> the added hosted-UI domains.
+export interface UserPoolDomainChildInput {
+  userPoolId: string;
+  declaredDomains: string[]; // Domain values (Ref/physical id) of AWS::Cognito::UserPoolDomain on this pool
+  liveDomains: { domain: string; custom?: boolean }[];
+}
+
+export function diffUserPoolDomainChildren(input: UserPoolDomainChildInput): AddedChild[] {
+  const { userPoolId, declaredDomains, liveDomains } = input;
+  const declared = new Set(declaredDomains);
+  const added: AddedChild[] = [];
+  for (const d of liveDomains) {
+    if (declared.has(d.domain)) continue;
+    added.push({
+      resourceType: 'AWS::Cognito::UserPoolDomain',
+      identifier: `${userPoolId}|${d.domain}`, // CC composite UserPoolId|Domain
+      label: `${d.domain} (hosted UI domain)`,
+      live: { Domain: d.domain, UserPoolId: userPoolId },
+    });
+  }
+  return added;
+}
+
 // Live corroboration (#1265) that an OpenSearch/Elasticsearch domain enables Cognito
 // Dashboards auth against `userPoolId`. Lists the account's domains, describes them, and
 // checks each domain's `CognitoOptions.UserPoolId`. FAIL-SAFE toward no-false-positive:
@@ -2868,6 +2928,8 @@ async function enumerateUserPoolChildren(ctx: EnumeratorContext): Promise<AddedC
   const declaredResourceServerIdentifiers: string[] = [];
   // Declared identity providers of THIS pool. Matched by the ProviderName (Ref/physical id).
   const declaredProviderNames: string[] = [];
+  // Declared hosted-UI domains of THIS pool (#1540). Matched by the Domain value (Ref/physical id).
+  const declaredDomains: string[] = [];
   for (const r of desired.resources) {
     if (
       r.resourceType === 'AWS::Cognito::UserPoolClient' &&
@@ -2895,6 +2957,12 @@ async function enumerateUserPoolChildren(ctx: EnumeratorContext): Promise<AddedC
       const providerName =
         typeof r.declared.ProviderName === 'string' ? r.declared.ProviderName : r.physicalId;
       if (providerName) declaredProviderNames.push(providerName);
+    } else if (
+      r.resourceType === 'AWS::Cognito::UserPoolDomain' &&
+      parentRefMatches(r.declared.UserPoolId, userPoolId)
+    ) {
+      const domain = typeof r.declared.Domain === 'string' ? r.declared.Domain : r.physicalId;
+      if (domain) declaredDomains.push(domain);
     }
   }
 
@@ -2973,7 +3041,21 @@ async function enumerateUserPoolChildren(ctx: EnumeratorContext): Promise<AddedC
     liveProviders,
   });
 
-  return [...clientAdded, ...groupAdded, ...resourceServerAdded, ...idpAdded];
+  // Hosted-UI domains (#1540): the pool's own DescribeUserPool response carries the prefix
+  // domain (`UserPool.Domain`) and the custom domain (`UserPool.CustomDomain`) — no list API.
+  const describeRes = await client.send(new DescribeUserPoolCommand({ UserPoolId: userPoolId }));
+  const liveDomains: { domain: string; custom?: boolean }[] = [];
+  const prefixDomain = describeRes.UserPool?.Domain;
+  if (typeof prefixDomain === 'string' && prefixDomain.length > 0) {
+    liveDomains.push({ domain: prefixDomain });
+  }
+  const customDomain = describeRes.UserPool?.CustomDomain;
+  if (typeof customDomain === 'string' && customDomain.length > 0) {
+    liveDomains.push({ domain: customDomain, custom: true });
+  }
+  const domainAdded = diffUserPoolDomainChildren({ userPoolId, declaredDomains, liveDomains });
+
+  return [...clientAdded, ...groupAdded, ...resourceServerAdded, ...idpAdded, ...domainAdded];
 }
 
 // ── AppSync ──────────────────────────────────────────────────────────────────
@@ -3958,6 +4040,67 @@ export function diffVpcSecurityGroupChildren(input: VpcSecurityGroupChildInput):
   return added;
 }
 
+// NAT gateways (#1540). A VPC owns NatGateways, each a separate CloudFormation resource. A
+// console / CLI `create-nat-gateway` (someone stands up an out-of-band NAT — an egress path
+// plus an hourly bill no template describes) is invisible to cdk / CFn drift detection, and
+// the VPC's own model does NOT reflect its NAT gateways. The CC primaryIdentifier for
+// AWS::EC2::NatGateway is the bare NatGatewayId, consumed directly by CC GetResource /
+// DeleteResource. FP-safety: a deleted NAT gateway stays visible in DescribeNatGateways for
+// a while after deletion, so terminal/leaving states (`deleted` / `deleting` / `failed`) are
+// filtered — a lingering husk of a properly removed NAT must never surface as `added`.
+const NAT_GATEWAY_GONE_STATES = new Set(['deleted', 'deleting', 'failed']);
+
+// Pure diff: declared NAT-gateway ids + live inventory -> the added NAT gateways. The
+// gone-state filter lives HERE so it is unit-tested offline with the matching logic.
+export interface VpcNatGatewayChildInput {
+  declaredNatGatewayIds: string[]; // physical ids (NatGatewayIds) of AWS::EC2::NatGateway in the template
+  liveNatGateways: { id: string; state?: string | undefined; label?: string | undefined }[];
+}
+
+export function diffVpcNatGatewayChildren(input: VpcNatGatewayChildInput): AddedChild[] {
+  const declared = new Set(input.declaredNatGatewayIds);
+  const added: AddedChild[] = [];
+  for (const n of input.liveNatGateways) {
+    if (n.state !== undefined && NAT_GATEWAY_GONE_STATES.has(n.state)) continue;
+    if (declared.has(n.id)) continue;
+    added.push({
+      resourceType: 'AWS::EC2::NatGateway',
+      identifier: n.id, // NatGatewayId IS the CC primaryIdentifier
+      label: n.label ?? n.id,
+      live: { NatGatewayId: n.id },
+    });
+  }
+  return added;
+}
+
+// Flow logs (#1540). A VPC-level FlowLog is a separate CloudFormation resource
+// (`AWS::EC2::FlowLog` with ResourceType VPC). An out-of-band `create-flow-logs` (someone
+// wires traffic capture — or re-points where it lands — on a declared VPC) is invisible to
+// cdk / CFn drift detection, and the VPC's own model does NOT reflect its flow logs. The CC
+// primaryIdentifier for AWS::EC2::FlowLog is the bare Id (the FlowLogId), consumed directly
+// by CC GetResource / DeleteResource. DescribeFlowLogs is filtered by `resource-id` = this
+// VpcId, so only VPC-scoped flow logs are enumerated here (subnet / ENI / TGW flow logs
+// never reach this diff).
+export interface VpcFlowLogChildInput {
+  declaredFlowLogIds: string[]; // physical ids (FlowLogIds) of AWS::EC2::FlowLog on this VPC
+  liveFlowLogs: { id: string; label?: string | undefined }[];
+}
+
+export function diffVpcFlowLogChildren(input: VpcFlowLogChildInput): AddedChild[] {
+  const declared = new Set(input.declaredFlowLogIds);
+  const added: AddedChild[] = [];
+  for (const f of input.liveFlowLogs) {
+    if (declared.has(f.id)) continue;
+    added.push({
+      resourceType: 'AWS::EC2::FlowLog',
+      identifier: f.id, // Id (the FlowLogId) IS the CC primaryIdentifier
+      label: f.label ?? f.id,
+      live: { Id: f.id },
+    });
+  }
+  return added;
+}
+
 async function pageSecurityGroups(client: EC2Client, vpcId: string): Promise<Ec2SecurityGroup[]> {
   const out: Ec2SecurityGroup[] = [];
   let next: string | undefined;
@@ -4068,6 +4211,40 @@ async function pageInternetGateways(
   return out;
 }
 
+async function pageNatGateways(client: EC2Client, vpcId: string): Promise<Ec2NatGateway[]> {
+  const out: Ec2NatGateway[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(
+      new DescribeNatGatewaysCommand({
+        // NB: DescribeNatGateways names its filter list `Filter` (singular), unlike most EC2 APIs.
+        Filter: [{ Name: 'vpc-id', Values: [vpcId] }],
+        NextToken: next,
+      })
+    );
+    out.push(...(res.NatGateways ?? []));
+    next = res.NextToken;
+  } while (next);
+  return out;
+}
+
+async function pageFlowLogs(client: EC2Client, vpcId: string): Promise<Ec2FlowLog[]> {
+  const out: Ec2FlowLog[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(
+      new DescribeFlowLogsCommand({
+        // NB: DescribeFlowLogs names its filter list `Filter` (singular), unlike most EC2 APIs.
+        Filter: [{ Name: 'resource-id', Values: [vpcId] }],
+        NextToken: next,
+      })
+    );
+    out.push(...(res.FlowLogs ?? []));
+    next = res.NextToken;
+  } while (next);
+  return out;
+}
+
 async function describeVpc(client: EC2Client, vpcId: string): Promise<Ec2Vpc | undefined> {
   const res = await client.send(new DescribeVpcsCommand({ VpcIds: [vpcId] }));
   return res.Vpcs?.[0];
@@ -4098,6 +4275,26 @@ export async function enumerateVpcChildren(ctx: EnumeratorContext): Promise<Adde
       declaredNaclIds.push(r.physicalId);
     } else if (r.resourceType === 'AWS::EC2::SecurityGroup') {
       declaredSecurityGroupIds.push(r.physicalId);
+    }
+  }
+
+  // Declared NAT gateways + VPC-level flow logs (#1540). A NatGateway references its VPC only
+  // INDIRECTLY (its parent ref is SubnetId, not VpcId), so it cannot be scoped by VpcId here;
+  // like the SubnetRouteTableAssociation set above, the live diff is already scoped to THIS
+  // VPC (DescribeNatGateways vpc-id filter), so a NAT declared in ANOTHER VPC simply never
+  // matches a live id in this set (no false suppression). A FlowLog's parent ref IS the
+  // declared ResourceId (= the VpcId for a VPC-scoped flow log), so it is ref-matched.
+  const declaredNatGatewayIds: string[] = [];
+  const declaredFlowLogIds: string[] = [];
+  for (const r of desired.resources) {
+    if (!r.physicalId) continue;
+    if (r.resourceType === 'AWS::EC2::NatGateway') {
+      declaredNatGatewayIds.push(r.physicalId);
+    } else if (
+      r.resourceType === 'AWS::EC2::FlowLog' &&
+      parentRefMatches(r.declared.ResourceId, vpcId)
+    ) {
+      declaredFlowLogIds.push(r.physicalId);
     }
   }
 
@@ -4233,6 +4430,28 @@ export async function enumerateVpcChildren(ctx: EnumeratorContext): Promise<Adde
     )
     .map((g) => ({ id: g.GroupId, label: g.GroupName ?? g.GroupId }));
 
+  // NAT gateways (#1540): the gone-state (`deleted`/`deleting`/`failed`) filter is applied
+  // inside the pure diff so it is unit-tested with the matching logic.
+  const natGateways = await pageNatGateways(client, vpcId);
+  const liveNatGateways = natGateways
+    .filter(
+      (n): n is Ec2NatGateway & { NatGatewayId: string } => typeof n.NatGatewayId === 'string'
+    )
+    .map((n) => ({
+      id: n.NatGatewayId,
+      state: n.State as string | undefined,
+      label: n.SubnetId ? `${n.NatGatewayId} (${n.SubnetId})` : n.NatGatewayId,
+    }));
+
+  // VPC-level flow logs (#1540): DescribeFlowLogs filtered by `resource-id` = this VpcId.
+  const flowLogs = await pageFlowLogs(client, vpcId);
+  const liveFlowLogs = flowLogs
+    .filter((f): f is Ec2FlowLog & { FlowLogId: string } => typeof f.FlowLogId === 'string')
+    .map((f) => ({
+      id: f.FlowLogId,
+      label: f.LogDestination ?? f.LogGroupName ?? f.FlowLogId,
+    }));
+
   return [
     ...diffVpcChildren({ declaredSubnetIds, liveSubnets }),
     ...diffVpcEndpointChildren({ declaredEndpointIds, liveEndpoints }),
@@ -4246,6 +4465,8 @@ export async function enumerateVpcChildren(ctx: EnumeratorContext): Promise<Adde
     }),
     ...diffVpcCidrBlockChildren({ vpcId, declaredCidrs, liveCidrBlocks }),
     ...diffVpcSecurityGroupChildren({ declaredSecurityGroupIds, liveSecurityGroups }),
+    ...diffVpcNatGatewayChildren({ declaredNatGatewayIds, liveNatGateways }),
+    ...diffVpcFlowLogChildren({ declaredFlowLogIds, liveFlowLogs }),
   ];
 }
 
@@ -5345,4 +5566,454 @@ export async function enumerateRoute53HostedZoneChildren(
     });
 
   return diffRoute53HostedZoneChildren({ hostedZoneId, zoneApex, declaredRecords, liveRecords });
+}
+
+// ── AutoScaling ──────────────────────────────────────────────────────────────
+// An `AWS::AutoScaling::AutoScalingGroup` owns ScheduledActions (time-based scaling) and
+// LifecycleHooks (launch/terminate pause points), each a separate CloudFormation resource
+// (#1540). A console / CLI `put-scheduled-update-group-action` (someone schedules an
+// out-of-band scale-to-zero — or a surprise scale-out bill) or `put-lifecycle-hook`
+// (someone wires a pause point that can hold instances in Pending:Wait) is invisible to
+// cdk drift / CFn drift detection, and the ASG's own live model does NOT reflect either
+// inline, so there is no double-report to suppress. The CC primaryIdentifiers (both
+// mirrored by router.ts's CC_IDENTIFIER_ADAPTERS, verified live there):
+//   - AWS::AutoScaling::ScheduledAction is `[ScheduledActionName, AutoScalingGroupName]` —
+//     CHILD-first, so the `identifier` is `<ScheduledActionName>|<AutoScalingGroupName>`
+//     (the adapter builds `${pid}|${asg}`; the reverse order returns NotFound).
+//   - AWS::AutoScaling::LifecycleHook is `[AutoScalingGroupName, LifecycleHookName]` —
+//     PARENT-first, so the `identifier` is `<AutoScalingGroupName>|<LifecycleHookName>`
+//     (the adapter is `compositeWith('AutoScalingGroupName')`).
+// NotificationConfigurations are deliberately NOT enumerated for now: the matching CFn type
+// (`AWS::AutoScaling::NotificationConfiguration`) is a legacy type with no Cloud Control
+// read/delete support and no CC primaryIdentifier to carry on an `added` finding, so there
+// is no identifier fit — revisit if the type gains a registry schema (#1540).
+
+// Pure diff: declared scheduled-action names + live inventory -> the added scheduled actions.
+export interface AsgScheduledActionChildInput {
+  asgName: string;
+  declaredActionNames: string[]; // ScheduledActionNames (Ref/physical id) of AWS::AutoScaling::ScheduledAction on this ASG
+  liveActions: { name: string; label?: string | undefined }[];
+}
+
+export function diffAsgScheduledActionChildren(input: AsgScheduledActionChildInput): AddedChild[] {
+  const { asgName, declaredActionNames, liveActions } = input;
+  const declared = new Set(declaredActionNames);
+  const added: AddedChild[] = [];
+  for (const a of liveActions) {
+    if (declared.has(a.name)) continue;
+    added.push({
+      resourceType: 'AWS::AutoScaling::ScheduledAction',
+      identifier: `${a.name}|${asgName}`, // CC composite ScheduledActionName|AutoScalingGroupName (CHILD-first)
+      label: a.label ?? a.name,
+      live: { ScheduledActionName: a.name, AutoScalingGroupName: asgName },
+    });
+  }
+  return added;
+}
+
+// Pure diff: declared lifecycle-hook names + live inventory -> the added lifecycle hooks.
+export interface AsgLifecycleHookChildInput {
+  asgName: string;
+  declaredHookNames: string[]; // LifecycleHookNames (declared or Ref/physical id) of AWS::AutoScaling::LifecycleHook on this ASG
+  liveHooks: { name: string; label?: string | undefined }[];
+}
+
+export function diffAsgLifecycleHookChildren(input: AsgLifecycleHookChildInput): AddedChild[] {
+  const { asgName, declaredHookNames, liveHooks } = input;
+  const declared = new Set(declaredHookNames);
+  const added: AddedChild[] = [];
+  for (const h of liveHooks) {
+    if (declared.has(h.name)) continue;
+    added.push({
+      resourceType: 'AWS::AutoScaling::LifecycleHook',
+      identifier: `${asgName}|${h.name}`, // CC composite AutoScalingGroupName|LifecycleHookName (PARENT-first)
+      label: h.label ?? h.name,
+      live: { LifecycleHookName: h.name, AutoScalingGroupName: asgName },
+    });
+  }
+  return added;
+}
+
+async function pageScheduledActions(
+  client: AutoScalingClient,
+  asgName: string
+): Promise<AsgScheduledUpdateGroupAction[]> {
+  const out: AsgScheduledUpdateGroupAction[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(
+      new DescribeScheduledActionsCommand({ AutoScalingGroupName: asgName, NextToken: next })
+    );
+    out.push(...(res.ScheduledUpdateGroupActions ?? []));
+    next = res.NextToken;
+  } while (next);
+  return out;
+}
+
+// DescribeLifecycleHooks returns the full set in one response (no pagination — an ASG holds
+// at most 50 hooks).
+async function describeLifecycleHooks(
+  client: AutoScalingClient,
+  asgName: string
+): Promise<AsgLifecycleHook[]> {
+  const res = await client.send(
+    new DescribeLifecycleHooksCommand({ AutoScalingGroupName: asgName })
+  );
+  return res.LifecycleHooks ?? [];
+}
+
+async function enumerateAutoScalingGroupChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  const asgName = parent.physicalId; // an ASG's physical id IS its AutoScalingGroupName
+  if (!asgName) return [];
+
+  // Declared scheduled actions + lifecycle hooks of THIS ASG (Ref AutoScalingGroupName
+  // already resolved to the physical id by gather). A ScheduledAction's CFn physical id
+  // (Ref) IS its bare ScheduledActionName (the name is CFn-generated, not declarable); a
+  // LifecycleHook's is its bare LifecycleHookName (declarable via LifecycleHookName).
+  const declaredActionNames: string[] = [];
+  const declaredHookNames: string[] = [];
+  for (const r of desired.resources) {
+    if (
+      r.resourceType === 'AWS::AutoScaling::ScheduledAction' &&
+      parentRefMatches(r.declared.AutoScalingGroupName, asgName) &&
+      r.physicalId
+    ) {
+      declaredActionNames.push(r.physicalId);
+    } else if (
+      r.resourceType === 'AWS::AutoScaling::LifecycleHook' &&
+      parentRefMatches(r.declared.AutoScalingGroupName, asgName)
+    ) {
+      const name =
+        typeof r.declared.LifecycleHookName === 'string'
+          ? r.declared.LifecycleHookName
+          : r.physicalId;
+      if (name) declaredHookNames.push(name);
+    }
+  }
+
+  const client = new AutoScalingClient({ region, ...READ_RETRY });
+
+  const actions = await pageScheduledActions(client, asgName);
+  const liveActions = actions
+    .filter(
+      (a): a is AsgScheduledUpdateGroupAction & { ScheduledActionName: string } =>
+        typeof a.ScheduledActionName === 'string'
+    )
+    .map((a) => ({
+      name: a.ScheduledActionName,
+      label: a.Recurrence ? `${a.ScheduledActionName} (${a.Recurrence})` : a.ScheduledActionName,
+    }));
+
+  const hooks = await describeLifecycleHooks(client, asgName);
+  const liveHooks = hooks
+    .filter(
+      (h): h is AsgLifecycleHook & { LifecycleHookName: string } =>
+        typeof h.LifecycleHookName === 'string'
+    )
+    .map((h) => ({
+      name: h.LifecycleHookName,
+      label: h.LifecycleTransition
+        ? `${h.LifecycleHookName} (${h.LifecycleTransition})`
+        : h.LifecycleHookName,
+    }));
+
+  return [
+    ...diffAsgScheduledActionChildren({ asgName, declaredActionNames, liveActions }),
+    ...diffAsgLifecycleHookChildren({ asgName, declaredHookNames, liveHooks }),
+  ];
+}
+
+// ── Glue ─────────────────────────────────────────────────────────────────────
+// An `AWS::Glue::Database` owns Tables, each a separate CloudFormation resource
+// (`AWS::Glue::Table`, #1540). A console / CLI / crawler-side `create-table` (someone
+// registers an out-of-band table over data the template never exposed — a data-exposure
+// surface once Lake Formation / Athena grants apply to the database) is invisible to cdk
+// drift / CFn drift detection, and the Database's own model does NOT reflect its tables
+// inline, so there is no double-report to suppress. AWS::Glue::Table is a CC-gap type (CC
+// GetResource throws UnsupportedActionException — the reason readGlueTable exists in
+// SDK_OVERRIDES), so like Route53 RecordSet the primary value here is DETECTION; the
+// `identifier` carries the `DatabaseName|TableName` composite (parent-first) — the exact
+// physical-id shape the readGlueTable override splits on, and the CFn physical id (Ref) is
+// the bare TableName (the last segment).
+
+// Pure diff: declared table names + live inventory -> the added tables.
+export interface GlueDatabaseChildInput {
+  databaseName: string;
+  declaredTableNames: string[]; // TableInput.Name values (or Ref/physical id) of AWS::Glue::Table on this database
+  liveTables: { name: string; label?: string | undefined }[];
+}
+
+export function diffGlueDatabaseChildren(input: GlueDatabaseChildInput): AddedChild[] {
+  const { databaseName, declaredTableNames, liveTables } = input;
+  const declared = new Set(declaredTableNames);
+  const added: AddedChild[] = [];
+  for (const t of liveTables) {
+    if (declared.has(t.name)) continue;
+    added.push({
+      resourceType: 'AWS::Glue::Table',
+      identifier: `${databaseName}|${t.name}`, // DatabaseName|TableName — the composite readGlueTable consumes
+      label: t.label ?? t.name,
+      live: { DatabaseName: databaseName, TableInput: { Name: t.name } },
+    });
+  }
+  return added;
+}
+
+async function pageGlueTables(
+  client: GlueClient,
+  databaseName: string,
+  catalogId: string | undefined
+): Promise<GlueTable[]> {
+  const out: GlueTable[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(
+      new GetTablesCommand({
+        DatabaseName: databaseName,
+        NextToken: next,
+        ...(catalogId !== undefined && { CatalogId: catalogId }),
+      })
+    );
+    out.push(...(res.TableList ?? []));
+    next = res.NextToken;
+  } while (next);
+  return out;
+}
+
+async function enumerateGlueDatabaseChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  const databaseName = parent.physicalId; // a Glue Database's physical id IS its name
+  if (!databaseName) return [];
+
+  // Declared tables of THIS database (Ref DatabaseName already resolved to the physical id
+  // by gather). A table's identity is its TableInput.Name; fall back to the CFn physical id
+  // (Ref = the bare table name — defensively take the last `|` segment in case a composite
+  // form leaked through, mirroring readGlueTable's split).
+  const declaredTableNames: string[] = [];
+  for (const r of desired.resources) {
+    if (
+      r.resourceType !== 'AWS::Glue::Table' ||
+      !parentRefMatches(r.declared.DatabaseName, databaseName)
+    ) {
+      continue;
+    }
+    const tableInput = r.declared.TableInput as { Name?: unknown } | undefined;
+    const name =
+      typeof tableInput?.Name === 'string' ? tableInput.Name : r.physicalId?.split('|').pop();
+    if (name) declaredTableNames.push(name);
+  }
+
+  // The catalog scoping GetTables needs when the database sits in a non-default catalog —
+  // same optional pass-through readGlueTable uses.
+  const catalogId =
+    typeof parent.declared.CatalogId === 'string' ? parent.declared.CatalogId : undefined;
+
+  const client = new GlueClient({ region, ...READ_RETRY });
+  const tables = await pageGlueTables(client, databaseName, catalogId);
+  const liveTables = tables
+    .filter((t): t is GlueTable & { Name: string } => typeof t.Name === 'string')
+    .map((t) => ({ name: t.Name, label: t.TableType ? `${t.Name} (${t.TableType})` : t.Name }));
+
+  return diffGlueDatabaseChildren({ databaseName, declaredTableNames, liveTables });
+}
+
+// ── EC2 (TransitGateway) ─────────────────────────────────────────────────────
+// An `AWS::EC2::TransitGateway` owns VPC attachments and route tables, each a separate
+// CloudFormation resource (#1540). A console / CLI `create-transit-gateway-vpc-attachment`
+// (someone bridges an out-of-band VPC into the shared network — a lateral-movement path no
+// template describes) or `create-transit-gateway-route-table` (someone stands up an
+// out-of-band routing domain) is invisible to cdk drift / CFn drift detection, and the
+// TGW's own live model does NOT reflect either inline, so there is no double-report to
+// suppress. The CC primaryIdentifiers are the bare Id (`tgw-attach-…`) for
+// AWS::EC2::TransitGatewayAttachment and the bare TransitGatewayRouteTableId (`tgw-rtb-…`)
+// for AWS::EC2::TransitGatewayRouteTable — both consumed directly by CC GetResource /
+// DeleteResource.
+//
+// FP-safety:
+//   - DescribeTransitGatewayAttachments returns ALL attachment kinds (vpc / vpn / peering /
+//     direct-connect-gateway / connect); only ResourceType `vpc` maps to the CFn
+//     TransitGatewayAttachment / TransitGatewayVpcAttachment types diffed here, so the rest
+//     are filtered. Gone-state (`deleted`/`deleting`/`failed`) attachments linger in the
+//     describe output after removal and are filtered too.
+//   - A TGW created with DefaultRouteTableAssociation/Propagation `enable` (the default)
+//     AUTO-CREATES one route table (flagged `DefaultAssociationRouteTable` /
+//     `DefaultPropagationRouteTable` on the describe response) — a built-in default, never
+//     an out-of-band addition, so it is filtered exactly like the VPC MAIN route table /
+//     default NACL precedent. Every non-default, non-declared route table IS a real
+//     out-of-band addition.
+// Both CFn attachment flavors (`AWS::EC2::TransitGatewayAttachment` AND
+// `AWS::EC2::TransitGatewayVpcAttachment`) declare the same underlying attachment and Ref
+// the same `tgw-attach-…` id, so a declared resource of EITHER type excludes the live one.
+
+// Live attachment / route-table entries in these states are leaving or gone — lingering
+// describe-output husks, never an out-of-band addition.
+const TGW_GONE_STATES = new Set(['deleted', 'deleting', 'failed']);
+
+// Pure diff: declared attachment ids + live inventory -> the added VPC attachments. The
+// vpc-kind and gone-state filters live HERE so they are unit-tested offline.
+export interface TransitGatewayAttachmentChildInput {
+  // Physical ids (`tgw-attach-…`, Ref) of AWS::EC2::TransitGatewayAttachment AND
+  // AWS::EC2::TransitGatewayVpcAttachment on this TGW (both CFn types Ref the same id).
+  declaredAttachmentIds: string[];
+  liveAttachments: {
+    id: string;
+    resourceType?: string | undefined; // DescribeTransitGatewayAttachments ResourceType (vpc / vpn / …)
+    state?: string | undefined;
+    label?: string | undefined;
+  }[];
+}
+
+export function diffTransitGatewayAttachmentChildren(
+  input: TransitGatewayAttachmentChildInput
+): AddedChild[] {
+  const declared = new Set(input.declaredAttachmentIds);
+  const added: AddedChild[] = [];
+  for (const a of input.liveAttachments) {
+    // Only `vpc` attachments map to the CFn TransitGatewayAttachment / VpcAttachment types;
+    // vpn / peering / direct-connect-gateway / connect attachments belong to other CFn types.
+    if (a.resourceType !== 'vpc') continue;
+    if (a.state !== undefined && TGW_GONE_STATES.has(a.state)) continue;
+    if (declared.has(a.id)) continue;
+    added.push({
+      resourceType: 'AWS::EC2::TransitGatewayAttachment',
+      identifier: a.id, // Id (the TransitGatewayAttachmentId) IS the CC primaryIdentifier
+      label: a.label ?? a.id,
+      live: { Id: a.id },
+    });
+  }
+  return added;
+}
+
+// Pure diff: declared route-table ids + live inventory -> the added route tables. The
+// auto-created-default and gone-state filters live HERE so they are unit-tested offline.
+export interface TransitGatewayRouteTableChildInput {
+  declaredRouteTableIds: string[]; // physical ids (`tgw-rtb-…`, Ref) of AWS::EC2::TransitGatewayRouteTable on this TGW
+  liveRouteTables: {
+    id: string;
+    // DescribeTransitGatewayRouteTables flags the TGW's auto-created default table directly
+    // on the response — the association/propagation twin of the VPC MAIN route table.
+    isDefaultAssociation?: boolean | undefined;
+    isDefaultPropagation?: boolean | undefined;
+    state?: string | undefined;
+    label?: string | undefined;
+  }[];
+}
+
+export function diffTransitGatewayRouteTableChildren(
+  input: TransitGatewayRouteTableChildInput
+): AddedChild[] {
+  const declared = new Set(input.declaredRouteTableIds);
+  const added: AddedChild[] = [];
+  for (const rt of input.liveRouteTables) {
+    // Drop the TGW's auto-created DEFAULT association/propagation route table — a built-in
+    // default (created WITH the TGW), never an out-of-band addition.
+    if (rt.isDefaultAssociation === true || rt.isDefaultPropagation === true) continue;
+    if (rt.state !== undefined && TGW_GONE_STATES.has(rt.state)) continue;
+    if (declared.has(rt.id)) continue;
+    added.push({
+      resourceType: 'AWS::EC2::TransitGatewayRouteTable',
+      identifier: rt.id, // TransitGatewayRouteTableId IS the CC primaryIdentifier
+      label: rt.label ?? rt.id,
+      live: { TransitGatewayRouteTableId: rt.id },
+    });
+  }
+  return added;
+}
+
+async function pageTransitGatewayAttachments(
+  client: EC2Client,
+  tgwId: string
+): Promise<Ec2TransitGatewayAttachment[]> {
+  const out: Ec2TransitGatewayAttachment[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(
+      new DescribeTransitGatewayAttachmentsCommand({
+        Filters: [{ Name: 'transit-gateway-id', Values: [tgwId] }],
+        NextToken: next,
+      })
+    );
+    out.push(...(res.TransitGatewayAttachments ?? []));
+    next = res.NextToken;
+  } while (next);
+  return out;
+}
+
+async function pageTransitGatewayRouteTables(
+  client: EC2Client,
+  tgwId: string
+): Promise<Ec2TransitGatewayRouteTable[]> {
+  const out: Ec2TransitGatewayRouteTable[] = [];
+  let next: string | undefined;
+  do {
+    const res = await client.send(
+      new DescribeTransitGatewayRouteTablesCommand({
+        Filters: [{ Name: 'transit-gateway-id', Values: [tgwId] }],
+        NextToken: next,
+      })
+    );
+    out.push(...(res.TransitGatewayRouteTables ?? []));
+    next = res.NextToken;
+  } while (next);
+  return out;
+}
+
+async function enumerateTransitGatewayChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  const tgwId = parent.physicalId; // a TransitGateway's physical id IS its TransitGatewayId
+  if (!tgwId) return [];
+
+  // Declared attachments (EITHER CFn flavor) + route tables of THIS TGW (Ref
+  // TransitGatewayId already resolved to the physical id by gather). Each child's CFn
+  // physical id (Ref) IS its bare `tgw-attach-…` / `tgw-rtb-…` id.
+  const declaredAttachmentIds: string[] = [];
+  const declaredRouteTableIds: string[] = [];
+  for (const r of desired.resources) {
+    if (!parentRefMatches(r.declared.TransitGatewayId, tgwId) || !r.physicalId) continue;
+    if (
+      r.resourceType === 'AWS::EC2::TransitGatewayAttachment' ||
+      r.resourceType === 'AWS::EC2::TransitGatewayVpcAttachment'
+    ) {
+      declaredAttachmentIds.push(r.physicalId);
+    } else if (r.resourceType === 'AWS::EC2::TransitGatewayRouteTable') {
+      declaredRouteTableIds.push(r.physicalId);
+    }
+  }
+
+  const client = new EC2Client({ region, ...READ_RETRY });
+
+  const attachments = await pageTransitGatewayAttachments(client, tgwId);
+  const liveAttachments = attachments
+    .filter(
+      (a): a is Ec2TransitGatewayAttachment & { TransitGatewayAttachmentId: string } =>
+        typeof a.TransitGatewayAttachmentId === 'string'
+    )
+    .map((a) => ({
+      id: a.TransitGatewayAttachmentId,
+      resourceType: a.ResourceType as string | undefined,
+      state: a.State as string | undefined,
+      label: a.ResourceId
+        ? `${a.TransitGatewayAttachmentId} (${a.ResourceType ?? '?'} ${a.ResourceId})`
+        : a.TransitGatewayAttachmentId,
+    }));
+
+  const routeTables = await pageTransitGatewayRouteTables(client, tgwId);
+  const liveRouteTables = routeTables
+    .filter(
+      (rt): rt is Ec2TransitGatewayRouteTable & { TransitGatewayRouteTableId: string } =>
+        typeof rt.TransitGatewayRouteTableId === 'string'
+    )
+    .map((rt) => ({
+      id: rt.TransitGatewayRouteTableId,
+      isDefaultAssociation: rt.DefaultAssociationRouteTable,
+      isDefaultPropagation: rt.DefaultPropagationRouteTable,
+      state: rt.State as string | undefined,
+      label: rt.TransitGatewayRouteTableId,
+    }));
+
+  return [
+    ...diffTransitGatewayAttachmentChildren({ declaredAttachmentIds, liveAttachments }),
+    ...diffTransitGatewayRouteTableChildren({ declaredRouteTableIds, liveRouteTables }),
+  ];
 }

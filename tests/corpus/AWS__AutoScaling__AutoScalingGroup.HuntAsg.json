@@ -1,0 +1,278 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntAsg",
+    "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+    "physicalId": "CdkrdHunt0713cEnumChildren-HuntAsg-8Q82rIWWU8Ij",
+    "constructPath": "CdkrdHunt0713cEnumChildren/HuntAsg",
+    "declared": {
+      "DesiredCapacity": "0",
+      "LaunchTemplate": {
+        "LaunchTemplateId": "lt-05f8afdf5631165c2",
+        "Version": "__cdkrd_corpus_unresolved__"
+      },
+      "MaxSize": "1",
+      "MinSize": "0",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "PropagateAtLaunch": true,
+          "Value": "1"
+        }
+      ],
+      "VPCZoneIdentifier": ["subnet-09b6fdc3f3e9e9175", "subnet-00e8c6eb745df1190"]
+    }
+  },
+  "liveRaw": {
+    "LifecycleHookSpecificationList": [
+      {
+        "LifecycleHookName": "CdkrdHunt0713cEnumChildren-HuntDeclaredHook-EByW42VjluPf",
+        "LifecycleTransition": "autoscaling:EC2_INSTANCE_LAUNCHING",
+        "HeartbeatTimeout": 120,
+        "DefaultResult": "CONTINUE"
+      }
+    ],
+    "LoadBalancerNames": [],
+    "ServiceLinkedRoleARN": "arn:aws:iam::111111111111:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling",
+    "TargetGroupARNs": [],
+    "AvailabilityZoneIds": ["use1-az1", "use1-az2"],
+    "AutoScalingGroupARN": "arn:aws:autoscaling:us-east-1:111111111111:autoScalingGroup:a3a367fd-15a1-42d2-9e4a-2ee87f07b75b:autoScalingGroupName/CdkrdHunt0713cEnumChildren-HuntAsg-8Q82rIWWU8Ij",
+    "Cooldown": "300",
+    "AvailabilityZones": ["us-east-1a", "us-east-1b"],
+    "AvailabilityZoneDistribution": {
+      "CapacityDistributionStrategy": "balanced-best-effort"
+    },
+    "DesiredCapacity": "0",
+    "HealthCheckGracePeriod": 0,
+    "MetricsCollection": [],
+    "InstanceLifecyclePolicy": {
+      "RetentionTriggers": {
+        "TerminateHookAbandon": "terminate"
+      }
+    },
+    "MaxSize": "1",
+    "NewInstancesProtectedFromScaleIn": false,
+    "MinSize": "0",
+    "TerminationPolicies": ["Default"],
+    "LaunchTemplate": {
+      "LaunchTemplateName": "HuntLt_vPubgWMJJ8VE",
+      "Version": "1",
+      "LaunchTemplateId": "lt-05f8afdf5631165c2"
+    },
+    "AutoScalingGroupName": "CdkrdHunt0713cEnumChildren-HuntAsg-8Q82rIWWU8Ij",
+    "VPCZoneIdentifier": ["subnet-09b6fdc3f3e9e9175", "subnet-00e8c6eb745df1190"],
+    "CapacityReservationSpecification": {
+      "CapacityReservationPreference": "default"
+    },
+    "Tags": [
+      {
+        "ResourceId": "CdkrdHunt0713cEnumChildren-HuntAsg-8Q82rIWWU8Ij",
+        "Value": "HuntAsg",
+        "ResourceType": "auto-scaling-group",
+        "Key": "aws:cloudformation:logical-id",
+        "PropagateAtLaunch": true
+      },
+      {
+        "ResourceId": "CdkrdHunt0713cEnumChildren-HuntAsg-8Q82rIWWU8Ij",
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0713cEnumChildren/199ce4e0-7e1d-11f1-8e73-12f1b6c413f7",
+        "ResourceType": "auto-scaling-group",
+        "Key": "aws:cloudformation:stack-id",
+        "PropagateAtLaunch": true
+      },
+      {
+        "ResourceId": "CdkrdHunt0713cEnumChildren-HuntAsg-8Q82rIWWU8Ij",
+        "Value": "CdkrdHunt0713cEnumChildren",
+        "ResourceType": "auto-scaling-group",
+        "Key": "aws:cloudformation:stack-name",
+        "PropagateAtLaunch": true
+      },
+      {
+        "ResourceId": "CdkrdHunt0713cEnumChildren-HuntAsg-8Q82rIWWU8Ij",
+        "Value": "1",
+        "ResourceType": "auto-scaling-group",
+        "Key": "cdkrd:ephemeral",
+        "PropagateAtLaunch": true
+      }
+    ],
+    "HealthCheckType": "EC2"
+  },
+  "schema": {
+    "readOnly": ["AutoScalingGroupARN"],
+    "writeOnly": ["InstanceId", "SkipZonalShiftValidation"],
+    "createOnly": ["AutoScalingGroupName", "InstanceId"],
+    "readOnlyPaths": ["AutoScalingGroupARN"],
+    "writeOnlyPaths": ["InstanceId", "SkipZonalShiftValidation"],
+    "createOnlyPaths": ["AutoScalingGroupName", "InstanceId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [
+      "AvailabilityZoneIds",
+      "AvailabilityZones",
+      "NotificationConfiguration.NotificationTypes",
+      "TargetGroupARNs",
+      "VPCZoneIdentifier"
+    ],
+    "unorderedObjectArrayPaths": ["LifecycleHookSpecificationList", "TrafficSources"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "unresolved",
+      "logicalId": "HuntAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "LaunchTemplate",
+      "physicalId": "CdkrdHunt0713cEnumChildren-HuntAsg-8Q82rIWWU8Ij",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntAsg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "LifecycleHookSpecificationList",
+      "actual": [
+        {
+          "LifecycleHookName": "CdkrdHunt0713cEnumChildren-HuntDeclaredHook-EByW42VjluPf",
+          "LifecycleTransition": "autoscaling:EC2_INSTANCE_LAUNCHING",
+          "HeartbeatTimeout": 120,
+          "DefaultResult": "CONTINUE"
+        }
+      ],
+      "physicalId": "CdkrdHunt0713cEnumChildren-HuntAsg-8Q82rIWWU8Ij",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntAsg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "ServiceLinkedRoleARN",
+      "actual": "arn:aws:iam::111111111111:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling",
+      "physicalId": "CdkrdHunt0713cEnumChildren-HuntAsg-8Q82rIWWU8Ij",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntAsg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "AvailabilityZoneIds",
+      "actual": ["use1-az1", "use1-az2"],
+      "physicalId": "CdkrdHunt0713cEnumChildren-HuntAsg-8Q82rIWWU8Ij",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntAsg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "Cooldown",
+      "actual": "300",
+      "physicalId": "CdkrdHunt0713cEnumChildren-HuntAsg-8Q82rIWWU8Ij",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntAsg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "AvailabilityZones",
+      "actual": ["us-east-1a", "us-east-1b"],
+      "physicalId": "CdkrdHunt0713cEnumChildren-HuntAsg-8Q82rIWWU8Ij",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntAsg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "AvailabilityZoneDistribution",
+      "actual": {
+        "CapacityDistributionStrategy": "balanced-best-effort"
+      },
+      "physicalId": "CdkrdHunt0713cEnumChildren-HuntAsg-8Q82rIWWU8Ij",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntAsg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "HealthCheckGracePeriod",
+      "actual": 0,
+      "physicalId": "CdkrdHunt0713cEnumChildren-HuntAsg-8Q82rIWWU8Ij",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntAsg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "InstanceLifecyclePolicy",
+      "actual": {
+        "RetentionTriggers": {
+          "TerminateHookAbandon": "terminate"
+        }
+      },
+      "physicalId": "CdkrdHunt0713cEnumChildren-HuntAsg-8Q82rIWWU8Ij",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntAsg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "TerminationPolicies",
+      "actual": ["Default"],
+      "physicalId": "CdkrdHunt0713cEnumChildren-HuntAsg-8Q82rIWWU8Ij",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntAsg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "CapacityReservationSpecification",
+      "actual": {
+        "CapacityReservationPreference": "default"
+      },
+      "physicalId": "CdkrdHunt0713cEnumChildren-HuntAsg-8Q82rIWWU8Ij",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntAsg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "HealthCheckType",
+      "actual": "EC2",
+      "physicalId": "CdkrdHunt0713cEnumChildren-HuntAsg-8Q82rIWWU8Ij",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntAsg"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "HuntAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "LaunchTemplate.LaunchTemplateName",
+      "actual": "HuntLt_vPubgWMJJ8VE",
+      "nested": true,
+      "physicalId": "CdkrdHunt0713cEnumChildren-HuntAsg-8Q82rIWWU8Ij",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntAsg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "Tags[cdkrd:ephemeral].ResourceId",
+      "actual": "CdkrdHunt0713cEnumChildren-HuntAsg-8Q82rIWWU8Ij",
+      "nested": true,
+      "physicalId": "CdkrdHunt0713cEnumChildren-HuntAsg-8Q82rIWWU8Ij",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntAsg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "Tags[cdkrd:ephemeral].ResourceType",
+      "actual": "auto-scaling-group",
+      "nested": true,
+      "physicalId": "CdkrdHunt0713cEnumChildren-HuntAsg-8Q82rIWWU8Ij",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntAsg"
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntDeclaredTable",
+    "resourceType": "AWS::Glue::Table",
+    "physicalId": "cdkrd_hunt_declared_table",
+    "constructPath": "CdkrdHunt0713cEnumChildren/HuntDeclaredTable",
+    "declared": {
+      "CatalogId": "111111111111",
+      "DatabaseName": "cdkrd_hunt_enum_db",
+      "TableInput": {
+        "Name": "cdkrd_hunt_declared_table",
+        "StorageDescriptor": {
+          "Columns": [
+            {
+              "Name": "id",
+              "Type": "string"
+            }
+          ],
+          "Location": "s3://cdkrd-hunt-flowlog-x9z7q/decl/"
+        }
+      }
+    }
+  },
+  "liveRaw": {
+    "DatabaseName": "cdkrd_hunt_enum_db",
+    "TableInput": {
+      "Name": "cdkrd_hunt_declared_table",
+      "Retention": 0,
+      "StorageDescriptor": {
+        "Columns": [
+          {
+            "Name": "id",
+            "Type": "string"
+          }
+        ],
+        "Location": "s3://cdkrd-hunt-flowlog-x9z7q/decl/",
+        "Compressed": false,
+        "NumberOfBuckets": 0,
+        "SortColumns": [],
+        "StoredAsSubDirectories": false
+      }
+    },
+    "CatalogId": "111111111111"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["CatalogId", "DatabaseName", "Name"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["CatalogId", "DatabaseName", "Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntDeclaredTable",
+      "resourceType": "AWS::Glue::Table",
+      "path": "TableInput.Retention",
+      "actual": 0,
+      "nested": true,
+      "physicalId": "cdkrd_hunt_declared_table",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntDeclaredTable"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntDeclaredTable",
+      "resourceType": "AWS::Glue::Table",
+      "path": "TableInput.StorageDescriptor.NumberOfBuckets",
+      "actual": 0,
+      "nested": true,
+      "physicalId": "cdkrd_hunt_declared_table",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntDeclaredTable"
+    }
+  ]
+}

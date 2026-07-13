@@ -32,6 +32,9 @@ importers:
       '@aws-sdk/client-appsync':
         specifier: ^3.1066.0
         version: 3.1066.0
+      '@aws-sdk/client-auto-scaling':
+        specifier: ^3.1065.0
+        version: 3.1085.0
       '@aws-sdk/client-budgets':
         specifier: ^3.1065.0
         version: 3.1066.0
@@ -348,6 +351,10 @@ packages:
 
   '@aws-sdk/client-appsync@3.1066.0':
     resolution: {integrity: sha512-zmdki3cV8TzcbiG5YqMmsrbGZj9POJjyfuOvVLaTDOZ6MOlI6pooLvw6RpzPmDIaIpSRIem+pfbRshISwWWMzg==}
+    engines: {node: '>=20.0.0'}
+
+  '@aws-sdk/client-auto-scaling@3.1085.0':
+    resolution: {integrity: sha512-jy163P+qPc3iHnA1QIGKqK7j11yr1YkTqG53VLtkZnvxkk6n42BFp32nSJgZmRFij5b2j1QMEbI1nHf1b3RFUA==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/client-bedrock-agentcore-control@3.1066.0':
@@ -2416,7 +2423,7 @@ packages:
     engines: {node: '>=14.14'}
 
   fsevents@2.3.3:
-    resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
+    resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==, tarball: https://registry.npmjs.org/fsevents/-/fsevents-2.3.3.tgz}
     engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
     os: [darwin]
 
@@ -3999,6 +4006,17 @@ snapshots:
       '@smithy/core': 3.24.6
       '@smithy/fetch-http-handler': 5.4.6
       '@smithy/node-http-handler': 4.7.7
+      '@smithy/types': 4.15.0
+      tslib: 2.8.1
+
+  '@aws-sdk/client-auto-scaling@3.1085.0':
+    dependencies:
+      '@aws-sdk/core': 3.975.1
+      '@aws-sdk/credential-provider-node': 3.972.66
+      '@aws-sdk/types': 3.974.0
+      '@smithy/core': 3.29.2
+      '@smithy/fetch-http-handler': 5.6.4
+      '@smithy/node-http-handler': 4.9.4
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 

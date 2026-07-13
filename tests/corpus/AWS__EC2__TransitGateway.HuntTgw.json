@@ -1,0 +1,164 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntTgw",
+    "resourceType": "AWS::EC2::TransitGateway",
+    "physicalId": "tgw-0c75b1629b5f66059",
+    "constructPath": "CdkrdHunt0713cEnumChildren/HuntTgw",
+    "declared": {
+      "Description": "cdkrd hunt enum-children TGW",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Description": "cdkrd hunt enum-children TGW",
+    "EncryptionSupportState": "disabled",
+    "AssociationDefaultRouteTableId": "tgw-rtb-0b7ada86e8fbe9bac",
+    "AutoAcceptSharedAttachments": "disable",
+    "TransitGatewayArn": "arn:aws:ec2:us-east-1:111111111111:transit-gateway/tgw-0c75b1629b5f66059",
+    "DefaultRouteTablePropagation": "enable",
+    "TransitGatewayCidrBlocks": [],
+    "PropagationDefaultRouteTableId": "tgw-rtb-0b7ada86e8fbe9bac",
+    "DefaultRouteTableAssociation": "enable",
+    "Id": "tgw-0c75b1629b5f66059",
+    "VpnEcmpSupport": "enable",
+    "SecurityGroupReferencingSupport": "disable",
+    "DnsSupport": "enable",
+    "MulticastSupport": "disable",
+    "AmazonSideAsn": 64512,
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0713cEnumChildren",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntTgw",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0713cEnumChildren/199ce4e0-7e1d-11f1-8e73-12f1b6c413f7",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["EncryptionSupportState", "Id", "TransitGatewayArn"],
+    "writeOnly": ["EncryptionSupport"],
+    "createOnly": ["AmazonSideAsn", "MulticastSupport"],
+    "readOnlyPaths": ["EncryptionSupportState", "Id", "TransitGatewayArn"],
+    "writeOnlyPaths": ["EncryptionSupport"],
+    "createOnlyPaths": ["AmazonSideAsn", "MulticastSupport"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntTgw",
+      "resourceType": "AWS::EC2::TransitGateway",
+      "path": "AssociationDefaultRouteTableId",
+      "actual": "tgw-rtb-0b7ada86e8fbe9bac",
+      "physicalId": "tgw-0c75b1629b5f66059",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntTgw"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntTgw",
+      "resourceType": "AWS::EC2::TransitGateway",
+      "path": "AutoAcceptSharedAttachments",
+      "actual": "disable",
+      "physicalId": "tgw-0c75b1629b5f66059",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntTgw"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntTgw",
+      "resourceType": "AWS::EC2::TransitGateway",
+      "path": "DefaultRouteTablePropagation",
+      "actual": "enable",
+      "physicalId": "tgw-0c75b1629b5f66059",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntTgw"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntTgw",
+      "resourceType": "AWS::EC2::TransitGateway",
+      "path": "PropagationDefaultRouteTableId",
+      "actual": "tgw-rtb-0b7ada86e8fbe9bac",
+      "physicalId": "tgw-0c75b1629b5f66059",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntTgw"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntTgw",
+      "resourceType": "AWS::EC2::TransitGateway",
+      "path": "DefaultRouteTableAssociation",
+      "actual": "enable",
+      "physicalId": "tgw-0c75b1629b5f66059",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntTgw"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntTgw",
+      "resourceType": "AWS::EC2::TransitGateway",
+      "path": "VpnEcmpSupport",
+      "actual": "enable",
+      "physicalId": "tgw-0c75b1629b5f66059",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntTgw"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntTgw",
+      "resourceType": "AWS::EC2::TransitGateway",
+      "path": "SecurityGroupReferencingSupport",
+      "actual": "disable",
+      "physicalId": "tgw-0c75b1629b5f66059",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntTgw"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntTgw",
+      "resourceType": "AWS::EC2::TransitGateway",
+      "path": "DnsSupport",
+      "actual": "enable",
+      "physicalId": "tgw-0c75b1629b5f66059",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntTgw"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntTgw",
+      "resourceType": "AWS::EC2::TransitGateway",
+      "path": "MulticastSupport",
+      "actual": "disable",
+      "physicalId": "tgw-0c75b1629b5f66059",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntTgw"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntTgw",
+      "resourceType": "AWS::EC2::TransitGateway",
+      "path": "AmazonSideAsn",
+      "actual": 64512,
+      "physicalId": "tgw-0c75b1629b5f66059",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntTgw"
+    }
+  ]
+}

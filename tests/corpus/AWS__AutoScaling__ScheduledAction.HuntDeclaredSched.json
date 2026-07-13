@@ -1,0 +1,63 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntDeclaredSched",
+    "resourceType": "AWS::AutoScaling::ScheduledAction",
+    "physicalId": "CdkrdH-HuntD-Z647VGBFAWJX",
+    "constructPath": "CdkrdHunt0713cEnumChildren/HuntDeclaredSched",
+    "declared": {
+      "AutoScalingGroupName": "CdkrdHunt0713cEnumChildren-HuntAsg-8Q82rIWWU8Ij",
+      "MaxSize": 1,
+      "MinSize": 0,
+      "Recurrence": "0 3 * * *"
+    }
+  },
+  "liveRaw": {
+    "MinSize": 0,
+    "Recurrence": "0 3 * * *",
+    "ScheduledActionName": "CdkrdH-HuntD-Z647VGBFAWJX",
+    "EndTime": "null",
+    "AutoScalingGroupName": "CdkrdHunt0713cEnumChildren-HuntAsg-8Q82rIWWU8Ij",
+    "StartTime": "2026-07-14T03:00:00Z",
+    "MaxSize": 1
+  },
+  "schema": {
+    "readOnly": ["ScheduledActionName"],
+    "writeOnly": [],
+    "createOnly": ["AutoScalingGroupName"],
+    "readOnlyPaths": ["ScheduledActionName"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["AutoScalingGroupName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntDeclaredSched",
+      "resourceType": "AWS::AutoScaling::ScheduledAction",
+      "path": "EndTime",
+      "actual": "null",
+      "physicalId": "CdkrdH-HuntD-Z647VGBFAWJX",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntDeclaredSched"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntDeclaredSched",
+      "resourceType": "AWS::AutoScaling::ScheduledAction",
+      "path": "StartTime",
+      "actual": "2026-07-14T03:00:00Z",
+      "physicalId": "CdkrdH-HuntD-Z647VGBFAWJX",
+      "constructPath": "CdkrdHunt0713cEnumChildren/HuntDeclaredSched"
+    }
+  ]
+}

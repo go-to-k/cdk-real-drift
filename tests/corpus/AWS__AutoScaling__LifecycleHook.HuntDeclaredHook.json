@@ -1,0 +1,42 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntDeclaredHook",
+    "resourceType": "AWS::AutoScaling::LifecycleHook",
+    "physicalId": "CdkrdHunt0713cEnumChildren-HuntDeclaredHook-EByW42VjluPf",
+    "constructPath": "CdkrdHunt0713cEnumChildren/HuntDeclaredHook",
+    "declared": {
+      "AutoScalingGroupName": "CdkrdHunt0713cEnumChildren-HuntAsg-8Q82rIWWU8Ij",
+      "DefaultResult": "CONTINUE",
+      "HeartbeatTimeout": 120,
+      "LifecycleTransition": "autoscaling:EC2_INSTANCE_LAUNCHING"
+    }
+  },
+  "liveRaw": {
+    "LifecycleHookName": "CdkrdHunt0713cEnumChildren-HuntDeclaredHook-EByW42VjluPf",
+    "LifecycleTransition": "autoscaling:EC2_INSTANCE_LAUNCHING",
+    "AutoScalingGroupName": "CdkrdHunt0713cEnumChildren-HuntAsg-8Q82rIWWU8Ij",
+    "HeartbeatTimeout": 120,
+    "DefaultResult": "CONTINUE"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["AutoScalingGroupName", "LifecycleHookName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["AutoScalingGroupName", "LifecycleHookName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

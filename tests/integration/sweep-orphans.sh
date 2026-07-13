@@ -233,6 +233,36 @@ resource_gone() {
           printf '%s' "$err" | grep -q 'InvalidSubnetID.NotFound' && return 0
           return 1
           ;;
+        *:natgateway/nat-*)
+          # arn:aws:ec2:<region>:<acct>:natgateway/nat-<id> — a deleted NAT gateway stays
+          # visible in DescribeNatGateways with State "deleted" for ~an hour AND in the tag
+          # index (2026-07-13 hunt, #1540 fixture). deleted/deleting counts as gone;
+          # NotFound too. Any other state keeps the ORPHAN RED.
+          id="${arn##*/}"
+          local nst
+          nst="$(aws ec2 describe-nat-gateways --nat-gateway-ids "$id" --region "$REGION" \
+            --query 'NatGateways[0].State' --output text 2>/dev/null)" || return 0
+          { [ "$nst" = "deleted" ] || [ "$nst" = "deleting" ] || [ "$nst" = "None" ]; } && return 0
+          return 1
+          ;;
+        *:transit-gateway-attachment/tgw-attach-*)
+          # Same terminal-state lag for a deleted TGW attachment (2026-07-13 hunt).
+          id="${arn##*/}"
+          local tast
+          tast="$(aws ec2 describe-transit-gateway-attachments --transit-gateway-attachment-ids "$id" \
+            --region "$REGION" --query 'TransitGatewayAttachments[0].State' --output text 2>/dev/null)" || return 0
+          { [ "$tast" = "deleted" ] || [ "$tast" = "deleting" ] || [ "$tast" = "None" ]; } && return 0
+          return 1
+          ;;
+        *:transit-gateway-route-table/tgw-rtb-*)
+          # Same terminal-state lag for a deleted TGW route table (2026-07-13 hunt).
+          id="${arn##*/}"
+          local trst
+          trst="$(aws ec2 describe-transit-gateway-route-tables --transit-gateway-route-table-ids "$id" \
+            --region "$REGION" --query 'TransitGatewayRouteTables[0].State' --output text 2>/dev/null)" || return 0
+          { [ "$trst" = "deleted" ] || [ "$trst" = "deleting" ] || [ "$trst" = "None" ]; } && return 0
+          return 1
+          ;;
         *) return 1 ;;
       esac
       ;;
