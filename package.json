@@ -65,6 +65,7 @@
     "@aws-sdk/client-apigatewayv2": "^3.1069.0",
     "@aws-sdk/client-appconfig": "^3.1069.0",
     "@aws-sdk/client-appsync": "^3.1066.0",
+    "@aws-sdk/client-auto-scaling": "^3.1065.0",
     "@aws-sdk/client-budgets": "^3.1065.0",
     "@aws-sdk/client-cloudcontrol": "^3.1065.0",
     "@aws-sdk/client-cloudformation": "^3.1065.0",

@@ -10,6 +10,8 @@ import {
 import {
   DescribeInternetGatewaysCommand,
   DescribeNetworkAclsCommand,
+  DescribeFlowLogsCommand,
+  DescribeNatGatewaysCommand,
   DescribeRouteTablesCommand,
   DescribeSecurityGroupsCommand,
   DescribeSubnetsCommand,
@@ -3114,7 +3116,12 @@ describe('enumerateVpcChildren (EC2 VPC sub-resources, end-to-end) — #1315', (
       // The security-group dimension (#835) also calls DescribeSecurityGroups; default to none
       // so the sub-resource (#1315) assertions below are unaffected.
       .on(DescribeSecurityGroupsCommand)
-      .resolves({ SecurityGroups: [] });
+      .resolves({ SecurityGroups: [] })
+      // #1540: the VPC enumerator now also scans NAT gateways + flow logs; default to none.
+      .on(DescribeNatGatewaysCommand)
+      .resolves({ NatGateways: [] })
+      .on(DescribeFlowLogsCommand)
+      .resolves({ FlowLogs: [] });
     return ec2;
   };
 

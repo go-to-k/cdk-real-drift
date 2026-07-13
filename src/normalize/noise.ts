@@ -1115,8 +1115,19 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     // vpc is the only value for a new EIP). Equality-gated constant.
     Domain: 'vpc',
   },
+  // #1540 hunt (CdkrdHunt0713cEnumChildren, 2026-07-13): a BAREST TGW (only Description
+  // declared — transitgateway-rich declared these leaves, hiding the undeclared-default
+  // path) first-run-FP'd all seven creation constants. Equality-gated: an out-of-band
+  // flip (auto-accept enable, DNS disable, an ASN change) no longer matches and surfaces.
   'AWS::EC2::TransitGateway': {
     SecurityGroupReferencingSupport: 'disable',
+    AmazonSideAsn: 64512,
+    AutoAcceptSharedAttachments: 'disable',
+    DefaultRouteTableAssociation: 'enable',
+    DefaultRouteTablePropagation: 'enable',
+    DnsSupport: 'enable',
+    VpnEcmpSupport: 'enable',
+    MulticastSupport: 'disable',
   },
   'AWS::EC2::FlowLog': {
     MaxAggregationInterval: 600,
@@ -3346,7 +3357,19 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   constant nor derived. Undeclared → whatever AZs AWS chose are not user intent; a user who
   //   wants specific AZs declares `AvailabilityZones` instead, compared in the declared loop.
   //   Exact twin of the classic-ELB AvailabilityZones fold above. Live, hunt 2026-07-08 #639.
-  'AWS::AutoScaling::AutoScalingGroup': new Set(['AvailabilityZones', 'AvailabilityZoneIds']),
+  //   LifecycleHookSpecificationList (#1540): a launch-time-only (create-only) template
+  //   property; the live model echoes the group's CURRENT hooks into it, including hooks
+  //   declared as SEPARATE AWS::AutoScaling::LifecycleHook resources and hooks added out of
+  //   band. Hook drift is OWNED by the child dimension (a declared hook compares as its own
+  //   resource; an out-of-band hook surfaces via the #1540 AutoScalingGroup child enumerator),
+  //   so folding the parent echo value-independently prevents the same hook from
+  //   double-reporting (#747 lesson) without losing detection. Live-proven on
+  //   CdkrdHunt0713cEnumChildren (2026-07-13): a sibling-declared hook FP'd this path.
+  'AWS::AutoScaling::AutoScalingGroup': new Set([
+    'AvailabilityZones',
+    'AvailabilityZoneIds',
+    'LifecycleHookSpecificationList',
+  ]),
   //   AWS::ApiGateway::Authorizer.AuthType — a REST-API authorizer's schema carries NO
   //   `AuthType` property (the template declares `Type`: TOKEN / REQUEST /
   //   COGNITO_USER_POOLS); AWS DERIVES and reads back AuthType from it ("custom" for
@@ -3890,6 +3913,13 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
 //   (#1501, live-repro'd 2026-07-12 on tests/integration/s3kms-ddb-batch-min).
 export const VALUE_INDEPENDENT_DEFAULT_NESTED_PATHS: Record<string, ReadonlySet<string>> = {
   'AWS::Batch::ComputeEnvironment': new Set(['ComputeResources.DesiredvCpus']),
+  // #1540 hunt (CdkrdHunt0713cEnumChildren, 2026-07-13): DescribeAutoScalingGroups
+  // augments every DECLARED tag entry with the read-only TagDescription echo fields
+  // ResourceId (the group's own name) and ResourceType ("auto-scaling-group") — pure
+  // reflections of the resource's identity, never user-settable per tag, which FP'd as
+  // nested undeclared on every tagged barest ASG. The tag's Key/Value/PropagateAtLaunch
+  // stay compared (a real tag change still surfaces).
+  'AWS::AutoScaling::AutoScalingGroup': new Set(['Tags.*.ResourceId', 'Tags.*.ResourceType']),
 };
 
 // R142: true when `value` equals a `|`/`:`/`/`-separated SEGMENT of the physical id.

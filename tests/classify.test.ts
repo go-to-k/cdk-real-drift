@@ -4832,10 +4832,17 @@ describe('unordered-array declared false positives (R88, found by the wave-2 int
       expect(t.declared).toEqual([]);
     });
 
-    it('out-of-band hook (matching no sibling) still surfaces as undeclared', () => {
+    it('out-of-band hook in the parent echo folds atDefault — the ADDED tier owns it (#1540)', () => {
+      // #1540 superseded the old "surfaces as undeclared on the parent property" contract:
+      // an out-of-band hook now surfaces as an `added` AWS::AutoScaling::LifecycleHook via
+      // the AutoScalingGroup child enumerator (gather), and the parent's create-only
+      // LifecycleHookSpecificationList echo folds value-independently so the SAME hook is
+      // not double-reported (#747 lesson). Live-proven on CdkrdHunt0713cEnumChildren
+      // (2026-07-13): the OOB hook appeared exactly once, as `added`.
       const live = { LifecycleHookSpecificationList: [hook('rogue-oob')] };
       const t = tiers(classifyResource(asg({}), live, bare, { siblingLifecycleHooks: {} }));
-      expect(t.undeclared).toContain('LifecycleHookSpecificationList');
+      expect(t.undeclared).toEqual([]);
+      expect(t.atDefault).toContain('LifecycleHookSpecificationList');
     });
 
     it('out-of-band hook alongside a sibling hook is NOT hidden (declared list still differs)', () => {
