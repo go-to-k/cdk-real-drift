@@ -538,6 +538,25 @@ Recorded]` breakdown with `--verbose`.
   readSageMakerMonitoringSchedule had already fixed exactly that (#1523) — the fix
   existed one function away. A physical-id shape is per-type but the MISTAKE is
   per-family; audit siblings before shipping a one-type fix.
+- **A revert bug's fix belongs in the route the plan ACTUALLY takes — check
+  `SDK_WRITERS[type]` FIRST.** A type with an SDK writer never sends the CC patch, so
+  a fix in the CC augmentation path (`augmentCcItemOps` strips) is dead code for it.
+  The #1568 Glue capacity-echo failure was first "fixed" in the CC layer before
+  discovering `writeGlueJob` existed — the real bug was the writer's non-WorkerType
+  branch re-sending BOTH GetJob capacity echoes. Corollary: a writer's unit-test mock
+  must mirror the REAL read echo shape (the old test's GetJob mock omitted the dual
+  `MaxCapacity`+`AllocatedCapacity` echo, so the always-failing branch looked green);
+  copy the mock model from a live read, not from the declared template.
+- **Post-update echo materialization is its own FP class — probe it with a neutral
+  update.** A clean FIRST-run check proves nothing about the post-update echo
+  surface: Glue normalizes sizing on EVERY UpdateJob (including a CFn stack update),
+  so undeclared `WorkerType`/`NumberOfWorkers` materialized out of nowhere after an
+  update that never mentioned them (#1569) — and the pair is irremovable (a `remove`
+  revert is a structural no-op). After the first-run check, run ANY update against
+  the resource (a service update API call or a trivial template change) and re-check:
+  every newly materialized undeclared field is a latent FP a real user hits on their
+  second deploy. Fold it with the same decision order (the sizing pair joined the
+  existing value-independent MaxCapacity trio).
 - **Immutable props can't drift.** Don't treat an `unresolved`/unverifiable
   create-only property (Subnet `AvailabilityZone` via `Fn::Select(Fn::GetAZs)`, NAT
   `AllocationId` via `Fn::GetAtt` EIP) as a bug — it's correctly classified. And
