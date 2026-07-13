@@ -1,3 +1,10 @@
+## [0.18.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.1...v0.18.2) (2026-07-13)
+
+
+### Bug Fixes
+
+* **revert:** SDK writer for AWS::SageMaker::MonitoringSchedule via UpdateMonitoringSchedule ([#1577](https://github.com/go-to-k/cdk-real-drift/issues/1577)) ([#1579](https://github.com/go-to-k/cdk-real-drift/issues/1579)) ([6c13fb6](https://github.com/go-to-k/cdk-real-drift/commit/6c13fb6c6dbe09a56666f78f6ad92a11c31d00d2))
+
 ## [0.18.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.0...v0.18.1) (2026-07-13)
 
 
