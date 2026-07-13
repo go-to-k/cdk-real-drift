@@ -1,3 +1,10 @@
+## [0.16.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.16.0...v0.16.1) (2026-07-13)
+
+
+### Bug Fixes
+
+* **noise:** fold undeclared Firehose DeliveryStreamType + BufferingHints defaults ([#1556](https://github.com/go-to-k/cdk-real-drift/issues/1556)) ([#1558](https://github.com/go-to-k/cdk-real-drift/issues/1558)) ([b94c3b6](https://github.com/go-to-k/cdk-real-drift/commit/b94c3b6cd326e46c8cff2697eea159d415459c11))
+
 # [0.16.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.15.0...v0.16.0) (2026-07-13)
 
 
