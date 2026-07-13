@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-integ-elbv2-listenercert-barest",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Barest-config ELBv2 ListenerCertificate fixture for the cdk-real-drift first-run FP hunt (#1560 reader). Run via verify.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module"
+}

@@ -576,6 +576,29 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('Kinesis Stream RetentionPeriodHours (SET-DEFAULT) -> add op writing the 24 default, not a no-op remove', () => {
+    // RetentionPeriodHours is changed only by the dedicated
+    // Increase/DecreaseStreamRetentionPeriod APIs — the Cloud Control Stream update handler
+    // ignores an OMITTED RetentionPeriodHours, so a bare `remove` of an out-of-band undeclared
+    // retention increase is a silent no-op (live-proven on CdkrdHuntRevertToggle0713: an
+    // increase to 48 was detected but the `remove` revert left the live value at 48). Revert
+    // must write the KNOWN_DEFAULTS `24` explicitly so the handler calls
+    // DecreaseStreamRetentionPeriod and converges.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::Kinesis::Stream',
+      path: 'RetentionPeriodHours',
+      actual: 48,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/RetentionPeriodHours',
+      value: 24,
+      prior: 48,
+    });
+  });
+
   it('#1544: EC2 Instance MetadataOptions (SET-DEFAULT) -> add op writing the secure-defaults object, not a no-op remove', () => {
     // ModifyInstanceMetadataOptions is a one-shot API: a bare `remove` of an out-of-band
     // undeclared MetadataOptions change is a silent no-op (live-proven on

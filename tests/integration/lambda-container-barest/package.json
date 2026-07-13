@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-integ-lambda-container-barest",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Barest-config container-image Lambda (PackageType: Image) fixture for the cdk-real-drift first-run FP hunt. Run via verify.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module"
+}

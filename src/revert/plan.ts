@@ -366,6 +366,16 @@ export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // (the fields default to ABSENT, so KNOWN_DEFAULTS has no source).
   'AWS::ApiGatewayV2::IntegrationResponse\0TemplateSelectionExpression',
   'AWS::ApiGatewayV2::RouteResponse\0ModelSelectionExpression',
+  // Kinesis RetentionPeriodHours is changed only by the dedicated
+  // Increase/DecreaseStreamRetentionPeriod APIs — the Cloud Control Stream update handler
+  // ignores an OMITTED RetentionPeriodHours, so a bare `remove` revert of an out-of-band
+  // retention increase is a silent no-op (live-proven 2026-07-13: an out-of-band
+  // increase-stream-retention-period to 48 was detected but the `remove` revert left the
+  // live value at 48). Writing the KNOWN_DEFAULTS default (24) explicitly makes the handler
+  // call DecreaseStreamRetentionPeriod and converge. (Contrast Events::Rule State, whose CC
+  // handler DOES re-enable on an omitted State — proven in the same fixture — so it needs no
+  // entry here.)
+  'AWS::Kinesis::Stream\0RetentionPeriodHours',
 ]);
 
 // Set-default values for REVERT_SET_DEFAULT_PATHS entries whose default is a plain constant
