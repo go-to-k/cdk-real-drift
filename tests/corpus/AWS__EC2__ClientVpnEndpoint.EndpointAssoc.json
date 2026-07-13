@@ -1,0 +1,140 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "EndpointAssoc",
+    "resourceType": "AWS::EC2::ClientVpnEndpoint",
+    "physicalId": "cvpn-endpoint-0eb61aeb3a584e71a",
+    "constructPath": "CdkrdHuntCvpnKids0713/Endpoint",
+    "declared": {
+      "AuthenticationOptions": [
+        {
+          "MutualAuthentication": {
+            "ClientRootCertificateChainArn": "arn:aws:acm:us-east-1:111111111111:certificate/a549a63e-9ba1-4a00-ae93-cdf71b4e30bf"
+          },
+          "Type": "certificate-authentication"
+        }
+      ],
+      "ClientCidrBlock": "10.100.0.0/22",
+      "ConnectionLogOptions": {
+        "Enabled": false
+      },
+      "ServerCertificateArn": "arn:aws:acm:us-east-1:111111111111:certificate/a549a63e-9ba1-4a00-ae93-cdf71b4e30bf"
+    }
+  },
+  "liveRaw": {
+    "ClientCidrBlock": "10.100.0.0/22",
+    "SplitTunnel": false,
+    "TransportProtocol": "udp",
+    "VpnPort": 443,
+    "ServerCertificateArn": "arn:aws:acm:us-east-1:111111111111:certificate/a549a63e-9ba1-4a00-ae93-cdf71b4e30bf",
+    "SecurityGroupIds": ["sg-09b6d7fd7f1364328"],
+    "VpcId": "vpc-07c0e7826547bd2a7",
+    "SessionTimeoutHours": 24,
+    "DisconnectOnSessionTimeout": true,
+    "ConnectionLogOptions": {
+      "Enabled": false
+    },
+    "AuthenticationOptions": [
+      {
+        "Type": "certificate-authentication",
+        "MutualAuthentication": {
+          "ClientRootCertificateChainArn": "arn:aws:acm:us-east-1:111111111111:certificate/a549a63e-9ba1-4a00-ae93-cdf71b4e30bf"
+        }
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": [
+      "AuthenticationOptions",
+      "ClientCidrBlock",
+      "EndpointIpAddressType",
+      "TagSpecifications",
+      "TrafficIpAddressType",
+      "TransitGatewayConfiguration",
+      "TransportProtocol"
+    ],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "AuthenticationOptions",
+      "ClientCidrBlock",
+      "EndpointIpAddressType",
+      "TagSpecifications",
+      "TrafficIpAddressType",
+      "TransitGatewayConfiguration",
+      "TransportProtocol"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "siblingClientVpnEndpointVpcs": {
+      "cvpn-endpoint-0eb61aeb3a584e71a": "vpc-07c0e7826547bd2a7"
+    }
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "EndpointAssoc",
+      "resourceType": "AWS::EC2::ClientVpnEndpoint",
+      "path": "TransportProtocol",
+      "actual": "udp",
+      "physicalId": "cvpn-endpoint-0eb61aeb3a584e71a",
+      "constructPath": "CdkrdHuntCvpnKids0713/Endpoint"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EndpointAssoc",
+      "resourceType": "AWS::EC2::ClientVpnEndpoint",
+      "path": "VpnPort",
+      "actual": 443,
+      "physicalId": "cvpn-endpoint-0eb61aeb3a584e71a",
+      "constructPath": "CdkrdHuntCvpnKids0713/Endpoint"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EndpointAssoc",
+      "resourceType": "AWS::EC2::ClientVpnEndpoint",
+      "path": "SecurityGroupIds",
+      "actual": ["sg-09b6d7fd7f1364328"],
+      "physicalId": "cvpn-endpoint-0eb61aeb3a584e71a",
+      "constructPath": "CdkrdHuntCvpnKids0713/Endpoint"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EndpointAssoc",
+      "resourceType": "AWS::EC2::ClientVpnEndpoint",
+      "path": "VpcId",
+      "actual": "vpc-07c0e7826547bd2a7",
+      "physicalId": "cvpn-endpoint-0eb61aeb3a584e71a",
+      "constructPath": "CdkrdHuntCvpnKids0713/Endpoint"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EndpointAssoc",
+      "resourceType": "AWS::EC2::ClientVpnEndpoint",
+      "path": "SessionTimeoutHours",
+      "actual": 24,
+      "physicalId": "cvpn-endpoint-0eb61aeb3a584e71a",
+      "constructPath": "CdkrdHuntCvpnKids0713/Endpoint"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EndpointAssoc",
+      "resourceType": "AWS::EC2::ClientVpnEndpoint",
+      "path": "DisconnectOnSessionTimeout",
+      "actual": true,
+      "physicalId": "cvpn-endpoint-0eb61aeb3a584e71a",
+      "constructPath": "CdkrdHuntCvpnKids0713/Endpoint"
+    }
+  ]
+}

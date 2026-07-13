@@ -1,0 +1,42 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Assoc",
+    "resourceType": "AWS::EC2::ClientVpnTargetNetworkAssociation",
+    "physicalId": "cvpn-assoc-0a95ad8338e534ac2",
+    "constructPath": "CdkrdHuntCvpnKids0713/Assoc",
+    "declared": {
+      "ClientVpnEndpointId": "cvpn-endpoint-0eb61aeb3a584e71a",
+      "SubnetId": "subnet-0619cffd4994934f9"
+    }
+  },
+  "liveRaw": {
+    "ClientVpnEndpointId": "cvpn-endpoint-0eb61aeb3a584e71a",
+    "SubnetId": "subnet-0619cffd4994934f9"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["AvailabilityZone", "AvailabilityZoneId", "ClientVpnEndpointId", "SubnetId"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "AvailabilityZone",
+      "AvailabilityZoneId",
+      "ClientVpnEndpointId",
+      "SubnetId"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

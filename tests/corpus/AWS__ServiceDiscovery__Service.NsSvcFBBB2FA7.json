@@ -1,0 +1,92 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "NsSvcFBBB2FA7",
+    "resourceType": "AWS::ServiceDiscovery::Service",
+    "physicalId": "srv-larvapfwzod2rbjj",
+    "constructPath": "CdkrdHuntCmapPriv0713/Ns/Svc",
+    "declared": {
+      "DnsConfig": {
+        "DnsRecords": [
+          {
+            "TTL": 60,
+            "Type": "A"
+          }
+        ],
+        "NamespaceId": "ns-xd4yucfbkz52j6v2",
+        "RoutingPolicy": "MULTIVALUE"
+      },
+      "Name": "hunt-svc",
+      "NamespaceId": "ns-xd4yucfbkz52j6v2",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Name": "hunt-svc",
+    "NamespaceId": "ns-xd4yucfbkz52j6v2",
+    "Type": "DNS_HTTP",
+    "DnsConfig": {
+      "NamespaceId": "ns-xd4yucfbkz52j6v2",
+      "RoutingPolicy": "MULTIVALUE",
+      "DnsRecords": [
+        {
+          "Type": "A",
+          "TTL": 60
+        }
+      ]
+    },
+    "Tags": [
+      {
+        "Key": "aws:cloudformation:stack-name",
+        "Value": "CdkrdHuntCmapPriv0713"
+      },
+      {
+        "Key": "aws:cloudformation:logical-id",
+        "Value": "NsSvcFBBB2FA7"
+      },
+      {
+        "Key": "aws:cloudformation:stack-id",
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHuntCmapPriv0713/2c546350-7ebe-11f1-8058-0e4f09930a2d"
+      },
+      {
+        "Key": "cdkrd:ephemeral",
+        "Value": "1"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": [],
+    "createOnly": ["HealthCheckCustomConfig", "Name", "NamespaceId", "Type"],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["HealthCheckCustomConfig", "Name", "NamespaceId", "Type"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "NsSvcFBBB2FA7",
+      "resourceType": "AWS::ServiceDiscovery::Service",
+      "path": "Type",
+      "actual": "DNS_HTTP",
+      "physicalId": "srv-larvapfwzod2rbjj",
+      "constructPath": "CdkrdHuntCmapPriv0713/Ns/Svc"
+    }
+  ]
+}

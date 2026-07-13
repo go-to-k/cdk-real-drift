@@ -1,0 +1,72 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Ns33A06F6E",
+    "resourceType": "AWS::ServiceDiscovery::PrivateDnsNamespace",
+    "physicalId": "ns-xd4yucfbkz52j6v2",
+    "constructPath": "CdkrdHuntCmapPriv0713/Ns",
+    "declared": {
+      "Name": "cdkrd-hunt-priv.internal",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "Vpc": "vpc-0b1c00eff701aea24"
+    }
+  },
+  "liveRaw": {
+    "Name": "cdkrd-hunt-priv.internal",
+    "Arn": "arn:aws:servicediscovery:us-east-1:111111111111:namespace/ns-xd4yucfbkz52j6v2",
+    "Id": "ns-xd4yucfbkz52j6v2",
+    "Tags": [
+      {
+        "Key": "aws:cloudformation:stack-name",
+        "Value": "CdkrdHuntCmapPriv0713"
+      },
+      {
+        "Key": "aws:cloudformation:logical-id",
+        "Value": "Ns33A06F6E"
+      },
+      {
+        "Key": "aws:cloudformation:stack-id",
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHuntCmapPriv0713/2c546350-7ebe-11f1-8058-0e4f09930a2d"
+      },
+      {
+        "Key": "cdkrd:ephemeral",
+        "Value": "1"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "HostedZoneId", "Id"],
+    "writeOnly": [],
+    "createOnly": ["Name", "Vpc"],
+    "readOnlyPaths": ["Arn", "HostedZoneId", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name", "Vpc"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "Ns33A06F6E",
+      "resourceType": "AWS::ServiceDiscovery::PrivateDnsNamespace",
+      "path": "Vpc",
+      "note": "declared but not returned by live read",
+      "physicalId": "ns-xd4yucfbkz52j6v2",
+      "constructPath": "CdkrdHuntCmapPriv0713/Ns"
+    }
+  ]
+}

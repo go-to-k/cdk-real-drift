@@ -572,6 +572,23 @@ Recorded]` breakdown with `--verbose`.
   every newly materialized undeclared field is a latent FP a real user hits on their
   second deploy. Fold it with the same decision order (the sizing pair joined the
   existing value-independent MaxCapacity trio).
+- **Sibling-ATTACHMENT echo materialization is the post-update class's twin — deploy
+  the ATTACHED shape, not just the barest parent.** A parent deployed ALONE can hide
+  FPs that only materialize when a sibling attaches to it: a barest
+  `ClientVpnEndpoint` (the existing `clientvpn-barest` fixture) reads back neither
+  `VpcId` nor `SecurityGroupIds`, but the moment an in-stack
+  `ClientVpnTargetNetworkAssociation` lands, BOTH materialize (the subnet's VPC + its
+  default SG) → 2 first-run FPs invisible under apparent coverage (#1574,
+  2026-07-13). When a type has attachment-style siblings (association / attachment /
+  registration / membership resources), deploy the parent WITH one attached and
+  first-check that shape too. Fold with the decision order — the association echo is
+  usually tier-2 derivable from the declared sibling (here: SubnetId → in-stack
+  Subnet.VpcId, plus the shared DEFAULT_SG_LIST gate). Related probe mechanics:
+  ClientVPN authorization-rule revoke is ASYNC (the rule lists as `revoking` for
+  ~30s+ — an FN probe that checks too early false-passes; poll until the rule is
+  GONE before asserting detection), and a rogue SG applied to an endpoint can't be
+  deleted until the swap-back propagates to the association ENIs
+  (`DependencyViolation` — retry with a wait loop).
 - **Immutable props can't drift.** Don't treat an `unresolved`/unverifiable
   create-only property (Subnet `AvailabilityZone` via `Fn::Select(Fn::GetAZs)`, NAT
   `AllocationId` via `Fn::GetAtt` EIP) as a bug — it's correctly classified. And

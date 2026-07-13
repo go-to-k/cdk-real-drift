@@ -116,6 +116,10 @@ export interface CorpusCase {
     // entry, so replay reproduces the derived AllocatedStorage fold. Without it a fresh-harvested RI
     // replays the undeclared default storage as false drift. Optional for back-compat.
     accountDefaults?: { dmsAllocatedStorageDefaults?: Record<string, number> };
+    // This ClientVpnEndpoint's own sibling-derived VPC entry (keyed by logicalId, else physicalId —
+    // classify's probe order), present only when a declared sibling target-network association
+    // derives it, so replay reproduces the association-echoed `VpcId` fold. Optional for back-compat.
+    siblingClientVpnEndpointVpcs?: Record<string, string | null>;
   };
   expected: Finding[]; // what classifyResource produced at record time (reviewed at commit)
 }
@@ -155,6 +159,7 @@ export function buildCorpusCase(
     rdsOptionSettingDefaults?: Record<string, Record<string, Record<string, string | null>>>;
     siblingListenerPorts?: Record<string, number>;
     accountDefaults?: { dmsAllocatedStorageDefaults?: Record<string, number> };
+    siblingClientVpnEndpointVpcs?: Record<string, string | null>;
   },
   findings: Finding[]
 ): CorpusCase {
@@ -231,6 +236,19 @@ export function buildCorpusCase(
           },
         }
       : undefined;
+  // Carry ONLY this ClientVpnEndpoint's own sibling-derived VPC entry. classify probes the map by
+  // logicalId first, then physicalId — carry the key that is present (`null` is meaningful: an
+  // in-stack association whose VPC was not derivable → fail-open fold), so replay folds the
+  // association-echoed VpcId the same way the live check did.
+  const cvpnVpcMap = opts.siblingClientVpnEndpointVpcs;
+  const cvpnVpcKey =
+    resource.resourceType !== 'AWS::EC2::ClientVpnEndpoint' || cvpnVpcMap === undefined
+      ? undefined
+      : resource.logicalId in cvpnVpcMap
+        ? resource.logicalId
+        : resource.physicalId !== undefined && resource.physicalId in cvpnVpcMap
+          ? resource.physicalId
+          : undefined;
   const c: CorpusCase = {
     corpusVersion: 1,
     resource: {
@@ -277,6 +295,9 @@ export function buildCorpusCase(
         : {}),
       ...(gaListenerPort ? { siblingListenerPorts: gaListenerPort } : {}),
       ...(dmsStorageDefault ? { accountDefaults: dmsStorageDefault } : {}),
+      ...(cvpnVpcKey !== undefined && cvpnVpcMap !== undefined
+        ? { siblingClientVpnEndpointVpcs: { [cvpnVpcKey]: cvpnVpcMap[cvpnVpcKey] ?? null } }
+        : {}),
     },
     expected: findings,
   };

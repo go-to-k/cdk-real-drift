@@ -112,6 +112,11 @@ export const DEFAULT_SG_LIST_TYPES: ReadonlySet<string> = new Set([
   // subnet-group VPC's default SG — registered in classify DEFAULT_SG_LIST_PATHS, so the prefetch
   // must fire when a replication instance is present or the OOB-swap gate loses its default-SG ids.
   'AWS::DMS::ReplicationInstance',
+  // A ClientVpnEndpoint that declares no SecurityGroupIds gains its associated VPC's default SG
+  // when the first target-network association lands (live-confirmed us-east-1 2026-07-13) —
+  // registered in classify DEFAULT_SG_LIST_PATHS, so the prefetch must fire when an endpoint is
+  // present or the OOB-swap gate loses its default-SG ids.
+  'AWS::EC2::ClientVpnEndpoint',
 ]);
 
 // #1269: types whose undeclared SubnetIds default to ALL of the account's DEFAULT-VPC subnets —
@@ -1140,6 +1145,79 @@ export function buildSiblingEipAssociations(desired: Desired): Set<string> {
   return associated;
 }
 
+// Per ClientVpnEndpoint identity (logicalId + physicalId), the VPC id derived from a DECLARED
+// sibling AWS::EC2::ClientVpnTargetNetworkAssociation. The FIRST association materializes the
+// endpoint's undeclared `VpcId` (= the associated subnet's VPC) and default SG (live-confirmed
+// us-east-1 2026-07-13) — a deterministic echo of the stack's own association, so classify folds a
+// live VpcId equal to the derived value (an out-of-band `modify-client-vpn-endpoint --vpc-id` move
+// still surfaces). The derivation is PURELY in-stack (zero API calls): association.SubnetId →
+// the declared sibling Subnet's raw `VpcId` (a literal, or a Ref resolved via the VPC resource's
+// physical id). An association whose subnet/VPC is not derivable (imported subnet) maps to `null`
+// (fail open: classify folds any VpcId — best-effort, a clean deploy never gains a first-run FP);
+// conflicting derivations across associations also degrade to `null`. An endpoint with NO declared
+// association gets NO entry, so a live VpcId (an out-of-band association echo) keeps surfacing.
+export function buildClientVpnEndpointSiblingVpcs(desired: Desired): Record<string, string | null> {
+  const refLogicalId = (ref: unknown): string | undefined => {
+    if (ref && typeof ref === 'object') {
+      if ('Ref' in ref && typeof (ref as { Ref: unknown }).Ref === 'string')
+        return (ref as { Ref: string }).Ref;
+      if ('Fn::GetAtt' in ref) {
+        const g = (ref as { 'Fn::GetAtt': unknown })['Fn::GetAtt'];
+        if (Array.isArray(g) && typeof g[0] === 'string') return g[0];
+      }
+    }
+    return undefined;
+  };
+  const endpointIds = new Map<string, string[]>(); // endpoint logicalId -> identities
+  const subnetVpcRaw = new Map<string, unknown>(); // subnet logicalId AND physicalId -> raw VpcId
+  const vpcPhysical = new Map<string, string>(); // VPC logicalId -> physical id
+  for (const r of desired.resources) {
+    if (r.resourceType === 'AWS::EC2::ClientVpnEndpoint') {
+      const ids = [r.logicalId];
+      if (r.physicalId) ids.push(r.physicalId);
+      endpointIds.set(r.logicalId, ids);
+    } else if (r.resourceType === 'AWS::EC2::Subnet') {
+      const raw = (r.declared as Record<string, unknown> | undefined)?.VpcId;
+      subnetVpcRaw.set(r.logicalId, raw);
+      if (r.physicalId) subnetVpcRaw.set(r.physicalId, raw);
+    } else if (r.resourceType === 'AWS::EC2::VPC' && r.physicalId) {
+      vpcPhysical.set(r.logicalId, r.physicalId);
+    }
+  }
+  const out: Record<string, string | null> = {};
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::EC2::ClientVpnTargetNetworkAssociation') continue;
+    const d = (r.declared ?? {}) as Record<string, unknown>;
+    // Resolve the target endpoint's identities: a Ref/GetAtt to the sibling endpoint, or a
+    // resolved literal endpoint id (== the endpoint's physical id classify also looks up by).
+    const epLogical = refLogicalId(d.ClientVpnEndpointId);
+    const epKeys =
+      epLogical !== undefined
+        ? (endpointIds.get(epLogical) ?? [])
+        : typeof d.ClientVpnEndpointId === 'string' && d.ClientVpnEndpointId
+          ? [d.ClientVpnEndpointId]
+          : [];
+    if (epKeys.length === 0) continue;
+    // Derive the association's VPC from its subnet: in-stack subnet → its raw VpcId (literal or a
+    // Ref to the in-stack VPC's physical id). Anything not derivable → null (fail open).
+    const subnetKey =
+      refLogicalId(d.SubnetId) ?? (typeof d.SubnetId === 'string' ? d.SubnetId : '');
+    const rawVpc = subnetVpcRaw.get(subnetKey);
+    let derived: string | null = null;
+    if (typeof rawVpc === 'string' && rawVpc) derived = rawVpc;
+    else {
+      const vpcLogical = refLogicalId(rawVpc);
+      if (vpcLogical !== undefined) derived = vpcPhysical.get(vpcLogical) ?? null;
+    }
+    for (const key of epKeys) {
+      // Conflicting derivations across multiple associations degrade to fail-open null.
+      if (key in out && out[key] !== derived) derived = null;
+      out[key] = derived;
+    }
+  }
+  return out;
+}
+
 // #1498: the set of Subnet identities (logicalId + physicalId) whose IPv6 CIDR is assigned by a
 // sibling AWS::EC2::SubnetCidrBlock (the normal dual-stack CDK shape). The Subnet's own live model
 // echoes an undeclared Ipv6CidrBlock/Ipv6CidrBlocks that the SubnetCidrBlock sibling declares — so
@@ -1870,6 +1948,7 @@ export async function gatherFindings(
     bucketNotificationConfigs: buildBucketNotificationConfigs(desired),
     clusterEchoModel: buildClusterEchoModels(desired),
     scalableTargetBands: buildScalableTargetBands(desired),
+    siblingClientVpnEndpointVpcs: buildClientVpnEndpointSiblingVpcs(desired),
     rdsOptionSettingDefaults: await buildRdsOptionSettingDefaults(desired, region),
   };
 
@@ -1983,6 +2062,7 @@ export async function regatherTouched(
     bucketNotificationConfigs: buildBucketNotificationConfigs(desired),
     clusterEchoModel: buildClusterEchoModels(desired),
     scalableTargetBands: buildScalableTargetBands(desired),
+    siblingClientVpnEndpointVpcs: buildClientVpnEndpointSiblingVpcs(desired),
     rdsOptionSettingDefaults: await buildRdsOptionSettingDefaults(desired, region),
   };
 
