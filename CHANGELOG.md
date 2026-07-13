@@ -1,3 +1,10 @@
+## [0.18.7](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.6...v0.18.7) (2026-07-13)
+
+
+### Bug Fixes
+
+* **revert:** RDS DBInstance MultiAZ/PerformanceInsights/MonitoringInterval/CopyTagsToSnapshot/CACertificateIdentifier revert converge ([#1588](https://github.com/go-to-k/cdk-real-drift/issues/1588)) ([#1592](https://github.com/go-to-k/cdk-real-drift/issues/1592)) ([1b8ef9a](https://github.com/go-to-k/cdk-real-drift/commit/1b8ef9aec68e87521b50cf0e8e3affe4016b100d))
+
 ## [0.18.6](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.5...v0.18.6) (2026-07-13)
 
 
