@@ -1,3 +1,10 @@
+## [0.18.9](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.8...v0.18.9) (2026-07-14)
+
+
+### Bug Fixes
+
+* **check,revert:** fold Kinesis StreamModeDetails + EventBus LogConfig FPs and skip side-effectful Lambda Code re-include ([#1596](https://github.com/go-to-k/cdk-real-drift/issues/1596)) ([d7bf400](https://github.com/go-to-k/cdk-real-drift/commit/d7bf400748d788e197edc45f899b3d3fd966dde9))
+
 ## [0.18.8](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.7...v0.18.8) (2026-07-13)
 
 
