@@ -1098,7 +1098,8 @@ export function augmentCcItemOps(
   const extra = writeOnlyReincludeOps(
     declaredByLogical(item.logicalId),
     schemas.get(item.resourceType),
-    tagged
+    tagged,
+    item.resourceType
   );
   // Drop service-echoed empty arrays the service itself rejects on update
   // (#481 — VpcLattice Rule HeaderMatches []). Live-gated + ancestor-aware.

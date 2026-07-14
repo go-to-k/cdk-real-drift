@@ -1,0 +1,87 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Echo2Bus0714",
+    "resourceType": "AWS::Events::EventBus",
+    "physicalId": "cdkrd-echo2-bus-0714",
+    "constructPath": "CdkrdHuntEcho2v0714/Echo2Bus0714",
+    "declared": {
+      "Description": "cdkrd echo probe rev 2",
+      "Name": "cdkrd-echo2-bus-0714",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        },
+        {
+          "Key": "cdkrd:rev",
+          "Value": "2"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Description": "cdkrd echo probe rev 2",
+    "Arn": "arn:aws:events:us-east-1:111111111111:event-bus/cdkrd-echo2-bus-0714",
+    "Tags": [
+      {
+        "Value": "CdkrdHuntEcho2v0714",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Echo2Bus0714",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "2",
+        "Key": "cdkrd:rev"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHuntEcho2v0714/fafa2770-7f2d-11f1-a106-0e54c2561223",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "Name": "cdkrd-echo2-bus-0714",
+    "LogConfig": {
+      "IncludeDetail": "NONE",
+      "Level": "OFF"
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": ["EventSourceName"],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": ["EventSourceName"],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Echo2Bus0714",
+      "resourceType": "AWS::Events::EventBus",
+      "path": "LogConfig",
+      "actual": {
+        "IncludeDetail": "NONE",
+        "Level": "OFF"
+      },
+      "physicalId": "cdkrd-echo2-bus-0714",
+      "constructPath": "CdkrdHuntEcho2v0714/Echo2Bus0714"
+    }
+  ]
+}
