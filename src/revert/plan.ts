@@ -235,6 +235,14 @@ export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // keeps the current value instead of reconciling to the MUTABLE default. Write the
   // "MUTABLE" default (from KNOWN_DEFAULTS) back explicitly so revert converges.
   'AWS::ECR::Repository\0ImageTagMutability',
+  // The same ECR partial-update contract swallows an omitted ImageScanningConfiguration
+  // (live-proven on revconv2-hunt 2026-07-14: scan-on-push enabled out of band, `revert`
+  // planned a `remove`, Cloud Control reported `reverted: Conv2Repo`, yet
+  // `describe-repositories` stayed scanOnPush=true — the ONLY non-converging remove of
+  // that six-surface batch; DDB PITR / S3 Versioning / LogGroup RetentionInDays /
+  // EventBus LogConfig / Kinesis StreamModeDetails all reconciled via the bare remove).
+  // Write the {ScanOnPush:false} default (from KNOWN_DEFAULTS) back explicitly.
+  'AWS::ECR::Repository\0ImageScanningConfiguration',
   // SQS: an omitted MaximumMessageSize is NOT reset to the default on a revert patch
   // (live-proven on revert-noop-probe 2026-07-14, #1583: mutated 1048576->262144 out of
   // band, then `revert` planned a `remove`, reported reverted, yet the queue stayed

@@ -4959,6 +4959,28 @@ export function classifyResource(
         continue;
       }
     }
+    // A One Zone EFS file system (declared AvailabilityZoneName) defaults automatic backups
+    // to ENABLED — the OPPOSITE of the Regional default the KNOWN_DEFAULTS constant pins
+    // ({Status:'DISABLED'}), so a barest One Zone fs first-ran a [Potential Drift] on
+    // BackupPolicy (live, variants2-hunt 2026-07-14). The default is a deterministic
+    // function of the declared shape (#1477 variant-axis class), so derive it (tier 2):
+    // equality-gate against {Status:'ENABLED'} when AvailabilityZoneName is declared —
+    // an out-of-band backup DISABLE on a One Zone fs no longer matches and still surfaces
+    // as `undeclared`. Regional (no AvailabilityZoneName) falls through to the constant.
+    if (
+      resourceType === 'AWS::EFS::FileSystem' &&
+      k === 'BackupPolicy' &&
+      typeof declared['AvailabilityZoneName'] === 'string'
+    ) {
+      findings.push({
+        tier: matchesKnownDefault(v, { Status: 'ENABLED' }) ? 'atDefault' : 'undeclared',
+        logicalId,
+        resourceType,
+        path: k,
+        actual: v,
+      });
+      continue;
+    }
     // #1557: a DMS ReplicationInstance's undeclared AllocatedStorage is a DETERMINISTIC FUNCTION of
     // the declared ReplicationInstanceClass (dms.c6i.large → 100), NOT a fixed constant — the docs'
     // generic "50 GB" is not per-class truth. gather.ts prefetched the per-class

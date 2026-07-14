@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-integ-revconv2-hunt",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Revert-convergence probe batch 3 for folded mutable props never live-proven (DDB PITR, S3 Versioning, LogGroup Retention, ECR ScanOnPush, EventBus LogConfig, Kinesis stream-mode switch): mutate out of band -> detect -> revert -> assert the LIVE value returned to the default. Run via verify.sh + verify-detect.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module"
+}

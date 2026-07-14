@@ -602,6 +602,26 @@ describe('noise suppressors', () => {
         IntervalInSeconds: 300,
         SizeInMBs: 5,
       },
+      // The HTTP-endpoint destination's echo twins (live-proven, variants2-hunt
+      // 2026-07-14). Note S3BackupMode's per-variant default differs from ExtendedS3.
+      'HttpEndpointDestinationConfiguration.RequestConfiguration': {
+        CommonAttributes: [],
+        ContentEncoding: 'NONE',
+      },
+      'HttpEndpointDestinationConfiguration.BufferingHints': {
+        IntervalInSeconds: 300,
+        SizeInMBs: 5,
+      },
+      'HttpEndpointDestinationConfiguration.RetryOptions': { DurationInSeconds: 300 },
+      'HttpEndpointDestinationConfiguration.S3BackupMode': 'FailedDataOnly',
+      'HttpEndpointDestinationConfiguration.S3Configuration.BufferingHints': {
+        IntervalInSeconds: 300,
+        SizeInMBs: 5,
+      },
+      'HttpEndpointDestinationConfiguration.S3Configuration.CompressionFormat': 'UNCOMPRESSED',
+      'HttpEndpointDestinationConfiguration.S3Configuration.EncryptionConfiguration': {
+        NoEncryptionConfig: 'NoEncryption',
+      },
     });
   });
 

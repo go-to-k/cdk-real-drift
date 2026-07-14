@@ -1,0 +1,251 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntHttpFirehose",
+    "resourceType": "AWS::KinesisFirehose::DeliveryStream",
+    "physicalId": "CdkrdHunt0714Var2-HuntHttpFirehose-aRUkRQmqH3dT",
+    "constructPath": "CdkrdHunt0714Var2/HuntHttpFirehose",
+    "declared": {
+      "HttpEndpointDestinationConfiguration": {
+        "EndpointConfiguration": {
+          "Name": "hunt-endpoint",
+          "Url": "https://example.com/cdkrd-hunt"
+        },
+        "S3Configuration": {
+          "BucketARN": "arn:aws:s3:::cdkrdhunt0714var2-huntfirehosebackupccf91131-kvmemnbemccs",
+          "RoleARN": "arn:aws:iam::111111111111:role/CdkrdHunt0714Var2-HuntFirehoseRoleE863A135-gMm9UBZyxL2g"
+        }
+      },
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "HttpEndpointDestinationConfiguration": {
+      "RequestConfiguration": {
+        "CommonAttributes": [],
+        "ContentEncoding": "NONE"
+      },
+      "S3Configuration": {
+        "BucketARN": "arn:aws:s3:::cdkrdhunt0714var2-huntfirehosebackupccf91131-kvmemnbemccs",
+        "BufferingHints": {
+          "IntervalInSeconds": 300,
+          "SizeInMBs": 5
+        },
+        "CompressionFormat": "UNCOMPRESSED",
+        "EncryptionConfiguration": {
+          "NoEncryptionConfig": "NoEncryption"
+        },
+        "CloudWatchLoggingOptions": {
+          "Enabled": false
+        },
+        "RoleARN": "arn:aws:iam::111111111111:role/CdkrdHunt0714Var2-HuntFirehoseRoleE863A135-gMm9UBZyxL2g"
+      },
+      "BufferingHints": {
+        "IntervalInSeconds": 300,
+        "SizeInMBs": 5
+      },
+      "RetryOptions": {
+        "DurationInSeconds": 300
+      },
+      "EndpointConfiguration": {
+        "Url": "https://example.com/cdkrd-hunt",
+        "Name": "hunt-endpoint"
+      },
+      "CloudWatchLoggingOptions": {
+        "Enabled": false
+      },
+      "S3BackupMode": "FailedDataOnly"
+    },
+    "DeliveryStreamType": "DirectPut",
+    "DeliveryStreamName": "CdkrdHunt0714Var2-HuntHttpFirehose-aRUkRQmqH3dT",
+    "Arn": "arn:aws:firehose:us-east-1:111111111111:deliverystream/CdkrdHunt0714Var2-HuntHttpFirehose-aRUkRQmqH3dT",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [
+      "AmazonOpenSearchServerlessDestinationConfiguration",
+      "AmazonopensearchserviceDestinationConfiguration",
+      "DatabaseSourceConfiguration",
+      "ElasticsearchDestinationConfiguration",
+      "IcebergDestinationConfiguration",
+      "KinesisStreamSourceConfiguration",
+      "MSKSourceConfiguration",
+      "S3DestinationConfiguration",
+      "SnowflakeDestinationConfiguration"
+    ],
+    "createOnly": [
+      "DatabaseSourceConfiguration",
+      "DeliveryStreamName",
+      "DeliveryStreamType",
+      "DirectPutSourceConfiguration",
+      "KinesisStreamSourceConfiguration",
+      "MSKSourceConfiguration"
+    ],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [
+      "AmazonOpenSearchServerlessDestinationConfiguration",
+      "AmazonopensearchserviceDestinationConfiguration",
+      "DatabaseSourceConfiguration",
+      "DirectPutSourceConfiguration.ThroughputHintInMBs",
+      "ElasticsearchDestinationConfiguration",
+      "ElasticsearchDestinationConfiguration.CloudWatchLoggingOptions.Enabled",
+      "ExtendedS3DestinationConfiguration.CustomTimeZone",
+      "ExtendedS3DestinationConfiguration.FileExtension",
+      "HttpEndpointDestinationConfiguration.EndpointConfiguration.AccessKey",
+      "HttpEndpointDestinationConfiguration.ProcessingConfiguration",
+      "HttpEndpointDestinationConfiguration.S3Configuration.EncryptionConfiguration.KMSEncryptionConfig.AWSKMSKeyARN",
+      "HttpEndpointDestinationConfiguration.SecretsManagerConfiguration",
+      "IcebergDestinationConfiguration",
+      "KinesisStreamSourceConfiguration",
+      "MSKSourceConfiguration",
+      "RedshiftDestinationConfiguration.Password",
+      "RedshiftDestinationConfiguration.ProcessingConfiguration",
+      "RedshiftDestinationConfiguration.S3BackupConfiguration.EncryptionConfiguration.KMSEncryptionConfig.AWSKMSKeyARN",
+      "RedshiftDestinationConfiguration.S3BackupConfiguration.ErrorOutputPrefix",
+      "RedshiftDestinationConfiguration.S3Configuration.EncryptionConfiguration.KMSEncryptionConfig.AWSKMSKeyARN",
+      "RedshiftDestinationConfiguration.S3Configuration.ErrorOutputPrefix",
+      "RedshiftDestinationConfiguration.SecretsManagerConfiguration.Enabled",
+      "RedshiftDestinationConfiguration.SecretsManagerConfiguration.RoleARN",
+      "RedshiftDestinationConfiguration.SecretsManagerConfiguration.SecretARN",
+      "S3DestinationConfiguration",
+      "SnowflakeDestinationConfiguration",
+      "SnowflakeDestinationConfiguration.SnowflakeVpcConfiguration",
+      "SplunkDestinationConfiguration.BufferingHints",
+      "SplunkDestinationConfiguration.CloudWatchLoggingOptions",
+      "SplunkDestinationConfiguration.ProcessingConfiguration",
+      "SplunkDestinationConfiguration.S3Configuration.EncryptionConfiguration.NoEncryptionConfig",
+      "SplunkDestinationConfiguration.SecretsManagerConfiguration"
+    ],
+    "createOnlyPaths": [
+      "AmazonOpenSearchServerlessDestinationConfiguration.VpcConfiguration",
+      "AmazonopensearchserviceDestinationConfiguration.VpcConfiguration",
+      "DatabaseSourceConfiguration",
+      "DeliveryStreamName",
+      "DeliveryStreamType",
+      "DirectPutSourceConfiguration",
+      "ElasticsearchDestinationConfiguration.VpcConfiguration",
+      "IcebergDestinationConfiguration.CatalogConfiguration",
+      "KinesisStreamSourceConfiguration",
+      "MSKSourceConfiguration",
+      "SnowflakeDestinationConfiguration.SnowflakeVpcConfiguration"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": [
+      "ExtendedS3DestinationConfiguration.DataFormatConversionConfiguration.InputFormatConfiguration.Deserializer.OpenXJsonSerDe.ColumnToJsonKeyMappings"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntHttpFirehose",
+      "resourceType": "AWS::KinesisFirehose::DeliveryStream",
+      "path": "DeliveryStreamType",
+      "actual": "DirectPut",
+      "physicalId": "CdkrdHunt0714Var2-HuntHttpFirehose-aRUkRQmqH3dT",
+      "constructPath": "CdkrdHunt0714Var2/HuntHttpFirehose"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntHttpFirehose",
+      "resourceType": "AWS::KinesisFirehose::DeliveryStream",
+      "path": "HttpEndpointDestinationConfiguration.RequestConfiguration",
+      "actual": {
+        "CommonAttributes": [],
+        "ContentEncoding": "NONE"
+      },
+      "nested": true,
+      "physicalId": "CdkrdHunt0714Var2-HuntHttpFirehose-aRUkRQmqH3dT",
+      "constructPath": "CdkrdHunt0714Var2/HuntHttpFirehose"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntHttpFirehose",
+      "resourceType": "AWS::KinesisFirehose::DeliveryStream",
+      "path": "HttpEndpointDestinationConfiguration.S3Configuration.BufferingHints",
+      "actual": {
+        "IntervalInSeconds": 300,
+        "SizeInMBs": 5
+      },
+      "nested": true,
+      "physicalId": "CdkrdHunt0714Var2-HuntHttpFirehose-aRUkRQmqH3dT",
+      "constructPath": "CdkrdHunt0714Var2/HuntHttpFirehose"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntHttpFirehose",
+      "resourceType": "AWS::KinesisFirehose::DeliveryStream",
+      "path": "HttpEndpointDestinationConfiguration.S3Configuration.CompressionFormat",
+      "actual": "UNCOMPRESSED",
+      "nested": true,
+      "physicalId": "CdkrdHunt0714Var2-HuntHttpFirehose-aRUkRQmqH3dT",
+      "constructPath": "CdkrdHunt0714Var2/HuntHttpFirehose"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntHttpFirehose",
+      "resourceType": "AWS::KinesisFirehose::DeliveryStream",
+      "path": "HttpEndpointDestinationConfiguration.S3Configuration.EncryptionConfiguration",
+      "actual": {
+        "NoEncryptionConfig": "NoEncryption"
+      },
+      "nested": true,
+      "physicalId": "CdkrdHunt0714Var2-HuntHttpFirehose-aRUkRQmqH3dT",
+      "constructPath": "CdkrdHunt0714Var2/HuntHttpFirehose"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntHttpFirehose",
+      "resourceType": "AWS::KinesisFirehose::DeliveryStream",
+      "path": "HttpEndpointDestinationConfiguration.BufferingHints",
+      "actual": {
+        "IntervalInSeconds": 300,
+        "SizeInMBs": 5
+      },
+      "nested": true,
+      "physicalId": "CdkrdHunt0714Var2-HuntHttpFirehose-aRUkRQmqH3dT",
+      "constructPath": "CdkrdHunt0714Var2/HuntHttpFirehose"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntHttpFirehose",
+      "resourceType": "AWS::KinesisFirehose::DeliveryStream",
+      "path": "HttpEndpointDestinationConfiguration.RetryOptions",
+      "actual": {
+        "DurationInSeconds": 300
+      },
+      "nested": true,
+      "physicalId": "CdkrdHunt0714Var2-HuntHttpFirehose-aRUkRQmqH3dT",
+      "constructPath": "CdkrdHunt0714Var2/HuntHttpFirehose"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntHttpFirehose",
+      "resourceType": "AWS::KinesisFirehose::DeliveryStream",
+      "path": "HttpEndpointDestinationConfiguration.S3BackupMode",
+      "actual": "FailedDataOnly",
+      "nested": true,
+      "physicalId": "CdkrdHunt0714Var2-HuntHttpFirehose-aRUkRQmqH3dT",
+      "constructPath": "CdkrdHunt0714Var2/HuntHttpFirehose"
+    }
+  ]
+}

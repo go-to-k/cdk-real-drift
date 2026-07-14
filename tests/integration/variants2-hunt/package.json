@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-integ-variants2-hunt",
+  "private": true,
+  "version": "0.0.0",
+  "description": "First-run FP probe for three uncovered common variants in their barest form: EFS One Zone, SageMaker serverless EndpointConfig, Firehose HTTP-endpoint destination. deploy -> first check (pre-record) MUST be CLEAN. Run via verify.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module"
+}

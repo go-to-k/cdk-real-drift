@@ -314,7 +314,19 @@ case + converge-via-remove controls). Batch 2 (2026-07-14, `revconv-hunt` fixtur
 **`ECR::Repository` `ImageTagMutability` no-oped** (independently found+fixed the
 same day as #1580/#1581 — check upstream before pushing a same-table fix); Lambda
 `TracingConfig`, SQS `DelaySeconds`, KMS Key `Enabled` all converged via bare
-`remove` — again ~1-in-4, unpredictable from the API shape.
+`remove` — again ~1-in-4, unpredictable from the API shape. Batch 3 (2026-07-14,
+`revconv2-hunt` fixture): **`ECR::Repository` `ImageScanningConfiguration` no-oped**
+(the ImageTagMutability sibling — same partial-update contract); DDB
+`PointInTimeRecoverySpecification`, S3 `VersioningConfiguration` (the handler
+actually SUSPENDS on omitted — S3 can never return to never-versioned), LogGroup
+`RetentionInDays`, EventBus `LogConfig`, Kinesis `StreamModeDetails`
+(ON_DEMAND→PROVISIONED via remove) all converged. The no-op contract is non-uniform
+even WITHIN a type: ECR's `RepositoryPolicyText` / `LifecyclePolicy` removes DO
+converge (both policies live-deleted), so the ECR gap is exactly the two
+scan/mutability scalars — prove per-property, not per-type. Also excluded from any
+in-run revert probe by AWS-side rate limits (not cdkrd bugs): DDB TTL (1 change/h),
+EFS ThroughputMode (1 change/24h); Kinesis stream-mode allows exactly 2 switches/24h
+— enough for one mutate + one revert, none left for a retry.
 
 ### 5. Harvest the live read into the golden corpus (EVERY round — bug or not)
 
@@ -609,6 +621,21 @@ Drift"` the output — trusting the exit code let a real FP print INTEG OK.**
   is the exact inverse: ON_DEMAND materializes ShardCount). When a type has a mode
   axis, deploy the barest form of EACH mode and check which sibling props the OTHER
   mode's fold assumed declared.
+- **The variant axis extends to UNION-TYPED config blocks and to defaults the variant
+  FLIPS on a sibling.** Two live instances (variants2-hunt, 2026-07-14): (a) Firehose's
+  destination union — every fixture was ExtendedS3, so a barest
+  `HttpEndpointDestinationConfiguration` first-ran 7 nested-echo FPs; each destination
+  variant carries its OWN default family (HTTP's `S3BackupMode` default is
+  `FailedDataOnly` while ExtendedS3's is `Disabled` — do NOT copy a sibling variant's
+  constants, read them from the live echo). (b) EFS One Zone (`AvailabilityZoneName`
+  declared) FLIPS the `BackupPolicy` default to ENABLED — the Regional constant
+  DISABLED pin missed it; the fix is a tier-2 derived fold gated on the declared
+  variant marker, with the Regional constant as the fall-through. When probing a
+  variant, expect it to change defaults on OTHER properties, not just add its own.
+  Fixture foot-gun: Firehose VALIDATES the endpoint URL shape at create — a
+  `.invalid`-TLD placeholder is REJECTED (`Invalid Url`), so use
+  `https://example.com/<path>` (reserved, resolvable, never actually called by a
+  DirectPut stream with no producers).
 - **A write-only re-include can be a side-effectful WRITE, not a keep-alive — watch
   for revert-manufactured drift.** Reverting an unrelated prop (TracingConfig) on a
   ZipFile Lambda re-included `Code.ZipFile` per the CC read-modify-write contract,

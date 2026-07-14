@@ -1507,6 +1507,27 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('ECR Repository ImageScanningConfiguration (SET-DEFAULT) -> add op writing {ScanOnPush:false}, not a no-op remove', () => {
+    // Live-proven on revconv2-hunt 2026-07-14: scan-on-push enabled out of band, `revert`
+    // planned a `remove`, Cloud Control reported reverted, yet `describe-repositories`
+    // stayed scanOnPush=true — the same ECR partial-update contract as ImageTagMutability
+    // (#1580). Revert must write the {ScanOnPush:false} default (from KNOWN_DEFAULTS)
+    // explicitly so it converges.
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::ECR::Repository',
+      path: 'ImageScanningConfiguration',
+      actual: { ScanOnPush: true },
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/ImageScanningConfiguration',
+      value: { ScanOnPush: false },
+      prior: { ScanOnPush: true },
+    });
+  });
+
   it('#1583: SQS Queue MaximumMessageSize (SET-DEFAULT) -> add op writing 1048576, not a no-op remove', () => {
     // #1583 (live-proven on revert-noop-probe 2026-07-14): mutated 1048576->262144 out of
     // band, then `revert` planned a `remove`, reported reverted, yet the queue stayed 262144.
