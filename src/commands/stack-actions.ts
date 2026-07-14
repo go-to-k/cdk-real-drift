@@ -16,6 +16,7 @@ import {
   checkBaselineAccount,
   constructPathsByLogical,
   declaredKeysByLogical,
+  declaredSourceFingerprint,
   loadBaseline,
   physicalIdsByLogical,
   type RecordedEntry,
@@ -250,7 +251,8 @@ export function previewValue(resourceType: string, path: string, v: unknown, max
  */
 export function changedRecordLabel(
   entry: { logicalId: string; path: string; value: unknown; resourceType: string },
-  recordedValue: { hasRecorded: boolean; recordedValue: unknown }
+  recordedValue: { hasRecorded: boolean; recordedValue: unknown },
+  sourceRedeployed = false
 ): string {
   const id = entry.path
     ? `${entry.logicalId}.${entry.path}`
@@ -260,7 +262,39 @@ export function changedRecordLabel(
   // path and sanitize control chars — both the recorded and live sides.
   const recorded = previewValue(entry.resourceType, entry.path, recordedValue.recordedValue);
   const live = previewValue(entry.resourceType, entry.path, entry.value);
+  // #1616: a recorded content hash (Lambda CodeSha256, Glue ScriptSha256, …) whose DECLARED
+  // source was redeployed through CloudFormation since record did NOT change out of band — the
+  // IaC deploy moved the live hash WITH the template (the #1606 stale-source void proves it on
+  // the check side). Say that plainly instead of "changed since record" — the latter is the
+  // phrase that makes a user stop and audit a possibly attacker-set value, so crying wolf on
+  // every legit code redeploy dulls the real warning. Refreshing the watch is still correct.
+  if (sourceRedeployed)
+    return `${id} (declared source redeployed via CloudFormation — refreshing watch: ${recorded} → ${live})`;
   return `${id} (changed since record: ${recorded} → ${live})`;
+}
+
+/**
+ * #1616: true when a `changed` recorded entry is a content hash whose DECLARED SOURCE was
+ * redeployed through CloudFormation since record — the SAME predicate `applyBaseline`'s
+ * stale-source void (#1606) uses to fold the check-side false positive. Such an entry did NOT
+ * change out of band (the IaC deploy moved the live hash with the template), so record must
+ * label and summarize it as a legit refresh, not "CHANGED out of band". Fail-safe: false when
+ * no source fingerprint was stored (an old baseline, or a path with no source mapping) or the
+ * current declared source does not resolve — exactly the void's own gates. Pure + exported.
+ */
+export function isRecordedSourceRedeployed(
+  entry: { logicalId: string; path: string; resourceType: string },
+  existing: BaselineFile | undefined,
+  declaredByLogical: Map<string, Record<string, unknown>>
+): boolean {
+  const storedFp = existing?.recordedSourceFingerprints?.[recordedKey(entry)];
+  if (storedFp === undefined) return false;
+  const currentFp = declaredSourceFingerprint(
+    entry.resourceType,
+    entry.path,
+    declaredByLogical.get(entry.logicalId)
+  );
+  return currentFp !== undefined && currentFp !== storedFp;
 }
 
 /**
@@ -532,12 +566,27 @@ export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
   // summary of what it BLESSED — recorded values CHANGED out of band (a possibly attacker-
   // changed value) and baseline-only entries PRESERVED — so the acceptance is not silent.
   if (yes && existing) {
+    const declaredModel = declaredKeysByLogical(desired.resources);
     const { changed } = splitRecordedByBaseline(recorded, existing);
     const changedExisting = changed.filter((e) => recordedValueForChanged(e, existing).hasRecorded);
-    if (changedExisting.length > 0)
+    // #1616: split off the content hashes whose DECLARED source was redeployed through
+    // CloudFormation since record — those did NOT change out of band (the #1606 void's own
+    // predicate), so labelling them "CHANGED out of band" cries wolf on every legit code
+    // redeploy and dulls the real warning. Report them as a legit refresh instead.
+    const redeployedViaCfn = changedExisting.filter((e) =>
+      isRecordedSourceRedeployed(e, existing, declaredModel)
+    );
+    const redeployedKeys = new Set(redeployedViaCfn.map((e) => recordedKey(e)));
+    const changedOob = changedExisting.filter((e) => !redeployedKeys.has(recordedKey(e)));
+    if (changedOob.length > 0)
       console.error(
-        `note: ${stackName}: --yes accepted ${changedExisting.length} recorded value(s) CHANGED out of band since record (review the baseline diff): ` +
-          changedExisting.map((e) => `${e.logicalId}.${e.path}`).join(', ')
+        `note: ${stackName}: --yes accepted ${changedOob.length} recorded value(s) CHANGED out of band since record (review the baseline diff): ` +
+          changedOob.map((e) => `${e.logicalId}.${e.path}`).join(', ')
+      );
+    if (redeployedViaCfn.length > 0)
+      console.error(
+        `note: ${stackName}: --yes refreshed ${redeployedViaCfn.length} recorded content hash(es) whose declared source was redeployed via CloudFormation since record (not an out-of-band change): ` +
+          redeployedViaCfn.map((e) => `${e.logicalId}.${e.path}`).join(', ')
       );
     if (dropCandidates.length > 0)
       console.error(
@@ -600,6 +649,7 @@ export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
           }
           picked = changed.map((e) => recordedKey(e));
         } else {
+          const declaredModel = declaredKeysByLogical(desired.resources);
           const fromPrompt = await bulkMultiselect(
             recordSelectMessage(stackName, region, folded.length),
             standout.map((e) => {
@@ -608,9 +658,13 @@ export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
               // so the (possibly attacker-changed) value is not blessed by one Enter. A
               // genuinely NEW path stays default-selected (today's behavior).
               const rec = recordedValueForChanged(e, existing);
+              // #1616: a content hash whose declared source was redeployed via CloudFormation
+              // gets the "refreshing watch" label, not "changed since record" (labelling only —
+              // the UNSELECTED default is unchanged so the refresh stays an explicit choice).
+              const redeployed = isRecordedSourceRedeployed(e, existing, declaredModel);
               return {
                 value: recordedKey(e),
-                label: changedRecordLabel(e, rec),
+                label: changedRecordLabel(e, rec, redeployed),
                 selected: !rec.hasRecorded,
               };
             })
