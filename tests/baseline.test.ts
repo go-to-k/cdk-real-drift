@@ -523,6 +523,141 @@ describe('baseline', () => {
         await rm(dir, { recursive: true, force: true });
       }
     });
+
+    // #1615: the same class on ELBv2 TrustStore CaCertificatesBundleSha256 (#505) — a hash
+    // derived from a TUPLE of three sibling writeOnly source props, and a PLAIN undeclared
+    // entry (not a `generated` tier), so it must fold SILENTLY on a legit bundle redeploy.
+    describe('TrustStore CaCertificatesBundleSha256 (tuple source, undeclared tier)', () => {
+      const TS = 'AWS::ElasticLoadBalancingV2::TrustStore';
+      const tsHash = (path: string, value: unknown): Finding => ({
+        tier: 'undeclared',
+        logicalId: 'Ts',
+        resourceType: TS,
+        path,
+        actual: value,
+      });
+      const TS_SHA_A = `${'c'.repeat(43)}=`;
+      const TS_SHA_B = `${'d'.repeat(43)}=`;
+      const tsEntry = (value: unknown) => ({
+        logicalId: 'Ts',
+        resourceType: TS,
+        path: 'CaCertificatesBundleSha256',
+        value,
+      });
+      // The declared source is the S3 location tuple (bundle bucket/key/version).
+      const SRC_V1 = {
+        CaCertificatesBundleS3Bucket: 'bundles',
+        CaCertificatesBundleS3Key: 'ca-v1.pem',
+      };
+      const SRC_V2 = {
+        CaCertificatesBundleS3Bucket: 'bundles',
+        CaCertificatesBundleS3Key: 'ca-v2.pem',
+      };
+      const declaredTs = (src: Record<string, unknown>) =>
+        new Map<string, Record<string, unknown>>([['Ts', src]]);
+      const baselineWithTsFp = (value: unknown, src: Record<string, unknown>): BaselineFile => ({
+        ...baseline([tsEntry(value)]),
+        recordedSourceFingerprints: {
+          [recordedKey({ logicalId: 'Ts', path: 'CaCertificatesBundleSha256' })]:
+            declaredSourceFingerprint(TS, 'CaCertificatesBundleSha256', src)!,
+        },
+      });
+
+      it('fingerprints the ordered sibling tuple; a moved sibling (new bundle key) changes it', () => {
+        const a = declaredSourceFingerprint(TS, 'CaCertificatesBundleSha256', SRC_V1);
+        expect(a).toBeDefined();
+        expect(a).not.toBe(declaredSourceFingerprint(TS, 'CaCertificatesBundleSha256', SRC_V2));
+      });
+
+      it('tolerates an absent optional S3ObjectVersion (still fingerprints from the resolvable siblings)', () => {
+        const withoutVersion = declaredSourceFingerprint(TS, 'CaCertificatesBundleSha256', SRC_V1);
+        const withVersion = declaredSourceFingerprint(TS, 'CaCertificatesBundleSha256', {
+          ...SRC_V1,
+          CaCertificatesBundleS3ObjectVersion: 'v-abc',
+        });
+        expect(withoutVersion).toBeDefined();
+        expect(withVersion).toBeDefined();
+        // adding a version is a real source change → the fingerprint differs
+        expect(withoutVersion).not.toBe(withVersion);
+      });
+
+      it('returns undefined only when EVERY tuple member is unresolvable (fail-safe)', () => {
+        expect(
+          declaredSourceFingerprint(TS, 'CaCertificatesBundleSha256', { Unrelated: 'x' })
+        ).toBeUndefined();
+        expect(
+          declaredSourceFingerprint(TS, 'CaCertificatesBundleSha256', undefined)
+        ).toBeUndefined();
+      });
+
+      it('buildRecordedSourceFingerprints stamps the tuple fingerprint for the undeclared entry', () => {
+        const out = buildRecordedSourceFingerprints(
+          [tsEntry(TS_SHA_A)],
+          declaredTs(SRC_V1),
+          undefined
+        );
+        expect(out.recordedSourceFingerprints).toEqual({
+          'Ts::CaCertificatesBundleSha256': declaredSourceFingerprint(
+            TS,
+            'CaCertificatesBundleSha256',
+            SRC_V1
+          ),
+        });
+      });
+
+      it('fingerprint UNCHANGED + live hash moved = an out-of-band same-location bundle swap: still surfaces', () => {
+        const out = applyBaseline([tsHash('CaCertificatesBundleSha256', TS_SHA_B)], {
+          ...baselineWithTsFp(TS_SHA_A, SRC_V1),
+        });
+        const withDeclared = applyBaseline(
+          [tsHash('CaCertificatesBundleSha256', TS_SHA_B)],
+          baselineWithTsFp(TS_SHA_A, SRC_V1),
+          { declaredByLogical: declaredTs(SRC_V1) }
+        );
+        // both the fail-safe (no declared model) and the resolved-unchanged path surface
+        expect(out).toHaveLength(1);
+        expect(out[0]).toMatchObject({ tier: 'undeclared', desired: TS_SHA_A, actual: TS_SHA_B });
+        expect(withDeclared).toHaveLength(1);
+        expect(withDeclared[0]).toMatchObject({ tier: 'undeclared', desired: TS_SHA_A });
+      });
+
+      it('fingerprint CHANGED (legit bundle redeploy): the undeclared hash FOLDS SILENTLY with a re-record nudge', () => {
+        const warnings: string[] = [];
+        const out = applyBaseline(
+          [tsHash('CaCertificatesBundleSha256', TS_SHA_B)],
+          baselineWithTsFp(TS_SHA_A, SRC_V1),
+          { declaredByLogical: declaredTs(SRC_V2), warn: (s) => warnings.push(s) }
+        );
+        // unlike the generated case (which stays as folded `generated` inventory), a voided
+        // undeclared hash is suppressed entirely — never "changed since record", never surfaced.
+        expect(out).toEqual([]);
+        expect(warnings).toEqual([
+          formatSourceRedeployedStaleNote(['Ts.CaCertificatesBundleSha256']),
+        ]);
+      });
+
+      it('fingerprint CHANGED + hash finding ABSENT this run: no false "removed since record" either', () => {
+        const warnings: string[] = [];
+        const out = applyBaseline([], baselineWithTsFp(TS_SHA_A, SRC_V1), {
+          declaredByLogical: declaredTs(SRC_V2),
+          warn: (s) => warnings.push(s),
+        });
+        expect(out).toEqual([]);
+        expect(warnings).toEqual([
+          formatSourceRedeployedStaleNote(['Ts.CaCertificatesBundleSha256']),
+        ]);
+      });
+
+      it("old baseline WITHOUT fingerprints keeps today's behavior (surfaces changed since record)", () => {
+        const out = applyBaseline(
+          [tsHash('CaCertificatesBundleSha256', TS_SHA_B)],
+          baseline([tsEntry(TS_SHA_A)]),
+          { declaredByLogical: declaredTs(SRC_V2) }
+        );
+        expect(out).toHaveLength(1);
+        expect(out[0]).toMatchObject({ tier: 'undeclared', desired: TS_SHA_A });
+      });
+    });
   });
 
   describe('atDefault reconciliation (R86 — folded inventory, never drift, never a false removal)', () => {

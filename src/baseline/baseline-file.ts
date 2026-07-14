@@ -682,20 +682,50 @@ function isRecordableGenerated(f: Finding): boolean {
 // at record time lets `applyBaseline` tell the two apart: fingerprint unchanged = the
 // template never touched the code, so a moved hash IS an out-of-band swap (surface);
 // fingerprint changed = the code was redeployed through IaC (void + re-record nudge).
-const RECORDABLE_GENERATED_SOURCE_PATHS: Record<string, Record<string, string>> = {
+// The source is ONE declared path (the common case) or, for a hash derived from a PROJECTION
+// of sibling declared properties (#1615), an ORDERED TUPLE of paths fingerprinted together.
+const RECORDABLE_GENERATED_SOURCE_PATHS: Record<
+  string,
+  Record<string, string | readonly string[]>
+> = {
   // The hash covers whatever `Code` declares: S3Bucket/S3Key/S3ObjectVersion, an inline
   // ZipFile, or an ImageUri — fingerprint the whole object so any code-identity change voids.
   'AWS::Lambda::Function': { CodeSha256: 'Code' },
   // The synthetic script digest is fetched from the declared script location; a deploy that
   // re-points it (a new CDK asset key) changes the content the digest covers.
   'AWS::Glue::Job': { ScriptSha256: 'Command.ScriptLocation' },
+  // #1615: the TrustStore CA-bundle digest (#505) is a projection of THREE sibling writeOnly
+  // source props — the S3 location of the bundle. Fingerprint the ordered tuple so a legit
+  // deploy that re-points the bundle (a new asset key / PEM set) voids the stale recorded
+  // hash, while an out-of-band same-location swap (template untouched → tuple unchanged) still
+  // surfaces. S3ObjectVersion is optional; an absent member is positionally undefined in the
+  // tuple, not dropped, so moving a resolvable sibling still changes the fingerprint.
+  'AWS::ElasticLoadBalancingV2::TrustStore': {
+    CaCertificatesBundleSha256: [
+      'CaCertificatesBundleS3Bucket',
+      'CaCertificatesBundleS3Key',
+      'CaCertificatesBundleS3ObjectVersion',
+    ],
+  },
 };
+
+// Resolve a single declared source path to its node, or undefined when it does not resolve.
+function resolveDeclaredSourcePath(declared: Record<string, unknown>, sourcePath: string): unknown {
+  let node: unknown = declared;
+  for (const seg of pathSegments(sourcePath)) {
+    node = descendDeclared(node, seg);
+    if (node === undefined) return undefined;
+  }
+  return node;
+}
 
 /**
  * Fingerprint of a recordable-generated entry's DECLARED SOURCE value (deep key-sorted
  * content hash), or undefined when the (resourceType, path) has no source mapping, no
  * declared model is available, or the source path does not resolve in it — the undefined
- * cases all fall back to today's behavior (never void on unknown).
+ * cases all fall back to today's behavior (never void on unknown). For a TUPLE source
+ * (#1615) the ordered projection of each sibling path is fingerprinted; undefined only when
+ * EVERY member is unresolvable (an absent optional member is kept positionally, not dropped).
  */
 export function declaredSourceFingerprint(
   resourceType: string,
@@ -704,12 +734,13 @@ export function declaredSourceFingerprint(
 ): string | undefined {
   const sourcePath = RECORDABLE_GENERATED_SOURCE_PATHS[resourceType]?.[path];
   if (sourcePath === undefined || declared === undefined) return undefined;
-  let node: unknown = declared;
-  for (const seg of pathSegments(sourcePath)) {
-    node = descendDeclared(node, seg);
-    if (node === undefined) return undefined;
+  if (Array.isArray(sourcePath)) {
+    const parts = sourcePath.map((sp) => resolveDeclaredSourcePath(declared, sp));
+    if (parts.every((p) => p === undefined)) return undefined;
+    return stableValueHash(parts);
   }
-  return stableValueHash(node);
+  const node = resolveDeclaredSourcePath(declared, sourcePath as string);
+  return node === undefined ? undefined : stableValueHash(node);
 }
 
 /**
@@ -1471,8 +1502,16 @@ export function applyBaseline(
     const matched = replacedLogical.has(f.logicalId)
       ? undefined
       : recorded.find((a) => entryMatches(a, f));
-    const entry =
-      matched !== undefined && sourceRedeployedVoid.has(recordedKey(matched)) ? undefined : matched;
+    const sourceRedeployVoided =
+      matched !== undefined && sourceRedeployedVoid.has(recordedKey(matched));
+    // #1615: a `generated`-tier voided hash (Lambda CodeSha256, Glue ScriptSha256) folds
+    // through its own tier below once treated as absent. But a synthetic `undeclared` hash
+    // (ELBv2 TrustStore CaCertificatesBundleSha256 — not a `generated` tier) has no such fold:
+    // treated as absent it would resurface as "appeared since record" undeclared drift. Suppress
+    // it here so the stale hash folds silently; the one-line re-record nudge still fires from the
+    // recorded-entry loop below (`sourceRedeployedStale`), exactly as for the generated case.
+    if (sourceRedeployVoided && f.tier === 'undeclared') continue;
+    const entry = sourceRedeployVoided ? undefined : matched;
     // re-canonicalize the baseline value through the CURRENT pipeline before comparing
     // (f.actual is already canonical from classify): a baseline recorded under older
     // normalization rules still matches today's live, so a cdkrd version bump alone
