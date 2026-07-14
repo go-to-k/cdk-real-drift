@@ -1,0 +1,224 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntVpn",
+    "resourceType": "AWS::EC2::VPNConnection",
+    "physicalId": "vpn-09228c44c422987ac",
+    "constructPath": "CdkrdHunt0714VpnRoute/HuntVpn",
+    "declared": {
+      "CustomerGatewayId": "cgw-078237bf5e8489d90",
+      "StaticRoutesOnly": true,
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "Type": "ipsec.1",
+      "VpnGatewayId": "vgw-03685926b9436e67e"
+    }
+  },
+  "liveRaw": {
+    "RemoteIpv4NetworkCidr": "0.0.0.0/0",
+    "VpnTunnelOptionsSpecifications": [
+      {
+        "Phase2EncryptionAlgorithms": [],
+        "Phase2DHGroupNumbers": [],
+        "Phase2IntegrityAlgorithms": [],
+        "Phase1IntegrityAlgorithms": [],
+        "TunnelInsideCidr": "169.254.61.176/30",
+        "IKEVersions": [],
+        "LogOptions": {
+          "CloudwatchLogOptions": {
+            "BgpLogEnabled": false,
+            "LogEnabled": false
+          }
+        },
+        "Phase1EncryptionAlgorithms": [],
+        "Phase1DHGroupNumbers": []
+      },
+      {
+        "Phase2EncryptionAlgorithms": [],
+        "Phase2DHGroupNumbers": [],
+        "Phase2IntegrityAlgorithms": [],
+        "Phase1IntegrityAlgorithms": [],
+        "TunnelInsideCidr": "169.254.61.164/30",
+        "IKEVersions": [],
+        "LogOptions": {
+          "CloudwatchLogOptions": {
+            "BgpLogEnabled": false,
+            "LogEnabled": false
+          }
+        },
+        "Phase1EncryptionAlgorithms": [],
+        "Phase1DHGroupNumbers": []
+      }
+    ],
+    "CustomerGatewayId": "cgw-078237bf5e8489d90",
+    "OutsideIpAddressType": "PublicIpv4",
+    "StaticRoutesOnly": true,
+    "EnableAcceleration": false,
+    "Type": "ipsec.1",
+    "TunnelBandwidth": "standard",
+    "LocalIpv4NetworkCidr": "0.0.0.0/0",
+    "VpnGatewayId": "vgw-03685926b9436e67e",
+    "VpnConnectionId": "vpn-09228c44c422987ac",
+    "TunnelInsideIpVersion": "ipv4",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0714VpnRoute",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntVpn",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0714VpnRoute/630435c0-7f44-11f1-b193-0affee47f7cd",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["VpnConnectionId"],
+    "writeOnly": ["PreSharedKeyStorage"],
+    "createOnly": [
+      "EnableAcceleration",
+      "LocalIpv4NetworkCidr",
+      "LocalIpv6NetworkCidr",
+      "OutsideIpAddressType",
+      "PreSharedKeyStorage",
+      "RemoteIpv4NetworkCidr",
+      "RemoteIpv6NetworkCidr",
+      "StaticRoutesOnly",
+      "TransportTransitGatewayAttachmentId",
+      "TunnelInsideIpVersion",
+      "Type",
+      "VpnConcentratorId"
+    ],
+    "readOnlyPaths": ["VpnConnectionId"],
+    "writeOnlyPaths": ["PreSharedKeyStorage", "VpnTunnelOptionsSpecifications.*.PreSharedKey"],
+    "createOnlyPaths": [
+      "EnableAcceleration",
+      "LocalIpv4NetworkCidr",
+      "LocalIpv6NetworkCidr",
+      "OutsideIpAddressType",
+      "PreSharedKeyStorage",
+      "RemoteIpv4NetworkCidr",
+      "RemoteIpv6NetworkCidr",
+      "StaticRoutesOnly",
+      "TransportTransitGatewayAttachmentId",
+      "TunnelInsideIpVersion",
+      "Type",
+      "VpnConcentratorId"
+    ],
+    "defaults": {
+      "TunnelBandwidth": "standard"
+    },
+    "defaultPaths": {
+      "TunnelBandwidth": "standard"
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["VpnTunnelOptionsSpecifications"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntVpn",
+      "resourceType": "AWS::EC2::VPNConnection",
+      "path": "RemoteIpv4NetworkCidr",
+      "actual": "0.0.0.0/0",
+      "physicalId": "vpn-09228c44c422987ac",
+      "constructPath": "CdkrdHunt0714VpnRoute/HuntVpn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntVpn",
+      "resourceType": "AWS::EC2::VPNConnection",
+      "path": "VpnTunnelOptionsSpecifications",
+      "actual": [
+        {
+          "Phase2EncryptionAlgorithms": [],
+          "Phase2DHGroupNumbers": [],
+          "Phase2IntegrityAlgorithms": [],
+          "Phase1IntegrityAlgorithms": [],
+          "TunnelInsideCidr": "169.254.61.164/30",
+          "IKEVersions": [],
+          "LogOptions": {
+            "CloudwatchLogOptions": {
+              "BgpLogEnabled": false,
+              "LogEnabled": false
+            }
+          },
+          "Phase1EncryptionAlgorithms": [],
+          "Phase1DHGroupNumbers": []
+        },
+        {
+          "Phase2EncryptionAlgorithms": [],
+          "Phase2DHGroupNumbers": [],
+          "Phase2IntegrityAlgorithms": [],
+          "Phase1IntegrityAlgorithms": [],
+          "TunnelInsideCidr": "169.254.61.176/30",
+          "IKEVersions": [],
+          "LogOptions": {
+            "CloudwatchLogOptions": {
+              "BgpLogEnabled": false,
+              "LogEnabled": false
+            }
+          },
+          "Phase1EncryptionAlgorithms": [],
+          "Phase1DHGroupNumbers": []
+        }
+      ],
+      "physicalId": "vpn-09228c44c422987ac",
+      "constructPath": "CdkrdHunt0714VpnRoute/HuntVpn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntVpn",
+      "resourceType": "AWS::EC2::VPNConnection",
+      "path": "OutsideIpAddressType",
+      "actual": "PublicIpv4",
+      "physicalId": "vpn-09228c44c422987ac",
+      "constructPath": "CdkrdHunt0714VpnRoute/HuntVpn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntVpn",
+      "resourceType": "AWS::EC2::VPNConnection",
+      "path": "TunnelBandwidth",
+      "actual": "standard",
+      "physicalId": "vpn-09228c44c422987ac",
+      "constructPath": "CdkrdHunt0714VpnRoute/HuntVpn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntVpn",
+      "resourceType": "AWS::EC2::VPNConnection",
+      "path": "LocalIpv4NetworkCidr",
+      "actual": "0.0.0.0/0",
+      "physicalId": "vpn-09228c44c422987ac",
+      "constructPath": "CdkrdHunt0714VpnRoute/HuntVpn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntVpn",
+      "resourceType": "AWS::EC2::VPNConnection",
+      "path": "TunnelInsideIpVersion",
+      "actual": "ipv4",
+      "physicalId": "vpn-09228c44c422987ac",
+      "constructPath": "CdkrdHunt0714VpnRoute/HuntVpn"
+    }
+  ]
+}

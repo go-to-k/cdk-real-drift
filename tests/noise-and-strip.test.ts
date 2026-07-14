@@ -591,6 +591,8 @@ describe('noise suppressors', () => {
       'EBSOptions.Throughput': 125,
       // #1593: the 2-AZ config a zone-aware domain materializes when undeclared
       'ClusterConfig.ZoneAwarenessConfig': { AvailabilityZoneCount: 2 },
+      // #1605: the documented 3-master default when DedicatedMasterEnabled with no count
+      'ClusterConfig.DedicatedMasterCount': 3,
     });
     expect(KNOWN_DEFAULT_PATHS['AWS::KinesisFirehose::DeliveryStream']).toEqual({
       'ExtendedS3DestinationConfiguration.S3BackupMode': 'Disabled',

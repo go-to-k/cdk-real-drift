@@ -1,0 +1,293 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntEsLegacy",
+    "resourceType": "AWS::OpenSearchService::Domain",
+    "physicalId": "hunteslegacy-pihhhwnpxkn6",
+    "constructPath": "CdkrdHunt0714OsVariants2/HuntEsLegacy",
+    "declared": {
+      "ClusterConfig": {
+        "InstanceCount": 1,
+        "InstanceType": "t3.small.search"
+      },
+      "EBSOptions": {
+        "EBSEnabled": true,
+        "VolumeSize": 10
+      },
+      "EngineVersion": "Elasticsearch_7.10",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "SnapshotOptions": {
+      "AutomatedSnapshotStartHour": 0
+    },
+    "NodeToNodeEncryptionOptions": {
+      "Enabled": false
+    },
+    "DomainEndpoints": {},
+    "DomainEndpointOptions": {
+      "CustomEndpointEnabled": false,
+      "EnforceHTTPS": false,
+      "TLSSecurityPolicy": "Policy-Min-TLS-1-2-2019-07"
+    },
+    "DomainArn": "arn:aws:es:us-east-1:111111111111:domain/hunteslegacy-pihhhwnpxkn6",
+    "CognitoOptions": {
+      "Enabled": false
+    },
+    "AdvancedOptions": {
+      "override_main_response_version": "false",
+      "rest.action.multi.allow_explicit_index": "true"
+    },
+    "IPAddressType": "ipv4",
+    "EBSOptions": {
+      "EBSEnabled": true,
+      "VolumeType": "gp3",
+      "Throughput": 125,
+      "Iops": 3000,
+      "VolumeSize": 10
+    },
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "EngineVersion": "Elasticsearch_7.10",
+    "SoftwareUpdateOptions": {
+      "AutoSoftwareUpdateEnabled": false
+    },
+    "DomainName": "hunteslegacy-pihhhwnpxkn6",
+    "LogPublishingOptions": {},
+    "AIMLOptions": {
+      "S3VectorsEngine": {
+        "Enabled": false
+      },
+      "ServerlessVectorAcceleration": {
+        "Enabled": false
+      }
+    },
+    "AutomatedSnapshotPauseOptions": {
+      "Enabled": false
+    },
+    "DeploymentStrategyOptions": {
+      "DeploymentStrategy": "CapacityOptimized"
+    },
+    "AdvancedSecurityOptions": {
+      "AnonymousAuthEnabled": false,
+      "InternalUserDatabaseEnabled": false,
+      "Enabled": false,
+      "AnonymousAuthDisableDate": "null"
+    },
+    "DomainEndpoint": "search-hunteslegacy-pihhhwnpxkn6-t7cevfl7i42hjzmlccu5etfria.us-east-1.es.amazonaws.com",
+    "ServiceSoftwareOptions": {
+      "NewVersion": "",
+      "UpdateStatus": "COMPLETED",
+      "Description": "There is no software update available for this domain.",
+      "Cancellable": false,
+      "CurrentVersion": "Elasticsearch_7_10_R20260626",
+      "AutomatedUpdateDate": "1970-01-01T00:00:00Z",
+      "UpdateAvailable": false,
+      "OptionalDeployment": true
+    },
+    "IdentityCenterOptions": {},
+    "Id": "111111111111/hunteslegacy-pihhhwnpxkn6",
+    "Arn": "arn:aws:es:us-east-1:111111111111:domain/hunteslegacy-pihhhwnpxkn6",
+    "EncryptionAtRestOptions": {
+      "Enabled": false
+    },
+    "OffPeakWindowOptions": {
+      "OffPeakWindow": {
+        "WindowStartTime": {
+          "Hours": 2,
+          "Minutes": 0
+        }
+      },
+      "Enabled": true
+    },
+    "ClusterConfig": {
+      "InstanceCount": 1,
+      "MultiAZWithStandbyEnabled": false,
+      "WarmEnabled": false,
+      "DedicatedMasterEnabled": false,
+      "ColdStorageOptions": {
+        "Enabled": false
+      },
+      "InstanceType": "t3.small.search",
+      "ZoneAwarenessEnabled": false
+    }
+  },
+  "schema": {
+    "readOnly": [
+      "Arn",
+      "DomainArn",
+      "DomainEndpoint",
+      "DomainEndpointV2",
+      "DomainEndpoints",
+      "Id",
+      "ServiceSoftwareOptions"
+    ],
+    "writeOnly": [],
+    "createOnly": ["DomainName"],
+    "readOnlyPaths": [
+      "AdvancedSecurityOptions.AnonymousAuthDisableDate",
+      "Arn",
+      "DomainArn",
+      "DomainEndpoint",
+      "DomainEndpointV2",
+      "DomainEndpoints",
+      "Id",
+      "IdentityCenterOptions.IdentityCenterApplicationARN",
+      "IdentityCenterOptions.IdentityStoreId",
+      "ServiceSoftwareOptions"
+    ],
+    "writeOnlyPaths": [
+      "AdvancedSecurityOptions.JWTOptions.PublicKey",
+      "AdvancedSecurityOptions.MasterUserOptions",
+      "AdvancedSecurityOptions.SAMLOptions.MasterBackendRole",
+      "AdvancedSecurityOptions.SAMLOptions.MasterUserName"
+    ],
+    "createOnlyPaths": ["DomainName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": ["AdvancedOptions", "DomainEndpoints", "LogPublishingOptions"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {
+      "alias/aws/acm": "b3729196-d9c5-4e2a-9e8e-d733b92c8317",
+      "alias/aws/appflow": "a2152495-1376-4c30-9183-7ee24ad10386",
+      "alias/aws/backup": "b405e2ab-23b0-48e9-834e-aa3aeeded51d",
+      "alias/aws/cloud9": "c656784b-cd79-45fa-a302-4670428047dc",
+      "alias/aws/codeartifact": "f4915da2-dabd-4aaa-a58b-6cc98c3bcbc6",
+      "alias/aws/codecommit": "f4b560a8-2769-4fdc-95ce-67e234814090",
+      "alias/aws/dms": "8b0bca8d-7f3f-4f19-bebf-bf6c72f3f1e6",
+      "alias/aws/dynamodb": "e6ab85f6-b5b2-4f38-9782-d1d3f0ca9bad",
+      "alias/aws/ebs": "76039e55-2469-4c94-95ab-e12d8615bb98",
+      "alias/aws/elasticfilesystem": "ed4a6b88-bcd1-43fe-beff-35a748bded74",
+      "alias/aws/es": "db99576a-7bcf-4386-a93e-0334efbed006",
+      "alias/aws/kinesis": "51c70be1-ec2a-4e9f-ae04-aa16f1bfdcad",
+      "alias/aws/lambda": "67e127ea-46c8-4b0b-b3de-18a40e8a84a4",
+      "alias/aws/lightsail": "4085ed99-9004-436f-b8c6-e81417e55591",
+      "alias/aws/rds": "9ee8feba-ae18-445a-bcab-306f7748fb6c",
+      "alias/aws/s3": "b471f899-bf30-4944-a7d9-70f37d183eaa",
+      "alias/aws/secretsmanager": "6419a4af-eac7-4cb3-babe-297fdceba8a1",
+      "alias/aws/sns": "aa9c1b5f-821f-418a-a1b1-a60435b7dc1c",
+      "alias/aws/ssm": "4040fe62-b533-4a5d-ab2c-6301fb6bbd2a"
+    },
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEsLegacy",
+      "resourceType": "AWS::OpenSearchService::Domain",
+      "path": "SnapshotOptions",
+      "actual": {
+        "AutomatedSnapshotStartHour": 0
+      },
+      "physicalId": "hunteslegacy-pihhhwnpxkn6",
+      "constructPath": "CdkrdHunt0714OsVariants2/HuntEsLegacy"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEsLegacy",
+      "resourceType": "AWS::OpenSearchService::Domain",
+      "path": "DomainEndpointOptions",
+      "actual": {
+        "CustomEndpointEnabled": false,
+        "EnforceHTTPS": false,
+        "TLSSecurityPolicy": "Policy-Min-TLS-1-2-2019-07"
+      },
+      "physicalId": "hunteslegacy-pihhhwnpxkn6",
+      "constructPath": "CdkrdHunt0714OsVariants2/HuntEsLegacy"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEsLegacy",
+      "resourceType": "AWS::OpenSearchService::Domain",
+      "path": "AdvancedOptions",
+      "actual": {
+        "override_main_response_version": "false",
+        "rest.action.multi.allow_explicit_index": "true"
+      },
+      "physicalId": "hunteslegacy-pihhhwnpxkn6",
+      "constructPath": "CdkrdHunt0714OsVariants2/HuntEsLegacy"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEsLegacy",
+      "resourceType": "AWS::OpenSearchService::Domain",
+      "path": "IPAddressType",
+      "actual": "ipv4",
+      "physicalId": "hunteslegacy-pihhhwnpxkn6",
+      "constructPath": "CdkrdHunt0714OsVariants2/HuntEsLegacy"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEsLegacy",
+      "resourceType": "AWS::OpenSearchService::Domain",
+      "path": "DeploymentStrategyOptions",
+      "actual": {
+        "DeploymentStrategy": "CapacityOptimized"
+      },
+      "physicalId": "hunteslegacy-pihhhwnpxkn6",
+      "constructPath": "CdkrdHunt0714OsVariants2/HuntEsLegacy"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEsLegacy",
+      "resourceType": "AWS::OpenSearchService::Domain",
+      "path": "OffPeakWindowOptions",
+      "actual": {
+        "OffPeakWindow": {
+          "WindowStartTime": {
+            "Hours": 2,
+            "Minutes": 0
+          }
+        },
+        "Enabled": true
+      },
+      "physicalId": "hunteslegacy-pihhhwnpxkn6",
+      "constructPath": "CdkrdHunt0714OsVariants2/HuntEsLegacy"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEsLegacy",
+      "resourceType": "AWS::OpenSearchService::Domain",
+      "path": "EBSOptions.VolumeType",
+      "actual": "gp3",
+      "nested": true,
+      "physicalId": "hunteslegacy-pihhhwnpxkn6",
+      "constructPath": "CdkrdHunt0714OsVariants2/HuntEsLegacy"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEsLegacy",
+      "resourceType": "AWS::OpenSearchService::Domain",
+      "path": "EBSOptions.Throughput",
+      "actual": 125,
+      "nested": true,
+      "physicalId": "hunteslegacy-pihhhwnpxkn6",
+      "constructPath": "CdkrdHunt0714OsVariants2/HuntEsLegacy"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntEsLegacy",
+      "resourceType": "AWS::OpenSearchService::Domain",
+      "path": "EBSOptions.Iops",
+      "actual": 3000,
+      "nested": true,
+      "physicalId": "hunteslegacy-pihhhwnpxkn6",
+      "constructPath": "CdkrdHunt0714OsVariants2/HuntEsLegacy"
+    }
+  ]
+}
