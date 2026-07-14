@@ -1,3 +1,11 @@
+## [0.18.14](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.13...v0.18.14) (2026-07-14)
+
+
+### Bug Fixes
+
+* **baseline:** void a legit TrustStore CA-bundle redeploy so the recorded hash does not false-surface ([#1615](https://github.com/go-to-k/cdk-real-drift/issues/1615)) ([#1617](https://github.com/go-to-k/cdk-real-drift/issues/1617)) ([971a540](https://github.com/go-to-k/cdk-real-drift/commit/971a540856d0e26569a2f46499d4f00c1b5630d9))
+* **record:** label a CloudFormation-redeployed content hash as a refresh, not "CHANGED out of band" ([#1616](https://github.com/go-to-k/cdk-real-drift/issues/1616)) ([#1618](https://github.com/go-to-k/cdk-real-drift/issues/1618)) ([06d3b2b](https://github.com/go-to-k/cdk-real-drift/commit/06d3b2bfb72ac387552cd229d3c18a1c650de201))
+
 ## [0.18.13](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.12...v0.18.13) (2026-07-14)
 
 
