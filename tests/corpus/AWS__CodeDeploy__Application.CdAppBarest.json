@@ -1,0 +1,65 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "CdApp",
+    "resourceType": "AWS::CodeDeploy::Application",
+    "physicalId": "CdkrdHunt0715Echo3-CdApp-YBBgbqXWS3sn",
+    "constructPath": "CdkrdHunt0715Echo3/CdApp",
+    "declared": {
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        },
+        {
+          "Key": "cdkrd:rev",
+          "Value": "2"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "ApplicationName": "CdkrdHunt0715Echo3-CdApp-YBBgbqXWS3sn",
+    "ComputePlatform": "Server",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      },
+      {
+        "Value": "2",
+        "Key": "cdkrd:rev"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["ApplicationName", "ComputePlatform"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ApplicationName", "ComputePlatform"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "CdApp",
+      "resourceType": "AWS::CodeDeploy::Application",
+      "path": "ComputePlatform",
+      "actual": "Server",
+      "physicalId": "CdkrdHunt0715Echo3-CdApp-YBBgbqXWS3sn",
+      "constructPath": "CdkrdHunt0715Echo3/CdApp"
+    }
+  ]
+}

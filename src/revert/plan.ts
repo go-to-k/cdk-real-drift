@@ -282,6 +282,26 @@ export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // flavor of the class (not a silent no-op, a hard error). Write the `true` default (from
   // KNOWN_DEFAULTS) back explicitly.
   'AWS::ServiceCatalog::TagOption\0Active',
+  // lattice2 hunt (live-proven 2026-07-15): the VpcLattice UpdateResourceConfiguration
+  // handler IGNORES an omitted AllowAssociationToSharableServiceNetwork — an out-of-band
+  // `false` persisted through a `remove` revert (reported "reverted", convergence re-read
+  // false), while an explicit CC `add …: true` patch converges. Write the `true` default
+  // (from KNOWN_DEFAULTS) back explicitly.
+  'AWS::VpcLattice::ResourceConfiguration\0AllowAssociationToSharableServiceNetwork',
+  // misspack hunt (live-proven 2026-07-15, each property individually): the Backup
+  // UpdateRestoreTestingPlan handler IGNORES an omitted StartWindowHours AND an omitted
+  // ScheduleExpressionTimezone — an out-of-band 12 / America/New_York persisted through a
+  // `remove` revert (reported "reverted", convergence re-read the mutated value), while an
+  // explicit CC `add` patch converges. Write the 24 / Etc/UTC defaults (from
+  // KNOWN_DEFAULTS) back explicitly.
+  'AWS::Backup::RestoreTestingPlan\0StartWindowHours',
+  'AWS::Backup::RestoreTestingPlan\0ScheduleExpressionTimezone',
+  // attach2 hunt (live-proven 2026-07-15): the EC2 TransitGatewayAttachment handler
+  // IGNORES an omitted Options — an out-of-band DnsSupport=enable persisted through a
+  // `remove` revert (reported "reverted", convergence re-read enable), while an explicit
+  // CC `add` patch of the whole creation-default object converges. Write the Options
+  // default (from KNOWN_DEFAULTS) back explicitly.
+  'AWS::EC2::TransitGatewayAttachment\0Options',
   // Lambda UpdateFunctionUrlConfig IGNORES an omitted InvokeMode (live-proven on
   // revert-noop-probe 2026-07-14, #1583: a URL flipped BUFFERED->RESPONSE_STREAM out of
   // band, then `revert` planned a `remove`, reported reverted, yet the URL stayed

@@ -1,0 +1,68 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SmPipeline",
+    "resourceType": "AWS::SageMaker::Pipeline",
+    "physicalId": "cdkrd-hunt-0715-pipeline",
+    "constructPath": "CdkrdHunt0715MissB/SmPipeline",
+    "declared": {
+      "PipelineDefinition": {
+        "PipelineDefinitionBody": "{\"Version\":\"2020-12-01\",\"Metadata\":{},\"Parameters\":[],\"Steps\":[{\"Name\":\"NoOp\",\"Type\":\"Fail\",\"Arguments\":{\"ErrorMessage\":\"noop\"}}]}"
+      },
+      "PipelineName": "cdkrd-hunt-0715-pipeline",
+      "RoleArn": "arn:aws:iam::111111111111:role/CdkrdHunt0715MissB-SmRole5F1DF09B-tqSAR1x3heYF",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "PipelineName": "cdkrd-hunt-0715-pipeline",
+    "PipelineDisplayName": "cdkrd-hunt-0715-pipeline",
+    "PipelineDefinition": {
+      "PipelineDefinitionBody": "{\"Version\":\"2020-12-01\",\"Metadata\":{},\"Parameters\":[],\"Steps\":[{\"Name\":\"NoOp\",\"Type\":\"Fail\",\"Arguments\":{\"ErrorMessage\":\"noop\"}}]}"
+    },
+    "RoleArn": "arn:aws:iam::111111111111:role/CdkrdHunt0715MissB-SmRole5F1DF09B-tqSAR1x3heYF",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0715MissB",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "SmPipeline",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0715MissB/5f7a0450-7f96-11f1-b4a1-1288903a1295",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["PipelineName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["PipelineName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

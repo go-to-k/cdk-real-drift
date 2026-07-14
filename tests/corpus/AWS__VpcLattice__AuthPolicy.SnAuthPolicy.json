@@ -1,0 +1,58 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SnAuthPolicy",
+    "resourceType": "AWS::VpcLattice::AuthPolicy",
+    "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:servicenetwork/sn-035847d35c755a015",
+    "constructPath": "CdkrdHunt0715Lattice/SnAuthPolicy",
+    "declared": {
+      "Policy": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Principal": "*",
+            "Action": "vpc-lattice-svcs:Invoke",
+            "Resource": "*"
+          }
+        ]
+      },
+      "ResourceIdentifier": "arn:aws:vpc-lattice:us-east-1:111111111111:servicenetwork/sn-035847d35c755a015"
+    }
+  },
+  "liveRaw": {
+    "Policy": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": "vpc-lattice-svcs:Invoke",
+          "Resource": "*",
+          "Effect": "Allow",
+          "Principal": "*"
+        }
+      ]
+    },
+    "ResourceIdentifier": "arn:aws:vpc-lattice:us-east-1:111111111111:servicenetwork/sn-035847d35c755a015",
+    "State": "Inactive"
+  },
+  "schema": {
+    "readOnly": ["State"],
+    "writeOnly": [],
+    "createOnly": ["ResourceIdentifier"],
+    "readOnlyPaths": ["State"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ResourceIdentifier"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

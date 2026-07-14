@@ -1,0 +1,77 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "TransferWorkflow",
+    "resourceType": "AWS::Transfer::Workflow",
+    "physicalId": "w-c5307bc89089912f1",
+    "constructPath": "CdkrdHunt0715MissA/TransferWorkflow",
+    "declared": {
+      "Steps": [
+        {
+          "DeleteStepDetails": {
+            "Name": "del"
+          },
+          "Type": "DELETE"
+        }
+      ],
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Steps": [
+      {
+        "Type": "DELETE",
+        "DeleteStepDetails": {
+          "SourceFileLocation": "${previous.file}",
+          "Name": "del"
+        }
+      }
+    ],
+    "Description": "",
+    "WorkflowId": "w-c5307bc89089912f1",
+    "Arn": "arn:aws:transfer:us-east-1:111111111111:workflow/w-c5307bc89089912f1",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0715MissA/a54a54d0-7f96-11f1-868c-1252f8d7fcb9",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "TransferWorkflow",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "CdkrdHunt0715MissA",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "WorkflowId"],
+    "writeOnly": [],
+    "createOnly": ["Description", "OnExceptionSteps", "Steps"],
+    "readOnlyPaths": ["Arn", "WorkflowId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Description", "OnExceptionSteps", "Steps"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

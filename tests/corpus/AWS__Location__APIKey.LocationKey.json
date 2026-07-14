@@ -1,0 +1,79 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "LocationKey",
+    "resourceType": "AWS::Location::APIKey",
+    "physicalId": "cdkrd-hunt-0715-key",
+    "constructPath": "CdkrdHunt0715MissA/LocationKey",
+    "declared": {
+      "KeyName": "cdkrd-hunt-0715-key",
+      "NoExpiry": true,
+      "Restrictions": {
+        "AllowActions": ["geo:GetMap*"],
+        "AllowResources": ["arn:aws:geo:us-east-1:111111111111:map/*"]
+      },
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "KeyName": "cdkrd-hunt-0715-key",
+    "Description": "",
+    "CreateTime": "2026-07-14T15:14:13.785Z",
+    "UpdateTime": "2026-07-14T15:14:13.785Z",
+    "KeyArn": "arn:aws:geo:us-east-1:111111111111:api-key/cdkrd-hunt-0715-key",
+    "Arn": "arn:aws:geo:us-east-1:111111111111:api-key/cdkrd-hunt-0715-key",
+    "Restrictions": {
+      "AllowActions": ["geo:GetMap*"],
+      "AllowResources": ["arn:aws:geo:us-east-1:111111111111:map/*"],
+      "AllowAndroidApps": [],
+      "AllowReferers": [],
+      "AllowAppleApps": []
+    },
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "CreateTime", "KeyArn", "UpdateTime"],
+    "writeOnly": ["ForceDelete", "ForceUpdate", "NoExpiry"],
+    "createOnly": ["KeyName"],
+    "readOnlyPaths": ["Arn", "CreateTime", "KeyArn", "UpdateTime"],
+    "writeOnlyPaths": ["ForceDelete", "ForceUpdate", "NoExpiry"],
+    "createOnlyPaths": ["KeyName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [
+      "Restrictions.AllowActions",
+      "Restrictions.AllowReferers",
+      "Restrictions.AllowResources"
+    ],
+    "unorderedObjectArrayPaths": ["Restrictions.AllowAndroidApps", "Restrictions.AllowAppleApps"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "LocationKey",
+      "resourceType": "AWS::Location::APIKey",
+      "path": "NoExpiry",
+      "note": "write-only — cannot be read back",
+      "writeOnly": true,
+      "physicalId": "cdkrd-hunt-0715-key",
+      "constructPath": "CdkrdHunt0715MissA/LocationKey"
+    }
+  ]
+}

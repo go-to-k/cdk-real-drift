@@ -1,0 +1,46 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "EmrSecConfig",
+    "resourceType": "AWS::EMR::SecurityConfiguration",
+    "physicalId": "CdkrdHunt0715MissA-EmrSecConfig-IByt4m5FcQzf",
+    "constructPath": "CdkrdHunt0715MissA/EmrSecConfig",
+    "declared": {
+      "SecurityConfiguration": {
+        "EncryptionConfiguration": {
+          "EnableInTransitEncryption": false,
+          "EnableAtRestEncryption": false
+        }
+      }
+    }
+  },
+  "liveRaw": {
+    "SecurityConfiguration": {
+      "EncryptionConfiguration": {
+        "EnableAtRestEncryption": false,
+        "EnableInTransitEncryption": false
+      }
+    },
+    "Name": "CdkrdHunt0715MissA-EmrSecConfig-IByt4m5FcQzf"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["Name", "SecurityConfiguration"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name", "SecurityConfiguration"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

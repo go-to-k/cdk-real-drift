@@ -1,0 +1,85 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "TgwAttach",
+    "resourceType": "AWS::EC2::TransitGatewayAttachment",
+    "physicalId": "tgw-attach-0bb26f80dca8fa797",
+    "constructPath": "CdkrdHunt0715Attach2/TgwAttach",
+    "declared": {
+      "SubnetIds": ["subnet-0896235b1d1f93cea"],
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "TransitGatewayId": "tgw-0c7ec0b1cdf2ca982",
+      "VpcId": "vpc-015ba2924cb637b79"
+    }
+  },
+  "liveRaw": {
+    "Options": {
+      "Ipv6Support": "disable",
+      "ApplianceModeSupport": "disable",
+      "SecurityGroupReferencingSupport": "enable",
+      "DnsSupport": "disable"
+    },
+    "TransitGatewayId": "tgw-0c7ec0b1cdf2ca982",
+    "VpcId": "vpc-015ba2924cb637b79",
+    "Id": "tgw-attach-0bb26f80dca8fa797",
+    "SubnetIds": ["subnet-0896235b1d1f93cea"],
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0715Attach2",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "TgwAttach",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0715Attach2/e1b86270-7f98-11f1-ae77-129b37054889",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["TransitGatewayId", "VpcId"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["TransitGatewayId", "VpcId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["SubnetIds"],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "TgwAttach",
+      "resourceType": "AWS::EC2::TransitGatewayAttachment",
+      "path": "Options",
+      "actual": {
+        "Ipv6Support": "disable",
+        "ApplianceModeSupport": "disable",
+        "SecurityGroupReferencingSupport": "enable",
+        "DnsSupport": "disable"
+      },
+      "physicalId": "tgw-attach-0bb26f80dca8fa797",
+      "constructPath": "CdkrdHunt0715Attach2/TgwAttach"
+    }
+  ]
+}

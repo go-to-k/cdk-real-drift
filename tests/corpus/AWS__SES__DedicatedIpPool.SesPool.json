@@ -1,0 +1,70 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SesPool",
+    "resourceType": "AWS::SES::DedicatedIpPool",
+    "physicalId": "cdkrd-hunt-0715-pool",
+    "constructPath": "CdkrdHunt0715MissA/SesPool",
+    "declared": {
+      "PoolName": "cdkrd-hunt-0715-pool",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "PoolName": "cdkrd-hunt-0715-pool",
+    "ScalingMode": "STANDARD",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0715MissA",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "SesPool",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0715MissA/a54a54d0-7f96-11f1-868c-1252f8d7fcb9",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["PoolName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["PoolName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "SesPool",
+      "resourceType": "AWS::SES::DedicatedIpPool",
+      "path": "ScalingMode",
+      "actual": "STANDARD",
+      "physicalId": "cdkrd-hunt-0715-pool",
+      "constructPath": "CdkrdHunt0715MissA/SesPool"
+    }
+  ]
+}

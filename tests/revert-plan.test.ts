@@ -731,6 +731,83 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  // misspack/lattice2 hunt (live-proven 2026-07-15, each property individually): the
+  // VpcLattice UpdateResourceConfiguration handler IGNORES an omitted
+  // AllowAssociationToSharableServiceNetwork, and the Backup UpdateRestoreTestingPlan
+  // handler IGNORES an omitted StartWindowHours AND ScheduleExpressionTimezone — all
+  // three persisted an out-of-band value through a `remove` revert that reported
+  // "reverted", while an explicit CC `add` patch converged. Each writes the
+  // KNOWN_DEFAULTS default back explicitly.
+  it('VpcLattice ResourceConfiguration AllowAssociationToSharableServiceNetwork (SET-DEFAULT) -> add op writing the true default', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::VpcLattice::ResourceConfiguration',
+      path: 'AllowAssociationToSharableServiceNetwork',
+      actual: false,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/AllowAssociationToSharableServiceNetwork',
+      value: true,
+      prior: false,
+    });
+  });
+
+  it('Backup RestoreTestingPlan StartWindowHours + ScheduleExpressionTimezone (SET-DEFAULT) -> add ops writing the 24 / Etc/UTC defaults', () => {
+    const fs = [
+      F({
+        tier: 'undeclared',
+        resourceType: 'AWS::Backup::RestoreTestingPlan',
+        path: 'StartWindowHours',
+        actual: 12,
+      }),
+      F({
+        tier: 'undeclared',
+        resourceType: 'AWS::Backup::RestoreTestingPlan',
+        path: 'ScheduleExpressionTimezone',
+        actual: 'America/New_York',
+      }),
+    ];
+    const plan = buildRevertPlan(fs, baseline([]));
+    const ops = plan.items.flatMap((i) => i.ops);
+    expect(ops).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ op: 'add', path: '/StartWindowHours', value: 24 }),
+        expect.objectContaining({
+          op: 'add',
+          path: '/ScheduleExpressionTimezone',
+          value: 'Etc/UTC',
+        }),
+      ])
+    );
+  });
+
+  it('#1642: EC2 TransitGatewayAttachment Options (SET-DEFAULT) -> add op writing the whole creation-default object', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::EC2::TransitGatewayAttachment',
+      path: 'Options',
+      actual: {
+        DnsSupport: 'enable',
+        SecurityGroupReferencingSupport: 'enable',
+        Ipv6Support: 'disable',
+        ApplianceModeSupport: 'disable',
+      },
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/Options',
+      value: {
+        DnsSupport: 'disable',
+        SecurityGroupReferencingSupport: 'enable',
+        Ipv6Support: 'disable',
+        ApplianceModeSupport: 'disable',
+      },
+    });
+  });
+
   it('#1619: Glue Crawler SchemaChangePolicy (SET-DEFAULT) -> add op writing the whole-object default', () => {
     const f = F({
       tier: 'undeclared',
