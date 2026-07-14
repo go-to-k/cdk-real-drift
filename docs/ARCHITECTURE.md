@@ -1036,7 +1036,17 @@ all fold into a one-line stderr nudge (mirroring the promotion note), never drif
   missing/unresolvable current declared source never voids (fail-safe:
   surface). A re-record that CARRIES an entry forward unchanged (its resource
   was unread that run) keeps the PREVIOUS fingerprint, so the old hash stays
-  paired with the template that deployed it.
+  paired with the template that deployed it. The void also covers the ELBv2
+  TrustStore `CaCertificatesBundleSha256` (#1615) — the SAME class, with two
+  wrinkles: its source is a PROJECTION of three sibling writeOnly props
+  (`CaCertificatesBundleS3Bucket`/`Key`/`ObjectVersion`), so the fingerprint is
+  the deep-hash of the ORDERED tuple (an absent optional member is kept
+  positionally, so moving a resolvable sibling still voids; undefined only when
+  EVERY member is unresolvable); and because the TrustStore hash surfaces
+  first-run as a PLAIN `undeclared` entry (not a `generated` tier), a voided
+  entry cannot fold through a tier — it is SUPPRESSED instead, so it folds
+  silently with the same re-record nudge rather than resurfacing as "appeared
+  since record".
 
 **Stale-baseline warning.** `templateHash` (sha256 of the deployed template at
 capture) is verified on load (`warnTemplateHashDrift`): a mismatch prints a non-fatal
