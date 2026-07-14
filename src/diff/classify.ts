@@ -188,6 +188,10 @@ const notRestored =
 const MEANINGFUL_WHEN_OFF: Record<string, Record<string, (ctx: OffStateContext) => boolean>> = {
   // A KMS key is always created enabled; `disable-key` (Enabled=false) is always meaningful.
   'AWS::KMS::Key': { Enabled: () => true },
+  // A TagOption is always created active (the KNOWN_DEFAULTS true pin, barest4/ccpi hunt
+  // 2026-07-14); an undeclared `false` is an out-of-band deactivate that blocks the option
+  // from new provisioning — a bare false isTrivialEmpty would otherwise swallow.
+  'AWS::ServiceCatalog::TagOption': { Active: () => true },
   // SSE-SQS defaults ON, but is mutually exclusive with SSE-KMS: a queue that uses a KMS key
   // reads SqsManagedSseEnabled=false legitimately. Surface the OFF state only when the queue
   // uses no KMS key — i.e. encryption was genuinely disabled out of band.

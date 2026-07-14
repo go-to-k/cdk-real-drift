@@ -1,0 +1,131 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Rum",
+    "resourceType": "AWS::RUM::AppMonitor",
+    "physicalId": "cdkrd-hunt-brst4",
+    "constructPath": "CdkrdHunt0714Barest4B/Rum",
+    "declared": {
+      "Domain": "example.com",
+      "Name": "cdkrd-hunt-brst4",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        },
+        {
+          "Key": "cdkrd:rev",
+          "Value": "2"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "CustomEvents": {
+      "Status": "DISABLED"
+    },
+    "Platform": "Web",
+    "CwLogEnabled": false,
+    "Id": "fc4d3e9c-3c0b-44d2-8383-e0009a864bb5",
+    "DeobfuscationConfiguration": {
+      "JavaScriptSourceMaps": {
+        "Status": "DISABLED"
+      }
+    },
+    "Domain": "example.com",
+    "AppMonitorConfiguration": {
+      "IncludedPages": [],
+      "ExcludedPages": [],
+      "FavoritePages": [],
+      "SessionSampleRate": 0.1,
+      "Telemetries": []
+    },
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      },
+      {
+        "Value": "2",
+        "Key": "cdkrd:rev"
+      }
+    ],
+    "Name": "cdkrd-hunt-brst4"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["Name", "Platform"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name", "Platform"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [
+      "AppMonitorConfiguration.ExcludedPages",
+      "AppMonitorConfiguration.FavoritePages",
+      "AppMonitorConfiguration.IncludedPages",
+      "AppMonitorConfiguration.Telemetries"
+    ],
+    "unorderedObjectArrayPaths": ["AppMonitorConfiguration.MetricDestinations"],
+    "freeFormMapPaths": [
+      "AppMonitorConfiguration.MetricDestinations.*.MetricDefinitions.*.DimensionKeys"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Rum",
+      "resourceType": "AWS::RUM::AppMonitor",
+      "path": "CustomEvents",
+      "actual": {
+        "Status": "DISABLED"
+      },
+      "physicalId": "cdkrd-hunt-brst4",
+      "constructPath": "CdkrdHunt0714Barest4B/Rum"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Rum",
+      "resourceType": "AWS::RUM::AppMonitor",
+      "path": "Platform",
+      "actual": "Web",
+      "physicalId": "cdkrd-hunt-brst4",
+      "constructPath": "CdkrdHunt0714Barest4B/Rum"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Rum",
+      "resourceType": "AWS::RUM::AppMonitor",
+      "path": "DeobfuscationConfiguration",
+      "actual": {
+        "JavaScriptSourceMaps": {
+          "Status": "DISABLED"
+        }
+      },
+      "physicalId": "cdkrd-hunt-brst4",
+      "constructPath": "CdkrdHunt0714Barest4B/Rum"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Rum",
+      "resourceType": "AWS::RUM::AppMonitor",
+      "path": "AppMonitorConfiguration",
+      "actual": {
+        "IncludedPages": [],
+        "ExcludedPages": [],
+        "FavoritePages": [],
+        "SessionSampleRate": 0.1,
+        "Telemetries": []
+      },
+      "physicalId": "cdkrd-hunt-brst4",
+      "constructPath": "CdkrdHunt0714Barest4B/Rum"
+    }
+  ]
+}

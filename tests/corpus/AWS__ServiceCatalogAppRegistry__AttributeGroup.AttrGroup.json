@@ -1,0 +1,53 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "AttrGroup",
+    "resourceType": "AWS::ServiceCatalogAppRegistry::AttributeGroup",
+    "physicalId": "0a7vltldv7aiw2ng2pjb5mzols",
+    "constructPath": "CdkrdHunt0714CcPi/AttrGroup",
+    "declared": {
+      "Attributes": {
+        "env": "hunt"
+      },
+      "Name": "cdkrd-hunt-ccpi",
+      "Tags": {
+        "cdkrd:ephemeral": "1"
+      }
+    }
+  },
+  "liveRaw": {
+    "Attributes": {
+      "env": "hunt"
+    },
+    "Id": "0a7vltldv7aiw2ng2pjb5mzols",
+    "Arn": "arn:aws:servicecatalog:us-east-1:111111111111:/attribute-groups/0a7vltldv7aiw2ng2pjb5mzols",
+    "Tags": {
+      "aws:cloudformation:stack-name": "CdkrdHunt0714CcPi",
+      "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0714CcPi/df0fb3a0-7f77-11f1-97e0-0affe5762c3f",
+      "aws:servicecatalog:attributeGroupName": "cdkrd-hunt-ccpi",
+      "cdkrd:ephemeral": "1",
+      "aws:cloudformation:logical-id": "AttrGroup"
+    },
+    "Name": "cdkrd-hunt-ccpi"
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

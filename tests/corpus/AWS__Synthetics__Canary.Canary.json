@@ -1,0 +1,172 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Canary",
+    "resourceType": "AWS::Synthetics::Canary",
+    "physicalId": "cdkrd-hunt-brst4",
+    "constructPath": "CdkrdHunt0714Barest4A/Canary",
+    "declared": {
+      "ArtifactS3Location": "s3://cdkrdhunt0714barest4a-bucket-dhwv0z2i7mtc/canary",
+      "Code": {
+        "Handler": "index.handler",
+        "Script": "exports.handler = async () => \"ok\";"
+      },
+      "ExecutionRoleArn": "arn:aws:iam::111111111111:role/CdkrdHunt0714Barest4A-CanaryRole4BD5F96A-fLRlxHEl3Pue",
+      "Name": "cdkrd-hunt-brst4",
+      "RuntimeVersion": "syn-nodejs-puppeteer-16.1",
+      "Schedule": {
+        "Expression": "rate(0 hour)"
+      },
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        },
+        {
+          "Key": "cdkrd:rev",
+          "Value": "2"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "SuccessRetentionPeriod": 31,
+    "RuntimeVersion": "syn-nodejs-puppeteer-16.1",
+    "RunConfig": {
+      "TimeoutInSeconds": 840,
+      "MemoryInMB": 1500,
+      "EphemeralStorage": 1024,
+      "ActiveTracing": false
+    },
+    "FailureRetentionPeriod": 31,
+    "Code": {
+      "Handler": "index.handler"
+    },
+    "Name": "cdkrd-hunt-brst4",
+    "ProvisionedResourceCleanup": "AUTOMATIC",
+    "ExecutionRoleArn": "arn:aws:iam::111111111111:role/CdkrdHunt0714Barest4A-CanaryRole4BD5F96A-fLRlxHEl3Pue",
+    "State": "READY",
+    "Schedule": {
+      "DurationInSeconds": "0",
+      "RetryConfig": {
+        "MaxRetries": 0
+      },
+      "Expression": "rate(0 hour)"
+    },
+    "Id": "a69401a2-a70c-45eb-9f01-afc4d282aca9",
+    "ArtifactS3Location": "s3://cdkrdhunt0714barest4a-bucket-dhwv0z2i7mtc/canary",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      },
+      {
+        "Value": "2",
+        "Key": "cdkrd:rev"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Id", "State"],
+    "writeOnly": [
+      "DeleteLambdaResourcesOnCanaryDeletion",
+      "DryRunAndUpdate",
+      "ResourcesToReplicateTags",
+      "StartCanaryAfterCreation",
+      "VisualReference",
+      "VisualReferences"
+    ],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Code.SourceLocationArn", "Id", "State"],
+    "writeOnlyPaths": [
+      "Code.S3Bucket",
+      "Code.S3Key",
+      "Code.S3ObjectVersion",
+      "Code.Script",
+      "DeleteLambdaResourcesOnCanaryDeletion",
+      "DryRunAndUpdate",
+      "ResourcesToReplicateTags",
+      "RunConfig.EnvironmentVariables",
+      "StartCanaryAfterCreation",
+      "VisualReference",
+      "VisualReferences"
+    ],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": ["RunConfig.EnvironmentVariables"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Canary",
+      "resourceType": "AWS::Synthetics::Canary",
+      "path": "SuccessRetentionPeriod",
+      "actual": 31,
+      "physicalId": "cdkrd-hunt-brst4",
+      "constructPath": "CdkrdHunt0714Barest4A/Canary"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Canary",
+      "resourceType": "AWS::Synthetics::Canary",
+      "path": "RunConfig",
+      "actual": {
+        "TimeoutInSeconds": 840,
+        "MemoryInMB": 1500,
+        "EphemeralStorage": 1024,
+        "ActiveTracing": false
+      },
+      "physicalId": "cdkrd-hunt-brst4",
+      "constructPath": "CdkrdHunt0714Barest4A/Canary"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Canary",
+      "resourceType": "AWS::Synthetics::Canary",
+      "path": "FailureRetentionPeriod",
+      "actual": 31,
+      "physicalId": "cdkrd-hunt-brst4",
+      "constructPath": "CdkrdHunt0714Barest4A/Canary"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Canary",
+      "resourceType": "AWS::Synthetics::Canary",
+      "path": "ProvisionedResourceCleanup",
+      "actual": "AUTOMATIC",
+      "physicalId": "cdkrd-hunt-brst4",
+      "constructPath": "CdkrdHunt0714Barest4A/Canary"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Canary",
+      "resourceType": "AWS::Synthetics::Canary",
+      "path": "Schedule.DurationInSeconds",
+      "actual": "0",
+      "nested": true,
+      "physicalId": "cdkrd-hunt-brst4",
+      "constructPath": "CdkrdHunt0714Barest4A/Canary"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Canary",
+      "resourceType": "AWS::Synthetics::Canary",
+      "path": "Schedule.RetryConfig",
+      "actual": {
+        "MaxRetries": 0
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt-brst4",
+      "constructPath": "CdkrdHunt0714Barest4A/Canary"
+    }
+  ]
+}

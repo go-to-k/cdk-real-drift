@@ -1,0 +1,100 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Guardrail",
+    "resourceType": "AWS::Bedrock::Guardrail",
+    "physicalId": "arn:aws:bedrock:us-east-1:111111111111:guardrail/093bfbms1etl",
+    "constructPath": "CdkrdHunt0714Barest4B/Guardrail",
+    "declared": {
+      "BlockedInputMessaging": "Blocked input.",
+      "BlockedOutputsMessaging": "Blocked output.",
+      "Name": "cdkrd-hunt-brst4",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        },
+        {
+          "Key": "cdkrd:rev",
+          "Value": "2"
+        }
+      ],
+      "WordPolicyConfig": {
+        "WordsConfig": [
+          {
+            "Text": "cdkrdblockedword"
+          }
+        ]
+      }
+    }
+  },
+  "liveRaw": {
+    "FailureRecommendations": [],
+    "GuardrailId": "093bfbms1etl",
+    "Status": "READY",
+    "StatusReasons": [],
+    "CreatedAt": "2026-07-14T11:33:53.621143402Z",
+    "UpdatedAt": "2026-07-14T11:38:41.870150349Z",
+    "Name": "cdkrd-hunt-brst4",
+    "WordPolicyConfig": {
+      "ManagedWordListsConfig": [],
+      "WordsConfig": [
+        {
+          "Text": "cdkrdblockedword"
+        }
+      ]
+    },
+    "GuardrailArn": "arn:aws:bedrock:us-east-1:111111111111:guardrail/093bfbms1etl",
+    "Version": "DRAFT",
+    "BlockedInputMessaging": "Blocked input.",
+    "BlockedOutputsMessaging": "Blocked output.",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      },
+      {
+        "Value": "2",
+        "Key": "cdkrd:rev"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [
+      "CreatedAt",
+      "FailureRecommendations",
+      "GuardrailArn",
+      "GuardrailId",
+      "Status",
+      "StatusReasons",
+      "UpdatedAt",
+      "Version"
+    ],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": [
+      "CreatedAt",
+      "FailureRecommendations",
+      "GuardrailArn",
+      "GuardrailId",
+      "Status",
+      "StatusReasons",
+      "UpdatedAt",
+      "Version"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

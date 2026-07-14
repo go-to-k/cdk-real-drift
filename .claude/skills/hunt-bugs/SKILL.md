@@ -200,7 +200,16 @@ short of a fix the user wanted.
    child segment → a likely declared-read gap worth a (cheap) deploy to confirm the
    exact composite order (the order is unreliable to guess — verify live, e.g. with
    `aws cloudcontrol get-resource`). Confirmed this way: Logs SubscriptionFilter
-   (`FilterName|LogGroupName`, PR #344).
+   (`FilterName|LogGroupName`, PR #344). **But weight by GENERATION: registry-era
+   types are overwhelmingly NATURAL composites** (their CFn physical id is already
+   the `seg1|seg2` join, so CC reads them as-is — no adapter needed). The 2026-07-14
+   ccpi-hunt deployed 7 uncovered composite-pi types in one cheap stack
+   (ServiceCatalog PortfolioPrincipalAssociation + TagOptionAssociation, AppRegistry
+   AttributeGroupAssociation, aoss AccessPolicy, EC2 SecurityGroupVpcAssociation,
+   Lex BotVersion + BotAlias) and ALL read clean — zero `skipped`. The gap class
+   lives in LEGACY types that kept a bare-segment physical id when registry-migrated
+   (the existing ~40 adapters are all that class); a one-stack association-pack probe
+   is still worth it for new suspects, but expect "no gap" as the common outcome.
 
 5. **Predict FP classes from the fold allowlists, then audit them OFFLINE before any
    paid deploy.** The per-type fold tables in `src/normalize/noise.ts` ARE the inventory
@@ -348,7 +357,14 @@ before writing the fix: `aws cloudcontrol update-resource --patch-document
 answers "does the explicit write converge?" with no stack.** Also found: CodeBuild
 Project + MediaConvert Queue detect fine but are read-only ("type not revertable
 yet") — when a probe target is such a type, restore it OUT OF BAND before `revert`
-or the fixture can never converge to zero (#1623).
+or the fixture can never converge to zero (#1623). Batch 6 (2026-07-14, barest4/ccpi
+hunt): **RUM AppMonitor `CustomEvents`** no-oped (silent keep), and **ServiceCatalog
+TagOption `Active`** surfaced a FOURTH flavor — the handler REJECTS the bare remove
+outright (`InvalidRequest: Active and new value cannot both be null`), a hard error
+instead of a silent no-op; both fixed by RSDP entries. Piggyback the convergence
+probe on every NEW KNOWN_DEFAULTS fold a hunt ships (mutate → revert → re-read) —
+it is ~1-in-3 to need an RSDP entry, and the probe is nearly free while the stack
+is still up.
 
 ### 5. Harvest the live read into the golden corpus (EVERY round — bug or not)
 

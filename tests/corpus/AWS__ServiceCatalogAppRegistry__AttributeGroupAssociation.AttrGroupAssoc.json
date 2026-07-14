@@ -1,0 +1,39 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "AttrGroupAssoc",
+    "resourceType": "AWS::ServiceCatalogAppRegistry::AttributeGroupAssociation",
+    "physicalId": "arn:aws:servicecatalog:us-east-1:111111111111:/applications/05dyjdsk0i5ixb5zhbh2102w9z|arn:aws:servicecatalog:us-east-1:111111111111:/attribute-groups/0a7vltldv7aiw2ng2pjb5mzols",
+    "constructPath": "CdkrdHunt0714CcPi/AttrGroupAssoc",
+    "declared": {
+      "Application": "05dyjdsk0i5ixb5zhbh2102w9z",
+      "AttributeGroup": "0a7vltldv7aiw2ng2pjb5mzols"
+    }
+  },
+  "liveRaw": {
+    "ApplicationArn": "arn:aws:servicecatalog:us-east-1:111111111111:/applications/05dyjdsk0i5ixb5zhbh2102w9z",
+    "AttributeGroupArn": "arn:aws:servicecatalog:us-east-1:111111111111:/attribute-groups/0a7vltldv7aiw2ng2pjb5mzols",
+    "AttributeGroup": "0a7vltldv7aiw2ng2pjb5mzols",
+    "Application": "05dyjdsk0i5ixb5zhbh2102w9z"
+  },
+  "schema": {
+    "readOnly": ["ApplicationArn", "AttributeGroupArn"],
+    "writeOnly": [],
+    "createOnly": ["Application", "AttributeGroup"],
+    "readOnlyPaths": ["ApplicationArn", "AttributeGroupArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Application", "AttributeGroup"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

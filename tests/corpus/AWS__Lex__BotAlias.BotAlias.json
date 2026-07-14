@@ -1,0 +1,74 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "BotAlias",
+    "resourceType": "AWS::Lex::BotAlias",
+    "physicalId": "WQLBVVPPEM|H4ZNLN2EXP",
+    "constructPath": "CdkrdHunt0714CcPi/BotAlias",
+    "declared": {
+      "BotAliasName": "hunt",
+      "BotAliasTags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "BotId": "H4ZNLN2EXP",
+      "BotVersion": "1"
+    }
+  },
+  "liveRaw": {
+    "BotVersion": "1",
+    "BotId": "H4ZNLN2EXP",
+    "BotAliasStatus": "Available",
+    "BotAliasLocaleSettings": [],
+    "Arn": "arn:aws:lex:us-east-1:111111111111:bot-alias/H4ZNLN2EXP/WQLBVVPPEM",
+    "BotAliasId": "WQLBVVPPEM",
+    "SentimentAnalysisSettings": {
+      "DetectSentiment": false
+    },
+    "BotAliasName": "hunt",
+    "BotAliasTags": [
+      {
+        "Value": "BotAlias",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      },
+      {
+        "Value": "CdkrdHunt0714CcPi",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0714CcPi/df0fb3a0-7f77-11f1-97e0-0affe5762c3f",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "BotAliasId", "BotAliasStatus"],
+    "writeOnly": [],
+    "createOnly": ["BotId"],
+    "readOnlyPaths": ["Arn", "BotAliasId", "BotAliasStatus"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["BotId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [
+      "BotAliasLocaleSettings",
+      "ConversationLogSettings.AudioLogSettings",
+      "ConversationLogSettings.TextLogSettings"
+    ],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

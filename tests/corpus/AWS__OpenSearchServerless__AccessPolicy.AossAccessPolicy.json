@@ -1,0 +1,39 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "AossAccessPolicy",
+    "resourceType": "AWS::OpenSearchServerless::AccessPolicy",
+    "physicalId": "data|cdkrd-hunt-ccpi",
+    "constructPath": "CdkrdHunt0714CcPi/AossAccessPolicy",
+    "declared": {
+      "Name": "cdkrd-hunt-ccpi",
+      "Policy": "[{\"Rules\":[{\"ResourceType\":\"collection\",\"Resource\":[\"collection/cdkrd-hunt-*\"],\"Permission\":[\"aoss:DescribeCollectionItems\"]}],\"Principal\":[\"arn:aws:iam::111111111111:root\"]}]",
+      "Type": "data"
+    }
+  },
+  "liveRaw": {
+    "Policy": "[{\"Rules\": [{\"Resource\": [\"collection/cdkrd-hunt-*\"],\"Permission\": [\"aoss:DescribeCollectionItems\"],\"ResourceType\": \"collection\"}],\"Principal\": [\"arn:aws:iam::111111111111:root\"]}]",
+    "Type": "data",
+    "Name": "cdkrd-hunt-ccpi"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["Name", "Type"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name", "Type"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

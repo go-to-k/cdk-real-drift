@@ -1,0 +1,72 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "CaRepo",
+    "resourceType": "AWS::CodeArtifact::Repository",
+    "physicalId": "arn:aws:codeartifact:us-east-1:111111111111:repository/cdkrd-hunt-brst4/cdkrd-hunt-brst4",
+    "constructPath": "CdkrdHunt0714Barest4B/CaRepo",
+    "declared": {
+      "DomainName": "cdkrd-hunt-brst4",
+      "RepositoryName": "cdkrd-hunt-brst4",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        },
+        {
+          "Key": "cdkrd:rev",
+          "Value": "2"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "DomainName": "cdkrd-hunt-brst4",
+    "RepositoryName": "cdkrd-hunt-brst4",
+    "Arn": "arn:aws:codeartifact:us-east-1:111111111111:repository/cdkrd-hunt-brst4/cdkrd-hunt-brst4",
+    "DomainOwner": "111111111111",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0714Barest4B",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "CaRepo",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "2",
+        "Key": "cdkrd:rev"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0714Barest4B/ddaaa560-7f77-11f1-b23e-0affeef325ef",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "Name": "cdkrd-hunt-brst4"
+  },
+  "schema": {
+    "readOnly": ["Arn", "DomainOwner", "Name"],
+    "writeOnly": [],
+    "createOnly": ["DomainName", "DomainOwner", "RepositoryName"],
+    "readOnlyPaths": ["Arn", "DomainOwner", "Name"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["DomainName", "DomainOwner", "RepositoryName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

@@ -1214,6 +1214,16 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   },
   'AWS::EC2::FlowLog': {
     MaxAggregationInterval: 600,
+    // An S3-destination flow log that declares no DestinationOptions reads back the
+    // materialized default trio (plain-text, non-Hive, per-day partitions). Observed live
+    // on a barest S3-dest flow log (us-east-1, 2026-07-14 barest4 hunt). Equality-gated —
+    // Parquet / Hive / hourly partitioning no longer matches and surfaces (the options are
+    // create-only, so this mainly silences the first-run echo).
+    DestinationOptions: {
+      FileFormat: 'plain-text',
+      HiveCompatiblePartitions: false,
+      PerHourPartition: false,
+    },
     // A flow log that declares no LogFormat reads back AWS's documented default 14-field
     // format string. It is a STABLE, documented constant, so an equality-gated KNOWN_DEFAULTS
     // fold preserves detection: a user who sets a CUSTOM format out of band no longer matches
@@ -1475,9 +1485,22 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // source-map deobfuscation reads back the disabled-state object. Equality-gated:
   // an Android/iOS platform or an enabled deobfuscation config no longer matches and
   // surfaces as a real undeclared value.
+  // barest4 hunt (2026-07-14): a BAREST monitor (Name + Domain only — rum-appmonitor-rich
+  // declared the whole configuration, hiding the undeclared path) also materializes the
+  // disabled custom-events toggle and a default AppMonitorConfiguration (10% sampling,
+  // empty page lists, no telemetries). Equality-gated: enabling custom events or any
+  // configuration change out of band no longer matches and surfaces.
   'AWS::RUM::AppMonitor': {
     Platform: 'Web',
     DeobfuscationConfiguration: { JavaScriptSourceMaps: { Status: 'DISABLED' } },
+    CustomEvents: { Status: 'DISABLED' },
+    AppMonitorConfiguration: {
+      IncludedPages: [],
+      ExcludedPages: [],
+      FavoritePages: [],
+      SessionSampleRate: 0.1,
+      Telemetries: [],
+    },
   },
   // FIS experiment templates read back the documented option defaults (fail on
   // empty target resolution, single-account targeting) when the template declares
@@ -1564,6 +1587,14 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // per-artifact Type echo folds via KNOWN_DEFAULT_PATHS below.
   'AWS::ServiceCatalog::CloudFormationProduct': {
     ProductType: 'CLOUD_FORMATION_TEMPLATE',
+  },
+  // A TagOption is created active; the undeclared Active reads back true (observed live,
+  // barest4/ccpi hunt us-east-1 2026-07-14). Equality-gated, and the OFF flip (an
+  // out-of-band deactivate — which blocks the option from new provisioning) is a bare
+  // `false` that isTrivialEmpty would swallow, so it is paired with a MEANINGFUL_WHEN_OFF
+  // entry in classify.ts (the #1503 TLSEnabled lesson).
+  'AWS::ServiceCatalog::TagOption': {
+    Active: true,
   },
   // An Internet Monitor that declares no Status reads back "ACTIVE" (observed live, hunt
   // 2026-07-08 round F, #626). A user-settable knob (a user pausing a monitor sets INACTIVE)
@@ -2362,8 +2393,12 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     'TopicPolicyConfig.TopicsTierConfig': { TierName: 'CLASSIC' },
   },
   // A canary that declares a Schedule but no RetryConfig reads back the default 0 retries.
+  // A Schedule that declares only Expression also reads back DurationInSeconds as the
+  // STRING "0" (run-forever; observed live on a barest canary, us-east-1 2026-07-14
+  // barest4 hunt). Equality-gated: an out-of-band duration limit surfaces.
   'AWS::Synthetics::Canary': {
     'Schedule.RetryConfig': { MaxRetries: 0 },
+    'Schedule.DurationInSeconds': '0',
   },
   'AWS::OpenSearchService::Domain': {
     // A gp3 EBS volume reads back the gp3 baseline 3000 IOPS / 125 MiB/s throughput

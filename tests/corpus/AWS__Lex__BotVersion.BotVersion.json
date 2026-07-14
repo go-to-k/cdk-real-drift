@@ -1,0 +1,55 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "BotVersion",
+    "resourceType": "AWS::Lex::BotVersion",
+    "physicalId": "H4ZNLN2EXP|1",
+    "constructPath": "CdkrdHunt0714CcPi/BotVersion",
+    "declared": {
+      "BotId": "H4ZNLN2EXP",
+      "BotVersionLocaleSpecification": [
+        {
+          "BotVersionLocaleDetails": {
+            "SourceBotVersion": "DRAFT"
+          },
+          "LocaleId": "en_US"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "BotVersion": "1",
+    "BotId": "H4ZNLN2EXP"
+  },
+  "schema": {
+    "readOnly": ["BotVersion"],
+    "writeOnly": ["BotVersionLocaleSpecification"],
+    "createOnly": ["BotId"],
+    "readOnlyPaths": ["BotVersion"],
+    "writeOnlyPaths": ["BotVersionLocaleSpecification"],
+    "createOnlyPaths": ["BotId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["BotVersionLocaleSpecification"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "BotVersion",
+      "resourceType": "AWS::Lex::BotVersion",
+      "path": "BotVersionLocaleSpecification",
+      "note": "write-only — cannot be read back",
+      "writeOnly": true,
+      "physicalId": "H4ZNLN2EXP|1",
+      "constructPath": "CdkrdHunt0714CcPi/BotVersion"
+    }
+  ]
+}

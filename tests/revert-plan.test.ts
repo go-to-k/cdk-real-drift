@@ -694,6 +694,43 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  // barest4/ccpi hunt (live-proven 2026-07-14): two more members, each a distinct flavor —
+  // RUM UpdateAppMonitor silently KEEPS an omitted CustomEvents (an out-of-band ENABLED
+  // persisted through a `remove` that reported reverted), and ServiceCatalog
+  // UpdateTagOption REJECTS the remove outright ("Active and new value cannot both be
+  // null"). Both write the KNOWN_DEFAULTS default back explicitly.
+  it('RUM AppMonitor CustomEvents (SET-DEFAULT) -> add op writing the DISABLED default, not a no-op remove', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::RUM::AppMonitor',
+      path: 'CustomEvents',
+      actual: { Status: 'ENABLED' },
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/CustomEvents',
+      value: { Status: 'DISABLED' },
+      prior: { Status: 'ENABLED' },
+    });
+  });
+
+  it('ServiceCatalog TagOption Active (SET-DEFAULT) -> add op writing the true default, not a rejected remove', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::ServiceCatalog::TagOption',
+      path: 'Active',
+      actual: false,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/Active',
+      value: true,
+      prior: false,
+    });
+  });
+
   it('#1619: Glue Crawler SchemaChangePolicy (SET-DEFAULT) -> add op writing the whole-object default', () => {
     const f = F({
       tier: 'undeclared',
