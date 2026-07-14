@@ -1,3 +1,10 @@
+## [0.19.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.19.0...v0.19.1) (2026-07-14)
+
+
+### Bug Fixes
+
+* **noise,revert:** fold 5 barest-form first-run FPs and converge 2 undeclared reverts (barest4/ccpi hunt) ([#1630](https://github.com/go-to-k/cdk-real-drift/issues/1630)) ([e93306e](https://github.com/go-to-k/cdk-real-drift/commit/e93306e2763d2ada3f2858a594f6edef07df4964))
+
 # [0.19.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.15...v0.19.0) (2026-07-14)
 
 
