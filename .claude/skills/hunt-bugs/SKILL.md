@@ -792,7 +792,7 @@ no-op` for the write-only RE-INCLUDE op every password-declaring resource carrie
   main copy, deadlocking the gate the fix exists to release (hit 2026-07-14 on
   the VPN-family arms). Resolution: temp-copy the patched script over the main
   checkout's, run `verify` + `clear`, then `git -C <main> checkout --
-  tests/integration/sweep-orphans.sh` to restore main to HEAD — the committed
+tests/integration/sweep-orphans.sh` to restore main to HEAD — the committed
   fix lands permanently at merge. Never force-clear instead.
 - **A clean result IS a result — but it must still leave an asset.** "6 common+rich
   stacks, zero FPs, detection+revert verified" is a legitimate, valuable outcome. Do
