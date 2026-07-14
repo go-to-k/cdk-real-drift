@@ -785,6 +785,15 @@ no-op` for the write-only RE-INCLUDE op every password-declaring resource carrie
   the FIRST (clean) check line only — or, if the mutated case is worth keeping as a
   detection pin, promote it under the existing `.drifted.json` naming so its intent
   is explicit.
+- **A sweep-orphans.sh fix made in a WORKTREE does not take effect for
+  `bughunt-track.sh verify` — the tracker resolves the script at the MAIN tree
+  root** (`--git-common-dir`), so a phantom-orphan fix (a new `resource_gone`
+  arm) authored in the hunt worktree still fails verify against the unpatched
+  main copy, deadlocking the gate the fix exists to release (hit 2026-07-14 on
+  the VPN-family arms). Resolution: temp-copy the patched script over the main
+  checkout's, run `verify` + `clear`, then `git -C <main> checkout --
+  tests/integration/sweep-orphans.sh` to restore main to HEAD — the committed
+  fix lands permanently at merge. Never force-clear instead.
 - **A clean result IS a result — but it must still leave an asset.** "6 common+rich
   stacks, zero FPs, detection+revert verified" is a legitimate, valuable outcome. Do
   NOT manufacture a fix to have something to show. The deliverable of a bug-free
