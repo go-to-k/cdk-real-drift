@@ -1024,9 +1024,13 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   re-surfaces as drift — otherwise invisible (the function `Code` is write-only and
   a later `cdk deploy` does not heal it). It folds silently on a clean deploy
   (zero first-run noise), `record` snapshots it, and a later change re-surfaces as
-  "changed since record". The old code bytes are gone, so it is detect-only (not
-  revertable — redeploy with a forced code update). Without the permission the
-  signal is skipped, never false-flagged.
+  "changed since record". A **legitimate** `cdk deploy` that updates the code
+  does NOT re-surface it: `record` also fingerprints the declared `Code`, so a
+  hash that moved because the template's code changed folds into a re-record
+  nudge instead of false drift (same for the Glue script hash below). The old
+  code bytes are gone, so it is detect-only (not revertable — redeploy with a
+  forced code update). Without the permission the signal is skipped, never
+  false-flagged.
 - Optional: `glue:GetJob` + `s3:GetObject` (on the script bucket) record a content
   hash of an `AWS::Glue::Job`'s ETL script (`ScriptSha256`, fetched from
   `Command.ScriptLocation`) so an out-of-band script swap at the **same S3 key**
