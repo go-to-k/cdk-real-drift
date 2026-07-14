@@ -943,8 +943,24 @@ replace it — lives in [why-a-baseline-file.md](why-a-baseline-file.md).
   "completeResources": [ "<logicalIds the record snapshot fully covered>" ],
   "recordedPhysicalIds": { "<logicalId>": "<physical id at record>", ... },
   "recordedSourceFingerprints":
-    { "<logicalId>::<path>": "<declared-source hash>", ... } }
+    { "<logicalId>::<path>": "<declared-source hash>", ... },
+  "observedDefaults": [ { "logicalId", "resourceType", "path" }, ... ] }
 ```
+
+`observedDefaults` (additive, optional — #1637) records the CURATED top-level paths
+(`OBSERVED_DEFAULT_TRACKED_PATHS`, S3 `PublicAccessBlockConfiguration` first) that
+were observed AT their AWS default at record time — paths only, no value (the value
+IS the `KNOWN_DEFAULTS` pin). It exists because an atDefault-folded value DELETED
+out of band **vanishes from the Cloud Control read entirely** (live-proven:
+`aws s3api delete-public-access-block` opens the bucket to public ACLs/policies
+while every value-keyed mechanism — the pin gate, `MEANINGFUL_WHEN_OFF`, "appeared
+since record" — sees nothing). `applyBaseline` synthesizes an undeclared
+"observed default deleted since record" finding when an observed path yields NO
+undeclared-side finding on a positively-READ resource (unread / gone / replaced /
+re-typed / read-gapped / since-declared resources all stay silent, mirroring the
+removed-since-record guards), carrying the pin as `desired` so `revert` re-adds the
+default. Curated, NOT blanket: CC read shapes fluctuate across handler versions, so
+tracking every atDefault path would false-flag handler churn as deletion.
 
 `recordedPhysicalIds` (additive, optional — #674) records the PHYSICAL id each
 recorded-OR-snapshot-`complete` resource was captured against, so a later deploy
