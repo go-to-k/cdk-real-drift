@@ -1,3 +1,10 @@
+# [0.19.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.15...v0.19.0) (2026-07-14)
+
+
+### Features
+
+* **revert:** SDK writers for CodeBuild Project + MediaConvert Queue, and the instance-target TG preserve_client_ip fold ([#1629](https://github.com/go-to-k/cdk-real-drift/issues/1629)) ([2d6b999](https://github.com/go-to-k/cdk-real-drift/commit/2d6b99905cbdc082733f94a30db6e15c321c0a73))
+
 ## [0.18.15](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.14...v0.18.15) (2026-07-14)
 
 
