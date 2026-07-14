@@ -1,3 +1,10 @@
+## [0.18.12](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.11...v0.18.12) (2026-07-14)
+
+
+### Bug Fixes
+
+* **baseline:** void recorded Lambda CodeSha256 / Glue ScriptSha256 when the declared code was redeployed via CloudFormation since record ([#1606](https://github.com/go-to-k/cdk-real-drift/issues/1606)) ([95bda1c](https://github.com/go-to-k/cdk-real-drift/commit/95bda1ce4d6d79643db43c1366137392b1a753a0))
+
 ## [0.18.11](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.10...v0.18.11) (2026-07-14)
 
 
