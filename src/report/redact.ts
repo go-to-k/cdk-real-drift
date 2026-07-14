@@ -301,6 +301,15 @@ export function redactedHashSentinel(canonicalValue: unknown): Record<string, st
   return { [REDACTION_HASH_KEY]: hashOfCanonical(canonicalValue) };
 }
 
+// Deterministic content fingerprint of an arbitrary JSON value (deep key-sorted, so two
+// structurally-equal values fingerprint identically). Exposed for the baseline's recorded
+// source-fingerprint mechanism (a RECORDABLE_GENERATED content hash's declared source —
+// e.g. a Lambda `Code` object — is fingerprinted at record time so a later LEGITIMATE
+// redeploy of that source can void the stale recorded hash instead of false-surfacing it).
+export function stableValueHash(value: unknown): string {
+  return hashOfCanonical(value);
+}
+
 // True if a baseline `value` is a redaction hash sentinel (a single reserved key mapping to
 // a string). An older baseline holding a plaintext value is NOT a sentinel, so it keeps
 // comparing via the normal deepEqual path — this change is backward-compatible.

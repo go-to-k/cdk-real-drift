@@ -34,6 +34,7 @@ import {
   isRedactedPath,
   redactedHashOf,
   redactedHashSentinel,
+  stableValueHash,
 } from '../report/redact.js';
 import type { ArrayDelta, Finding } from '../types.js';
 
@@ -68,6 +69,18 @@ export interface BaselineFile {
   // deleted resource and must NOT surface as drift against the new one. Absent/unknown
   // recorded id -> fall back to today's behavior (never void).
   recordedPhysicalIds?: Record<string, string>;
+  // Stale-source void (the property-level sibling of #674's replacement void): recordedKey
+  // (`<logicalId>::<path>`) -> a fingerprint of the entry's DECLARED SOURCE value at record
+  // time. Only stamped for RECORDABLE_GENERATED content-hash entries (Lambda::Function
+  // CodeSha256 -> declared `Code`, Glue::Job ScriptSha256 -> declared
+  // `Command.ScriptLocation`). At `applyBaseline` time a stored fingerprint that DIFFERS
+  // from the current declared source proves the source was redeployed THROUGH CloudFormation
+  // since record (a legit IaC code update, not an out-of-band swap) — the recorded hash is
+  // stale, so it is VOID (folded + a re-record nudge), never surfaced as false "changed
+  // since record" drift. An out-of-band swap never touches the template, so its fingerprint
+  // matches and detection is fully preserved. Additive & OPTIONAL: old committed baselines
+  // have none and keep today's behavior until the next `record` stamps it.
+  recordedSourceFingerprints?: Record<string, string>;
 }
 
 // #1048: the known top-level keys of a baseline file (the `BaselineFile` fields). Used to
@@ -83,6 +96,7 @@ const KNOWN_BASELINE_KEYS = new Set<string>([
   'recorded',
   'completeResources',
   'recordedPhysicalIds',
+  'recordedSourceFingerprints',
 ]);
 // #1048: the known keys of a `recorded` array element. A typo'd key (`Value`, `vaule`) whose
 // intended `value` is then ABSENT reads as recorded `undefined` — a confirmed-drift false
@@ -240,6 +254,7 @@ export async function loadBaseline(
   validateRecordedUniqueness(parsed.recorded, path);
   validateCompleteResources(parsed.completeResources, path);
   validateRecordedPhysicalIds(parsed.recordedPhysicalIds, path);
+  validateRecordedSourceFingerprints(parsed.recordedSourceFingerprints, path);
   return parsed;
 }
 
@@ -339,6 +354,21 @@ function validateRecordedPhysicalIds(value: unknown, path: string): void {
     if (typeof v !== 'string') throw new Error(`${at}: "${key}" must map to a string`);
 }
 
+/**
+ * Validate `recordedSourceFingerprints` (optional). When present it must be a plain object
+ * mapping string recordedKey -> string fingerprint — a non-object or a non-string value would
+ * otherwise mis-drive the stale-source void silently (the same loud-vs-silent principle as
+ * validateRecordedPhysicalIds). Reject bad shapes loudly, naming the file + key.
+ */
+function validateRecordedSourceFingerprints(value: unknown, path: string): void {
+  if (value === undefined) return;
+  const at = `baseline file ${path}: \`recordedSourceFingerprints\``;
+  if (typeof value !== 'object' || value === null || Array.isArray(value))
+    throw new Error(`${at} must be an object mapping "<logicalId>::<path>" to a fingerprint`);
+  for (const [key, v] of Object.entries(value as Record<string, unknown>))
+    if (typeof v !== 'string') throw new Error(`${at}: "${key}" must map to a string`);
+}
+
 /** Deterministic order for `recorded` entries: lexicographic by (logicalId, path).
  *  The single point where order is imposed — read/compare logic is order-independent,
  *  so this only affects the bytes on disk. Without it the entries inherit findings
@@ -372,6 +402,20 @@ function sortedPhysicalIds(
   return out;
 }
 
+// Byte-stable + pruned write form of `recordedSourceFingerprints`: sorted keys, kept only
+// for recordedKeys still present in `recorded` (mirrors sortedPhysicalIds — a fingerprint
+// belongs to its entry, so it is shed with it).
+function sortedSourceFingerprints(
+  fps: Record<string, string>,
+  recorded: RecordedEntry[]
+): Record<string, string> {
+  const persist = new Set(recorded.map((e) => recordedKey(e)));
+  const out: Record<string, string> = {};
+  for (const key of Object.keys(fps).sort())
+    if (persist.has(key) && fps[key] !== undefined) out[key] = fps[key];
+  return out;
+}
+
 export async function writeBaselineFile(b: BaselineFile): Promise<string> {
   const p = baselinePath(b.stackName, b.accountId, b.region);
   await mkdir(dirname(p), { recursive: true });
@@ -392,6 +436,17 @@ export async function writeBaselineFile(b: BaselineFile): Promise<string> {
             b.recordedPhysicalIds,
             b.recorded,
             b.completeResources ?? []
+          ),
+        }
+      : {}),
+    // Same byte-stability + pruning for the source-fingerprint map: sorted keys, kept
+    // only for entries actually present in `recorded` (a dropped entry sheds its
+    // fingerprint with it).
+    ...(b.recordedSourceFingerprints
+      ? {
+          recordedSourceFingerprints: sortedSourceFingerprints(
+            b.recordedSourceFingerprints,
+            b.recorded
           ),
         }
       : {}),
@@ -494,6 +549,11 @@ export async function writeBaseline(
     // REPLACES a resource (new physical id) can void its stale recorded entries.
     // Optional: an omitting caller keeps today's (physical-id-less) behavior.
     physicalIdByLogical?: Map<string, string> | undefined;
+    // logicalId -> declared model at record time, so a recordable-generated content hash
+    // (Lambda CodeSha256, Glue ScriptSha256) can be fingerprinted against its DECLARED
+    // source — letting a later legit code deploy void the stale hash instead of
+    // false-surfacing it. Optional: an omitting caller keeps today's behavior.
+    declaredByLogical?: Map<string, Record<string, unknown>> | undefined;
   } = {}
 ): Promise<{ path: string; count: number }> {
   const allIds = opts.allLogicalIds ?? [
@@ -525,6 +585,11 @@ export async function writeBaseline(
       opts.physicalIdByLogical,
       opts.previous
     ),
+    // Declared-source fingerprints for the recordable-generated content-hash entries, so a
+    // later legit code deploy voids the stale hash (see recordedSourceFingerprints on the
+    // BaselineFile type). Carries the previous fingerprint for entries carried forward
+    // unchanged, symmetric with buildRecordedPhysicalIds' prior-id fallback.
+    ...buildRecordedSourceFingerprints(recorded, opts.declaredByLogical, opts.previous),
   });
   return { path, count: recorded.length };
 }
@@ -607,6 +672,78 @@ function isRecordableGenerated(f: Finding): boolean {
   return (
     f.tier === 'generated' && (RECORDABLE_GENERATED_PATHS[f.resourceType]?.has(f.path) ?? false)
   );
+}
+
+// Per RECORDABLE_GENERATED_PATHS entry: the DECLARED path its content hash is derived from.
+// A recorded content hash is only meaningful for the code the template deployed at record
+// time — when a LATER deploy legitimately changes that declared source (a new CDK asset key,
+// a changed inline ZipFile), CloudFormation pushes new code and the live hash moves WITH the
+// template, so the recorded hash is stale, not violated. Fingerprinting the declared source
+// at record time lets `applyBaseline` tell the two apart: fingerprint unchanged = the
+// template never touched the code, so a moved hash IS an out-of-band swap (surface);
+// fingerprint changed = the code was redeployed through IaC (void + re-record nudge).
+const RECORDABLE_GENERATED_SOURCE_PATHS: Record<string, Record<string, string>> = {
+  // The hash covers whatever `Code` declares: S3Bucket/S3Key/S3ObjectVersion, an inline
+  // ZipFile, or an ImageUri — fingerprint the whole object so any code-identity change voids.
+  'AWS::Lambda::Function': { CodeSha256: 'Code' },
+  // The synthetic script digest is fetched from the declared script location; a deploy that
+  // re-points it (a new CDK asset key) changes the content the digest covers.
+  'AWS::Glue::Job': { ScriptSha256: 'Command.ScriptLocation' },
+};
+
+/**
+ * Fingerprint of a recordable-generated entry's DECLARED SOURCE value (deep key-sorted
+ * content hash), or undefined when the (resourceType, path) has no source mapping, no
+ * declared model is available, or the source path does not resolve in it — the undefined
+ * cases all fall back to today's behavior (never void on unknown).
+ */
+export function declaredSourceFingerprint(
+  resourceType: string,
+  path: string,
+  declared: Record<string, unknown> | undefined
+): string | undefined {
+  const sourcePath = RECORDABLE_GENERATED_SOURCE_PATHS[resourceType]?.[path];
+  if (sourcePath === undefined || declared === undefined) return undefined;
+  let node: unknown = declared;
+  for (const seg of pathSegments(sourcePath)) {
+    node = descendDeclared(node, seg);
+    if (node === undefined) return undefined;
+  }
+  return stableValueHash(node);
+}
+
+/**
+ * Build the `recordedSourceFingerprints` map for the entries being written. For each entry
+ * with a source mapping: prefer the PREVIOUS baseline's fingerprint when the entry's VALUE
+ * was carried forward unchanged from it (a resource unread this run — e.g. skipped — must
+ * keep its hash paired with the template that deployed it, else a re-record after a legit
+ * code deploy would pair the OLD hash with the NEW template and resurface the FP);
+ * otherwise stamp the CURRENT declared source's fingerprint (falling back to the previous
+ * one when the source does not resolve). Returns `{}` (spread to nothing) when no
+ * fingerprint is known, so the field stays absent on baselines without any.
+ */
+export function buildRecordedSourceFingerprints(
+  recorded: RecordedEntry[],
+  declaredByLogical: Map<string, Record<string, unknown>> | undefined,
+  previous: BaselineFile | undefined
+): { recordedSourceFingerprints?: Record<string, string> } {
+  const out: Record<string, string> = {};
+  for (const e of recorded) {
+    if (RECORDABLE_GENERATED_SOURCE_PATHS[e.resourceType]?.[e.path] === undefined) continue;
+    const key = recordedKey(e);
+    const prevFp = previous?.recordedSourceFingerprints?.[key];
+    const prevEntry = previous?.recorded.find(
+      (a) => a.logicalId === e.logicalId && a.path === e.path && a.resourceType === e.resourceType
+    );
+    const carriedUnchanged =
+      prevFp !== undefined && prevEntry !== undefined && deepEqual(prevEntry.value, e.value);
+    const fp = carriedUnchanged
+      ? prevFp
+      : (declaredSourceFingerprint(e.resourceType, e.path, declaredByLogical?.get(e.logicalId)) ??
+        prevFp);
+    if (fp !== undefined) out[key] = fp;
+  }
+  return Object.keys(out).length > 0 ? { recordedSourceFingerprints: out } : {};
 }
 
 /** Build the recorded set from a check run's findings: undeclared PROPERTIES plus
@@ -1237,6 +1374,28 @@ export function applyBaseline(
     const liveId = opts.physicalIdByLogical?.get(logicalId);
     if (liveId !== undefined && liveId !== recordedId) replacedLogical.add(logicalId);
   }
+  // Stale-source void (the property-level sibling of #674): a recordable-generated content
+  // hash (Lambda CodeSha256, Glue ScriptSha256) whose recorded DECLARED-SOURCE fingerprint
+  // differs from the CURRENT declared source was redeployed through CloudFormation since
+  // record — a legit IaC code update moved the live hash with the template, so the recorded
+  // hash is stale, not violated. Void the entry (never a suppression match, never "changed
+  // since record", never "removed") — the live finding then folds through its `generated`
+  // tier and a one-line re-record nudge is emitted below. Fail-safe: only voids when a
+  // recorded fingerprint EXISTS (old baselines have none) and the current declared source
+  // RESOLVES and differs — an out-of-band swap never touches the template, so its
+  // fingerprint matches and the record-keeps-watching contract is fully preserved.
+  const sourceRedeployedVoid = new Set<string>();
+  const recordedSourceFps = baseline.recordedSourceFingerprints ?? {};
+  for (const e of recorded) {
+    const storedFp = recordedSourceFps[recordedKey(e)];
+    if (storedFp === undefined) continue;
+    const currentFp = declaredSourceFingerprint(
+      e.resourceType,
+      e.path,
+      opts.declaredByLogical?.get(e.logicalId)
+    );
+    if (currentFp !== undefined && currentFp !== storedFp) sourceRedeployedVoid.add(recordedKey(e));
+  }
   // #793: a logicalId's CURRENT resource type (from the live findings). A recorded entry
   // whose `resourceType` differs from the live type belongs to an OLD resource that was
   // deleted and re-added under the SAME logicalId as a DIFFERENT type (a template refactor
@@ -1306,9 +1465,14 @@ export function applyBaseline(
     // or surface as "changed" against the brand-new one's fresh AWS defaults. The value
     // then folds through the tiers below (an at-default value folds; a genuine non-default
     // value on the new resource is unrecorded, not drift — the user never recorded IT).
-    const entry = replacedLogical.has(f.logicalId)
+    // The stale-source void treats the entry as absent exactly like the #674 replacement
+    // void: the live `generated` hash then folds below (never "changed since record"). The
+    // nudge note is emitted once from the recorded-entry loop at the bottom.
+    const matched = replacedLogical.has(f.logicalId)
       ? undefined
       : recorded.find((a) => entryMatches(a, f));
+    const entry =
+      matched !== undefined && sourceRedeployedVoid.has(recordedKey(matched)) ? undefined : matched;
     // re-canonicalize the baseline value through the CURRENT pipeline before comparing
     // (f.actual is already canonical from classify): a baseline recorded under older
     // normalization rules still matches today's live, so a cdkrd version bump alone
@@ -1445,6 +1609,7 @@ export function applyBaseline(
   const typeMismatchStale: string[] = []; // #793
   const adoptedStale: string[] = []; // #1279
   const nameStrippedStale: string[] = []; // #1274
+  const sourceRedeployedStale: string[] = []; // stale-source void (legit code redeploy)
   for (const a of recorded) {
     // #791: an `added`-resource entry has an empty path (the WHOLE resource is the value)
     // and is reconciled in the loop above when its live child is still enumerated. When it
@@ -1507,6 +1672,15 @@ export function applyBaseline(
     // deleted physical resource, so it is void, not "removed since record". Fold it.
     if (replacedLogical.has(a.logicalId)) {
       replacedStale.push(`${a.logicalId}.${a.path}`);
+      continue;
+    }
+    // Stale-source void: the entry's declared source was redeployed through CloudFormation
+    // since record, so the recorded hash is void — fold into the nudge whether the live
+    // hash finding is present (the common case, checked BEFORE currentPaths so the nudge
+    // still fires) or absent (the hash supplement failed this run — must not read as
+    // "removed since record" either).
+    if (sourceRedeployedVoid.has(recordedKey(a))) {
+      sourceRedeployedStale.push(`${a.logicalId}.${a.path}`);
       continue;
     }
     if (currentPaths.has(`${a.logicalId}.${a.path}`)) continue;
@@ -1574,7 +1748,25 @@ export function applyBaseline(
   if (typeMismatchStale.length > 0) opts.warn?.(formatTypeMismatchStaleNote(typeMismatchStale));
   if (adoptedStale.length > 0) opts.warn?.(formatAdoptedStaleNote(adoptedStale));
   if (nameStrippedStale.length > 0) opts.warn?.(formatNameStrippedStaleNote(nameStrippedStale));
+  if (sourceRedeployedStale.length > 0)
+    opts.warn?.(formatSourceRedeployedStaleNote(sourceRedeployedStale));
   return kept;
+}
+
+/**
+ * The folded one-line note for recorded content-hash entries whose DECLARED SOURCE was
+ * redeployed through CloudFormation since record (a legit IaC code update — the recorded
+ * hash is stale, not violated). Until the user re-records, the new code's hash is not
+ * being watched, so the nudge matters: a swap AFTER the redeploy is invisible until then.
+ * Mirror of formatReplacedStaleNote. Pure + exported for unit tests.
+ */
+export function formatSourceRedeployedStaleNote(paths: string[]): string {
+  const n = paths.length;
+  const subject =
+    n === 1
+      ? `baseline entry (${paths[0]}) is a content hash whose`
+      : `${n} baseline entries are content hashes whose`;
+  return `note: ${subject} declared code was redeployed via CloudFormation since record — re-run \`cdkrd record\` to watch the new code.`;
 }
 
 /**

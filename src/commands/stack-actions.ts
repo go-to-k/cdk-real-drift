@@ -689,6 +689,10 @@ export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
       allLogicalIds: desired.resources.map((r) => r.logicalId),
       previous: existing,
       physicalIdByLogical: physicalIdsByLogical(desired.resources),
+      // declared models so the recordable-generated content hashes (Lambda CodeSha256,
+      // Glue ScriptSha256) are stamped with their declared-source fingerprint — a later
+      // legit code deploy then voids the stale hash instead of false-surfacing it.
+      declaredByLogical: declaredKeysByLogical(desired.resources),
     }
   );
   // #868: suppress the human success line under --json (the caller prints a JSON element);

@@ -9,7 +9,10 @@ import {
   type BaselineFile,
   baselinePath,
   buildRecorded,
+  buildRecordedSourceFingerprints,
   carryForwardUnreadable,
+  declaredSourceFingerprint,
+  formatSourceRedeployedStaleNote,
   constructPathsByLogical,
   physicalIdsByLogical,
   formatAdoptedStaleNote,
@@ -257,6 +260,268 @@ describe('baseline', () => {
         actual: SHA_B,
         desired: SHA_A,
       });
+    });
+  });
+
+  describe('stale-source void (recorded content hash after a LEGIT code redeploy)', () => {
+    // The property-level sibling of #674's replacement void: a recorded Lambda CodeSha256 /
+    // Glue ScriptSha256 whose DECLARED source (Code / Command.ScriptLocation) changed via a
+    // CloudFormation deploy since record is stale, not violated — it must fold with a
+    // re-record nudge, never surface as "changed since record" drift. An out-of-band swap
+    // never touches the template, so its fingerprint matches and detection is preserved.
+    const generated = (path: string, value: unknown): Finding => ({
+      tier: 'generated',
+      logicalId: 'Fn',
+      resourceType: 'AWS::Lambda::Function',
+      path,
+      actual: value,
+    });
+    const SHA_A = `${'a'.repeat(43)}=`;
+    const SHA_B = `${'b'.repeat(43)}=`;
+    const entry = (value: unknown) => ({
+      logicalId: 'Fn',
+      resourceType: 'AWS::Lambda::Function',
+      path: 'CodeSha256',
+      value,
+    });
+    const CODE_V1 = { S3Bucket: 'assets', S3Key: 'aaaa1111.zip' };
+    const CODE_V2 = { S3Bucket: 'assets', S3Key: 'bbbb2222.zip' };
+    const declaredWith = (code: Record<string, unknown>) =>
+      new Map<string, Record<string, unknown>>([['Fn', { Code: code, Handler: 'index.handler' }]]);
+    const baselineWithFp = (value: unknown, code: Record<string, unknown>): BaselineFile => ({
+      ...baseline([entry(value)]),
+      recordedSourceFingerprints: {
+        [recordedKey({ logicalId: 'Fn', path: 'CodeSha256' })]: declaredSourceFingerprint(
+          'AWS::Lambda::Function',
+          'CodeSha256',
+          { Code: code }
+        )!,
+      },
+    });
+
+    describe('declaredSourceFingerprint', () => {
+      it('fingerprints the declared Lambda Code object, key-order-insensitively', () => {
+        const a = declaredSourceFingerprint('AWS::Lambda::Function', 'CodeSha256', {
+          Code: { S3Bucket: 'b', S3Key: 'k' },
+        });
+        const b = declaredSourceFingerprint('AWS::Lambda::Function', 'CodeSha256', {
+          Code: { S3Key: 'k', S3Bucket: 'b' },
+        });
+        expect(a).toBeDefined();
+        expect(a).toBe(b);
+        expect(a).not.toBe(
+          declaredSourceFingerprint('AWS::Lambda::Function', 'CodeSha256', {
+            Code: { S3Bucket: 'b', S3Key: 'OTHER' },
+          })
+        );
+      });
+
+      it('resolves the Glue nested source path (Command.ScriptLocation)', () => {
+        const fp = declaredSourceFingerprint('AWS::Glue::Job', 'ScriptSha256', {
+          Command: { Name: 'glueetl', ScriptLocation: 's3://b/script.py' },
+        });
+        expect(fp).toBeDefined();
+        expect(fp).not.toBe(
+          declaredSourceFingerprint('AWS::Glue::Job', 'ScriptSha256', {
+            Command: { Name: 'glueetl', ScriptLocation: 's3://b/OTHER.py' },
+          })
+        );
+      });
+
+      it('returns undefined for an unmapped (type, path), a missing model, or an unresolvable source', () => {
+        expect(declaredSourceFingerprint('AWS::X::Y', 'CodeSha256', { Code: {} })).toBeUndefined();
+        expect(
+          declaredSourceFingerprint('AWS::Lambda::Function', 'MemorySize', { Code: {} })
+        ).toBeUndefined();
+        expect(
+          declaredSourceFingerprint('AWS::Lambda::Function', 'CodeSha256', undefined)
+        ).toBeUndefined();
+        expect(
+          declaredSourceFingerprint('AWS::Lambda::Function', 'CodeSha256', { Handler: 'h' })
+        ).toBeUndefined();
+      });
+    });
+
+    describe('buildRecordedSourceFingerprints', () => {
+      it('stamps the declared-source fingerprint for a CodeSha256 entry', () => {
+        const out = buildRecordedSourceFingerprints(
+          [entry(SHA_A)],
+          declaredWith(CODE_V1),
+          undefined
+        );
+        expect(out.recordedSourceFingerprints).toEqual({
+          'Fn::CodeSha256': declaredSourceFingerprint('AWS::Lambda::Function', 'CodeSha256', {
+            Code: CODE_V1,
+          }),
+        });
+      });
+
+      it('spreads to nothing when no entry has a source mapping (field stays absent)', () => {
+        const out = buildRecordedSourceFingerprints(
+          [{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: 1 }],
+          new Map([['A', { P: 1 }]]),
+          undefined
+        );
+        expect(out).toEqual({});
+      });
+
+      it('an entry carried forward UNCHANGED keeps the PREVIOUS fingerprint (unread resource must stay paired with the template that deployed it)', () => {
+        // re-record after a legit deploy while the resource was UNREAD: the value is carried
+        // from the previous baseline, so pairing it with the CURRENT (new-code) template
+        // would resurrect the FP on the next check. The previous fingerprint must win.
+        const prev = baselineWithFp(SHA_A, CODE_V1);
+        const out = buildRecordedSourceFingerprints([entry(SHA_A)], declaredWith(CODE_V2), prev);
+        expect(out.recordedSourceFingerprints).toEqual(prev.recordedSourceFingerprints);
+      });
+
+      it('an entry whose value CHANGED is re-stamped with the CURRENT declared fingerprint', () => {
+        const prev = baselineWithFp(SHA_A, CODE_V1);
+        const out = buildRecordedSourceFingerprints([entry(SHA_B)], declaredWith(CODE_V2), prev);
+        expect(out.recordedSourceFingerprints).toEqual({
+          'Fn::CodeSha256': declaredSourceFingerprint('AWS::Lambda::Function', 'CodeSha256', {
+            Code: CODE_V2,
+          }),
+        });
+      });
+
+      it('falls back to the previous fingerprint when the current source does not resolve', () => {
+        const prev = baselineWithFp(SHA_B, CODE_V1);
+        const out = buildRecordedSourceFingerprints([entry(SHA_B)], undefined, prev);
+        expect(out.recordedSourceFingerprints).toEqual(prev.recordedSourceFingerprints);
+      });
+    });
+
+    describe('applyBaseline void', () => {
+      it('fingerprint UNCHANGED + live hash moved = an out-of-band swap: still surfaces (detection preserved)', () => {
+        const out = applyBaseline(
+          [generated('CodeSha256', SHA_B)],
+          baselineWithFp(SHA_A, CODE_V1),
+          {
+            declaredByLogical: declaredWith(CODE_V1),
+          }
+        );
+        expect(out).toHaveLength(1);
+        expect(out[0]).toMatchObject({ tier: 'undeclared', desired: SHA_A, actual: SHA_B });
+      });
+
+      it('fingerprint CHANGED (legit redeploy): the moved hash FOLDS (no drift) with a re-record nudge', () => {
+        const warnings: string[] = [];
+        const out = applyBaseline(
+          [generated('CodeSha256', SHA_B)],
+          baselineWithFp(SHA_A, CODE_V1),
+          {
+            declaredByLogical: declaredWith(CODE_V2),
+            warn: (s) => warnings.push(s),
+          }
+        );
+        // the live finding passes through folded on its generated tier — not suppressed
+        // into nothing, but never a drift tier and never "changed since record"
+        expect(out).toHaveLength(1);
+        expect(out[0]).toMatchObject({ tier: 'generated', path: 'CodeSha256', actual: SHA_B });
+        expect(warnings).toEqual([formatSourceRedeployedStaleNote(['Fn.CodeSha256'])]);
+      });
+
+      it('fingerprint CHANGED + hash finding ABSENT this run: no false "removed since record" either', () => {
+        const warnings: string[] = [];
+        const out = applyBaseline([], baselineWithFp(SHA_A, CODE_V1), {
+          declaredByLogical: declaredWith(CODE_V2),
+          warn: (s) => warnings.push(s),
+        });
+        expect(out).toEqual([]);
+        expect(warnings).toEqual([formatSourceRedeployedStaleNote(['Fn.CodeSha256'])]);
+      });
+
+      it("old baseline WITHOUT fingerprints keeps today's behavior (surfaces changed since record)", () => {
+        const out = applyBaseline([generated('CodeSha256', SHA_B)], baseline([entry(SHA_A)]), {
+          declaredByLogical: declaredWith(CODE_V2),
+        });
+        expect(out).toHaveLength(1);
+        expect(out[0]).toMatchObject({ tier: 'undeclared', desired: SHA_A });
+      });
+
+      it('no declaredByLogical passed (fingerprint unverifiable): never voids (fail-safe surfaces)', () => {
+        const out = applyBaseline([generated('CodeSha256', SHA_B)], baselineWithFp(SHA_A, CODE_V1));
+        expect(out).toHaveLength(1);
+        expect(out[0]).toMatchObject({ tier: 'undeclared', desired: SHA_A });
+      });
+
+      it('fingerprint UNCHANGED + hash unchanged: suppressed exactly as before (clean)', () => {
+        const out = applyBaseline(
+          [generated('CodeSha256', SHA_A)],
+          baselineWithFp(SHA_A, CODE_V1),
+          {
+            declaredByLogical: declaredWith(CODE_V1),
+          }
+        );
+        expect(out).toEqual([]);
+      });
+    });
+
+    it('writeBaseline persists the fingerprint map (round-trip through the file)', async () => {
+      const dir = await mkdtemp(join(tmpdir(), 'cdkrd-srcfp-'));
+      const cwd = process.cwd();
+      process.chdir(dir);
+      try {
+        const { path } = await writeBaseline(
+          's',
+          'r',
+          '111122223333',
+          [generated('CodeSha256', SHA_A)],
+          '{}',
+          [entry(SHA_A)],
+          { allLogicalIds: ['Fn'], declaredByLogical: declaredWith(CODE_V1) }
+        );
+        const parsed = JSON.parse(await readFile(path, 'utf8')) as BaselineFile;
+        expect(parsed.recordedSourceFingerprints).toEqual({
+          'Fn::CodeSha256': declaredSourceFingerprint('AWS::Lambda::Function', 'CodeSha256', {
+            Code: CODE_V1,
+          }),
+        });
+        // and it loads back through the validators
+        const loaded = await loadBaseline('s', '111122223333', 'r');
+        expect(loaded?.recordedSourceFingerprints).toEqual(parsed.recordedSourceFingerprints);
+      } finally {
+        process.chdir(cwd);
+        await rm(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('loadBaseline rejects a malformed recordedSourceFingerprints loudly', async () => {
+      const dir = await mkdtemp(join(tmpdir(), 'cdkrd-srcfp-'));
+      const cwd = process.cwd();
+      process.chdir(dir);
+      try {
+        const p = baselinePath('s', '111122223333', 'r');
+        await mkdir(dirname(p), { recursive: true });
+        const base = {
+          schemaVersion: 2,
+          stackName: 's',
+          region: 'r',
+          accountId: '111122223333',
+          capturedAt: '',
+          templateHash: '',
+          recorded: [],
+        };
+        await writeFile(
+          p,
+          JSON.stringify({ ...base, recordedSourceFingerprints: ['not-a-map'] }),
+          'utf8'
+        );
+        await expect(loadBaseline('s', '111122223333', 'r')).rejects.toThrow(
+          /recordedSourceFingerprints.*must be an object/
+        );
+        await writeFile(
+          p,
+          JSON.stringify({ ...base, recordedSourceFingerprints: { 'Fn::CodeSha256': 42 } }),
+          'utf8'
+        );
+        await expect(loadBaseline('s', '111122223333', 'r')).rejects.toThrow(
+          /"Fn::CodeSha256" must map to a string/
+        );
+      } finally {
+        process.chdir(cwd);
+        await rm(dir, { recursive: true, force: true });
+      }
     });
   });
 
