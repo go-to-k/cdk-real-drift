@@ -312,6 +312,37 @@ const MEANINGFUL_WHEN_OFF: Record<string, Record<string, (ctx: OffStateContext) 
   // TerminateInstanceOnFailure=false silently starts leaking build instances on failure.
   'AWS::ImageBuilder::ImagePipeline': { EnhancedImageMetadataEnabled: () => true },
   'AWS::ImageBuilder::InfrastructureConfiguration': { TerminateInstanceOnFailure: () => true },
+  // A fresh SES configuration set always reads back BOTH toggles enabled (the KNOWN_DEFAULTS
+  // whole-object pins `SendingOptions: {SendingEnabled: true}` / `ReputationOptions:
+  // {ReputationMetricsEnabled: true}`; live-confirmed on a barest set, hunt 2026-07-14) and
+  // there is no restore/import path to an untouched `false`. An out-of-band
+  // `put-configuration-set-sending-options --no-sending-enabled` (or the reputation twin)
+  // flips the pin's object ALL-FALSE, which isTrivialEmpty would swallow before the pin gate
+  // — silently hiding a disable that stops ALL mail from the set (the GuardDuty
+  // `DataSources` shape, #1092). Both are unconditionally meaningful when off.
+  'AWS::SES::ConfigurationSet': {
+    SendingOptions: () => true,
+    ReputationOptions: () => true,
+  },
+  // The identity-level twins (same hunt, CC-read-shape live-proven on a CLI-created
+  // identity): a fresh identity always reads DkimAttributes {SigningEnabled: true} and
+  // FeedbackAttributes {EmailForwardingEnabled: true} (the KNOWN_DEFAULTS pins);
+  // `put-email-identity-dkim-attributes --no-signing-enabled` / the feedback twin flip each
+  // ALL-FALSE in the read. No restore/import path. Both unconditionally meaningful when off.
+  'AWS::SES::EmailIdentity': {
+    DkimAttributes: () => true,
+    FeedbackAttributes: () => true,
+  },
+  // The most security-critical member of the all-boolean-object class (hunt 2026-07-14,
+  // live-proven end-to-end on a fresh CFn bucket): an out-of-band `put-public-access-block`
+  // disabling ALL FOUR flags — opening the bucket to public ACLs/policies — reads back an
+  // all-false object that isTrivialEmpty swallowed, so `check` stayed CLEAN. A fresh bucket
+  // always reads the pin's all-true shape (S3's new-bucket default since 2023-04); a LEGACY
+  // or fully-deleted PAB config is ABSENT from the Cloud Control read (live-proven via
+  // `delete-public-access-block`), never all-false — so an all-false read is always an
+  // explicit out-of-band act. A PARTIAL disable keeps a `true` leaf (not trivially empty)
+  // and already surfaced; only the wholesale disable was invisible.
+  'AWS::S3::Bucket': { PublicAccessBlockConfiguration: () => true },
 };
 
 // #660 item 3: the NESTED twin of MEANINGFUL_WHEN_OFF. The table above gates TOP-LEVEL

@@ -179,6 +179,25 @@ resource_gone() {
       printf '%s' "$err" | grep -q 'ResourceNotFoundException' && return 0
       return 1
       ;;
+    emr-serverless)
+      # arn:aws:emr-serverless:<region>:<acct>:/applications/<appId> — an EMR Serverless
+      # application DELETED via DeleteApplication moves to the terminal TERMINATED state
+      # and STAYS both in GetApplication and the tag index for a retention period
+      # (observed live 2026-07-14: two CLI-probe apps deleted minutes earlier still
+      # listed, keeping the sweep RED). TERMINATED means deleted — nothing deletable
+      # remains — so it counts as gone, as does a definitive ResourceNotFoundException.
+      # Any other state (CREATED/STARTED/STOPPED/…) keeps the ORPHAN RED (fail-safe).
+      id="${arn##*/}"
+      [ -n "$id" ] || return 1
+      local emrstate
+      if ! emrstate="$(aws emr-serverless get-application --application-id "$id" --region "$REGION" \
+        --query 'application.state' --output text 2>&1)"; then
+        printf '%s' "$emrstate" | grep -q 'ResourceNotFoundException' && return 0
+        return 1
+      fi
+      [ "$(printf '%s' "$emrstate" | tr -d '[:space:]')" = "TERMINATED" ] && return 0
+      return 1
+      ;;
     ec2)
       # arn:aws:ec2:<region>:<acct>:vpc-endpoint/vpce-<id> — the second type observed
       # lingering in the RGT index after deletion (2026-07-10): DescribeVpcEndpoints

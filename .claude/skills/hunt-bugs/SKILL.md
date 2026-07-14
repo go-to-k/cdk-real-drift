@@ -361,7 +361,14 @@ or the fixture can never converge to zero (#1623). Batch 6 (2026-07-14, barest4/
 hunt): **RUM AppMonitor `CustomEvents`** no-oped (silent keep), and **ServiceCatalog
 TagOption `Active`** surfaced a FOURTH flavor — the handler REJECTS the bare remove
 outright (`InvalidRequest: Active and new value cannot both be null`), a hard error
-instead of a silent no-op; both fixed by RSDP entries. Piggyback the convergence
+instead of a silent no-op; both fixed by RSDP entries. Batch 7 (2026-07-14,
+`revconv5-hunt` fixture): Lambda `RecursiveLoop` + `RuntimeManagementConfig`, HTTP-API
+`DisableExecuteApiEndpoint`, SES ConfigurationSet `SendingOptions`/`ReputationOptions`,
+KinesisVideo `DataRetentionInHours`, CloudTrail `EventSelectors`, and S3
+`PublicAccessBlockConfiguration` ALL converged via the bare `remove` (0-in-8 no-op —
+the class has streaks; keep probing anyway, batches 4-5 were ~1-in-2). The batch's
+real payoff was the DETECTION side — see the all-boolean-object off-flip gotcha.
+Piggyback the convergence
 probe on every NEW KNOWN_DEFAULTS fold a hunt ships (mutate → revert → re-read) —
 it is ~1-in-3 to need an RSDP entry, and the probe is nearly free while the stack
 is still up.
@@ -598,14 +605,31 @@ Recorded]` breakdown with `--verbose`.
   Sanitize before committing: replace every occurrence with AWS's documented example
   id `AKIAIOSFODNN7EXAMPLE` (consistent replace keeps the case self-consistent;
   corpus-replay only needs internal equality) and re-run `corpus-replay` (#1526 PR).
-- **An off-flip FN candidate is real ONLY for a STANDALONE-boolean pin — object/array
-  pins are not swallowed.** `isTrivialEmpty` drops a bare `false`/`""`/`[]`/`{}`; a
-  `true` pinned INSIDE an object/array whose siblings are non-trivial (`ReadWriteType:
+- **An off-flip FN candidate is real for a STANDALONE-boolean pin OR an
+  ALL-BOOLEAN-object pin — mixed object/array pins are not swallowed.** `isTrivialEmpty`
+  drops a bare `false`/`""`/`[]`/`{}` AND an object whose every leaf is trivial; a
+  `true` pinned INSIDE an object whose siblings are non-trivial (`ReadWriteType:
 "All"`, `SSEAlgorithm:"AES256"`, `VersionNumber:1`) survives the flip — the flipped
   shape breaks the pin equality and surfaces normally. An offline audit of "unpaired
   true-pins" (the #1530 hunt) overcounted 9→4 for exactly this reason: before filing,
   check the pinned `true` stands ALONE at its path, and drop pins on immutable-revision
-  resources (ECS TaskDefinition) that cannot drift out of band.
+  resources (ECS TaskDefinition) that cannot drift out of band. But the INVERSE trap
+  (hunt 2026-07-14): a whole-object pin with ONLY boolean leaves (`SendingOptions:
+{SendingEnabled: true}`, the 4-flag S3 `PublicAccessBlockConfiguration`) flips
+  ALL-FALSE when every toggle is disabled, and the all-false object IS trivially empty —
+  swallowed before the pin gate exactly like a standalone bool (the GuardDuty
+  `DataSources` shape, #1092). The class is mechanically enumerable: scan
+  `KNOWN_DEFAULTS` for object pins whose leaves are all booleans, then live-probe each
+  for (a) OOB mutability (AmazonMQ `EncryptionOptions` = create-only, S3 AccessPoint
+  PABC = no mutate API, VpcLattice `SharingConfig` = update API can't flip it,
+  EMRServerless monitoring = service rejects the all-false state — all EXCLUDED) and
+  (b) the off-state READ shape (all-false object = fixable via `MEANINGFUL_WHEN_OFF`;
+  ABSENT-from-read like a deleted S3 PAB config = the separate vanished-undeclared-
+  default limitation, not fixable by a pin gate). The 2026-07-14 sweep confirmed +
+  fixed S3 Bucket PABC (check stayed CLEAN while a bucket was opened to public
+  access — the most security-critical FN found to date), SES ConfigurationSet
+  SendingOptions/ReputationOptions (live end-to-end), and SES EmailIdentity
+  DkimAttributes/FeedbackAttributes (CC-read-shape proven).
 - **A corpus promotion can PIN a live FP as `expected` — eyeball declared-tier findings
   before promoting.** The #1507 hunt promoted three RDS cases whose `expected` carried
   the mixed-case-name declared FP (`CdkrdHunt-Mixed-CPG` vs `cdkrdhunt-mixed-cpg`), so
