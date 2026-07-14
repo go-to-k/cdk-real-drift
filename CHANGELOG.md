@@ -1,3 +1,10 @@
+## [0.18.15](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.14...v0.18.15) (2026-07-14)
+
+
+### Bug Fixes
+
+* **check,revert:** 2026-07-14 hunt — 4 revert no-ops + CompositeAlarm prop writer, ACM/DAX case FPs, Glue Iceberg / Lambda-compute CodeBuild / NLB-TG variant folds ([#1627](https://github.com/go-to-k/cdk-real-drift/issues/1627)) ([840730b](https://github.com/go-to-k/cdk-real-drift/commit/840730ba8cfad55db01004446224cb3e769fb176))
+
 ## [0.18.14](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.13...v0.18.14) (2026-07-14)
 
 
