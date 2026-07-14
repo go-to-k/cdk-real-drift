@@ -326,7 +326,14 @@ converge (both policies live-deleted), so the ECR gap is exactly the two
 scan/mutability scalars — prove per-property, not per-type. Also excluded from any
 in-run revert probe by AWS-side rate limits (not cdkrd bugs): DDB TTL (1 change/h),
 EFS ThroughputMode (1 change/24h); Kinesis stream-mode allows exactly 2 switches/24h
-— enough for one mutate + one revert, none left for a retry.
+— enough for one mutate + one revert, none left for a retry. Batch 4 (2026-07-14,
+`revconv3-hunt` fixture, #1613): **SQS `SqsManagedSseEnabled`** (its 4 scalar
+siblings converge — non-uniform WITHIN SQS again), **SFN `LoggingConfiguration`**,
+**ApiGateway RestApi `DisableExecuteApiEndpoint`**, **Cognito UserPoolClient
+`RefreshTokenValidity`** all no-oped; Athena WorkGroup `State`, DDB
+`DeletionProtectionEnabled`, Scheduler Schedule `State` converged via the bare
+`remove` — ~1-in-2 this round. Excluded as SERVER-SIDE IRREVERSIBLE (not a
+convergence probe): SSM Parameter `Tier` (AWS cannot downgrade Advanced→Standard).
 
 ### 5. Harvest the live read into the golden corpus (EVERY round — bug or not)
 
@@ -752,6 +759,41 @@ no-op` for the write-only RE-INCLUDE op every password-declaring resource carrie
   `could not be confirmed` on paths you never drifted — an unverifiable (readGap) path
   must never drive a "value persists" verdict, and fixtures that only assert
   `check --fail` exit codes ride right past this class.
+- **A declared+undeclared FP PAIR with the SAME value at sibling paths = a stored
+  KEY SYNONYM — canonicalize the declared side, after probing the echo via Cloud
+  Control.** GuardDuty stores a Filter's short condition keys as their long twins
+  (declared `Criterion.severity.Gte: 4` reads back `GreaterThanOrEqual: 4`), so one
+  declared short key produced BOTH a declared "removed" finding and an undeclared
+  "appeared" finding with equal values (#1612). The tell is that value-equal pair.
+  Probe the echo shape for free before fixing: `aws cloudcontrol create-resource`
+  with the short keys, `get-resource` back — the CC read echoed ONLY the long forms
+  (the raw `GetFilter` returns both, but cdkrd reads via CC). Fix = a declared-side
+  key canonicalization scoped to the criterion map (`canonicalizeGuardDutyCriterionKeys`).
+- **A curated per-name creation-status map re-breaks every time AWS launches an
+  OFF-by-default feature — that is its designed failure mode; the fix is one line.**
+  GuardDuty Detector `Features` folds via `GUARDDUTY_FEATURE_CREATION_STATUS`
+  (classify.ts), which errs toward VISIBILITY: a new opt-in protection AWS ships
+  DISABLED (AI_PROTECTION, 2026 — #1612, after #1485's AI_ANALYST) surfaces the whole
+  array as a first-run FP until its name is added. When a barest detector FPs on
+  `Features`, check that map FIRST — do not reach for value-independent (that was
+  reverted once already, #1092: it hid out-of-band disables forever).
+- **`CDKRD_CORPUS_DIR` exported around a whole verify-detect.sh records EVERY check
+  — the LAST (post-mutation) read wins.** A detect/revert script runs 3-4 checks;
+  the corpus case for a mutated resource then pins the MUTATED read, and a later
+  `measure-noise` sweep flags the mutated value as a bogus CANDIDATE default
+  (hit on Conv3PoolClient `RefreshTokenValidity: 60`, 2026-07-14). Scope the env to
+  the FIRST (clean) check line only — or, if the mutated case is worth keeping as a
+  detection pin, promote it under the existing `.drifted.json` naming so its intent
+  is explicit.
+- **A sweep-orphans.sh fix made in a WORKTREE does not take effect for
+  `bughunt-track.sh verify` — the tracker resolves the script at the MAIN tree
+  root** (`--git-common-dir`), so a phantom-orphan fix (a new `resource_gone`
+  arm) authored in the hunt worktree still fails verify against the unpatched
+  main copy, deadlocking the gate the fix exists to release (hit 2026-07-14 on
+  the VPN-family arms). Resolution: temp-copy the patched script over the main
+  checkout's, run `verify` + `clear`, then `git -C <main> checkout --
+tests/integration/sweep-orphans.sh` to restore main to HEAD — the committed
+  fix lands permanently at merge. Never force-clear instead.
 - **A clean result IS a result — but it must still leave an asset.** "6 common+rich
   stacks, zero FPs, detection+revert verified" is a legitimate, valuable outcome. Do
   NOT manufacture a fix to have something to show. The deliverable of a bug-free

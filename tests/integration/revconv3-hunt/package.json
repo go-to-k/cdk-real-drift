@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-integ-revconv3-hunt",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Revert-convergence probe batch 4: seven folded mutable surfaces, mutate -> detect -> revert -> live-value converge. Run via verify-detect.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module"
+}

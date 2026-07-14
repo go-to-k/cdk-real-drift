@@ -1,0 +1,165 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntTaskDef",
+    "resourceType": "AWS::ECS::TaskDefinition",
+    "physicalId": "arn:aws:ecs:us-east-1:111111111111:task-definition/CdkrdHunt0714Fargate-HuntTaskDef-g0RYq9G3lZTv:1",
+    "constructPath": "CdkrdHunt0714Fargate/HuntTaskDef",
+    "declared": {
+      "ContainerDefinitions": [
+        {
+          "Image": "public.ecr.aws/docker/library/busybox:stable",
+          "Name": "app"
+        }
+      ],
+      "Cpu": "256",
+      "Memory": "512",
+      "NetworkMode": "awsvpc",
+      "RequiresCompatibilities": ["FARGATE"],
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Volumes": [],
+    "InferenceAccelerators": [],
+    "Memory": "512",
+    "PlacementConstraints": [],
+    "ContainerDefinitions": [
+      {
+        "ExtraHosts": [],
+        "Secrets": [],
+        "VolumesFrom": [],
+        "Cpu": 0,
+        "EntryPoint": [],
+        "DnsServers": [],
+        "Image": "public.ecr.aws/docker/library/busybox:stable",
+        "Essential": true,
+        "ResourceRequirements": [],
+        "EnvironmentFiles": [],
+        "Name": "app",
+        "MountPoints": [],
+        "DependsOn": [],
+        "DockerLabels": {},
+        "PortMappings": [],
+        "DockerSecurityOptions": [],
+        "SystemControls": [],
+        "Command": [],
+        "DnsSearchDomains": [],
+        "Environment": [],
+        "Links": [],
+        "CredentialSpecs": [],
+        "Ulimits": []
+      }
+    ],
+    "Family": "CdkrdHunt0714Fargate-HuntTaskDef-g0RYq9G3lZTv",
+    "Cpu": "256",
+    "RequiresCompatibilities": ["FARGATE"],
+    "NetworkMode": "awsvpc",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "TaskDefinitionArn": "arn:aws:ecs:us-east-1:111111111111:task-definition/CdkrdHunt0714Fargate-HuntTaskDef-g0RYq9G3lZTv:1"
+  },
+  "schema": {
+    "readOnly": ["TaskDefinitionArn"],
+    "writeOnly": [],
+    "createOnly": [
+      "ContainerDefinitions",
+      "Cpu",
+      "EnableFaultInjection",
+      "EphemeralStorage",
+      "ExecutionRoleArn",
+      "Family",
+      "InferenceAccelerators",
+      "IpcMode",
+      "Memory",
+      "NetworkMode",
+      "PidMode",
+      "PlacementConstraints",
+      "ProxyConfiguration",
+      "RequiresCompatibilities",
+      "RuntimePlatform",
+      "TaskRoleArn",
+      "Volumes"
+    ],
+    "readOnlyPaths": ["TaskDefinitionArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "ContainerDefinitions",
+      "Cpu",
+      "EnableFaultInjection",
+      "EphemeralStorage",
+      "ExecutionRoleArn",
+      "Family",
+      "InferenceAccelerators",
+      "IpcMode",
+      "Memory",
+      "NetworkMode",
+      "PidMode",
+      "PlacementConstraints",
+      "ProxyConfiguration",
+      "RequiresCompatibilities",
+      "RuntimePlatform",
+      "TaskRoleArn",
+      "Volumes"
+    ],
+    "defaults": {},
+    "defaultPaths": {
+      "ContainerDefinitions.*.VersionConsistency": "enabled"
+    },
+    "unorderedScalarPaths": ["RequiresCompatibilities"],
+    "unorderedObjectArrayPaths": ["InferenceAccelerators", "PlacementConstraints"],
+    "freeFormMapPaths": [
+      "ContainerDefinitions.*.DockerLabels",
+      "ContainerDefinitions.*.FirelensConfiguration.Options",
+      "ContainerDefinitions.*.LogConfiguration.Options",
+      "Volumes.*.DockerVolumeConfiguration.DriverOpts",
+      "Volumes.*.DockerVolumeConfiguration.Labels"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "generated",
+      "logicalId": "HuntTaskDef",
+      "resourceType": "AWS::ECS::TaskDefinition",
+      "path": "Family",
+      "actual": "CdkrdHunt0714Fargate-HuntTaskDef-g0RYq9G3lZTv",
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:task-definition/CdkrdHunt0714Fargate-HuntTaskDef-g0RYq9G3lZTv:1",
+      "constructPath": "CdkrdHunt0714Fargate/HuntTaskDef"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntTaskDef",
+      "resourceType": "AWS::ECS::TaskDefinition",
+      "path": "ContainerDefinitions[app].Cpu",
+      "actual": 0,
+      "nested": true,
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:task-definition/CdkrdHunt0714Fargate-HuntTaskDef-g0RYq9G3lZTv:1",
+      "constructPath": "CdkrdHunt0714Fargate/HuntTaskDef"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntTaskDef",
+      "resourceType": "AWS::ECS::TaskDefinition",
+      "path": "ContainerDefinitions[app].Essential",
+      "actual": true,
+      "nested": true,
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:task-definition/CdkrdHunt0714Fargate-HuntTaskDef-g0RYq9G3lZTv:1",
+      "constructPath": "CdkrdHunt0714Fargate/HuntTaskDef"
+    }
+  ]
+}

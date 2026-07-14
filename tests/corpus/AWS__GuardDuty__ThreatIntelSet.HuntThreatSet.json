@@ -1,0 +1,78 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntThreatSet",
+    "resourceType": "AWS::GuardDuty::ThreatIntelSet",
+    "physicalId": "616df09218fa455dbba71777d409a05f",
+    "constructPath": "CdkrdHunt0714Gd/HuntThreatSet",
+    "declared": {
+      "Activate": true,
+      "DetectorId": "7d934291dde5406887fffdf094922448",
+      "Format": "TXT",
+      "Location": "https://s3.amazonaws.com/cdkrd-hunt0714-gd-111111111111/threatlist.txt",
+      "Name": "cdkrd-hunt0714-threatset",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Format": "TXT",
+    "DetectorId": "7d934291dde5406887fffdf094922448",
+    "Id": "616df09218fa455dbba71777d409a05f",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0714Gd",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntThreatSet",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0714Gd/a36563a0-7f53-11f1-b807-0e8c900acc83",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "Name": "cdkrd-hunt0714-threatset",
+    "Location": "https://s3.amazonaws.com/cdkrd-hunt0714-gd-111111111111/threatlist.txt"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": ["Activate"],
+    "createOnly": ["DetectorId", "Format"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": ["Activate"],
+    "createOnlyPaths": ["DetectorId", "Format"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "HuntThreatSet",
+      "resourceType": "AWS::GuardDuty::ThreatIntelSet",
+      "path": "Activate",
+      "note": "write-only — cannot be read back",
+      "writeOnly": true,
+      "physicalId": "616df09218fa455dbba71777d409a05f",
+      "constructPath": "CdkrdHunt0714Gd/HuntThreatSet"
+    }
+  ]
+}

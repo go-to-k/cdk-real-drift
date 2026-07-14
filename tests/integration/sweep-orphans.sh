@@ -245,6 +245,37 @@ resource_gone() {
           { [ "$nst" = "deleted" ] || [ "$nst" = "deleting" ] || [ "$nst" = "None" ]; } && return 0
           return 1
           ;;
+        *:vpn-gateway/vgw-*)
+          # Same terminal-state lag for the VPN family (2026-07-14 hunt cleanup, after a
+          # peer's #1607 VPN fixture): a deleted VPN gateway / connection / customer
+          # gateway stays visible in its describe with State "deleted" for a while AND in
+          # the tag index, false-flagging as ORPHAN and blocking an unrelated gate.
+          # deleted/deleting counts as gone; NotFound too. Any other state stays RED.
+          id="${arn##*/}"
+          local vgst
+          vgst="$(aws ec2 describe-vpn-gateways --vpn-gateway-ids "$id" --region "$REGION" \
+            --query 'VpnGateways[0].State' --output text 2>/dev/null)" || return 0
+          { [ "$vgst" = "deleted" ] || [ "$vgst" = "deleting" ] || [ "$vgst" = "None" ]; } && return 0
+          return 1
+          ;;
+        *:vpn-connection/vpn-*)
+          # VPN connection twin of the vpn-gateway arm above (2026-07-14).
+          id="${arn##*/}"
+          local vcst
+          vcst="$(aws ec2 describe-vpn-connections --vpn-connection-ids "$id" --region "$REGION" \
+            --query 'VpnConnections[0].State' --output text 2>/dev/null)" || return 0
+          { [ "$vcst" = "deleted" ] || [ "$vcst" = "deleting" ] || [ "$vcst" = "None" ]; } && return 0
+          return 1
+          ;;
+        *:customer-gateway/cgw-*)
+          # Customer gateway twin of the vpn-gateway arm above (2026-07-14).
+          id="${arn##*/}"
+          local cgst
+          cgst="$(aws ec2 describe-customer-gateways --customer-gateway-ids "$id" --region "$REGION" \
+            --query 'CustomerGateways[0].State' --output text 2>/dev/null)" || return 0
+          { [ "$cgst" = "deleted" ] || [ "$cgst" = "deleting" ] || [ "$cgst" = "None" ]; } && return 0
+          return 1
+          ;;
         *:transit-gateway/tgw-*)
           # Same terminal-state lag for a deleted TRANSIT GATEWAY itself (2026-07-13
           # follow-up: a TGW orphaned by an attachment-race delstack, then deleted, stayed

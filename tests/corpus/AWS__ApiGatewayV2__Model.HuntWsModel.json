@@ -1,0 +1,50 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntWsModel",
+    "resourceType": "AWS::ApiGatewayV2::Model",
+    "physicalId": "7hpyny",
+    "constructPath": "CdkrdHunt0714WsExt/HuntWsModel",
+    "declared": {
+      "ApiId": "kb3d1jkoqf",
+      "ContentType": "application/json",
+      "Name": "HuntModel",
+      "Schema": {
+        "$schema": "http://json-schema.org/draft-04/schema#",
+        "title": "HuntModel",
+        "type": "object"
+      }
+    }
+  },
+  "liveRaw": {
+    "ContentType": "application/json",
+    "Schema": {
+      "$schema": "http://json-schema.org/draft-04/schema#",
+      "title": "HuntModel",
+      "type": "object"
+    },
+    "ApiId": "kb3d1jkoqf",
+    "ModelId": "7hpyny",
+    "Name": "HuntModel"
+  },
+  "schema": {
+    "readOnly": ["ModelId"],
+    "writeOnly": [],
+    "createOnly": ["ApiId"],
+    "readOnlyPaths": ["ModelId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ApiId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

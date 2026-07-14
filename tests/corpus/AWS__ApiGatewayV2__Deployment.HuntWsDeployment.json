@@ -1,0 +1,36 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntWsDeployment",
+    "resourceType": "AWS::ApiGatewayV2::Deployment",
+    "physicalId": "e60xod",
+    "constructPath": "CdkrdHunt0714WsExt/HuntWsDeployment",
+    "declared": {
+      "ApiId": "kb3d1jkoqf"
+    }
+  },
+  "liveRaw": {
+    "DeploymentId": "e60xod",
+    "ApiId": "kb3d1jkoqf"
+  },
+  "schema": {
+    "readOnly": ["DeploymentId"],
+    "writeOnly": ["StageName"],
+    "createOnly": ["ApiId"],
+    "readOnlyPaths": ["DeploymentId"],
+    "writeOnlyPaths": ["StageName"],
+    "createOnlyPaths": ["ApiId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

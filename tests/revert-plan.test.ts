@@ -576,6 +576,73 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  // #1613 (revconv3 batch-4, live-proven 2026-07-14): four more omit-keeps-value handlers —
+  // each mutated out of band, reverted via a bare `remove` that reported success, and the
+  // convergence re-read caught the live value persisting. Each is now in
+  // REVERT_SET_DEFAULT_PATHS so revert writes the KNOWN_DEFAULTS default back explicitly.
+  it('#1613: SQS SqsManagedSseEnabled (SET-DEFAULT) -> add op writing the true default, not a no-op remove', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::SQS::Queue',
+      path: 'SqsManagedSseEnabled',
+      actual: false,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/SqsManagedSseEnabled',
+      value: true,
+      prior: false,
+    });
+  });
+
+  it('#1613: SFN LoggingConfiguration (SET-DEFAULT) -> add op writing the whole-object OFF default', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::StepFunctions::StateMachine',
+      path: 'LoggingConfiguration',
+      actual: { Level: 'ALL', IncludeExecutionData: true },
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/LoggingConfiguration',
+      value: { IncludeExecutionData: false, Level: 'OFF' },
+    });
+  });
+
+  it('#1613: ApiGateway RestApi DisableExecuteApiEndpoint (SET-DEFAULT) -> add op writing the false default', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::ApiGateway::RestApi',
+      path: 'DisableExecuteApiEndpoint',
+      actual: true,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/DisableExecuteApiEndpoint',
+      value: false,
+      prior: true,
+    });
+  });
+
+  it('#1613: Cognito UserPoolClient RefreshTokenValidity (SET-DEFAULT) -> add op writing the 30 default', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::Cognito::UserPoolClient',
+      path: 'RefreshTokenValidity',
+      actual: 60,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/RefreshTokenValidity',
+      value: 30,
+      prior: 60,
+    });
+  });
+
   // #1588: the remaining ModifyDBInstance revert-no-op twins of #1541 — same selective-modify
   // semantics (an omitted property keeps its existing value), so a bare `remove` revert of an
   // out-of-band, undeclared, KNOWN_DEFAULTS-folded change is a silent no-op. Each is now in
