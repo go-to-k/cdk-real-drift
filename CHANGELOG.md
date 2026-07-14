@@ -1,3 +1,10 @@
+## [0.20.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.20.0...v0.20.1) (2026-07-14)
+
+
+### Bug Fixes
+
+* **noise:** fold 17 live-found first-run defaults + 4 revert set-default no-ops (2026-07-15 hunt) ([#1644](https://github.com/go-to-k/cdk-real-drift/issues/1644)) ([1d95690](https://github.com/go-to-k/cdk-real-drift/commit/1d956908d9071173c1c071447ebf139ab5f76715))
+
 # [0.20.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.19.2...v0.20.0) (2026-07-14)
 
 
