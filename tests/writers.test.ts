@@ -4242,6 +4242,8 @@ describe('ApiGateway RestApi Policy writer (JSON-string prop, issue #677)', () =
 // worked — live-found by the revconv4-hunt batch-5 probe).
 describe('CodeBuild Project writer (selective UpdateProject, #1623)', () => {
   const NAME = 'cdkrd-1623-cb';
+  // `as const` keeps the enum-typed fields (source.type / environment.type / computeType)
+  // literal so the mock satisfies the SDK's Project union types.
   const cbProject = {
     name: NAME,
     serviceRole: 'arn:aws:iam::123456789012:role/cb',
@@ -4254,7 +4256,7 @@ describe('CodeBuild Project writer (selective UpdateProject, #1623)', () => {
       computeType: 'BUILD_GENERAL1_SMALL',
       image: 'aws/codebuild/standard:7.0',
     },
-  };
+  } as const;
   const tOp = (path: string, value: unknown): PatchOp => ({
     op: 'add',
     path,
@@ -4317,7 +4319,8 @@ describe('CodeBuild Project writer (selective UpdateProject, #1623)', () => {
 // read-only until now).
 describe('MediaConvert Queue writer (UpdateQueue, #1623)', () => {
   const NAME = 'cdkrd-1623-mcq';
-  const liveQueue = { Name: NAME, Status: 'PAUSED', PricingPlan: 'ON_DEMAND' };
+  // `as const` keeps Status/PricingPlan literal so the mock satisfies the SDK's Queue unions.
+  const liveQueue = { Name: NAME, Status: 'PAUSED', PricingPlan: 'ON_DEMAND' } as const;
 
   it('resolveSdkWriter routes the whole type to the SDK writer', () => {
     expect(SDK_WRITERS['AWS::MediaConvert::Queue']).toBeDefined();
