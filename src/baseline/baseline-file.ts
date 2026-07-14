@@ -28,6 +28,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { deepEqual } from '../diff/drift-calculator.js';
 import { FREE_FORM_MAP_PARENTS, stripCcApiAwsManagedFields } from '../normalize/cc-api-strip.js';
+import { KNOWN_DEFAULTS } from '../normalize/noise.js';
 import { canonicalizeBaselineForCompare, canonicalizeForCompare } from '../normalize/pipeline.js';
 import {
   isRedactedHashSentinel,
@@ -44,6 +45,37 @@ export interface RecordedEntry {
   path: string;
   value: unknown;
 }
+
+// #1637: a top-level path OBSERVED at its AWS default at record time — a RecordedEntry
+// minus the value (the value IS the KNOWN_DEFAULTS pin, so storing it would only drift
+// from the table). Only paths in OBSERVED_DEFAULT_TRACKED_PATHS are captured.
+export interface ObservedDefaultEntry {
+  logicalId: string;
+  resourceType: string;
+  path: string;
+}
+
+// #1637: the CURATED (type -> top-level paths) set whose atDefault observation is
+// persisted into the baseline so a later out-of-band DELETION of the whole value (the
+// property VANISHES from the Cloud Control read — e.g. `aws s3api
+// delete-public-access-block`) surfaces as drift. Every other detection mechanism keys
+// on a live VALUE being present (the KNOWN_DEFAULTS equality gate, MEANINGFUL_WHEN_OFF
+// #1635, "appeared since record"), so a vanished unrecorded default is otherwise
+// invisible. Curated, NOT blanket: Cloud Control read shapes fluctuate across handler
+// versions (properties appear/disappear with no user action — the second-deploy-echo
+// hunts proved this), so tracking every atDefault path would false-flag handler churn
+// as "vanished". Add a path only when (a) its presence is stable on a clean resource
+// and (b) its deletion is a meaningful out-of-band act. Each entry's restore value for
+// revert is its KNOWN_DEFAULTS pin.
+export const OBSERVED_DEFAULT_TRACKED_PATHS: Record<string, readonly string[]> = {
+  // Live-proven (#1637, hunt 2026-07-14): `delete-public-access-block` removes the
+  // whole property from the CC read, silently opening the bucket to public
+  // ACLs/policies. A fresh bucket ALWAYS reads the all-true default (the KNOWN_DEFAULTS
+  // pin, S3's new-bucket default since 2023-04), so the observation is stable; a LEGACY
+  // bucket that never had a PAB config reads ABSENT at record time too — nothing is
+  // observed, so it can never false-flag.
+  'AWS::S3::Bucket': ['PublicAccessBlockConfiguration'],
+};
 
 export interface BaselineFile {
   schemaVersion: 1 | 2; // v1 files load fine; completeResources is absent (= nothing complete)
@@ -81,6 +113,13 @@ export interface BaselineFile {
   // matches and detection is fully preserved. Additive & OPTIONAL: old committed baselines
   // have none and keep today's behavior until the next `record` stamps it.
   recordedSourceFingerprints?: Record<string, string>;
+  // #1637: top-level paths observed AT their AWS default at record time (curated —
+  // OBSERVED_DEFAULT_TRACKED_PATHS only). An observed path with NO current
+  // undeclared-side finding on a positively-READ resource means the whole value was
+  // DELETED out of band (it vanished from the live read) — surfaced as drift with the
+  // KNOWN_DEFAULTS pin as the restore value. Additive & OPTIONAL: old committed
+  // baselines have none and keep today's behavior until the next `record` stamps it.
+  observedDefaults?: ObservedDefaultEntry[];
 }
 
 // #1048: the known top-level keys of a baseline file (the `BaselineFile` fields). Used to
@@ -97,6 +136,7 @@ const KNOWN_BASELINE_KEYS = new Set<string>([
   'completeResources',
   'recordedPhysicalIds',
   'recordedSourceFingerprints',
+  'observedDefaults',
 ]);
 // #1048: the known keys of a `recorded` array element. A typo'd key (`Value`, `vaule`) whose
 // intended `value` is then ABSENT reads as recorded `undefined` — a confirmed-drift false
@@ -255,6 +295,7 @@ export async function loadBaseline(
   validateCompleteResources(parsed.completeResources, path);
   validateRecordedPhysicalIds(parsed.recordedPhysicalIds, path);
   validateRecordedSourceFingerprints(parsed.recordedSourceFingerprints, path);
+  validateObservedDefaults(parsed.observedDefaults, path);
   return parsed;
 }
 
@@ -369,6 +410,35 @@ function validateRecordedSourceFingerprints(value: unknown, path: string): void 
     if (typeof v !== 'string') throw new Error(`${at}: "${key}" must map to a string`);
 }
 
+/**
+ * #1637: validate `observedDefaults` (optional). When present it must be an array of
+ * { logicalId, resourceType, path } string triples with no unknown keys — the same
+ * loud-vs-silent principle as validateRecordedEntry (a typo'd key silently disables the
+ * vanish detection this field exists to drive). No `value` field by design: the restore
+ * value is the KNOWN_DEFAULTS pin.
+ */
+function validateObservedDefaults(value: unknown, path: string): void {
+  if (value === undefined) return;
+  const at = `baseline file ${path}: \`observedDefaults\``;
+  if (!Array.isArray(value))
+    throw new Error(`${at} must be an array of { logicalId, resourceType, path }`);
+  value.forEach((entry, i) => {
+    if (typeof entry !== 'object' || entry === null || Array.isArray(entry))
+      throw new Error(`${at}[${i}] must be an object { logicalId, resourceType, path }`);
+    const obj = entry as Record<string, unknown>;
+    for (const k of ['logicalId', 'resourceType', 'path'] as const)
+      if (typeof obj[k] !== 'string')
+        throw new Error(`${at}[${i}]: "${k}" is required and must be a string`);
+    const unknown = Object.keys(obj).filter(
+      (k) => k !== 'logicalId' && k !== 'resourceType' && k !== 'path'
+    );
+    if (unknown.length > 0)
+      throw new Error(
+        `${at}[${i}]: unknown key(s) ${unknown.map((k) => `"${k}"`).join(', ')} — known keys: "logicalId", "resourceType", "path"`
+      );
+  });
+}
+
 /** Deterministic order for `recorded` entries: lexicographic by (logicalId, path).
  *  The single point where order is imposed — read/compare logic is order-independent,
  *  so this only affects the bytes on disk. Without it the entries inherit findings
@@ -447,6 +517,16 @@ export async function writeBaselineFile(b: BaselineFile): Promise<string> {
           recordedSourceFingerprints: sortedSourceFingerprints(
             b.recordedSourceFingerprints,
             b.recorded
+          ),
+        }
+      : {}),
+    // #1637: same byte-stability for the observed-default paths (sorted like `recorded`).
+    ...(b.observedDefaults && b.observedDefaults.length > 0
+      ? {
+          observedDefaults: [...b.observedDefaults].sort(
+            (a, c) =>
+              (a.logicalId < c.logicalId ? -1 : a.logicalId > c.logicalId ? 1 : 0) ||
+              (a.path < c.path ? -1 : a.path > c.path ? 1 : 0)
           ),
         }
       : {}),
@@ -590,8 +670,45 @@ export async function writeBaseline(
     // BaselineFile type). Carries the previous fingerprint for entries carried forward
     // unchanged, symmetric with buildRecordedPhysicalIds' prior-id fallback.
     ...buildRecordedSourceFingerprints(recorded, opts.declaredByLogical, opts.previous),
+    // #1637: persist the curated paths observed AT their AWS default this run, so a later
+    // out-of-band DELETION of the whole value (it vanishes from the live read) surfaces.
+    ...buildObservedDefaults(findings, opts.previous),
   });
   return { path, count: recorded.length };
+}
+
+/**
+ * #1637: build the `observedDefaults` entries for this record run. Seeds from THIS run's
+ * `atDefault` findings on the curated OBSERVED_DEFAULT_TRACKED_PATHS, then carries forward
+ * the previous baseline's entries for resources this run could NOT observe (a `skipped`
+ * finding — unread, symmetric with carryForwardUnreadable), so a transient read failure
+ * never silently drops the watch. A resource READ this run whose tracked value is ABSENT
+ * (already vanished, or a legacy resource that never had it) is deliberately NOT observed —
+ * re-recording ACCEPTS the current state, exactly like the recorded-value flow. Returns
+ * `{}` (spread to nothing) when empty so old-shaped baselines stay byte-identical.
+ */
+export function buildObservedDefaults(
+  findings: Finding[],
+  previous: BaselineFile | undefined
+): { observedDefaults?: ObservedDefaultEntry[] } {
+  const out: ObservedDefaultEntry[] = [];
+  const seen = new Set<string>();
+  for (const f of findings) {
+    if (f.tier !== 'atDefault') continue;
+    if (!OBSERVED_DEFAULT_TRACKED_PATHS[f.resourceType]?.includes(f.path)) continue;
+    const key = `${f.logicalId}\0${f.path}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ logicalId: f.logicalId, resourceType: f.resourceType, path: f.path });
+  }
+  const skipped = new Set(findings.filter((f) => f.tier === 'skipped').map((f) => f.logicalId));
+  for (const o of previous?.observedDefaults ?? []) {
+    const key = `${o.logicalId}\0${o.path}`;
+    if (seen.has(key) || !skipped.has(o.logicalId)) continue;
+    seen.add(key);
+    out.push(o);
+  }
+  return out.length > 0 ? { observedDefaults: out } : {};
 }
 
 /**
@@ -1778,6 +1895,54 @@ export function applyBaseline(
       desired: a.value,
       actual: undefined,
       note: 'baseline value removed since record',
+    });
+  }
+  // #1637: observed-default VANISH pass — the third synthesis family (after "removed since
+  // record" for recorded values and "recorded added resource removed"). An observedDefaults
+  // entry records that a curated top-level path READ AT ITS AWS DEFAULT at record time; if
+  // this run the resource was positively READ yet the path yields NO undeclared-side finding
+  // at all, the whole value was DELETED out of band (it vanished from the live read — e.g.
+  // `aws s3api delete-public-access-block`). Every guard mirrors the recorded-entry loop
+  // above, fail-safe toward silence: an unread / gone / replaced / re-typed / declared /
+  // read-gapped resource never fires. The restore value is the KNOWN_DEFAULTS pin (what was
+  // observed, by construction), so `revert` re-adds it via the existing
+  // actual-undefined + desired branch in revert/plan.ts.
+  const readGapLogical = new Set(
+    findings.filter((f) => f.tier === 'readGap').map((f) => f.logicalId)
+  );
+  for (const o of baseline.observedDefaults ?? []) {
+    if (currentPaths.has(`${o.logicalId}.${o.path}`)) continue; // value still present -> classify owns it
+    if (
+      recorded.some(
+        (a) => a.logicalId === o.logicalId && a.path === o.path && a.resourceType === o.resourceType
+      )
+    )
+      continue; // a recorded entry owns the path (its own removed-since-record loop covers it)
+    if (skippedLogical.has(o.logicalId)) continue; // unread this run -> not "vanished"
+    if (deletedLogical.has(o.logicalId)) continue; // whole resource gone -> `deleted` subsumes
+    if (!readParentLogical.has(o.logicalId)) continue; // no POSITIVE read proof -> fail-safe silence
+    if (readGapLogical.has(o.logicalId)) continue; // part of the live model unread -> may be behind the gap
+    if (isTypeVoid(o)) continue; // logicalId reused for a different type -> stale observation
+    if (replacedLogical.has(o.logicalId)) continue; // replaced -> fresh defaults; next record re-observes
+    if (currentLogicalIds !== undefined && !currentLogicalIds.has(o.logicalId)) continue; // removed from template
+    if (underDeclaredDrift(o.logicalId, o.path)) continue; // subsumed by parent declared drift
+    if (declaredPathIsPromoted(opts.declaredByLogical?.get(o.logicalId), o.path)) continue; // declared now -> declared tier owns it
+    kept.push({
+      tier: 'undeclared',
+      logicalId: o.logicalId,
+      resourceType: o.resourceType,
+      ...(opts.constructPathByLogical?.get(o.logicalId) !== undefined && {
+        constructPath: opts.constructPathByLogical.get(o.logicalId),
+      }),
+      ...(opts.physicalIdByLogical?.get(o.logicalId) !== undefined && {
+        physicalId: opts.physicalIdByLogical.get(o.logicalId),
+      }),
+      path: o.path,
+      // the restore value for revert: the default that was observed at record time. A pin
+      // missing from today's KNOWN_DEFAULTS (table refactor) degrades to detect-only.
+      desired: KNOWN_DEFAULTS[o.resourceType]?.[o.path],
+      actual: undefined,
+      note: 'observed default deleted since record (the whole value vanished from the live read)',
     });
   }
   if (promotedStale.length > 0) opts.warn?.(formatPromotedStaleNote(promotedStale));
