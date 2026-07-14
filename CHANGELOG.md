@@ -1,3 +1,10 @@
+## [0.18.10](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.9...v0.18.10) (2026-07-14)
+
+
+### Bug Fixes
+
+* **check,revert:** fold EFS One Zone backup + Firehose HTTP-endpoint first-run FPs and converge ECR ImageScanningConfiguration revert ([#1600](https://github.com/go-to-k/cdk-real-drift/issues/1600)) ([b3edece](https://github.com/go-to-k/cdk-real-drift/commit/b3edece171d266cfbfb098ceed8811b1277fafcb))
+
 ## [0.18.9](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.8...v0.18.9) (2026-07-14)
 
 
