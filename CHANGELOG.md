@@ -1,3 +1,10 @@
+## [0.18.11](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.10...v0.18.11) (2026-07-14)
+
+
+### Bug Fixes
+
+* **check:** shape-gated fold for barest VPN tunnel options + OpenSearch dedicated-master count default ([#1607](https://github.com/go-to-k/cdk-real-drift/issues/1607)) ([47d606e](https://github.com/go-to-k/cdk-real-drift/commit/47d606e3c287585059c91e5956320643549110f5))
+
 ## [0.18.10](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.9...v0.18.10) (2026-07-14)
 
 
