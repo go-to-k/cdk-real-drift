@@ -1,3 +1,10 @@
+## [0.18.13](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.12...v0.18.13) (2026-07-14)
+
+
+### Bug Fixes
+
+* **check,revert:** fold ESM/CodePipeline/Fargate/GuardDuty first-run FPs, strip ESM husk, converge 4 no-op reverts ([#1614](https://github.com/go-to-k/cdk-real-drift/issues/1614)) ([2c8cead](https://github.com/go-to-k/cdk-real-drift/commit/2c8cead2ca4a7b194315cf6d0d2f0a869aa8b288))
+
 ## [0.18.12](https://github.com/go-to-k/cdk-real-drift/compare/v0.18.11...v0.18.12) (2026-07-14)
 
 
