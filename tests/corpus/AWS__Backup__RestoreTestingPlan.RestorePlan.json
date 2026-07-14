@@ -1,0 +1,109 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "RestorePlan",
+    "resourceType": "AWS::Backup::RestoreTestingPlan",
+    "physicalId": "cdkrd_hunt_0715_rtp",
+    "constructPath": "CdkrdHunt0715MissA/RestorePlan",
+    "declared": {
+      "RecoveryPointSelection": {
+        "Algorithm": "LATEST_WITHIN_WINDOW",
+        "IncludeVaults": ["*"],
+        "RecoveryPointTypes": ["SNAPSHOT"]
+      },
+      "RestoreTestingPlanName": "cdkrd_hunt_0715_rtp",
+      "ScheduleExpression": "cron(0 5 ? * MON *)",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "ScheduleExpression": "cron(0 5 ? * MON *)",
+    "StartWindowHours": 24,
+    "RecoveryPointSelection": {
+      "SelectionWindowDays": 30,
+      "RecoveryPointTypes": ["SNAPSHOT"],
+      "IncludeVaults": ["*"],
+      "ExcludeVaults": [],
+      "Algorithm": "LATEST_WITHIN_WINDOW"
+    },
+    "RestoreTestingPlanArn": "arn:aws:backup:us-east-1:111111111111:restore-testing-plan:cdkrd_hunt_0715_rtp-6f9fda9d-03d8-4270-b95e-64a353444ae4",
+    "RestoreTestingPlanName": "cdkrd_hunt_0715_rtp",
+    "ScheduleExpressionTimezone": "Etc/UTC",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0715MissA/a54a54d0-7f96-11f1-868c-1252f8d7fcb9",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "RestorePlan",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "CdkrdHunt0715MissA",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["RestoreTestingPlanArn"],
+    "writeOnly": [],
+    "createOnly": ["RestoreTestingPlanName"],
+    "readOnlyPaths": ["RestoreTestingPlanArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["RestoreTestingPlanName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [
+      "RecoveryPointSelection.ExcludeVaults",
+      "RecoveryPointSelection.IncludeVaults",
+      "RecoveryPointSelection.RecoveryPointTypes"
+    ],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "RestorePlan",
+      "resourceType": "AWS::Backup::RestoreTestingPlan",
+      "path": "StartWindowHours",
+      "actual": 24,
+      "physicalId": "cdkrd_hunt_0715_rtp",
+      "constructPath": "CdkrdHunt0715MissA/RestorePlan"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "RestorePlan",
+      "resourceType": "AWS::Backup::RestoreTestingPlan",
+      "path": "ScheduleExpressionTimezone",
+      "actual": "Etc/UTC",
+      "physicalId": "cdkrd_hunt_0715_rtp",
+      "constructPath": "CdkrdHunt0715MissA/RestorePlan"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "RestorePlan",
+      "resourceType": "AWS::Backup::RestoreTestingPlan",
+      "path": "RecoveryPointSelection.SelectionWindowDays",
+      "actual": 30,
+      "nested": true,
+      "physicalId": "cdkrd_hunt_0715_rtp",
+      "constructPath": "CdkrdHunt0715MissA/RestorePlan"
+    }
+  ]
+}

@@ -368,6 +368,13 @@ KinesisVideo `DataRetentionInHours`, CloudTrail `EventSelectors`, and S3
 `PublicAccessBlockConfiguration` ALL converged via the bare `remove` (0-in-8 no-op —
 the class has streaks; keep probing anyway, batches 4-5 were ~1-in-2). The batch's
 real payoff was the DETECTION side — see the all-boolean-object off-flip gotcha.
+Batch 8 (2026-07-15, misspack/lattice2/attach2 hunt, probed as piggybacks on that
+hunt's NEW folds rather than a dedicated fixture): **VpcLattice ResourceConfiguration
+`AllowAssociationToSharableServiceNetwork`**, **Backup RestoreTestingPlan
+`StartWindowHours` AND `ScheduleExpressionTimezone`** (same handler, both proven
+individually), and **EC2 TransitGatewayAttachment `Options`** ALL no-oped — 4-in-4
+for this batch's new folds (streaks run hot too); every one converged via an explicit
+CC `add` patch → plain RSDP entries (#1639/#1640/#1642).
 Piggyback the convergence
 probe on every NEW KNOWN_DEFAULTS fold a hunt ships (mutate → revert → re-read) —
 it is ~1-in-3 to need an RSDP entry, and the probe is nearly free while the stack
@@ -849,6 +856,25 @@ no-op` for the write-only RE-INCLUDE op every password-declaring resource carrie
   checkout's, run `verify` + `clear`, then `git -C <main> checkout --
 tests/integration/sweep-orphans.sh` to restore main to HEAD — the committed
   fix lands permanently at merge. Never force-clear instead.
+- **The uncovered-type well is nearly dry — most remaining corpus-missing types are
+  dead, closed, or expensive, so audit ALIVENESS before building a fixture.** The
+  2026-07-15 sweep enumerated every corpus-missing type: the bulk are EOL/closed to
+  new customers (QLDB, CodeCommit, MediaStore, Evidently, Pinpoint, Timestream
+  LiveAnalytics, **S3 Object Lambda** — live create rejects with "available only to
+  existing customers", determined the hard way via a rolled-back deploy), account
+  singletons unsafe to touch (Macie/Inspector/Detective/SecurityLake), or
+  cost-prohibitive (ACMPCA $400/mo, FSx, EKS nodegroups, MWAA). The surviving cheap
+  tail (EMR SecurityConfiguration, SageMaker Pipeline/ModelPackageGroup, Transfer
+  Workflow, Location APIKey, SES DedicatedIpPool, XRay ResourcePolicy, Backup
+  RestoreTestingPlan, VpcLattice AuthPolicy/ALS/ResourceGateway/ResourceConfiguration/
+  SNVpcAssociation, TGW Attachment, SES CSED) was deployed by `misspack-hunt` /
+  `lattice2-hunt` / `attach2-hunt` — future hunts should pivot to variant/echo/
+  attachment/notation angles rather than re-mining the missing-type list. Also
+  determined there: same-account Oam::Link is REJECTED ("Cannot create a link to a
+  sink in the same account" — cross-account only, unprobeable solo), and a
+  lowercase-only-name service (VPC Lattice) mints its CFn generated name LOWERCASED
+  (`cdkrdhunt0715lattice-sn-<random>`), which the exact-case isCfnGeneratedName
+  branches missed until #1639.
 - **A clean result IS a result — but it must still leave an asset.** "6 common+rich
   stacks, zero FPs, detection+revert verified" is a legitimate, valuable outcome. Do
   NOT manufacture a fix to have something to show. The deliverable of a bug-free

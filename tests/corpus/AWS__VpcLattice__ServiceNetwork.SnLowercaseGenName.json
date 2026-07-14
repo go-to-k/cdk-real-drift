@@ -1,0 +1,100 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Sn",
+    "resourceType": "AWS::VpcLattice::ServiceNetwork",
+    "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:servicenetwork/sn-035847d35c755a015",
+    "constructPath": "CdkrdHunt0715Lattice/Sn",
+    "declared": {
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "LastUpdatedAt": "2026-07-14T15:05:57.150Z",
+    "SharingConfig": {
+      "enabled": true
+    },
+    "CreatedAt": "2026-07-14T15:05:57.150Z",
+    "Id": "sn-035847d35c755a015",
+    "AuthType": "NONE",
+    "Arn": "arn:aws:vpc-lattice:us-east-1:111111111111:servicenetwork/sn-035847d35c755a015",
+    "Tags": [
+      {
+        "Value": "Sn",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      },
+      {
+        "Value": "CdkrdHunt0715Lattice",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0715Lattice/7d0d3bf0-7f95-11f1-8193-12502256672f",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ],
+    "Name": "cdkrdhunt0715lattice-sn-f6xaf7zc2alb"
+  },
+  "schema": {
+    "readOnly": ["Arn", "CreatedAt", "Id", "LastUpdatedAt"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn", "CreatedAt", "Id", "LastUpdatedAt"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {
+      "AuthType": "NONE"
+    },
+    "defaultPaths": {
+      "AuthType": "NONE"
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Sn",
+      "resourceType": "AWS::VpcLattice::ServiceNetwork",
+      "path": "SharingConfig",
+      "actual": {
+        "enabled": true
+      },
+      "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:servicenetwork/sn-035847d35c755a015",
+      "constructPath": "CdkrdHunt0715Lattice/Sn"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Sn",
+      "resourceType": "AWS::VpcLattice::ServiceNetwork",
+      "path": "AuthType",
+      "actual": "NONE",
+      "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:servicenetwork/sn-035847d35c755a015",
+      "constructPath": "CdkrdHunt0715Lattice/Sn"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "Sn",
+      "resourceType": "AWS::VpcLattice::ServiceNetwork",
+      "path": "Name",
+      "actual": "cdkrdhunt0715lattice-sn-f6xaf7zc2alb",
+      "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:servicenetwork/sn-035847d35c755a015",
+      "constructPath": "CdkrdHunt0715Lattice/Sn"
+    }
+  ]
+}

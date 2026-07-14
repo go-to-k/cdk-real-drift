@@ -1,0 +1,37 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "XrayPolicy",
+    "resourceType": "AWS::XRay::ResourcePolicy",
+    "physicalId": "cdkrd-hunt-0715-xray",
+    "constructPath": "CdkrdHunt0715MissA/XrayPolicy",
+    "declared": {
+      "PolicyDocument": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"sns.amazonaws.com\"},\"Action\":[\"xray:PutTraceSegments\",\"xray:GetSamplingRules\"],\"Resource\":\"*\"}]}",
+      "PolicyName": "cdkrd-hunt-0715-xray"
+    }
+  },
+  "liveRaw": {
+    "PolicyName": "cdkrd-hunt-0715-xray",
+    "PolicyDocument": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"sns.amazonaws.com\"},\"Action\":[\"xray:PutTraceSegments\",\"xray:GetSamplingRules\"],\"Resource\":\"*\"}]}"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": ["BypassPolicyLockoutCheck"],
+    "createOnly": ["PolicyName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": ["BypassPolicyLockoutCheck"],
+    "createOnlyPaths": ["PolicyName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

@@ -1,0 +1,118 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SnVpcAssoc",
+    "resourceType": "AWS::VpcLattice::ServiceNetworkVpcAssociation",
+    "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:servicenetworkvpcassociation/snva-03c8bb5871ce7f536",
+    "constructPath": "CdkrdHunt0715Lattice/SnVpcAssoc",
+    "declared": {
+      "ServiceNetworkIdentifier": "arn:aws:vpc-lattice:us-east-1:111111111111:servicenetwork/sn-035847d35c755a015",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "VpcIdentifier": "vpc-0d262ec8c83e7881e"
+    }
+  },
+  "liveRaw": {
+    "Status": "ACTIVE",
+    "PrivateDnsEnabled": false,
+    "VpcId": "vpc-0d262ec8c83e7881e",
+    "ServiceNetworkId": "sn-035847d35c755a015",
+    "DnsOptions": {
+      "PrivateDnsSpecifiedDomains": []
+    },
+    "CreatedAt": "2026-07-14T15:06:11.210Z",
+    "ServiceNetworkName": "cdkrdhunt0715lattice-sn-f6xaf7zc2alb",
+    "Id": "snva-03c8bb5871ce7f536",
+    "Arn": "arn:aws:vpc-lattice:us-east-1:111111111111:servicenetworkvpcassociation/snva-03c8bb5871ce7f536",
+    "SecurityGroupIds": [],
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      },
+      {
+        "Value": "SnVpcAssoc",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "CdkrdHunt0715Lattice",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0715Lattice/7d0d3bf0-7f95-11f1-8193-12502256672f",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ],
+    "ServiceNetworkArn": "arn:aws:vpc-lattice:us-east-1:111111111111:servicenetwork/sn-035847d35c755a015"
+  },
+  "schema": {
+    "readOnly": [
+      "Arn",
+      "CreatedAt",
+      "Id",
+      "ServiceNetworkArn",
+      "ServiceNetworkId",
+      "ServiceNetworkName",
+      "Status",
+      "VpcId"
+    ],
+    "writeOnly": ["ServiceNetworkIdentifier", "VpcIdentifier"],
+    "createOnly": ["DnsOptions", "PrivateDnsEnabled", "ServiceNetworkIdentifier", "VpcIdentifier"],
+    "readOnlyPaths": [
+      "Arn",
+      "CreatedAt",
+      "Id",
+      "ServiceNetworkArn",
+      "ServiceNetworkId",
+      "ServiceNetworkName",
+      "Status",
+      "VpcId"
+    ],
+    "writeOnlyPaths": ["ServiceNetworkIdentifier", "VpcIdentifier"],
+    "createOnlyPaths": [
+      "DnsOptions",
+      "DnsOptions.PrivateDnsPreference",
+      "DnsOptions.PrivateDnsSpecifiedDomains",
+      "PrivateDnsEnabled",
+      "ServiceNetworkIdentifier",
+      "VpcIdentifier"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["DnsOptions.PrivateDnsSpecifiedDomains", "SecurityGroupIds"],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "SnVpcAssoc",
+      "resourceType": "AWS::VpcLattice::ServiceNetworkVpcAssociation",
+      "path": "ServiceNetworkIdentifier",
+      "note": "write-only — cannot be read back",
+      "writeOnly": true,
+      "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:servicenetworkvpcassociation/snva-03c8bb5871ce7f536",
+      "constructPath": "CdkrdHunt0715Lattice/SnVpcAssoc"
+    },
+    {
+      "tier": "readGap",
+      "logicalId": "SnVpcAssoc",
+      "resourceType": "AWS::VpcLattice::ServiceNetworkVpcAssociation",
+      "path": "VpcIdentifier",
+      "note": "write-only — cannot be read back",
+      "writeOnly": true,
+      "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:servicenetworkvpcassociation/snva-03c8bb5871ce7f536",
+      "constructPath": "CdkrdHunt0715Lattice/SnVpcAssoc"
+    }
+  ]
+}

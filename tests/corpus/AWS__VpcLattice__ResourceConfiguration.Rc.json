@@ -1,0 +1,102 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Rc",
+    "resourceType": "AWS::VpcLattice::ResourceConfiguration",
+    "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:resourceconfiguration/rcfg-03ff8edffe8ef9ec1",
+    "constructPath": "CdkrdHunt0715Lattice/Rc",
+    "declared": {
+      "Name": "cdkrd-hunt-0715-rc",
+      "PortRanges": ["80"],
+      "ProtocolType": "TCP",
+      "ResourceConfigurationDefinition": {
+        "IpResource": "10.0.0.10"
+      },
+      "ResourceConfigurationType": "SINGLE",
+      "ResourceGatewayId": "rgw-062fc1eeaf119a6f6",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "AllowAssociationToSharableServiceNetwork": true,
+    "ProtocolType": "TCP",
+    "ResourceConfigurationType": "SINGLE",
+    "PortRanges": ["80"],
+    "ResourceConfigurationDefinition": {
+      "IpResource": "10.0.0.10"
+    },
+    "Id": "rcfg-03ff8edffe8ef9ec1",
+    "ResourceGatewayId": "rgw-062fc1eeaf119a6f6",
+    "Arn": "arn:aws:vpc-lattice:us-east-1:111111111111:resourceconfiguration/rcfg-03ff8edffe8ef9ec1",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      },
+      {
+        "Value": "CdkrdHunt0715Lattice",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0715Lattice/7d0d3bf0-7f95-11f1-8193-12502256672f",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "Rc",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "Name": "cdkrd-hunt-0715-rc"
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": ["ResourceConfigurationAuthType", "ResourceConfigurationGroupId"],
+    "createOnly": [
+      "CustomDomainName",
+      "DomainVerificationId",
+      "GroupDomain",
+      "ProtocolType",
+      "ResourceConfigurationAuthType",
+      "ResourceConfigurationType",
+      "ResourceGatewayId"
+    ],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": ["ResourceConfigurationAuthType", "ResourceConfigurationGroupId"],
+    "createOnlyPaths": [
+      "CustomDomainName",
+      "DomainVerificationId",
+      "GroupDomain",
+      "ProtocolType",
+      "ResourceConfigurationAuthType",
+      "ResourceConfigurationType",
+      "ResourceGatewayId"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["PortRanges"],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Rc",
+      "resourceType": "AWS::VpcLattice::ResourceConfiguration",
+      "path": "AllowAssociationToSharableServiceNetwork",
+      "actual": true,
+      "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:resourceconfiguration/rcfg-03ff8edffe8ef9ec1",
+      "constructPath": "CdkrdHunt0715Lattice/Rc"
+    }
+  ]
+}

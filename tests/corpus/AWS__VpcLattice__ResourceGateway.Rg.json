@@ -1,0 +1,118 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Rg",
+    "resourceType": "AWS::VpcLattice::ResourceGateway",
+    "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:resourcegateway/rgw-062fc1eeaf119a6f6",
+    "constructPath": "CdkrdHunt0715Lattice/Rg",
+    "declared": {
+      "Name": "cdkrd-hunt-0715-rg",
+      "SubnetIds": ["subnet-0c0b4b233f636f0f9"],
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "VpcIdentifier": "vpc-0d262ec8c83e7881e"
+    }
+  },
+  "liveRaw": {
+    "IpAddressType": "IPV4",
+    "VpcIdentifier": "vpc-0d262ec8c83e7881e",
+    "Ipv4AddressesPerEni": 16,
+    "Id": "rgw-062fc1eeaf119a6f6",
+    "ResourceConfigDnsResolution": "PUBLIC",
+    "Arn": "arn:aws:vpc-lattice:us-east-1:111111111111:resourcegateway/rgw-062fc1eeaf119a6f6",
+    "SubnetIds": ["subnet-0c0b4b233f636f0f9"],
+    "SecurityGroupIds": ["sg-0722af66254639599"],
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      },
+      {
+        "Value": "Rg",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "CdkrdHunt0715Lattice",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0715Lattice/7d0d3bf0-7f95-11f1-8193-12502256672f",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ],
+    "Name": "cdkrd-hunt-0715-rg"
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": [],
+    "createOnly": [
+      "IpAddressType",
+      "Name",
+      "ResourceConfigDnsResolution",
+      "SubnetIds",
+      "VpcIdentifier"
+    ],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "IpAddressType",
+      "Name",
+      "ResourceConfigDnsResolution",
+      "SubnetIds",
+      "VpcIdentifier"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["SecurityGroupIds", "SubnetIds"],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Rg",
+      "resourceType": "AWS::VpcLattice::ResourceGateway",
+      "path": "IpAddressType",
+      "actual": "IPV4",
+      "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:resourcegateway/rgw-062fc1eeaf119a6f6",
+      "constructPath": "CdkrdHunt0715Lattice/Rg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Rg",
+      "resourceType": "AWS::VpcLattice::ResourceGateway",
+      "path": "Ipv4AddressesPerEni",
+      "actual": 16,
+      "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:resourcegateway/rgw-062fc1eeaf119a6f6",
+      "constructPath": "CdkrdHunt0715Lattice/Rg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Rg",
+      "resourceType": "AWS::VpcLattice::ResourceGateway",
+      "path": "ResourceConfigDnsResolution",
+      "actual": "PUBLIC",
+      "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:resourcegateway/rgw-062fc1eeaf119a6f6",
+      "constructPath": "CdkrdHunt0715Lattice/Rg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Rg",
+      "resourceType": "AWS::VpcLattice::ResourceGateway",
+      "path": "SecurityGroupIds",
+      "actual": ["sg-0722af66254639599"],
+      "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:resourcegateway/rgw-062fc1eeaf119a6f6",
+      "constructPath": "CdkrdHunt0715Lattice/Rg"
+    }
+  ]
+}

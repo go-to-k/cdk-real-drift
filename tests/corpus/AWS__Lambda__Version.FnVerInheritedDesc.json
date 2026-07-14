@@ -1,0 +1,84 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "FnVer",
+    "resourceType": "AWS::Lambda::Version",
+    "physicalId": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdHunt0715Echo3-Fn-v1FdsNKbQaBq:1",
+    "constructPath": "CdkrdHunt0715Echo3/FnVer",
+    "declared": {
+      "FunctionName": "CdkrdHunt0715Echo3-Fn-v1FdsNKbQaBq"
+    }
+  },
+  "liveRaw": {
+    "FunctionArn": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdHunt0715Echo3-Fn-v1FdsNKbQaBq:1",
+    "FunctionName": "CdkrdHunt0715Echo3-Fn-v1FdsNKbQaBq",
+    "Description": "cdkrd echo3 rev1",
+    "RuntimePolicy": {
+      "UpdateRuntimeOn": "Auto"
+    },
+    "Version": "1",
+    "CodeSha256": "5LxObmgqgeSSzmZ39Z6dXxyE4iHmDiqNc/M2yFxCT9Y="
+  },
+  "schema": {
+    "readOnly": ["FunctionArn", "Version"],
+    "writeOnly": [],
+    "createOnly": [
+      "CodeSha256",
+      "Description",
+      "FunctionName",
+      "ProvisionedConcurrencyConfig",
+      "RuntimePolicy"
+    ],
+    "readOnlyPaths": ["FunctionArn", "Version"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "CodeSha256",
+      "Description",
+      "FunctionName",
+      "ProvisionedConcurrencyConfig",
+      "RuntimePolicy"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "FnVer",
+      "resourceType": "AWS::Lambda::Version",
+      "path": "Description",
+      "actual": "cdkrd echo3 rev1",
+      "physicalId": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdHunt0715Echo3-Fn-v1FdsNKbQaBq:1",
+      "constructPath": "CdkrdHunt0715Echo3/FnVer"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "FnVer",
+      "resourceType": "AWS::Lambda::Version",
+      "path": "RuntimePolicy",
+      "actual": {
+        "UpdateRuntimeOn": "Auto"
+      },
+      "physicalId": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdHunt0715Echo3-Fn-v1FdsNKbQaBq:1",
+      "constructPath": "CdkrdHunt0715Echo3/FnVer"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "FnVer",
+      "resourceType": "AWS::Lambda::Version",
+      "path": "CodeSha256",
+      "actual": "5LxObmgqgeSSzmZ39Z6dXxyE4iHmDiqNc/M2yFxCT9Y=",
+      "physicalId": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdHunt0715Echo3-Fn-v1FdsNKbQaBq:1",
+      "constructPath": "CdkrdHunt0715Echo3/FnVer"
+    }
+  ]
+}

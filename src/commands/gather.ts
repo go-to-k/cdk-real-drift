@@ -117,6 +117,11 @@ export const DEFAULT_SG_LIST_TYPES: ReadonlySet<string> = new Set([
   // registered in classify DEFAULT_SG_LIST_PATHS, so the prefetch must fire when an endpoint is
   // present or the OOB-swap gate loses its default-SG ids.
   'AWS::EC2::ClientVpnEndpoint',
+  // A VPC Lattice resource gateway that declares no SecurityGroupIds reads back its VPC's
+  // default SG (live, lattice2-hunt 2026-07-15) — registered in classify
+  // DEFAULT_SG_LIST_PATHS, so the prefetch must fire when a resource gateway is present or
+  // the OOB-swap gate loses its default-SG ids.
+  'AWS::VpcLattice::ResourceGateway',
 ]);
 
 // #1269: types whose undeclared SubnetIds default to ALL of the account's DEFAULT-VPC subnets —

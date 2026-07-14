@@ -465,6 +465,70 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // ({enabled: false}) still surfaces. Observed live on a fresh vpclattice-listener
   // deploy (issue #483).
   'AWS::VpcLattice::ServiceNetwork': { SharingConfig: { enabled: true } },
+  // A VPC Lattice access log subscription attached without a ServiceNetworkLogType reads
+  // back the service default SERVICE (log service-network service traffic; the other enum
+  // value is RESOURCE for resource-configuration traffic). Equality-gated; a subscription
+  // switched to RESOURCE out of band still surfaces. Observed live on a fresh
+  // lattice2-hunt deploy (2026-07-15).
+  'AWS::VpcLattice::AccessLogSubscription': { ServiceNetworkLogType: 'SERVICE' },
+  // A barest VPC Lattice resource gateway (name/vpc/subnets only) reads back three service
+  // defaults the template never declared (observed live, lattice2-hunt 2026-07-15):
+  // IPV4 addressing, 16 IPv4 addresses per ENI, and PUBLIC DNS resolution for associated
+  // resource configurations. None are OOB-mutable (`update-resource-gateway` accepts only
+  // --security-group-ids, live-probed), so the equality-gated constants are purely
+  // first-run folds; a DUALSTACK / different-budget / PRIVATE gateway declares the value
+  // and is compared in the declared loop. (The undeclared SecurityGroupIds sibling is the
+  // VPC default SG — folded via the derived DEFAULT_SG_LIST_PATHS gate in classify.ts,
+  // #976 class, and it IS OOB-mutable so the swap/append gate keeps detection.)
+  'AWS::VpcLattice::ResourceGateway': {
+    IpAddressType: 'IPV4',
+    Ipv4AddressesPerEni: 16,
+    ResourceConfigDnsResolution: 'PUBLIC',
+  },
+  // A resource configuration created without AllowAssociationToSharableServiceNetwork
+  // reads back the service default `true`. A truthy standalone-boolean pin needs the
+  // paired classify.ts MEANINGFUL_WHEN_OFF entry (an out-of-band `false` — blocking the
+  // config from sharable service networks — is otherwise swallowed by isTrivialEmpty
+  // before the pin gate). Observed live on a fresh lattice2-hunt deploy (2026-07-15).
+  'AWS::VpcLattice::ResourceConfiguration': {
+    AllowAssociationToSharableServiceNetwork: true,
+  },
+  // A dedicated IP pool created with only a PoolName reads back the service default
+  // STANDARD scaling mode (the other enum value is MANAGED, which auto-leases billable
+  // IPs). Equality-gated; a pool converted to MANAGED out of band still surfaces.
+  // Observed live on a fresh misspack-hunt deploy (2026-07-15).
+  'AWS::SES::DedicatedIpPool': { ScalingMode: 'STANDARD' },
+  // A CodeDeploy application created without a ComputePlatform reads back the service
+  // default Server (the EC2/on-premises platform; the others are Lambda / ECS).
+  // createOnly — it can never drift out of band — so the equality-gated constant is a
+  // purely first-run fold. Observed live on a fresh echo3-hunt deploy (2026-07-15).
+  'AWS::CodeDeploy::Application': { ComputePlatform: 'Server' },
+  // A TGW VPC attachment created without Options reads back the whole creation-default
+  // options object (observed live on a fresh barest TGW + attachment, attach2-hunt
+  // 2026-07-15; note the ATTACHMENT-level DnsSupport default reads "disable" even though
+  // the TGW-level default is enable). Options IS OOB-mutable
+  // (`modify-transit-gateway-vpc-attachment --options`), so the equality-gated
+  // whole-object pin keeps detection: any option flipped out of band breaks the equality
+  // and the object surfaces. (Enum strings, not booleans — no isTrivialEmpty off-state
+  // hazard, so no MEANINGFUL_WHEN_OFF pairing is needed.)
+  'AWS::EC2::TransitGatewayAttachment': {
+    Options: {
+      DnsSupport: 'disable',
+      SecurityGroupReferencingSupport: 'enable',
+      Ipv6Support: 'disable',
+      ApplianceModeSupport: 'disable',
+    },
+  },
+  // A restore testing plan created with only the required selection/schedule reads back
+  // two top-level service defaults (documented + observed live, misspack-hunt
+  // 2026-07-15): a 24-hour start window and the Etc/UTC schedule timezone. Both are
+  // OOB-mutable (`backup update-restore-testing-plan`), so equality-gated constants keep
+  // detection. (The nested RecoveryPointSelection.SelectionWindowDays sibling folds via
+  // KNOWN_DEFAULT_PATHS — the selection block is partially declared and descends.)
+  'AWS::Backup::RestoreTestingPlan': {
+    StartWindowHours: 24,
+    ScheduleExpressionTimezone: 'Etc/UTC',
+  },
   // AmazonMQ Broker service defaults (observed live on the amazonmq-version-readgap
   // fixture): a broker created without these knobs reports all three as undeclared
   // first-run noise. AuthenticationStrategy is SIMPLE unless LDAP is configured;
@@ -2008,6 +2072,12 @@ export const KNOWN_DEFAULT_ONE_OF_PATHS: Record<string, Record<string, readonly 
 // constant first-run default (12000/4000) and folds via KNOWN_DEFAULTS above —
 // equality-gated, so a warmed-up table still surfaces.
 export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
+  // A restore testing plan's RecoveryPointSelection declares only the required
+  // Algorithm/IncludeVaults/RecoveryPointTypes, so the block is partially declared and
+  // descends per-leaf: the service fills the documented 30-day selection window default.
+  // Equality-gated — a plan whose window was shortened/lengthened out of band still
+  // surfaces. Observed live on a fresh misspack-hunt deploy (2026-07-15).
+  'AWS::Backup::RestoreTestingPlan': { 'RecoveryPointSelection.SelectionWindowDays': 30 },
   // An IoT TopicRule that declares TopicRulePayload with only Sql + Actions reads back the
   // default `AwsIotSqlVersion: "2015-10-08"` — the older, stable compat default IoT assigns
   // when the version is unspecified (NOT a moving GA value). TopicRulePayload is partially
@@ -3591,6 +3661,16 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   declared loop). Fold value-independent (same class as the RDS KmsKeyId fold below). Corpus
   //   baked FP (#844).
   'AWS::Backup::BackupVault': new Set(['EncryptionKeyArn']),
+  //   AWS::Lambda::Version.Description — a version that declares no Description INHERITS the
+  //   FUNCTION's description at publish time (PublishVersion docs: "If not specified, the
+  //   function configuration's description is used"), so every CDK `currentVersion` of a
+  //   description-bearing function first-runs it as noise (observed live, echo3-hunt
+  //   2026-07-15). A published version is IMMUTABLE — the snapshot can never drift out of
+  //   band — and the inherited text lives on a DIFFERENT resource (the function, which may
+  //   even be cross-stack), so it is not reliably derivable here. Fold value-independent:
+  //   zero detection loss (immutable), and a user who pins a version description DECLARES
+  //   it, compared in the declared loop.
+  'AWS::Lambda::Version': new Set(['Description']),
   //   AWS::Batch::JobQueue.JobQueueType — a queue that declares no JobQueueType reads back
   //   the type AWS DERIVES from its attached compute environment (ECS_FARGATE for a Fargate
   //   CE, ECS for EC2, EKS for EKS). The value lives on a DIFFERENT resource (the CE), not in

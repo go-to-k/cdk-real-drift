@@ -192,6 +192,13 @@ const MEANINGFUL_WHEN_OFF: Record<string, Record<string, (ctx: OffStateContext) 
   // 2026-07-14); an undeclared `false` is an out-of-band deactivate that blocks the option
   // from new provisioning — a bare false isTrivialEmpty would otherwise swallow.
   'AWS::ServiceCatalog::TagOption': { Active: () => true },
+  // A VPC Lattice resource configuration is always created with association-to-sharable-
+  // service-network allowed (the KNOWN_DEFAULTS true pin, lattice2-hunt 2026-07-15); an
+  // undeclared `false` is an out-of-band restriction a bare-false isTrivialEmpty would
+  // otherwise swallow.
+  'AWS::VpcLattice::ResourceConfiguration': {
+    AllowAssociationToSharableServiceNetwork: () => true,
+  },
   // SSE-SQS defaults ON, but is mutually exclusive with SSE-KMS: a queue that uses a KMS key
   // reads SqsManagedSseEnabled=false legitimately. Surface the OFF state only when the queue
   // uses no KMS key — i.e. encryption was genuinely disabled out of band.
@@ -557,6 +564,13 @@ export const DEFAULT_SG_LIST_PATHS: Record<string, string> = {
   // sync with gather.ts DEFAULT_SG_LIST_TYPES. The association-echoed `VpcId` sibling is folded
   // via siblingClientVpnEndpointVpcs below.
   'AWS::EC2::ClientVpnEndpoint': 'SecurityGroupIds',
+  // A VPC Lattice resource gateway that declares no SecurityGroupIds reads back its VPC's
+  // default SG — the same single-SG AWS first-run default the ALB/ENI/Neptune cases fold
+  // (observed live, lattice2-hunt 2026-07-15). It is OOB-mutable (`vpc-lattice
+  // update-resource-gateway --security-group-ids`), so the derived VPC-default-SG gate
+  // folds the single default and surfaces an append/swap. Keep in sync with gather.ts
+  // DEFAULT_SG_LIST_TYPES.
+  'AWS::VpcLattice::ResourceGateway': 'SecurityGroupIds',
 };
 /** #1269 fold decision for an UNDECLARED default-SUBNET list (RedshiftServerless Workgroup
  *  SubnetIds). Unlike the SG gate (which folds only a SINGLE default SG), a workgroup placed into
@@ -1752,19 +1766,28 @@ function isCfnGeneratedName(
   // user-chosen name ending in `-<thisLogicalId>-<random>` is effectively impossible — value-
   // DEPENDENT, so a real user name (e.g. "my-custom-sg") still surfaces. Runs before the
   // constructPath gate so it folds regardless of whether the path survived.
+  // All dash-form comparisons below are CASE-INSENSITIVE: a lowercase-only-name service
+  // (VPC Lattice service network names must be lowercase) makes CFn mint the SAME
+  // `<stackName>-<logicalId>-<random>` form LOWERCASED ("CdkrdHunt0715Lattice" + "Sn" →
+  // "cdkrdhunt0715lattice-sn-f6xaf7zc2alb", observed live 2026-07-15), which the
+  // exact-case tests missed. Folding stays value-DEPENDENT — a user-chosen name equal to
+  // any casing of `<own stack>-<own logical id>-<12-char random>` is as implausible as
+  // the exact-case form, so the strictness rationale is unchanged.
+  const valueLc = value.toLowerCase();
   if (logicalId && CFN_RANDOM_SUFFIX.test(value)) {
-    const base = value.replace(CFN_RANDOM_SUFFIX, '');
-    if (base.length > logicalId.length && base.endsWith(`-${logicalId}`)) return true;
+    const base = valueLc.replace(CFN_RANDOM_SUFFIX, '');
+    const logicalLc = logicalId.toLowerCase();
+    if (base.length > logicalLc.length && base.endsWith(`-${logicalLc}`)) return true;
   }
   if (!constructPath) return false;
-  const stackName = constructPath.split('/')[0];
+  const stackName = constructPath.split('/')[0]?.toLowerCase();
   if (!stackName || !CFN_RANDOM_SUFFIX.test(value)) return false;
-  if (value.startsWith(`${stackName}-`)) return true;
+  if (valueLc.startsWith(`${stackName}-`)) return true;
   if (!logicalId) return false;
   // Truncated short-name form: `<stackPrefix>-<logicalIdPrefix>-<random>`. Logical ids are
   // alphanumeric (never '-'), so the LAST '-' in the de-suffixed base splits the two halves
   // even when the stack name itself contains dashes.
-  const base = value.replace(CFN_RANDOM_SUFFIX, '');
+  const base = valueLc.replace(CFN_RANDOM_SUFFIX, '');
   const sep = base.lastIndexOf('-');
   if (sep <= 0) return false;
   const stackPart = base.slice(0, sep);
@@ -1773,7 +1796,7 @@ function isCfnGeneratedName(
     stackPart.length < stackName.length &&
     stackName.startsWith(stackPart) &&
     logicalPart.length > 0 &&
-    logicalId.startsWith(logicalPart)
+    logicalId.toLowerCase().startsWith(logicalPart)
   );
 }
 

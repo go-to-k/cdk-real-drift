@@ -1,0 +1,50 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "MpGroup",
+    "resourceType": "AWS::SageMaker::ModelPackageGroup",
+    "physicalId": "arn:aws:sagemaker:us-east-1:111111111111:model-package-group/cdkrd-hunt-0715-mpg",
+    "constructPath": "CdkrdHunt0715MissB/MpGroup",
+    "declared": {
+      "ModelPackageGroupName": "cdkrd-hunt-0715-mpg",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "ModelPackageGroupArn": "arn:aws:sagemaker:us-east-1:111111111111:model-package-group/cdkrd-hunt-0715-mpg",
+    "ModelPackageGroupName": "cdkrd-hunt-0715-mpg",
+    "CreationTime": "2026-07-14T15:12:16.241Z",
+    "ModelPackageGroupStatus": "Completed",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["CreationTime", "ModelPackageGroupArn", "ModelPackageGroupStatus"],
+    "writeOnly": [],
+    "createOnly": ["ModelPackageGroupDescription", "ModelPackageGroupName"],
+    "readOnlyPaths": ["CreationTime", "ModelPackageGroupArn", "ModelPackageGroupStatus"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ModelPackageGroupDescription", "ModelPackageGroupName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

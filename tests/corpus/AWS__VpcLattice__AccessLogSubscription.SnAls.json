@@ -1,0 +1,85 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SnAls",
+    "resourceType": "AWS::VpcLattice::AccessLogSubscription",
+    "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:accesslogsubscription/als-050c9df2d22eadb57",
+    "constructPath": "CdkrdHunt0715Lattice/SnAls",
+    "declared": {
+      "DestinationArn": "arn:aws:logs:us-east-1:111111111111:log-group:CdkrdHunt0715Lattice-SnLogs-NEv86TpqRYhh:*",
+      "ResourceIdentifier": "arn:aws:vpc-lattice:us-east-1:111111111111:servicenetwork/sn-035847d35c755a015",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "ResourceArn": "arn:aws:vpc-lattice:us-east-1:111111111111:servicenetwork/sn-035847d35c755a015",
+    "ResourceId": "sn-035847d35c755a015",
+    "ServiceNetworkLogType": "SERVICE",
+    "Id": "als-050c9df2d22eadb57",
+    "Arn": "arn:aws:vpc-lattice:us-east-1:111111111111:accesslogsubscription/als-050c9df2d22eadb57",
+    "DestinationArn": "arn:aws:logs:us-east-1:111111111111:log-group:CdkrdHunt0715Lattice-SnLogs-NEv86TpqRYhh:*",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      },
+      {
+        "Value": "CdkrdHunt0715Lattice",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0715Lattice/7d0d3bf0-7f95-11f1-8193-12502256672f",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "SnAls",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id", "ResourceArn", "ResourceId"],
+    "writeOnly": ["ResourceIdentifier"],
+    "createOnly": ["ResourceIdentifier"],
+    "readOnlyPaths": ["Arn", "Id", "ResourceArn", "ResourceId"],
+    "writeOnlyPaths": ["ResourceIdentifier"],
+    "createOnlyPaths": ["ResourceIdentifier"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "SnAls",
+      "resourceType": "AWS::VpcLattice::AccessLogSubscription",
+      "path": "ResourceIdentifier",
+      "note": "write-only — cannot be read back",
+      "writeOnly": true,
+      "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:accesslogsubscription/als-050c9df2d22eadb57",
+      "constructPath": "CdkrdHunt0715Lattice/SnAls"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "SnAls",
+      "resourceType": "AWS::VpcLattice::AccessLogSubscription",
+      "path": "ServiceNetworkLogType",
+      "actual": "SERVICE",
+      "physicalId": "arn:aws:vpc-lattice:us-east-1:111111111111:accesslogsubscription/als-050c9df2d22eadb57",
+      "constructPath": "CdkrdHunt0715Lattice/SnAls"
+    }
+  ]
+}
