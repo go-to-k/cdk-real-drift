@@ -4680,6 +4680,11 @@ export const ELB_TG_ATTRIBUTE_DEFAULTS_BY_TARGET_TYPE: Record<string, Record<str
   // the alb entry above (live, a barest TCP/ip group, attach-echo-hunt 2026-07-14).
   // Equality-gated: an out-of-band preserve-client-ip ENABLE still surfaces.
   ip: { 'preserve_client_ip.enabled': 'false' },
+  // #1628: an `instance`-target NLB-family group defaults to PRESERVING client IPs — the
+  // third arm of the same axis (live, a barest standalone TCP/instance group,
+  // Cdkrd1623Writers 2026-07-14). Equality-gated: an out-of-band DISABLE reads "false"
+  // and still surfaces; HTTP-family (ALB) instance groups never return the key.
+  instance: { 'preserve_client_ip.enabled': 'true' },
 };
 
 // (R95) The generic `projectLiveToDeclaredSubset` was REMOVED. It projected the live

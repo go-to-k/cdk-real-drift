@@ -1,0 +1,366 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "W1623InstanceTg",
+    "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+    "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/Cdkrd1-W1623-HTHDIP9KZEWA/d1323a2e3219ce8b",
+    "constructPath": "Cdkrd1623Writers/W1623InstanceTg",
+    "declared": {
+      "Port": 80,
+      "Protocol": "TCP",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "TargetType": "instance",
+      "VpcId": "vpc-0a36735d91c57e3e6"
+    }
+  },
+  "liveRaw": {
+    "IpAddressType": "ipv4",
+    "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/Cdkrd1-W1623-HTHDIP9KZEWA/d1323a2e3219ce8b",
+    "HealthCheckIntervalSeconds": 30,
+    "LoadBalancerArns": [],
+    "Port": 80,
+    "Targets": [],
+    "HealthCheckEnabled": true,
+    "UnhealthyThresholdCount": 2,
+    "HealthCheckTimeoutSeconds": 10,
+    "Name": "Cdkrd1-W1623-HTHDIP9KZEWA",
+    "VpcId": "vpc-0a36735d91c57e3e6",
+    "TargetGroupFullName": "targetgroup/Cdkrd1-W1623-HTHDIP9KZEWA/d1323a2e3219ce8b",
+    "HealthyThresholdCount": 5,
+    "HealthCheckProtocol": "TCP",
+    "TargetGroupAttributes": [
+      {
+        "Value": "source_ip",
+        "Key": "stickiness.type"
+      },
+      {
+        "Value": "1",
+        "Key": "target_group_health.dns_failover.minimum_healthy_targets.count"
+      },
+      {
+        "Value": "use_load_balancer_configuration",
+        "Key": "load_balancing.cross_zone.enabled"
+      },
+      {
+        "Value": "off",
+        "Key": "target_group_health.dns_failover.minimum_healthy_targets.percentage"
+      },
+      {
+        "Value": "false",
+        "Key": "stickiness.enabled"
+      },
+      {
+        "Value": "off",
+        "Key": "target_group_health.unhealthy_state_routing.minimum_healthy_targets.percentage"
+      },
+      {
+        "Value": "0",
+        "Key": "target_health_state.unhealthy.draining_interval_seconds"
+      },
+      {
+        "Value": "300",
+        "Key": "deregistration_delay.timeout_seconds"
+      },
+      {
+        "Value": "1",
+        "Key": "target_group_health.unhealthy_state_routing.minimum_healthy_targets.count"
+      },
+      {
+        "Value": "true",
+        "Key": "preserve_client_ip.enabled"
+      },
+      {
+        "Value": "false",
+        "Key": "proxy_protocol_v2.enabled"
+      },
+      {
+        "Value": "false",
+        "Key": "deregistration_delay.connection_termination.enabled"
+      },
+      {
+        "Value": "true",
+        "Key": "target_health_state.unhealthy.connection_termination.enabled"
+      }
+    ],
+    "TargetType": "instance",
+    "HealthCheckPort": "traffic-port",
+    "Protocol": "TCP",
+    "TargetGroupName": "Cdkrd1-W1623-HTHDIP9KZEWA",
+    "Tags": [
+      {
+        "Value": "Cdkrd1623Writers",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "W1623InstanceTg",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/Cdkrd1623Writers/2b93b7e0-7f6d-11f1-a452-0affecfb5f95",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["LoadBalancerArns", "TargetGroupArn", "TargetGroupFullName", "TargetGroupName"],
+    "writeOnly": [],
+    "createOnly": [
+      "IpAddressType",
+      "Name",
+      "Port",
+      "Protocol",
+      "ProtocolVersion",
+      "TargetType",
+      "VpcId"
+    ],
+    "readOnlyPaths": [
+      "LoadBalancerArns",
+      "TargetGroupArn",
+      "TargetGroupFullName",
+      "TargetGroupName"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "IpAddressType",
+      "Name",
+      "Port",
+      "Protocol",
+      "ProtocolVersion",
+      "TargetType",
+      "VpcId"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["LoadBalancerArns"],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "W1623InstanceTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "IpAddressType",
+      "actual": "ipv4",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/Cdkrd1-W1623-HTHDIP9KZEWA/d1323a2e3219ce8b",
+      "constructPath": "Cdkrd1623Writers/W1623InstanceTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "W1623InstanceTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthCheckIntervalSeconds",
+      "actual": 30,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/Cdkrd1-W1623-HTHDIP9KZEWA/d1323a2e3219ce8b",
+      "constructPath": "Cdkrd1623Writers/W1623InstanceTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "W1623InstanceTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthCheckEnabled",
+      "actual": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/Cdkrd1-W1623-HTHDIP9KZEWA/d1323a2e3219ce8b",
+      "constructPath": "Cdkrd1623Writers/W1623InstanceTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "W1623InstanceTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "UnhealthyThresholdCount",
+      "actual": 2,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/Cdkrd1-W1623-HTHDIP9KZEWA/d1323a2e3219ce8b",
+      "constructPath": "Cdkrd1623Writers/W1623InstanceTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "W1623InstanceTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthCheckTimeoutSeconds",
+      "actual": 10,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/Cdkrd1-W1623-HTHDIP9KZEWA/d1323a2e3219ce8b",
+      "constructPath": "Cdkrd1623Writers/W1623InstanceTg"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "W1623InstanceTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "Name",
+      "actual": "Cdkrd1-W1623-HTHDIP9KZEWA",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/Cdkrd1-W1623-HTHDIP9KZEWA/d1323a2e3219ce8b",
+      "constructPath": "Cdkrd1623Writers/W1623InstanceTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "W1623InstanceTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthyThresholdCount",
+      "actual": 5,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/Cdkrd1-W1623-HTHDIP9KZEWA/d1323a2e3219ce8b",
+      "constructPath": "Cdkrd1623Writers/W1623InstanceTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "W1623InstanceTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthCheckProtocol",
+      "actual": "TCP",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/Cdkrd1-W1623-HTHDIP9KZEWA/d1323a2e3219ce8b",
+      "constructPath": "Cdkrd1623Writers/W1623InstanceTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "W1623InstanceTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[deregistration_delay.connection_termination.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/Cdkrd1-W1623-HTHDIP9KZEWA/d1323a2e3219ce8b",
+      "constructPath": "Cdkrd1623Writers/W1623InstanceTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "W1623InstanceTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[deregistration_delay.timeout_seconds]",
+      "actual": "300",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/Cdkrd1-W1623-HTHDIP9KZEWA/d1323a2e3219ce8b",
+      "constructPath": "Cdkrd1623Writers/W1623InstanceTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "W1623InstanceTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[load_balancing.cross_zone.enabled]",
+      "actual": "use_load_balancer_configuration",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/Cdkrd1-W1623-HTHDIP9KZEWA/d1323a2e3219ce8b",
+      "constructPath": "Cdkrd1623Writers/W1623InstanceTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "W1623InstanceTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[preserve_client_ip.enabled]",
+      "actual": "true",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/Cdkrd1-W1623-HTHDIP9KZEWA/d1323a2e3219ce8b",
+      "constructPath": "Cdkrd1623Writers/W1623InstanceTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "W1623InstanceTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[proxy_protocol_v2.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/Cdkrd1-W1623-HTHDIP9KZEWA/d1323a2e3219ce8b",
+      "constructPath": "Cdkrd1623Writers/W1623InstanceTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "W1623InstanceTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[stickiness.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/Cdkrd1-W1623-HTHDIP9KZEWA/d1323a2e3219ce8b",
+      "constructPath": "Cdkrd1623Writers/W1623InstanceTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "W1623InstanceTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[stickiness.type]",
+      "actual": "source_ip",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/Cdkrd1-W1623-HTHDIP9KZEWA/d1323a2e3219ce8b",
+      "constructPath": "Cdkrd1623Writers/W1623InstanceTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "W1623InstanceTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[target_group_health.dns_failover.minimum_healthy_targets.count]",
+      "actual": "1",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/Cdkrd1-W1623-HTHDIP9KZEWA/d1323a2e3219ce8b",
+      "constructPath": "Cdkrd1623Writers/W1623InstanceTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "W1623InstanceTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[target_group_health.dns_failover.minimum_healthy_targets.percentage]",
+      "actual": "off",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/Cdkrd1-W1623-HTHDIP9KZEWA/d1323a2e3219ce8b",
+      "constructPath": "Cdkrd1623Writers/W1623InstanceTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "W1623InstanceTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[target_group_health.unhealthy_state_routing.minimum_healthy_targets.count]",
+      "actual": "1",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/Cdkrd1-W1623-HTHDIP9KZEWA/d1323a2e3219ce8b",
+      "constructPath": "Cdkrd1623Writers/W1623InstanceTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "W1623InstanceTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[target_group_health.unhealthy_state_routing.minimum_healthy_targets.percentage]",
+      "actual": "off",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/Cdkrd1-W1623-HTHDIP9KZEWA/d1323a2e3219ce8b",
+      "constructPath": "Cdkrd1623Writers/W1623InstanceTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "W1623InstanceTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[target_health_state.unhealthy.connection_termination.enabled]",
+      "actual": "true",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/Cdkrd1-W1623-HTHDIP9KZEWA/d1323a2e3219ce8b",
+      "constructPath": "Cdkrd1623Writers/W1623InstanceTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "W1623InstanceTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[target_health_state.unhealthy.draining_interval_seconds]",
+      "actual": "0",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/Cdkrd1-W1623-HTHDIP9KZEWA/d1323a2e3219ce8b",
+      "constructPath": "Cdkrd1623Writers/W1623InstanceTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "W1623InstanceTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthCheckPort",
+      "actual": "traffic-port",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/Cdkrd1-W1623-HTHDIP9KZEWA/d1323a2e3219ce8b",
+      "constructPath": "Cdkrd1623Writers/W1623InstanceTg"
+    }
+  ]
+}

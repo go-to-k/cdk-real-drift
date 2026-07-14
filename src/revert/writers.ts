@@ -143,8 +143,10 @@ import {
   CodeBuildClient,
   type ReportExportConfig,
   type Tag as CodeBuildTag,
+  UpdateProjectCommand,
   UpdateReportGroupCommand,
 } from '@aws-sdk/client-codebuild';
+import { MediaConvertClient, UpdateQueueCommand } from '@aws-sdk/client-mediaconvert';
 import {
   DAXClient,
   UpdateClusterCommand,
@@ -1861,6 +1863,107 @@ const writeCodeBuildReportGroup: SdkWriter = async (ctx, ops) => {
   );
 };
 
+// AWS::CodeBuild::Project — SDK_OVERRIDES-read (BatchGetProjects), so a revert must go through
+// the SDK too (#1623 — detection worked, revert said "type not revertable yet").
+// codebuild:UpdateProject is a SELECTIVE modify ("only the fields you specify" — the same
+// omit-keeps-value contract that makes a bare `remove` inexpressible), so send ONLY the
+// touched, updatable top-level SCALARS, valued from desiredModel (= live + revert ops), mapped
+// CFn PascalCase → API camelCase. The two KNOWN_DEFAULTS-folded scalars (TimeoutInMinutes 60 /
+// QueuedTimeoutInMinutes 480) arrive as explicit set-default `add`s via
+// REVERT_SET_DEFAULT_PATHS, matching the selective-modify semantics. Complex shapes
+// (Source / Artifacts / Environment / Cache / LogsConfig / VpcConfig / Triggers / Tags) and
+// Visibility (a separate UpdateProjectVisibility API) are NOT mapped yet —
+// assertOpsConsumed reports them not-reverted honestly. Name is create-only (never here).
+const CODEBUILD_PROJECT_MODIFY_PARAMS: Record<string, string> = {
+  Description: 'description',
+  TimeoutInMinutes: 'timeoutInMinutes',
+  QueuedTimeoutInMinutes: 'queuedTimeoutInMinutes',
+  ConcurrentBuildLimit: 'concurrentBuildLimit',
+  AutoRetryLimit: 'autoRetryLimit',
+  BadgeEnabled: 'badgeEnabled',
+  SourceVersion: 'sourceVersion',
+  ServiceRole: 'serviceRole',
+  EncryptionKey: 'encryptionKey',
+};
+const writeCodeBuildProject: SdkWriter = async (ctx, ops) => {
+  const name = str(ctx.physicalId) ?? str(ctx.declared['Name']);
+  if (!name) throw new Error('cannot resolve CodeBuild project name for revert');
+  const desired = await desiredModel('AWS::CodeBuild::Project', ctx, ops);
+  const input: { name: string; [k: string]: unknown } = { name };
+  let any = false;
+  for (const op of ops) {
+    const top = op.path.replace(/^\//, '').split('/')[0] ?? '';
+    const apiKey = CODEBUILD_PROJECT_MODIFY_PARAMS[top];
+    if (!apiKey) continue; // reported by assertOpsConsumed below
+    let val = desired[top];
+    if (val === undefined) {
+      // A `remove` op needs an EXPLICIT clearing value under selective-modify semantics
+      // (the folded timeouts arrive as set-default `add`s instead). Description and
+      // SourceVersion clear with ''; ConcurrentBuildLimit's documented "remove the limit"
+      // sentinel is -1. The rest have no expressible unset state — bar them honestly.
+      if (top === 'Description' || top === 'SourceVersion') val = '';
+      else if (top === 'ConcurrentBuildLimit') val = -1;
+      else
+        throw new Error(
+          `CodeBuild Project ${top} cannot be cleared via UpdateProject (a selective modify keeps an omitted field); update it manually`
+        );
+    }
+    input[apiKey] = val;
+    any = true;
+  }
+  if (any)
+    await new CodeBuildClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
+      new UpdateProjectCommand(input as never)
+    );
+  assertOpsConsumed(
+    'CodeBuild Project',
+    ops,
+    new Set(Object.keys(CODEBUILD_PROJECT_MODIFY_PARAMS))
+  );
+};
+
+// AWS::MediaConvert::Queue — NON_PROVISIONABLE (read via GetQueue; #1623). The CFn physical id
+// IS the queue Name, which mediaconvert:UpdateQueue accepts directly. The two mutable props map
+// 1:1 (Status ACTIVE|PAUSED, Description); a `remove` of the KNOWN_DEFAULTS-folded Status
+// arrives as an explicit set-default `add ACTIVE` via REVERT_SET_DEFAULT_PATHS, and a removed
+// Description clears with ''. PricingPlan is create-only (never here). Tags and anything else
+// are reported not-reverted honestly via assertOpsConsumed.
+const MEDIACONVERT_QUEUE_MODIFY_PARAMS: Record<string, string> = {
+  Status: 'Status',
+  Description: 'Description',
+};
+const writeMediaConvertQueue: SdkWriter = async (ctx, ops) => {
+  const name = str(ctx.physicalId) ?? str(ctx.declared['Name']);
+  if (!name) throw new Error('cannot resolve MediaConvert queue name for revert');
+  const desired = await desiredModel('AWS::MediaConvert::Queue', ctx, ops);
+  const input: { Name: string; [k: string]: unknown } = { Name: name };
+  let any = false;
+  for (const op of ops) {
+    const top = op.path.replace(/^\//, '').split('/')[0] ?? '';
+    const apiKey = MEDIACONVERT_QUEUE_MODIFY_PARAMS[top];
+    if (!apiKey) continue; // reported by assertOpsConsumed below
+    let val = desired[top];
+    if (val === undefined) {
+      if (top === 'Description') val = '';
+      else
+        throw new Error(
+          `MediaConvert Queue ${top} cannot be cleared via UpdateQueue; update it manually`
+        );
+    }
+    input[apiKey] = val;
+    any = true;
+  }
+  if (any)
+    await new MediaConvertClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
+      new UpdateQueueCommand(input as never)
+    );
+  assertOpsConsumed(
+    'MediaConvert Queue',
+    ops,
+    new Set(Object.keys(MEDIACONVERT_QUEUE_MODIFY_PARAMS))
+  );
+};
+
 // AWS::DAX::Cluster — NON_PROVISIONABLE (read via DescribeClusters; #534). dax:UpdateCluster is a
 // PARTIAL modify (like ModifyDBCluster): send ONLY the drifted top-level props in the mutable
 // allowlist, mapped CFn→API (NotificationTopicARN → NotificationTopicArn). NodeType/ClusterName/
@@ -2967,7 +3070,9 @@ export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::ApiGatewayV2::Stage': writeApiGatewayV2Stage,
   'AWS::ElasticBeanstalk::Application': writeElasticBeanstalkApplication,
   'AWS::ElasticBeanstalk::Environment': writeElasticBeanstalkEnvironment,
+  'AWS::CodeBuild::Project': writeCodeBuildProject,
   'AWS::CodeBuild::ReportGroup': writeCodeBuildReportGroup,
+  'AWS::MediaConvert::Queue': writeMediaConvertQueue,
   'AWS::DAX::Cluster': writeDaxCluster,
   'AWS::DAX::ParameterGroup': writeDaxParameterGroup,
   'AWS::ElastiCache::ParameterGroup': writeElastiCacheParameterGroup,

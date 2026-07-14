@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-integ-sdkwriters-1623",
+  "private": true,
+  "version": "0.0.0",
+  "description": "#1623 SDK writers live verify: CodeBuild Project timeouts + MediaConvert Queue status mutate -> detect -> revert -> live default, plus the instance-target TCP TargetGroup attribute probe. Run via verify-detect.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module"
+}

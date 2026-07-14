@@ -1160,7 +1160,8 @@ const readLakeFormationResource: OverrideReader = async ({ physicalId, region })
 // directly. Project the CFn-declarable scalars (Name/Description/PricingPlan/Status). The
 // computed/reserved fields (Arn/CreatedAt/LastUpdated/ConcurrentJobs/MaximumConcurrentFeeds/
 // ReservationPlan/*JobsCount/ServiceOverrides/Type) are dropped — not user-declarable scalars,
-// pure noise. Read-ONLY (UpdateQueue deferred). A deleted queue surfaces as
+// pure noise. REVERTABLE (#1623): Status/Description revert via the mediaconvert:UpdateQueue
+// SDK writer in revert/writers.ts (PricingPlan is create-only). A deleted queue surfaces as
 // NotFoundException → the router maps it to `deleted`.
 // Fetch a MediaConvert resource's live tags via mediaconvert:ListTagsForResource (the Arn
 // is the tag address) and project them onto the map-shape `Tags` the CFn schema declares,
