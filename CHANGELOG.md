@@ -1,3 +1,10 @@
+# [0.20.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.19.2...v0.20.0) (2026-07-14)
+
+
+### Features
+
+* **baseline:** detect out-of-band deletion of an atDefault-folded value via observed defaults (S3 PublicAccessBlockConfiguration) ([#1638](https://github.com/go-to-k/cdk-real-drift/issues/1638)) ([4ed6ef4](https://github.com/go-to-k/cdk-real-drift/commit/4ed6ef4a8f0231b7b36709a11a86704bcb3ce05b))
+
 ## [0.19.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.19.1...v0.19.2) (2026-07-14)
 
 
