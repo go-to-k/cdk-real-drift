@@ -1,3 +1,10 @@
+## [0.19.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.19.1...v0.19.2) (2026-07-14)
+
+
+### Bug Fixes
+
+* **diff:** surface wholesale out-of-band disables of all-boolean-object KNOWN_DEFAULTS pins (S3 PAB, SES options) ([#1635](https://github.com/go-to-k/cdk-real-drift/issues/1635)) ([28e776e](https://github.com/go-to-k/cdk-real-drift/commit/28e776eb1617368c6697816ddcfba26a4acb2028))
+
 ## [0.19.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.19.0...v0.19.1) (2026-07-14)
 
 
