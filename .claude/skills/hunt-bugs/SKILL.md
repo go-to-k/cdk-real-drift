@@ -310,7 +310,11 @@ BackupPolicy all CONVERGED via the bare `remove`** (the CC handler reset them). 
 cheap combined fixture (several folded toggles in one stack) that mutates each out of
 band and asserts the LIVE value after revert is the only reliable test — the API shape
 is not a predictor. The `revert-toggle-converge` fixture is the reference (one fixed
-case + converge-via-remove controls).
+case + converge-via-remove controls). Batch 2 (2026-07-14, `revconv-hunt` fixture):
+**`ECR::Repository` `ImageTagMutability` no-oped** (independently found+fixed the
+same day as #1580/#1581 — check upstream before pushing a same-table fix); Lambda
+`TracingConfig`, SQS `DelaySeconds`, KMS Key `Enabled` all converged via bare
+`remove` — again ~1-in-4, unpredictable from the API shape.
 
 ### 5. Harvest the live read into the golden corpus (EVERY round — bug or not)
 
@@ -588,7 +592,33 @@ Recorded]` breakdown with `--verbose`.
   the resource (a service update API call or a trivial template change) and re-check:
   every newly materialized undeclared field is a latent FP a real user hits on their
   second deploy. Fold it with the same decision order (the sizing pair joined the
-  existing value-independent MaxCapacity trio).
+  existing value-independent MaxCapacity trio). The CHEAP wide-sweep form (2026-07-14):
+  one combined barest stack of many common types whose app.ts threads a
+  `-c rev=2` context into a stack tag + per-resource descriptions — deploy, first
+  check, redeploy with `rev=2`, re-check; the `second-deploy-echo`/`-echo2` fixtures
+  swept 27 common types this way (no new echo found; Lambda materialized an empty
+  `VpcConfig` husk post-update — correctly dropped). Two lessons: (a) a barest
+  multi-type echo stack doubles as a first-run FP probe and that is where it actually
+  paid (the Kinesis `StreamModeDetails` FP below); (b) **`check --fail` exits 0 on
+  baseline-less potential drift, so a first-check assert MUST `grep "Potential
+Drift"` the output — trusting the exit code let a real FP print INTEG OK.**
+- **A barest PROVISIONED variant hides behind its richer/other-mode siblings.** The
+  2026-07-14 hunt's only first-run FP: a Kinesis stream declaring ONLY `ShardCount`
+  reads back `StreamModeDetails={"StreamMode":"PROVISIONED"}` undeclared — every
+  existing fixture either declared StreamModeDetails or was ON_DEMAND (#1487's fold
+  is the exact inverse: ON_DEMAND materializes ShardCount). When a type has a mode
+  axis, deploy the barest form of EACH mode and check which sibling props the OTHER
+  mode's fold assumed declared.
+- **A write-only re-include can be a side-effectful WRITE, not a keep-alive — watch
+  for revert-manufactured drift.** Reverting an unrelated prop (TracingConfig) on a
+  ZipFile Lambda re-included `Code.ZipFile` per the CC read-modify-write contract,
+  which the handler executed as UpdateFunctionCode: the zip re-packaged
+  (non-deterministically), live `CodeSha256` moved off the recorded baseline, and the
+  revert's own convergence check reported a drift the revert itself created
+  (permanent until re-record). Fix class: `WRITEONLY_REINCLUDE_SKIP` in
+  revert/plan.ts (live-proven 2026-07-14). When a revert leaves a synthetic read
+  signal (CodeSha256/ScriptSha256/bundle sha) "remaining", suspect the patch's own
+  re-include before calling it an AWS bug.
 - **Sibling-ATTACHMENT echo materialization is the post-update class's twin — deploy
   the ATTACHED shape, not just the barest parent.** A parent deployed ALONE can hide
   FPs that only materialize when a sibling attaches to it: a barest

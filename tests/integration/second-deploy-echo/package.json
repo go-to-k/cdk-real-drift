@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-integ-second-deploy-echo",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Post-update echo materialization probe (the #1569 class, swept wide): barest common types, first check CLEAN, then a harmless tag/description stack UPDATE, then check MUST STILL be clean. Run via verify.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module"
+}

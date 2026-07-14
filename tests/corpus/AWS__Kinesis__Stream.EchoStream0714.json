@@ -1,0 +1,104 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "EchoStream0714",
+    "resourceType": "AWS::Kinesis::Stream",
+    "physicalId": "CdkrdHuntEcho0714-EchoStream0714-BidDYvkDHRA9",
+    "constructPath": "CdkrdHuntEcho0714/EchoStream0714",
+    "declared": {
+      "ShardCount": 1,
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        },
+        {
+          "Key": "cdkrd:rev",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "StreamModeDetails": {
+      "StreamMode": "PROVISIONED"
+    },
+    "WarmThroughputObject": {
+      "CurrentMiBps": 0,
+      "TargetMiBps": 0
+    },
+    "Arn": "arn:aws:kinesis:ap-northeast-1:111111111111:stream/CdkrdHuntEcho0714-EchoStream0714-BidDYvkDHRA9",
+    "MaxRecordSizeInKiB": 1024,
+    "RetentionPeriodHours": 24,
+    "DesiredShardLevelMetrics": [],
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:rev"
+      }
+    ],
+    "Name": "CdkrdHuntEcho0714-EchoStream0714-BidDYvkDHRA9",
+    "ShardCount": 1
+  },
+  "schema": {
+    "readOnly": ["Arn", "WarmThroughputObject"],
+    "writeOnly": ["WarmThroughputMiBps"],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn", "WarmThroughputObject"],
+    "writeOnlyPaths": ["WarmThroughputMiBps"],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["DesiredShardLevelMetrics"],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "ap-northeast-1",
+    "kmsAliasTargets": {
+      "alias/aws/backup": "8a6af96c-89fe-4ad4-b929-2534fb145917",
+      "alias/aws/kafka": "a2715ad0-2ae0-410e-8c6f-09e3de34ff91",
+      "alias/aws/lambda": "43bc8190-5c50-4bb1-8371-05e2cfbd695b",
+      "alias/aws/s3": "68b89604-663d-4bd6-9f88-b542040172db",
+      "alias/aws/secretsmanager": "e1a2f7df-c071-4f67-88b4-f987a02f90e1",
+      "alias/aws/sns": "fd051987-e227-4acf-9607-0bb8409b064f"
+    },
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "EchoStream0714",
+      "resourceType": "AWS::Kinesis::Stream",
+      "path": "StreamModeDetails",
+      "actual": {
+        "StreamMode": "PROVISIONED"
+      },
+      "physicalId": "CdkrdHuntEcho0714-EchoStream0714-BidDYvkDHRA9",
+      "constructPath": "CdkrdHuntEcho0714/EchoStream0714"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EchoStream0714",
+      "resourceType": "AWS::Kinesis::Stream",
+      "path": "MaxRecordSizeInKiB",
+      "actual": 1024,
+      "physicalId": "CdkrdHuntEcho0714-EchoStream0714-BidDYvkDHRA9",
+      "constructPath": "CdkrdHuntEcho0714/EchoStream0714"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EchoStream0714",
+      "resourceType": "AWS::Kinesis::Stream",
+      "path": "RetentionPeriodHours",
+      "actual": 24,
+      "physicalId": "CdkrdHuntEcho0714-EchoStream0714-BidDYvkDHRA9",
+      "constructPath": "CdkrdHuntEcho0714/EchoStream0714"
+    }
+  ]
+}

@@ -136,7 +136,12 @@ TransitGatewayAttachmentId]` composite is built from TWO declared props (its
    them (cdkd #812 — reverting any prop on an ECS Service with a managed EBS volume
    lost the write-only `VolumeConfigurations` and UpdateService hard-failed). The
    revert now re-includes every fully-resolved declared write-only top-level prop the
-   patch does not already touch (`writeOnlyReincludeOps` in plan.ts). A second
+   patch does not already touch (`writeOnlyReincludeOps` in plan.ts) — EXCEPT
+   side-effectful prefixes (`WRITEONLY_REINCLUDE_SKIP`: Lambda `Code`, whose
+   re-inclusion is itself an UpdateFunctionCode that re-packages the zip and moves
+   the live `CodeSha256` off the recorded baseline, so a revert of an unrelated
+   prop would manufacture its own post-revert drift; an omitted `Code` is
+   preserved by the handler — live-proven 2026-07-14). A second
    edge (#481): a service can REJECT its own read-back — the CC read of a
    VpcLattice Rule echoes `Match.HttpMatch.HeaderMatches: []`, and the update
    handler re-sends it to an UpdateRule that requires >= 1 members, so ANY

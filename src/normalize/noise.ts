@@ -397,6 +397,12 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // A rule that declares no State reads back ENABLED (the default for a new rule).
   // Equality-gated: a DISABLED rule reads a different value and surfaces.
   'AWS::Events::Rule': { EventBusName: 'default', State: 'ENABLED' },
+  // A custom event bus materializes the logging-disabled default LogConfig on its FIRST
+  // UPDATE (any harmless stack update — the #1569 post-update echo class): the fresh
+  // create reads back NO LogConfig, the post-update read echoes the OFF defaults.
+  // Equality-gated: enabling bus logging out of band (Level INFO/TRACE/ERROR) no longer
+  // matches and surfaces. Live, hunt 2026-07-14 (second-deploy-echo2, CdkrdHuntEcho2v0714).
+  'AWS::Events::EventBus': { LogConfig: { IncludeDetail: 'NONE', Level: 'OFF' } },
   'AWS::Athena::WorkGroup': {
     State: 'ENABLED',
     // A workgroup that declares ONLY Name/Description reads back AWS's whole default
@@ -735,6 +741,12 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     // (24 hours). Equality-gated: a stream that sets a longer retention no longer matches
     // and surfaces (undeclared), and an out-of-band retention change still surfaces. #711.
     RetentionPeriodHours: 24,
+    // A PROVISIONED stream that declares only ShardCount reads back the materialized
+    // StreamModeDetails creation default (the inverse of #1487, where ON_DEMAND
+    // materializes ShardCount). Equality-gated: an out-of-band switch to ON_DEMAND
+    // reads {"StreamMode":"ON_DEMAND"}, no longer matches, and surfaces. Live,
+    // hunt 2026-07-14 (barest provisioned stream, stack CdkrdHuntEcho0714).
+    StreamModeDetails: { StreamMode: 'PROVISIONED' },
   },
   'AWS::SSM::Parameter': {
     DataType: 'text',

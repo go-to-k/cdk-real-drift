@@ -53,6 +53,22 @@ const SYNTHETIC_READ_SIGNAL_PATHS: Record<string, readonly string[]> = {
   'AWS::Glue::Job': ['ScriptSha256'],
 };
 
+// Write-only path PREFIXES that must NOT be re-included into a CC read-modify-write
+// patch that does not otherwise touch them: for these, re-sending the declared value is
+// not a harmless keep-alive but a SIDE-EFFECTFUL write. AWS::Lambda::Function `Code` is
+// the case: the update handler treats a patched-in Code value as an UpdateFunctionCode
+// call, re-packaging the deployment artifact (byte-nondeterministically for an inline
+// ZipFile), so a revert of an UNRELATED property (e.g. TracingConfig) silently redeploys
+// the function code and CHANGES the live CodeSha256 — invalidating the recorded baseline
+// (the #646 synthetic read signal) and leaving a permanent post-revert drift the revert
+// itself created. Omitting Code is safe by the create-only-skip argument above: function
+// code cannot silently vanish (the provider preserves an absent Code on update); it is
+// not a credential the handler would reset. Live-proven 2026-07-14 (revconv-hunt:
+// reverting TracingConfig re-included Code.ZipFile and CodeSha256 moved off baseline).
+const WRITEONLY_REINCLUDE_SKIP: Record<string, readonly string[]> = {
+  'AWS::Lambda::Function': ['Code'],
+};
+
 // SDK-override types that are nonetheless Cloud Control FULLY_MUTABLE — their override
 // exists only to work around a READ quirk, NOT because CC cannot UPDATE them, so a CC
 // UpdateResource revert is valid and they are EXEMPT from the "read-override => not
@@ -1543,10 +1559,12 @@ function valueAtDottedPath(model: Record<string, unknown>, path: string): unknow
 export function writeOnlyReincludeOps(
   declared: Record<string, unknown> | undefined,
   schema: SchemaInfo | undefined,
-  existingOps: PatchOp[]
+  existingOps: PatchOp[],
+  resourceType?: string
 ): PatchOp[] {
   if (!declared || !schema || schema.writeOnlyPaths.length === 0) return [];
   const touched = new Set(existingOps.map((o) => o.path));
+  const skipPrefixes = resourceType ? (WRITEONLY_REINCLUDE_SKIP[resourceType] ?? []) : [];
   const ops: PatchOp[] = [];
   // Iterate the FULL write-only paths, not just the top-level set: a NESTED write-only
   // property (AWS::IAM::User LoginProfile.Password, AWS::Amplify::App
@@ -1557,6 +1575,10 @@ export function writeOnlyReincludeOps(
   // present in the declared model from its template intent.
   for (const path of schema.writeOnlyPaths) {
     if (path.includes('*')) continue; // a wildcard (array-element) write-only — no single value to re-include
+    // A side-effectful write-only prefix (WRITEONLY_REINCLUDE_SKIP above): re-including
+    // it would WRITE (redeploy code), not merely preserve — skip unless the patch itself
+    // targets it (in which case the op is already in existingOps, not re-included here).
+    if (skipPrefixes.some((p) => path === p || path.startsWith(`${p}.`))) continue;
     // A property that is write-only AND create-only must NEVER enter an update patch:
     // Cloud Control hard-rejects any op on a create-only path ("createOnlyProperties
     // [...] cannot be updated"), failing the WHOLE revert at apply time — even though
