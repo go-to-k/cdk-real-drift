@@ -485,6 +485,13 @@ export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   'AWS::CloudWatch::CompositeAlarm\0ActionsEnabled',
   'AWS::ApiGateway::RestApi\0ApiKeySourceType',
   'AWS::Glue::Crawler\0SchemaChangePolicy',
+  // #1623: codebuild:UpdateProject and mediaconvert:UpdateQueue are SELECTIVE modifies
+  // (an omitted field keeps its live value), so a bare `remove` of these KNOWN_DEFAULTS-
+  // folded scalars is inexpressible — write the defaults (60 / 480 / ACTIVE) explicitly;
+  // the ops route to the SDK_WRITERS writers (writers.ts), which consume the values.
+  'AWS::CodeBuild::Project\0TimeoutInMinutes',
+  'AWS::CodeBuild::Project\0QueuedTimeoutInMinutes',
+  'AWS::MediaConvert::Queue\0Status',
 ]);
 
 // Set-default values for REVERT_SET_DEFAULT_PATHS entries whose default is a plain constant

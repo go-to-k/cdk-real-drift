@@ -275,3 +275,48 @@ describe('#1626 VPCEndpointService SupportedIpAddressTypes default', () => {
     expect(pathsByTier(f, 'undeclared')).toEqual(['SupportedIpAddressTypes']);
   });
 });
+
+// #1628 — the instance-target third arm of the preserve_client_ip axis, live-proven on a
+// barest STANDALONE TCP/instance group (Cdkrd1623Writers, us-east-1, 2026-07-14): NLB-family
+// instance targets default to PRESERVING client IPs ("true"), the inverse of the #1626
+// ip-target entry.
+describe('#1628 TCP/instance-target group preserve_client_ip default', () => {
+  const declared = {
+    Protocol: 'TCP',
+    Port: 80,
+    VpcId: 'vpc-0123456789abcdef0',
+    TargetType: 'instance',
+  };
+  const mk = (): DesiredResource => ({
+    logicalId: 'W1623InstanceTg',
+    resourceType: 'AWS::ElasticLoadBalancingV2::TargetGroup',
+    physicalId: 'arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/inst/abc',
+    declared,
+  });
+
+  it('folds the instance-target "true" default to atDefault (ZERO first-run drift)', () => {
+    const f = classifyResource(
+      mk(),
+      {
+        ...declared,
+        TargetGroupAttributes: attrs({ 'preserve_client_ip.enabled': 'true' }),
+      },
+      emptySchema
+    );
+    expect(pathsByTier(f, 'undeclared')).toEqual([]);
+  });
+
+  it('an out-of-band preserve-client-ip DISABLE still surfaces (equality gate)', () => {
+    const f = classifyResource(
+      mk(),
+      {
+        ...declared,
+        TargetGroupAttributes: attrs({ 'preserve_client_ip.enabled': 'false' }),
+      },
+      emptySchema
+    );
+    expect(pathsByTier(f, 'undeclared')).toEqual([
+      'TargetGroupAttributes[preserve_client_ip.enabled]',
+    ]);
+  });
+});

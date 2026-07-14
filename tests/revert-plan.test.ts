@@ -709,6 +709,59 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  // #1623: the CodeBuild Project / MediaConvert Queue SDK writers landed — the previously
+  // "type not revertable yet" types now plan `sdk` items, with the KNOWN_DEFAULTS-folded
+  // scalars arriving as explicit set-defaults (the selective UpdateProject / UpdateQueue
+  // keep an omitted field, so a bare `remove` is inexpressible).
+  it('#1623: CodeBuild TimeoutInMinutes/QueuedTimeoutInMinutes (SET-DEFAULT) plan sdk-routed adds', () => {
+    const plan = buildRevertPlan(
+      [
+        F({
+          tier: 'undeclared',
+          resourceType: 'AWS::CodeBuild::Project',
+          path: 'TimeoutInMinutes',
+          actual: 30,
+        }),
+        F({
+          tier: 'undeclared',
+          resourceType: 'AWS::CodeBuild::Project',
+          path: 'QueuedTimeoutInMinutes',
+          actual: 240,
+        }),
+      ],
+      baseline([])
+    );
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0]!.kind).toBe('sdk');
+    expect(plan.items[0]!.ops).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ op: 'add', path: '/TimeoutInMinutes', value: 60 }),
+        expect.objectContaining({ op: 'add', path: '/QueuedTimeoutInMinutes', value: 480 }),
+      ])
+    );
+  });
+
+  it('#1623: MediaConvert Queue Status (SET-DEFAULT) plans an sdk-routed add ACTIVE', () => {
+    const plan = buildRevertPlan(
+      [
+        F({
+          tier: 'undeclared',
+          resourceType: 'AWS::MediaConvert::Queue',
+          path: 'Status',
+          actual: 'PAUSED',
+        }),
+      ],
+      baseline([])
+    );
+    expect(plan.items[0]!.kind).toBe('sdk');
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/Status',
+      value: 'ACTIVE',
+      prior: 'PAUSED',
+    });
+  });
+
   // #1588: the remaining ModifyDBInstance revert-no-op twins of #1541 — same selective-modify
   // semantics (an omitted property keeps its existing value), so a bare `remove` revert of an
   // out-of-band, undeclared, KNOWN_DEFAULTS-folded change is a silent no-op. Each is now in

@@ -136,10 +136,17 @@ import {
 } from '@aws-sdk/client-cloudcontrol';
 import { KafkaClient, UpdateConfigurationCommand } from '@aws-sdk/client-kafka';
 import {
+  BatchGetProjectsCommand,
   BatchGetReportGroupsCommand,
   CodeBuildClient,
+  UpdateProjectCommand,
   UpdateReportGroupCommand,
 } from '@aws-sdk/client-codebuild';
+import {
+  GetQueueCommand,
+  MediaConvertClient,
+  UpdateQueueCommand,
+} from '@aws-sdk/client-mediaconvert';
 import {
   DAXClient,
   DescribeClustersCommand,
@@ -221,6 +228,7 @@ const dlm = mockClient(DLMClient);
 const cloudcontrol = mockClient(CloudControlClient);
 const kafka = mockClient(KafkaClient);
 const codebuild = mockClient(CodeBuildClient);
+const mediaconvert = mockClient(MediaConvertClient);
 const dax = mockClient(DAXClient);
 const elasticache = mockClient(ElastiCacheClient);
 const memorydb = mockClient(MemoryDBClient);
@@ -281,6 +289,7 @@ beforeEach(() => {
   dlm.reset();
   cloudcontrol.reset();
   codebuild.reset();
+  mediaconvert.reset();
   dax.reset();
   ec2.reset();
   lex.reset();
@@ -4225,5 +4234,115 @@ describe('ApiGateway RestApi Policy writer (JSON-string prop, issue #677)', () =
         [op]
       )
     ).rejects.toThrow(/RestApiId/);
+  });
+});
+
+// #1623 — CodeBuild Project revert via the selective codebuild:UpdateProject (the type is
+// SDK_OVERRIDES-read, so revert previously said "type not revertable yet" while detection
+// worked — live-found by the revconv4-hunt batch-5 probe).
+describe('CodeBuild Project writer (selective UpdateProject, #1623)', () => {
+  const NAME = 'cdkrd-1623-cb';
+  const cbProject = {
+    name: NAME,
+    serviceRole: 'arn:aws:iam::123456789012:role/cb',
+    timeoutInMinutes: 30,
+    queuedTimeoutInMinutes: 240,
+    source: { type: 'NO_SOURCE' },
+    artifacts: { type: 'NO_ARTIFACTS' },
+    environment: {
+      type: 'LINUX_CONTAINER',
+      computeType: 'BUILD_GENERAL1_SMALL',
+      image: 'aws/codebuild/standard:7.0',
+    },
+  };
+  const tOp = (path: string, value: unknown): PatchOp => ({
+    op: 'add',
+    path,
+    value,
+    human: `${path} -> AWS default`,
+  });
+
+  it('resolveSdkWriter routes the whole type to the SDK writer', () => {
+    expect(SDK_WRITERS['AWS::CodeBuild::Project']).toBeDefined();
+  });
+
+  it('writes ONLY the touched scalars, camelCased, via UpdateProject', async () => {
+    codebuild.on(BatchGetProjectsCommand).resolves({ projects: [cbProject] });
+    codebuild.on(UpdateProjectCommand).resolves({});
+    const writer = SDK_WRITERS['AWS::CodeBuild::Project'];
+    await writer(ctx({ physicalId: NAME }), [
+      tOp('/TimeoutInMinutes', 60),
+      tOp('/QueuedTimeoutInMinutes', 480),
+    ]);
+    const calls = codebuild.commandCalls(UpdateProjectCommand);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].args[0].input).toEqual({
+      name: NAME,
+      timeoutInMinutes: 60,
+      queuedTimeoutInMinutes: 480,
+    });
+  });
+
+  it('a removed Description clears with an empty string', async () => {
+    codebuild.on(BatchGetProjectsCommand).resolves({
+      projects: [{ ...cbProject, description: 'oob-added' }],
+    });
+    codebuild.on(UpdateProjectCommand).resolves({});
+    const writer = SDK_WRITERS['AWS::CodeBuild::Project'];
+    await writer(ctx({ physicalId: NAME }), [
+      { op: 'remove', path: '/Description', prior: 'oob-added', human: 'Description -> remove' },
+    ]);
+    expect(codebuild.commandCalls(UpdateProjectCommand)[0].args[0].input).toEqual({
+      name: NAME,
+      description: '',
+    });
+  });
+
+  it('an op on an unmapped complex shape reports not-reverted honestly (after applying the rest)', async () => {
+    codebuild.on(BatchGetProjectsCommand).resolves({ projects: [cbProject] });
+    codebuild.on(UpdateProjectCommand).resolves({});
+    const writer = SDK_WRITERS['AWS::CodeBuild::Project'];
+    await expect(
+      writer(ctx({ physicalId: NAME }), [
+        tOp('/TimeoutInMinutes', 60),
+        tOp('/Environment', { Type: 'LINUX_CONTAINER' }),
+      ])
+    ).rejects.toThrow(/Environment/);
+    // the convergeable op still landed before the honest failure
+    expect(codebuild.commandCalls(UpdateProjectCommand)).toHaveLength(1);
+  });
+});
+
+// #1623 — MediaConvert Queue revert via mediaconvert:UpdateQueue (NON_PROVISIONABLE,
+// read-only until now).
+describe('MediaConvert Queue writer (UpdateQueue, #1623)', () => {
+  const NAME = 'cdkrd-1623-mcq';
+  const liveQueue = { Name: NAME, Status: 'PAUSED', PricingPlan: 'ON_DEMAND' };
+
+  it('resolveSdkWriter routes the whole type to the SDK writer', () => {
+    expect(SDK_WRITERS['AWS::MediaConvert::Queue']).toBeDefined();
+  });
+
+  it('an add Status ACTIVE (the REVERT_SET_DEFAULT_PATHS set-default) writes UpdateQueue', async () => {
+    mediaconvert.on(GetQueueCommand).resolves({ Queue: liveQueue });
+    mediaconvert.on(UpdateQueueCommand).resolves({});
+    const writer = SDK_WRITERS['AWS::MediaConvert::Queue'];
+    await writer(ctx({ physicalId: NAME }), [
+      { op: 'add', path: '/Status', value: 'ACTIVE', prior: 'PAUSED', human: 'Status -> default' },
+    ]);
+    const calls = mediaconvert.commandCalls(UpdateQueueCommand);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].args[0].input).toEqual({ Name: NAME, Status: 'ACTIVE' });
+  });
+
+  it('an op on an unmapped prop reports not-reverted honestly', async () => {
+    mediaconvert.on(GetQueueCommand).resolves({ Queue: liveQueue });
+    mediaconvert.on(UpdateQueueCommand).resolves({});
+    const writer = SDK_WRITERS['AWS::MediaConvert::Queue'];
+    await expect(
+      writer(ctx({ physicalId: NAME }), [
+        { op: 'add', path: '/Tags', value: { a: 'b' }, human: 'Tags -> value' },
+      ])
+    ).rejects.toThrow(/Tags/);
   });
 });
