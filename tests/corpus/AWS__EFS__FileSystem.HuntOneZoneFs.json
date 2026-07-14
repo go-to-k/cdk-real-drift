@@ -1,0 +1,125 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntOneZoneFs",
+    "resourceType": "AWS::EFS::FileSystem",
+    "physicalId": "fs-0211b6a049cdb7e7f",
+    "constructPath": "CdkrdHunt0714Var2/HuntOneZoneFs",
+    "declared": {
+      "AvailabilityZoneName": "us-east-1a",
+      "FileSystemTags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "PerformanceMode": "generalPurpose",
+    "Encrypted": false,
+    "FileSystemTags": [
+      {
+        "Value": "HuntOneZoneFs",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0714Var2/071791b0-7f37-11f1-9753-0affd2ec42e1",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkrdHunt0714Var2",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "enabled",
+        "Key": "aws:elasticfilesystem:default-backup"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "AvailabilityZoneName": "us-east-1a",
+    "FileSystemId": "fs-0211b6a049cdb7e7f",
+    "FileSystemProtection": {
+      "ReplicationOverwriteProtection": "ENABLED"
+    },
+    "LifecyclePolicies": [],
+    "Arn": "arn:aws:elasticfilesystem:us-east-1:111111111111:file-system/fs-0211b6a049cdb7e7f",
+    "ThroughputMode": "bursting",
+    "BackupPolicy": {
+      "Status": "ENABLED"
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn", "FileSystemId"],
+    "writeOnly": ["BypassPolicyLockoutSafetyCheck"],
+    "createOnly": ["AvailabilityZoneName", "Encrypted", "KmsKeyId", "PerformanceMode"],
+    "readOnlyPaths": [
+      "Arn",
+      "FileSystemId",
+      "ReplicationConfiguration.Destinations.*.Status",
+      "ReplicationConfiguration.Destinations.*.StatusMessage"
+    ],
+    "writeOnlyPaths": [
+      "BypassPolicyLockoutSafetyCheck",
+      "ReplicationConfiguration.Destinations.*.AvailabilityZoneName",
+      "ReplicationConfiguration.Destinations.*.KmsKeyId"
+    ],
+    "createOnlyPaths": ["AvailabilityZoneName", "Encrypted", "KmsKeyId", "PerformanceMode"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOneZoneFs",
+      "resourceType": "AWS::EFS::FileSystem",
+      "path": "PerformanceMode",
+      "actual": "generalPurpose",
+      "physicalId": "fs-0211b6a049cdb7e7f",
+      "constructPath": "CdkrdHunt0714Var2/HuntOneZoneFs"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOneZoneFs",
+      "resourceType": "AWS::EFS::FileSystem",
+      "path": "FileSystemProtection",
+      "actual": {
+        "ReplicationOverwriteProtection": "ENABLED"
+      },
+      "physicalId": "fs-0211b6a049cdb7e7f",
+      "constructPath": "CdkrdHunt0714Var2/HuntOneZoneFs"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOneZoneFs",
+      "resourceType": "AWS::EFS::FileSystem",
+      "path": "ThroughputMode",
+      "actual": "bursting",
+      "physicalId": "fs-0211b6a049cdb7e7f",
+      "constructPath": "CdkrdHunt0714Var2/HuntOneZoneFs"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntOneZoneFs",
+      "resourceType": "AWS::EFS::FileSystem",
+      "path": "BackupPolicy",
+      "actual": {
+        "Status": "ENABLED"
+      },
+      "physicalId": "fs-0211b6a049cdb7e7f",
+      "constructPath": "CdkrdHunt0714Var2/HuntOneZoneFs"
+    }
+  ]
+}

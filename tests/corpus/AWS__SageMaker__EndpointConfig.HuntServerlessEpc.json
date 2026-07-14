@@ -1,0 +1,113 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntServerlessEpc",
+    "resourceType": "AWS::SageMaker::EndpointConfig",
+    "physicalId": "arn:aws:sagemaker:us-east-1:111111111111:endpoint-config/HuntServerlessEpc-eJF2maNSeqzn",
+    "constructPath": "CdkrdHunt0714Var2/HuntServerlessEpc",
+    "declared": {
+      "ProductionVariants": [
+        {
+          "ModelName": "HuntSmModel-vBVDS98KOxXo",
+          "ServerlessConfig": {
+            "MaxConcurrency": 5,
+            "MemorySizeInMB": 2048
+          },
+          "VariantName": "AllTraffic"
+        }
+      ],
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "EndpointConfigName": "HuntServerlessEpc-eJF2maNSeqzn",
+    "ProductionVariants": [
+      {
+        "VariantName": "AllTraffic",
+        "ModelName": "HuntSmModel-vBVDS98KOxXo",
+        "InitialVariantWeight": 1,
+        "ServerlessConfig": {
+          "MemorySizeInMB": 2048,
+          "MaxConcurrency": 5
+        },
+        "VolumeSizeInGB": 5
+      }
+    ],
+    "EnableNetworkIsolation": false,
+    "Tags": [
+      {
+        "Key": "aws:cloudformation:stack-name",
+        "Value": "CdkrdHunt0714Var2"
+      },
+      {
+        "Key": "aws:cloudformation:logical-id",
+        "Value": "HuntServerlessEpc"
+      },
+      {
+        "Key": "aws:cloudformation:stack-id",
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0714Var2/071791b0-7f37-11f1-9753-0affd2ec42e1"
+      },
+      {
+        "Key": "cdkrd:ephemeral",
+        "Value": "1"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": [
+      "AsyncInferenceConfig",
+      "DataCaptureConfig",
+      "EnableNetworkIsolation",
+      "EndpointConfigName",
+      "ExecutionRoleArn",
+      "ExplainerConfig",
+      "KmsKeyId",
+      "ProductionVariants",
+      "ShadowProductionVariants",
+      "VpcConfig"
+    ],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "AsyncInferenceConfig",
+      "DataCaptureConfig",
+      "EnableNetworkIsolation",
+      "EndpointConfigName",
+      "ExecutionRoleArn",
+      "ExplainerConfig",
+      "KmsKeyId",
+      "ProductionVariants",
+      "ShadowProductionVariants",
+      "VpcConfig"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "generated",
+      "logicalId": "HuntServerlessEpc",
+      "resourceType": "AWS::SageMaker::EndpointConfig",
+      "path": "EndpointConfigName",
+      "actual": "HuntServerlessEpc-eJF2maNSeqzn",
+      "physicalId": "arn:aws:sagemaker:us-east-1:111111111111:endpoint-config/HuntServerlessEpc-eJF2maNSeqzn",
+      "constructPath": "CdkrdHunt0714Var2/HuntServerlessEpc"
+    }
+  ]
+}

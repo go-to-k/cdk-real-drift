@@ -726,6 +726,11 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::ECR::Repository': {
     EncryptionConfiguration: { EncryptionType: 'AES256' },
     ImageTagMutability: 'MUTABLE', // R-noise-sweep: default; switching to IMMUTABLE no longer matches and surfaces
+    // Scan-on-push is off by default; the pin (rather than the isTrivialEmpty drop) gives
+    // REVERT_SET_DEFAULT_PATHS a default value to write back explicitly — the ECR CC
+    // handler's partial update ignores an omitted ImageScanningConfiguration exactly like
+    // its ImageTagMutability sibling (#1580), live-proven on revconv2-hunt 2026-07-14.
+    ImageScanningConfiguration: { ScanOnPush: false },
   },
   // Same default family as AWS::ECR::Repository (above) — the template type was missed.
   // A creation template that declares only {Prefix, AppliedFor, Description} reads back
@@ -2336,6 +2341,35 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     'ExtendedS3DestinationConfiguration.BufferingHints': {
       IntervalInSeconds: 300,
       SizeInMBs: 5,
+    },
+    // The HTTP-endpoint destination variant (Datadog/Splunk-style) materializes its own
+    // echo family — every existing fixture was ExtendedS3, so a barest
+    // HttpEndpointDestinationConfiguration (url + name + the required S3 backup config)
+    // first-ran 7 FPs. All are documented stable constants, equality-gated (an
+    // out-of-band buffering/retry/backup-mode/compression change still surfaces).
+    // Observed live on a fresh variants2-hunt deploy (2026-07-14). Note the S3BackupMode
+    // default differs from ExtendedS3's ('FailedDataOnly' vs 'Disabled' — the HTTP enum
+    // is FailedDataOnly|AllData). The other destination variants (Splunk / Redshift /
+    // OpenSearch / Snowflake …) each carry their OWN per-variant defaults and stay
+    // unpinned until live-proven — an equality-gated pin added blind cannot false-fold,
+    // but an unverified constant is just dead weight.
+    'HttpEndpointDestinationConfiguration.RequestConfiguration': {
+      CommonAttributes: [],
+      ContentEncoding: 'NONE',
+    },
+    'HttpEndpointDestinationConfiguration.BufferingHints': {
+      IntervalInSeconds: 300,
+      SizeInMBs: 5,
+    },
+    'HttpEndpointDestinationConfiguration.RetryOptions': { DurationInSeconds: 300 },
+    'HttpEndpointDestinationConfiguration.S3BackupMode': 'FailedDataOnly',
+    'HttpEndpointDestinationConfiguration.S3Configuration.BufferingHints': {
+      IntervalInSeconds: 300,
+      SizeInMBs: 5,
+    },
+    'HttpEndpointDestinationConfiguration.S3Configuration.CompressionFormat': 'UNCOMPRESSED',
+    'HttpEndpointDestinationConfiguration.S3Configuration.EncryptionConfiguration': {
+      NoEncryptionConfig: 'NoEncryption',
     },
   },
   'AWS::Athena::WorkGroup': {
@@ -4753,7 +4787,10 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
   // that survives `record` and never converges (a revert just re-writes the mixed case, which
   // the service lowercases again). Every identifier here is create-only, so case-insensitive
   // equality hides no revertable drift (a genuine rename is a replacement). ElastiCache
-  // SubnetGroup live-verified; the rest docs-verified from the AWS CLI help. NOTE:
+  // SubnetGroup live-verified; the Neptune trio live-verified 2026-07-14 (Cloud Control
+  // create-resource passes a mixed-case DBClusterIdentifier / DBSubnetGroupName through and
+  // the stored echo reads back lowercased; DBInstanceIdentifier lowercased in the raw
+  // create-db-instance echo); the rest docs-verified from the AWS CLI help. NOTE:
   // AWS::Route53::HostedZone.Name was live-ruled-out (Route53 PRESERVES case on read) so it
   // is deliberately NOT added. (An earlier note also ruled out RDS DBSubnetGroupName, but a
   // 2026-07-12 live probe disproved that: `create-db-subnet-group

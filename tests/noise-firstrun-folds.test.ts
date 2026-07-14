@@ -309,3 +309,127 @@ describe('#847 AutoScaling ScheduledAction StartTime / EndTime (undeclared, time
     expect(pathsByTier(f, 'atDefault')).not.toContain('EndTime');
   });
 });
+
+describe('ECR Repository ImageScanningConfiguration default (revconv2-hunt 2026-07-14)', () => {
+  const res: DesiredResource = {
+    logicalId: 'Repo',
+    resourceType: 'AWS::ECR::Repository',
+    physicalId: 'repo',
+    declared: {},
+  };
+  it('folds {ScanOnPush:false} to atDefault (via the KNOWN_DEFAULTS pin, not the trivial-empty drop)', () => {
+    const f = classifyResource(
+      res,
+      { ImageScanningConfiguration: { ScanOnPush: false } },
+      emptySchema
+    );
+    expect(pathsByTier(f, 'atDefault')).toContain('ImageScanningConfiguration');
+    expect(pathsByTier(f, 'undeclared')).not.toContain('ImageScanningConfiguration');
+  });
+  it('surfaces an out-of-band scan-on-push enable as undeclared (detection preserved)', () => {
+    const f = classifyResource(
+      res,
+      { ImageScanningConfiguration: { ScanOnPush: true } },
+      emptySchema
+    );
+    expect(pathsByTier(f, 'undeclared')).toContain('ImageScanningConfiguration');
+  });
+});
+
+describe('EFS FileSystem BackupPolicy — One Zone derived default (variants2-hunt 2026-07-14)', () => {
+  const oneZone: DesiredResource = {
+    logicalId: 'OneZoneFs',
+    resourceType: 'AWS::EFS::FileSystem',
+    physicalId: 'fs-1',
+    declared: { AvailabilityZoneName: 'us-east-1a' },
+  };
+  const regional: DesiredResource = {
+    logicalId: 'RegionalFs',
+    resourceType: 'AWS::EFS::FileSystem',
+    physicalId: 'fs-2',
+    declared: {},
+  };
+  it('One Zone: folds the ENABLED backup default to atDefault (derived from AvailabilityZoneName)', () => {
+    const f = classifyResource(oneZone, { BackupPolicy: { Status: 'ENABLED' } }, emptySchema);
+    expect(pathsByTier(f, 'atDefault')).toContain('BackupPolicy');
+    expect(pathsByTier(f, 'undeclared')).not.toContain('BackupPolicy');
+  });
+  it('One Zone: an out-of-band backup DISABLE still surfaces as undeclared (detection preserved)', () => {
+    const f = classifyResource(oneZone, { BackupPolicy: { Status: 'DISABLED' } }, emptySchema);
+    expect(pathsByTier(f, 'undeclared')).toContain('BackupPolicy');
+    expect(pathsByTier(f, 'atDefault')).not.toContain('BackupPolicy');
+  });
+  it('Regional: still folds the DISABLED constant (falls through to KNOWN_DEFAULTS)', () => {
+    const f = classifyResource(regional, { BackupPolicy: { Status: 'DISABLED' } }, emptySchema);
+    expect(pathsByTier(f, 'atDefault')).toContain('BackupPolicy');
+  });
+  it('Regional: an out-of-band backup ENABLE still surfaces as undeclared', () => {
+    const f = classifyResource(regional, { BackupPolicy: { Status: 'ENABLED' } }, emptySchema);
+    expect(pathsByTier(f, 'undeclared')).toContain('BackupPolicy');
+  });
+});
+
+describe('Firehose HTTP-endpoint destination first-run echo family (variants2-hunt 2026-07-14)', () => {
+  // A barest HttpEndpointDestinationConfiguration (url + name + required S3 backup config)
+  // reads back 7 materialized constants — the HTTP-variant twins of the ExtendedS3 family.
+  const declared = {
+    HttpEndpointDestinationConfiguration: {
+      EndpointConfiguration: { Url: 'https://example.com/cdkrd-hunt', Name: 'hunt-endpoint' },
+      S3Configuration: { BucketARN: 'arn:aws:s3:::backup', RoleARN: 'arn:aws:iam::1:role/fh' },
+    },
+  };
+  const res: DesiredResource = {
+    logicalId: 'HttpFirehose',
+    resourceType: 'AWS::KinesisFirehose::DeliveryStream',
+    physicalId: 'stream',
+    declared,
+  };
+  const live = {
+    HttpEndpointDestinationConfiguration: {
+      EndpointConfiguration: { Url: 'https://example.com/cdkrd-hunt', Name: 'hunt-endpoint' },
+      S3Configuration: {
+        BucketARN: 'arn:aws:s3:::backup',
+        RoleARN: 'arn:aws:iam::1:role/fh',
+        BufferingHints: { IntervalInSeconds: 300, SizeInMBs: 5 },
+        CompressionFormat: 'UNCOMPRESSED',
+        EncryptionConfiguration: { NoEncryptionConfig: 'NoEncryption' },
+      },
+      RequestConfiguration: { CommonAttributes: [], ContentEncoding: 'NONE' },
+      BufferingHints: { IntervalInSeconds: 300, SizeInMBs: 5 },
+      RetryOptions: { DurationInSeconds: 300 },
+      S3BackupMode: 'FailedDataOnly',
+    },
+  };
+  it('folds all 7 materialized HTTP-endpoint echo constants to atDefault (zero undeclared)', () => {
+    const f = classifyResource(res, live, emptySchema);
+    expect(pathsByTier(f, 'undeclared')).toEqual([]);
+    expect(pathsByTier(f, 'declared')).toEqual([]);
+    expect(pathsByTier(f, 'atDefault')).toEqual(
+      expect.arrayContaining([
+        'HttpEndpointDestinationConfiguration.RequestConfiguration',
+        'HttpEndpointDestinationConfiguration.BufferingHints',
+        'HttpEndpointDestinationConfiguration.RetryOptions',
+        'HttpEndpointDestinationConfiguration.S3BackupMode',
+        'HttpEndpointDestinationConfiguration.S3Configuration.BufferingHints',
+        'HttpEndpointDestinationConfiguration.S3Configuration.CompressionFormat',
+        'HttpEndpointDestinationConfiguration.S3Configuration.EncryptionConfiguration',
+      ])
+    );
+  });
+  it('an out-of-band buffering / backup-mode change still surfaces (equality-gated)', () => {
+    const mutated = structuredClone(live);
+    mutated.HttpEndpointDestinationConfiguration.BufferingHints = {
+      IntervalInSeconds: 900,
+      SizeInMBs: 5,
+    };
+    (mutated.HttpEndpointDestinationConfiguration as Record<string, unknown>)['S3BackupMode'] =
+      'AllData';
+    const f = classifyResource(res, mutated, emptySchema);
+    expect(pathsByTier(f, 'undeclared')).toEqual(
+      expect.arrayContaining([
+        'HttpEndpointDestinationConfiguration.BufferingHints',
+        'HttpEndpointDestinationConfiguration.S3BackupMode',
+      ])
+    );
+  });
+});
