@@ -1570,6 +1570,46 @@ function clbDefaultSslPoliciesAtDefault(
   );
 }
 
+// #1604: a VPNConnection that declares no VpnTunnelOptionsSpecifications reads back both
+// tunnels' AWS-materialized options: a RANDOM link-local TunnelInsideCidr per tunnel (not
+// pinnable, not derivable), empty phase-1/2 algorithm + IKE-version restriction lists, and
+// logging off. NOT value-independent — tunnel options are OOB-mutable
+// (`modify-vpn-tunnel-options`) and security-relevant (weakened IKE/phase algorithms, a
+// logging disable), the #1266 class — so this is a SHAPE gate: fold only while every element
+// carries nothing but the pristine-creation members (restriction lists empty, both log flags
+// false, the AWS-assigned inside CIDRs). Any out-of-band restriction/enable adds or flips a
+// member, the shape no longer matches, and the whole path surfaces. A user who manages
+// tunnel options DECLARES them (the harvest12 shape) and is compared in the declared loop.
+const VPN_TUNNEL_EMPTY_LIST_KEYS = new Set([
+  'Phase1EncryptionAlgorithms',
+  'Phase1IntegrityAlgorithms',
+  'Phase1DHGroupNumbers',
+  'Phase2EncryptionAlgorithms',
+  'Phase2IntegrityAlgorithms',
+  'Phase2DHGroupNumbers',
+  'IKEVersions',
+]);
+const VPN_TUNNEL_INSIDE_CIDR = /^169\.254\.\d{1,3}\.\d{1,3}\/30$/;
+function vpnTunnelOptionsAtDefault(resourceType: string, key: string, value: unknown): boolean {
+  if (resourceType !== 'AWS::EC2::VPNConnection' || key !== 'VpnTunnelOptionsSpecifications')
+    return false;
+  if (!Array.isArray(value) || value.length === 0) return false;
+  return value.every((el) => {
+    if (!isNestedObject(el)) return false;
+    return Object.entries(el).every(([k, v]) => {
+      if (VPN_TUNNEL_EMPTY_LIST_KEYS.has(k)) return Array.isArray(v) && v.length === 0;
+      if (k === 'TunnelInsideCidr') return typeof v === 'string' && VPN_TUNNEL_INSIDE_CIDR.test(v);
+      // dual-stack/ipv6 VPNs carry an AWS-assigned inside IPv6 CIDR instead
+      if (k === 'TunnelInsideIpv6Cidr') return typeof v === 'string';
+      if (k === 'LogOptions')
+        return deepEqual(v, { CloudwatchLogOptions: { BgpLogEnabled: false, LogEnabled: false } });
+      // any other member (a lifetime knob, a DPD action, a PSK echo…) only appears when
+      // someone SET it — a real divergence, so the shape gate fails and the path surfaces
+      return false;
+    });
+  });
+}
+
 // A CloudFormation AUTO-GENERATED physical name. When a resource declares no explicit name,
 // CFn mints `<stackName>-<logicalId>-<random>` (the stack name is the FIRST segment of the
 // CDK construct path). DELIBERATELY strict — it must start with this stack's name AND end
@@ -5045,7 +5085,11 @@ export function classifyResource(
         !(k in knownDef)) ||
       // #705: a Classic ELB's undeclared Policies folds atDefault ONLY when it is exactly the
       // AWS default SSL negotiation policy (by PolicyName); a downgrade / added policy surfaces.
-      clbDefaultSslPoliciesAtDefault(resourceType, k, v)
+      clbDefaultSslPoliciesAtDefault(resourceType, k, v) ||
+      // #1604: a barest VPNConnection's materialized tunnel options fold ONLY in their
+      // pristine-creation shape (random inside CIDRs + empty restriction lists + logging
+      // off); an out-of-band tunnel-options change breaks the shape and surfaces.
+      vpnTunnelOptionsAtDefault(resourceType, k, v)
     ) {
       findings.push({ tier: 'atDefault', logicalId, resourceType, path: k, actual: v });
       continue;

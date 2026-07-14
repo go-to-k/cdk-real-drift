@@ -1,0 +1,37 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntVpnRoute",
+    "resourceType": "AWS::EC2::VPNConnectionRoute",
+    "physicalId": "203.0.113.0/24|vpn-09228c44c422987ac",
+    "constructPath": "CdkrdHunt0714VpnRoute/HuntVpnRoute",
+    "declared": {
+      "DestinationCidrBlock": "203.0.113.0/24",
+      "VpnConnectionId": "vpn-09228c44c422987ac"
+    }
+  },
+  "liveRaw": {
+    "DestinationCidrBlock": "203.0.113.0/24",
+    "VpnConnectionId": "vpn-09228c44c422987ac"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["DestinationCidrBlock", "VpnConnectionId"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["DestinationCidrBlock", "VpnConnectionId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

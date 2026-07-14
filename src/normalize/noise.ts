@@ -2325,6 +2325,10 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     // opensearch-multiaz-min 2026-07-14 — the Multi-AZ variant axis was previously
     // undeployed). Equality-gated: an out-of-band 3-AZ move breaks the pin and surfaces.
     'ClusterConfig.ZoneAwarenessConfig': { AvailabilityZoneCount: 2 },
+    // A domain with DedicatedMasterEnabled=true but no DedicatedMasterCount reads back the
+    // documented default of 3 masters (#1605, live-proven on os-variants2-min 2026-07-14).
+    // Equality-gated: an out-of-band scale to 5 masters surfaces.
+    'ClusterConfig.DedicatedMasterCount': 3,
   },
   'AWS::KinesisFirehose::DeliveryStream': {
     // S3 backup is Disabled by default when a destination declares no backup mode.
