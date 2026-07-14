@@ -1,0 +1,64 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntFifoTopic",
+    "resourceType": "AWS::SNS::Topic",
+    "physicalId": "arn:aws:sns:us-east-1:111111111111:CdkrdHunt0714Pack.fifo",
+    "constructPath": "CdkrdHunt0714Pack/HuntFifoTopic",
+    "declared": {
+      "FifoTopic": true,
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "TopicName": "CdkrdHunt0714Pack.fifo"
+    }
+  },
+  "liveRaw": {
+    "TopicArn": "arn:aws:sns:us-east-1:111111111111:CdkrdHunt0714Pack.fifo",
+    "FifoTopic": true,
+    "ContentBasedDeduplication": false,
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0714Pack",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntFifoTopic",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0714Pack/b9c52e00-7f4e-11f1-bc0a-0e7efe71f17d",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "ArchivePolicy": {},
+    "TopicName": "CdkrdHunt0714Pack.fifo"
+  },
+  "schema": {
+    "readOnly": ["TopicArn"],
+    "writeOnly": [],
+    "createOnly": ["FifoTopic", "TopicName"],
+    "readOnlyPaths": ["TopicArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["FifoTopic", "TopicName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["DeliveryStatusLogging", "Subscription"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

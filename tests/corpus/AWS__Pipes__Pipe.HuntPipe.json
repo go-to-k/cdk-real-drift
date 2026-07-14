@@ -1,0 +1,94 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntPipe",
+    "resourceType": "AWS::Pipes::Pipe",
+    "physicalId": "HuntPipe-aep0qV9ADOo3",
+    "constructPath": "CdkrdHunt0714Pack/HuntPipe",
+    "declared": {
+      "RoleArn": "arn:aws:iam::111111111111:role/CdkrdHunt0714Pack-HuntPipeRole1A5D3DA7-UUSuH2J05MHJ",
+      "Source": "arn:aws:sqs:us-east-1:111111111111:CdkrdHunt0714Pack-HuntPipeSrc-8CwXfPxydRRA",
+      "Tags": {
+        "cdkrd:ephemeral": "1"
+      },
+      "Target": "arn:aws:sqs:us-east-1:111111111111:CdkrdHunt0714Pack-HuntPipeDst-xdP5EVuR2TlS"
+    }
+  },
+  "liveRaw": {
+    "Target": "arn:aws:sqs:us-east-1:111111111111:CdkrdHunt0714Pack-HuntPipeDst-xdP5EVuR2TlS",
+    "DesiredState": "RUNNING",
+    "StateReason": "USER_INITIATED",
+    "CurrentState": "RUNNING",
+    "CreationTime": "2026-07-14T06:40:27Z",
+    "LastModifiedTime": "2026-07-14T06:40:36Z",
+    "Arn": "arn:aws:pipes:us-east-1:111111111111:pipe/HuntPipe-aep0qV9ADOo3",
+    "EnrichmentParameters": {},
+    "RoleArn": "arn:aws:iam::111111111111:role/CdkrdHunt0714Pack-HuntPipeRole1A5D3DA7-UUSuH2J05MHJ",
+    "Source": "arn:aws:sqs:us-east-1:111111111111:CdkrdHunt0714Pack-HuntPipeSrc-8CwXfPxydRRA",
+    "Tags": {
+      "cdkrd:ephemeral": "1"
+    },
+    "Name": "HuntPipe-aep0qV9ADOo3"
+  },
+  "schema": {
+    "readOnly": ["Arn", "CreationTime", "CurrentState", "LastModifiedTime", "StateReason"],
+    "writeOnly": ["SourceParameters", "TargetParameters"],
+    "createOnly": ["Name", "Source"],
+    "readOnlyPaths": ["Arn", "CreationTime", "CurrentState", "LastModifiedTime", "StateReason"],
+    "writeOnlyPaths": ["SourceParameters", "TargetParameters"],
+    "createOnlyPaths": [
+      "Name",
+      "Source",
+      "SourceParameters.ActiveMQBrokerParameters.QueueName",
+      "SourceParameters.DynamoDBStreamParameters.StartingPosition",
+      "SourceParameters.KinesisStreamParameters.StartingPosition",
+      "SourceParameters.KinesisStreamParameters.StartingPositionTimestamp",
+      "SourceParameters.ManagedStreamingKafkaParameters.ConsumerGroupID",
+      "SourceParameters.ManagedStreamingKafkaParameters.StartingPosition",
+      "SourceParameters.ManagedStreamingKafkaParameters.TopicName",
+      "SourceParameters.RabbitMQBrokerParameters.QueueName",
+      "SourceParameters.RabbitMQBrokerParameters.VirtualHost",
+      "SourceParameters.SelfManagedKafkaParameters.AdditionalBootstrapServers",
+      "SourceParameters.SelfManagedKafkaParameters.ConsumerGroupID",
+      "SourceParameters.SelfManagedKafkaParameters.StartingPosition",
+      "SourceParameters.SelfManagedKafkaParameters.TopicName"
+    ],
+    "defaults": {},
+    "defaultPaths": {
+      "TargetParameters.EcsTaskParameters.CapacityProviderStrategy.*.Weight": 0,
+      "TargetParameters.EcsTaskParameters.CapacityProviderStrategy.*.Base": 0,
+      "TargetParameters.EcsTaskParameters.EnableECSManagedTags": false,
+      "TargetParameters.EcsTaskParameters.EnableExecuteCommand": false,
+      "TargetParameters.EcsTaskParameters.Overrides.EphemeralStorage.SizeInGiB": 0,
+      "TargetParameters.BatchJobParameters.ArrayProperties.Size": 0,
+      "TargetParameters.BatchJobParameters.RetryStrategy.Attempts": 0,
+      "TargetParameters.RedshiftDataParameters.WithEvent": false
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": [
+      "EnrichmentParameters.HttpParameters.HeaderParameters",
+      "EnrichmentParameters.HttpParameters.QueryStringParameters",
+      "TargetParameters.BatchJobParameters.Parameters",
+      "TargetParameters.HttpParameters.HeaderParameters",
+      "TargetParameters.HttpParameters.QueryStringParameters"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntPipe",
+      "resourceType": "AWS::Pipes::Pipe",
+      "path": "DesiredState",
+      "actual": "RUNNING",
+      "physicalId": "HuntPipe-aep0qV9ADOo3",
+      "constructPath": "CdkrdHunt0714Pack/HuntPipe"
+    }
+  ]
+}

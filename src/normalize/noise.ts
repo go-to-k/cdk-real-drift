@@ -80,6 +80,11 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   //     surface AWS EXTENDS over time, is folded value-independently — see
   //     VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS.) Live-confirmed on a fresh
   //     `Enable: true`-only detector (CdkrdHuntUGd, 2026-07-09; #879).
+  // A filter that declares no Action reads back NOOP — the documented constant default
+  // (the only other value, ARCHIVE, is a real behavior change). Equality-gated: an
+  // out-of-band switch to ARCHIVE re-surfaces. Observed live on a barest filter
+  // (guardduty-hunt, 2026-07-14; #1612).
+  'AWS::GuardDuty::Filter': { Action: 'NOOP' },
   'AWS::GuardDuty::Detector': {
     FindingPublishingFrequency: 'SIX_HOURS',
     DataSources: {
@@ -379,6 +384,14 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     // Equality-gated: a mapping that pins a real window no longer matches and surfaces.
     // Observed live on a dev SQS-triggered function.
     MaximumBatchingWindowInSeconds: 0,
+    // A STREAM-source mapping (DynamoDB Streams / Kinesis) additionally materializes the
+    // stream-only concurrency + windowing defaults: 1 concurrent batch per shard and no
+    // tumbling window (the documented defaults). SQS sources never carry either prop, so
+    // the entries can't mis-fold there. Equality-gated — raise the parallelization or set
+    // a real window out of band and it no longer matches, so it re-surfaces. Observed live
+    // on barest DDB + Kinesis mappings (esm-hunt, 2026-07-14, #1608).
+    ParallelizationFactor: 1,
+    TumblingWindowInSeconds: 0,
   },
   // An alias created without a Description reads back the empty string. Folded as
   // atDefault so a never-declared alias does not report `Description=""` as drift; it
@@ -1827,6 +1840,16 @@ export const KNOWN_DEFAULT_ONE_OF: Record<string, Record<string, readonly unknow
   'AWS::Glue::Job': {
     Timeout: [2880, 480],
   },
+  // #1609: a pipeline that declares no PipelineType reads back the create-time default, and
+  // AWS MOVED that default when V2 launched (2023-10): a fresh barest pipeline now reads "V2"
+  // (live-proven, codepipeline-hunt 2026-07-14), pipelines created undeclared before the flip
+  // read "V1". Both are stable constants but the discriminator — when the pipeline was created
+  // — is off the resource's model (the #1249 era class). A user who DECLARES the type is
+  // compared in the declared dimension; the enum has only these two values, so the ONE_OF
+  // detection loss is confined to an out-of-band V1<->V2 flip on a never-declared type.
+  'AWS::CodePipeline::Pipeline': {
+    PipelineType: ['V1', 'V2'],
+  },
   // #1593: a domain that declares no DomainEndpointOptions reads back the whole options
   // object AWS materializes at creation, and its TLSSecurityPolicy member is ERA-dependent
   // (the S3 TransitionDefaultMinimumObjectSize class): a fresh 2026 domain reads
@@ -2278,7 +2301,20 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
   'AWS::Scheduler::Schedule': {
     'Target.RetryPolicy': { MaximumEventAgeInSeconds: 86400, MaximumRetryAttempts: 185 },
   },
+  // #1609: every pipeline action the template declares without a RunOrder reads back the
+  // documented default 1 (actions in a stage run in parallel unless ordered), so a barest
+  // pipeline reports one FP per action on first run (live, codepipeline-hunt 2026-07-14).
+  // Equality-gated: an out-of-band re-ordering (RunOrder 2+) no longer matches and surfaces.
+  'AWS::CodePipeline::Pipeline': {
+    'Stages.*.Actions.*.RunOrder': 1,
+  },
   'AWS::ECS::Service': {
+    // A service that declares NetworkConfiguration (required for awsvpc mode) but omits
+    // AssignPublicIp reads back the DISABLED default — every existing Fargate fixture
+    // declared it, so the barest form leaked this on first run (live, fargate-hunt
+    // 2026-07-14, #1610). Equality-gated: an out-of-band ENABLED flip (a real exposure
+    // change) no longer matches and surfaces.
+    'NetworkConfiguration.AwsvpcConfiguration.AssignPublicIp': 'DISABLED',
     // A service declaring no deployment configuration reads back AWS's defaults — the
     // ROLLING strategy with a 0-minute bake time. Observed unanimous across the corpus.
     'DeploymentConfiguration.Strategy': 'ROLLING',
@@ -3585,6 +3621,14 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   without enumerating each. Both observed live first-run (one real app's cognito
   //   authorizer, another's TOKEN "custom" one) with no out-of-band edit.
   'AWS::ApiGateway::Authorizer': new Set(['AuthType']),
+  //   AWS::GuardDuty::Filter.Rank — an undeclared rank is AWS-assigned ordering, and it is
+  //   VOLATILE: creating another filter on the detector assigns the NEW filter rank 1 and
+  //   pushes every existing filter down (live-probed 2026-07-14, #1612 — two undeclared-rank
+  //   filters read Rank 2 and 1 in creation order). A sibling's create would flip an
+  //   equality-gated pin into a false out-of-band drift, so no constant or derivation can
+  //   hold. A user who cares about evaluation order DECLARES Rank (compared in the declared
+  //   loop, detected).
+  'AWS::GuardDuty::Filter': new Set(['Rank']),
   //   AWS::GuardDuty::Detector.Features is NO LONGER value-independent (#1092): folding any
   //   Status hid an out-of-band disable of a Features-only protection (RUNTIME_MONITORING,
   //   RDS_LOGIN_EVENTS, LAMBDA_NETWORK_LOGS — none have a legacy DataSources mirror) FOREVER,
@@ -4838,6 +4882,11 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
   // "CdkrdHunt-Mixed-RsCluster" reads back "cdkrdhunt-mixed-rscluster" — declared-tier FP on
   // every check. Observed live (case-idents3-min, 2026-07-14; #1589).
   'AWS::Redshift::Cluster': new Set(['ClusterIdentifier']),
+  // Glue Database/Table names are stored lowercased by the raw Glue API, but BOTH CFn
+  // handlers reject mixed-case input client-side ("must not contain uppercase characters"
+  // — Database probed via Cloud Control create-resource, Table via a raw CFn stack, both
+  // 2026-07-14), so the divergence is unreachable via CloudFormation: no entries needed
+  // (the MemoryDB-family determination).
   'AWS::DMS::ReplicationInstance': new Set(['ReplicationInstanceIdentifier']),
   'AWS::DMS::ReplicationSubnetGroup': new Set(['ReplicationSubnetGroupIdentifier']),
   // DMS Endpoint `EndpointType` — the CFn/CDK value is lowercase (`source` /
@@ -4943,6 +4992,52 @@ export function isBooleanTokenEquivalent(a: unknown, b: unknown): boolean {
 export const CASE_INSENSITIVE_KEY_PATHS: Record<string, ReadonlySet<string>> = {
   'AWS::DataBrew::Recipe': new Set(['Steps[].Action.Parameters']),
 };
+// #1612: GuardDuty stores a filter's SHORT condition keys as their LONG synonyms — a
+// template declaring `Criterion: {severity: {Gte: 4}, type: {Eq: [...]}}` reads back (via
+// Cloud Control) `{severity: {GreaterThanOrEqual: 4}, type: {Equals: [...]}}`, the value
+// unchanged — so a declared short key double-FPs on every check (declared "removed" + the
+// long twin "appeared"). Live-probed 2026-07-14: the CC read echoes ONLY the long forms
+// (the raw GetFilter response carries both, but cdkrd reads via CC). The fix is a
+// declared-side key canonicalization scoped to `FindingCriteria.Criterion.<field>`.
+const GUARDDUTY_CONDITION_KEY_ALIASES: Record<string, string> = {
+  Eq: 'Equals',
+  Neq: 'NotEquals',
+  Gt: 'GreaterThan',
+  Gte: 'GreaterThanOrEqual',
+  Lt: 'LessThan',
+  Lte: 'LessThanOrEqual',
+};
+// Rewrite the short condition keys of a declared GuardDuty Filter model to the long forms
+// the live read echoes. Pure (returns a rewritten clone; the input is not mutated).
+// Fail-safe: a short key is renamed ONLY when its long twin is absent from the same
+// condition (a template declaring both is left as-is and compared normally), and anything
+// that is not the expected object shape is passed through untouched.
+export function canonicalizeGuardDutyCriterionKeys(
+  declared: Record<string, unknown>
+): Record<string, unknown> {
+  const fc = declared['FindingCriteria'];
+  if (fc === null || typeof fc !== 'object' || Array.isArray(fc)) return declared;
+  const criterion = (fc as Record<string, unknown>)['Criterion'];
+  if (criterion === null || typeof criterion !== 'object' || Array.isArray(criterion))
+    return declared;
+  const outCriterion: Record<string, unknown> = {};
+  for (const [field, cond] of Object.entries(criterion as Record<string, unknown>)) {
+    if (cond === null || typeof cond !== 'object' || Array.isArray(cond)) {
+      outCriterion[field] = cond;
+      continue;
+    }
+    const outCond: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(cond as Record<string, unknown>)) {
+      const long = GUARDDUTY_CONDITION_KEY_ALIASES[k];
+      outCond[long !== undefined && !(long in (cond as Record<string, unknown>)) ? long : k] = v;
+    }
+    outCriterion[field] = outCond;
+  }
+  return {
+    ...declared,
+    FindingCriteria: { ...(fc as Record<string, unknown>), Criterion: outCriterion },
+  };
+}
 // True when two objects are equal modulo the ASCII CASE of their keys — the same key set
 // case-folded, with EQUAL values per matched key-pair. Equality-gated per key-pair: a real
 // key change (an added/removed parameter) or a value change on a matched key still differs,

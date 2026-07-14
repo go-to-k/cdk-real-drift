@@ -1,0 +1,212 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntFargateSvc",
+    "resourceType": "AWS::ECS::Service",
+    "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/CdkrdHunt0714Fargate-HuntCluster-RClkksghkn20/CdkrdHunt0714Fargate-HuntFargateSvc-F5lAiEmDPYxT",
+    "constructPath": "CdkrdHunt0714Fargate/HuntFargateSvc",
+    "declared": {
+      "Cluster": "CdkrdHunt0714Fargate-HuntCluster-RClkksghkn20",
+      "DesiredCount": 0,
+      "LaunchType": "FARGATE",
+      "NetworkConfiguration": {
+        "AwsvpcConfiguration": {
+          "Subnets": ["subnet-04f1d945e9981f02a"]
+        }
+      },
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "TaskDefinition": "arn:aws:ecs:us-east-1:111111111111:task-definition/CdkrdHunt0714Fargate-HuntTaskDef-g0RYq9G3lZTv:1"
+    }
+  },
+  "liveRaw": {
+    "PlatformVersion": "LATEST",
+    "HealthCheckGracePeriodSeconds": 0,
+    "EnableECSManagedTags": false,
+    "EnableExecuteCommand": false,
+    "PlacementConstraints": [],
+    "Cluster": "CdkrdHunt0714Fargate-HuntCluster-RClkksghkn20",
+    "ServiceArn": "arn:aws:ecs:us-east-1:111111111111:service/CdkrdHunt0714Fargate-HuntCluster-RClkksghkn20/CdkrdHunt0714Fargate-HuntFargateSvc-F5lAiEmDPYxT",
+    "DesiredCount": 0,
+    "PlacementStrategies": [],
+    "DeploymentController": {
+      "Type": "ECS"
+    },
+    "LaunchType": "FARGATE",
+    "Name": "CdkrdHunt0714Fargate-HuntFargateSvc-F5lAiEmDPYxT",
+    "AvailabilityZoneRebalancing": "ENABLED",
+    "Role": "arn:aws:iam::111111111111:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS",
+    "SchedulingStrategy": "REPLICA",
+    "TaskDefinition": "arn:aws:ecs:us-east-1:111111111111:task-definition/CdkrdHunt0714Fargate-HuntTaskDef-g0RYq9G3lZTv:1",
+    "ServiceName": "CdkrdHunt0714Fargate-HuntFargateSvc-F5lAiEmDPYxT",
+    "NetworkConfiguration": {
+      "AwsvpcConfiguration": {
+        "SecurityGroups": [],
+        "Subnets": ["subnet-04f1d945e9981f02a"],
+        "AssignPublicIp": "DISABLED"
+      }
+    },
+    "DeploymentConfiguration": {
+      "BakeTimeInMinutes": 0,
+      "Strategy": "ROLLING",
+      "DeploymentCircuitBreaker": {
+        "ThresholdConfiguration": {
+          "Type": "BOUNDED_PERCENT",
+          "Value": 50
+        },
+        "Enable": false,
+        "ResetOnHealthyTask": true,
+        "Rollback": false
+      },
+      "MaximumPercent": 200,
+      "MinimumHealthyPercent": 100
+    },
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Name", "ServiceArn"],
+    "writeOnly": ["ForceNewDeployment", "Monitoring"],
+    "createOnly": ["Cluster", "Role", "SchedulingStrategy", "ServiceName"],
+    "readOnlyPaths": ["Name", "ServiceArn"],
+    "writeOnlyPaths": ["ForceNewDeployment", "Monitoring"],
+    "createOnlyPaths": ["Cluster", "Role", "SchedulingStrategy", "ServiceName"],
+    "defaults": {
+      "PlatformVersion": "LATEST",
+      "AvailabilityZoneRebalancing": "ENABLED"
+    },
+    "defaultPaths": {
+      "PlatformVersion": "LATEST",
+      "AvailabilityZoneRebalancing": "ENABLED"
+    },
+    "unorderedScalarPaths": [
+      "NetworkConfiguration.AwsvpcConfiguration.SecurityGroups",
+      "NetworkConfiguration.AwsvpcConfiguration.Subnets"
+    ],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": ["ServiceConnectConfiguration.LogConfiguration.Options"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntFargateSvc",
+      "resourceType": "AWS::ECS::Service",
+      "path": "PlatformVersion",
+      "actual": "LATEST",
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/CdkrdHunt0714Fargate-HuntCluster-RClkksghkn20/CdkrdHunt0714Fargate-HuntFargateSvc-F5lAiEmDPYxT",
+      "constructPath": "CdkrdHunt0714Fargate/HuntFargateSvc"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntFargateSvc",
+      "resourceType": "AWS::ECS::Service",
+      "path": "HealthCheckGracePeriodSeconds",
+      "actual": 0,
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/CdkrdHunt0714Fargate-HuntCluster-RClkksghkn20/CdkrdHunt0714Fargate-HuntFargateSvc-F5lAiEmDPYxT",
+      "constructPath": "CdkrdHunt0714Fargate/HuntFargateSvc"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntFargateSvc",
+      "resourceType": "AWS::ECS::Service",
+      "path": "EnableExecuteCommand",
+      "actual": false,
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/CdkrdHunt0714Fargate-HuntCluster-RClkksghkn20/CdkrdHunt0714Fargate-HuntFargateSvc-F5lAiEmDPYxT",
+      "constructPath": "CdkrdHunt0714Fargate/HuntFargateSvc"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntFargateSvc",
+      "resourceType": "AWS::ECS::Service",
+      "path": "DeploymentController",
+      "actual": {
+        "Type": "ECS"
+      },
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/CdkrdHunt0714Fargate-HuntCluster-RClkksghkn20/CdkrdHunt0714Fargate-HuntFargateSvc-F5lAiEmDPYxT",
+      "constructPath": "CdkrdHunt0714Fargate/HuntFargateSvc"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntFargateSvc",
+      "resourceType": "AWS::ECS::Service",
+      "path": "AvailabilityZoneRebalancing",
+      "actual": "ENABLED",
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/CdkrdHunt0714Fargate-HuntCluster-RClkksghkn20/CdkrdHunt0714Fargate-HuntFargateSvc-F5lAiEmDPYxT",
+      "constructPath": "CdkrdHunt0714Fargate/HuntFargateSvc"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "HuntFargateSvc",
+      "resourceType": "AWS::ECS::Service",
+      "path": "Role",
+      "actual": "arn:aws:iam::111111111111:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS",
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/CdkrdHunt0714Fargate-HuntCluster-RClkksghkn20/CdkrdHunt0714Fargate-HuntFargateSvc-F5lAiEmDPYxT",
+      "constructPath": "CdkrdHunt0714Fargate/HuntFargateSvc"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntFargateSvc",
+      "resourceType": "AWS::ECS::Service",
+      "path": "SchedulingStrategy",
+      "actual": "REPLICA",
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/CdkrdHunt0714Fargate-HuntCluster-RClkksghkn20/CdkrdHunt0714Fargate-HuntFargateSvc-F5lAiEmDPYxT",
+      "constructPath": "CdkrdHunt0714Fargate/HuntFargateSvc"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "HuntFargateSvc",
+      "resourceType": "AWS::ECS::Service",
+      "path": "ServiceName",
+      "actual": "CdkrdHunt0714Fargate-HuntFargateSvc-F5lAiEmDPYxT",
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/CdkrdHunt0714Fargate-HuntCluster-RClkksghkn20/CdkrdHunt0714Fargate-HuntFargateSvc-F5lAiEmDPYxT",
+      "constructPath": "CdkrdHunt0714Fargate/HuntFargateSvc"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntFargateSvc",
+      "resourceType": "AWS::ECS::Service",
+      "path": "DeploymentConfiguration",
+      "actual": {
+        "BakeTimeInMinutes": 0,
+        "Strategy": "ROLLING",
+        "DeploymentCircuitBreaker": {
+          "ThresholdConfiguration": {
+            "Type": "BOUNDED_PERCENT",
+            "Value": 50
+          },
+          "Enable": false,
+          "ResetOnHealthyTask": true,
+          "Rollback": false
+        },
+        "MaximumPercent": 200,
+        "MinimumHealthyPercent": 100
+      },
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/CdkrdHunt0714Fargate-HuntCluster-RClkksghkn20/CdkrdHunt0714Fargate-HuntFargateSvc-F5lAiEmDPYxT",
+      "constructPath": "CdkrdHunt0714Fargate/HuntFargateSvc"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntFargateSvc",
+      "resourceType": "AWS::ECS::Service",
+      "path": "NetworkConfiguration.AwsvpcConfiguration.AssignPublicIp",
+      "actual": "DISABLED",
+      "nested": true,
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/CdkrdHunt0714Fargate-HuntCluster-RClkksghkn20/CdkrdHunt0714Fargate-HuntFargateSvc-F5lAiEmDPYxT",
+      "constructPath": "CdkrdHunt0714Fargate/HuntFargateSvc"
+    }
+  ]
+}

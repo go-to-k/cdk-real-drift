@@ -1,0 +1,96 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntFilter",
+    "resourceType": "AWS::GuardDuty::Filter",
+    "physicalId": "cdkrd-hunt0714-filter",
+    "constructPath": "CdkrdHunt0714Gd/HuntFilter",
+    "declared": {
+      "DetectorId": "7d934291dde5406887fffdf094922448",
+      "FindingCriteria": {
+        "Criterion": {
+          "severity": {
+            "Gte": 4
+          }
+        }
+      },
+      "Name": "cdkrd-hunt0714-filter",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Action": "NOOP",
+    "DetectorId": "7d934291dde5406887fffdf094922448",
+    "FindingCriteria": {
+      "Criterion": {
+        "severity": {
+          "GreaterThanOrEqual": 4
+        }
+      }
+    },
+    "Rank": 1,
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0714Gd",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntFilter",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0714Gd/a36563a0-7f53-11f1-b807-0e8c900acc83",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "Name": "cdkrd-hunt0714-filter"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["DetectorId", "Name"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["DetectorId", "Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": ["FindingCriteria.Criterion"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntFilter",
+      "resourceType": "AWS::GuardDuty::Filter",
+      "path": "Action",
+      "actual": "NOOP",
+      "physicalId": "cdkrd-hunt0714-filter",
+      "constructPath": "CdkrdHunt0714Gd/HuntFilter"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntFilter",
+      "resourceType": "AWS::GuardDuty::Filter",
+      "path": "Rank",
+      "actual": 1,
+      "physicalId": "cdkrd-hunt0714-filter",
+      "constructPath": "CdkrdHunt0714Gd/HuntFilter"
+    }
+  ]
+}

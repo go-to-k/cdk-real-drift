@@ -251,6 +251,27 @@ export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // the bare `remove` (live-verified same run), so ONLY MaximumMessageSize needs an
   // explicit set-default write (the 1048576 default from KNOWN_DEFAULTS).
   'AWS::SQS::Queue\0MaximumMessageSize',
+  // #1613 (revconv3, live-proven 2026-07-14): SQS also keeps an omitted
+  // SqsManagedSseEnabled — an out-of-band SSE DISABLE (a real security downgrade) reverted
+  // as a `remove` reports success yet the queue stays unencrypted. Write the `true` default
+  // (from KNOWN_DEFAULTS) back explicitly. Still NON-UNIFORM within SQS: the four scalar
+  // controls above converge via the bare `remove`.
+  'AWS::SQS::Queue\0SqsManagedSseEnabled',
+  // #1613: StepFunctions UpdateStateMachine keeps an omitted LoggingConfiguration (an
+  // out-of-band Level=ALL enable persisted through a `remove` revert). Write the whole-object
+  // OFF default (from KNOWN_DEFAULTS) back explicitly — the Transfer ProtocolDetails
+  // whole-object precedent.
+  'AWS::StepFunctions::StateMachine\0LoggingConfiguration',
+  // #1613: API Gateway keeps an omitted DisableExecuteApiEndpoint on the CC patch (an
+  // out-of-band `true` — the default endpoint cut off — persisted through a `remove`
+  // revert). Write the `false` default back explicitly.
+  'AWS::ApiGateway::RestApi\0DisableExecuteApiEndpoint',
+  // #1613: Cognito UpdateUserPoolClient is a full-replace API that nevertheless kept an
+  // omitted RefreshTokenValidity (an out-of-band 60-day validity persisted through a
+  // `remove` revert). Write the 30 default back explicitly. Its siblings
+  // (EnableTokenRevocation, AuthSessionValidity) ride the same call and are LIKELY the
+  // same class but stay unlisted until individually live-proven (the per-property rule).
+  'AWS::Cognito::UserPoolClient\0RefreshTokenValidity',
   // Lambda UpdateFunctionUrlConfig IGNORES an omitted InvokeMode (live-proven on
   // revert-noop-probe 2026-07-14, #1583: a URL flipped BUFFERED->RESPONSE_STREAM out of
   // band, then `revert` planned a `remove`, reported reverted, yet the URL stayed
@@ -1783,6 +1804,13 @@ export const CC_UPDATE_REJECTED_EMPTY_PATHS: Record<string, readonly string[]> =
     '/DestinationConfig/OnSuccess',
     '/DestinationConfig/OnFailure',
   ],
+  // #1611: the SAME husk class on the EventSourceMapping itself — every stream-source
+  // (DDB/Kinesis) mapping with no failure destination echoes `DestinationConfig:
+  // {OnFailure: {}}` on read, and the CC update handler folds that read-back into ANY
+  // patch (even a ParallelizationFactor-only revert), which Lambda rejects with "The
+  // Destination field is required for an OnFailure configuration" (live-proven on the
+  // #1608 revert-convergence probe, 2026-07-14).
+  'AWS::Lambda::EventSourceMapping': ['/DestinationConfig/OnFailure'],
 };
 // Expand a JSON pointer that MAY contain `*` array-wildcard segments into a {pointer, value}
 // pair for every matching live node. A `*` matches each index of an array node; a normal

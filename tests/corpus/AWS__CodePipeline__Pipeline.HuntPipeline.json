@@ -1,0 +1,197 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntPipeline",
+    "resourceType": "AWS::CodePipeline::Pipeline",
+    "physicalId": "CdkrdHunt0714Pipe-HuntPipeline-9IkuBuDKn9hg",
+    "constructPath": "CdkrdHunt0714Pipe/HuntPipeline",
+    "declared": {
+      "ArtifactStore": {
+        "Location": "cdkrdhunt0714pipe-huntartifacts-xm3nndqspxtg",
+        "Type": "S3"
+      },
+      "RoleArn": "arn:aws:iam::111111111111:role/CdkrdHunt0714Pipe-HuntPipeRole1A5D3DA7-g5M0oQ5WMQd1",
+      "Stages": [
+        {
+          "Actions": [
+            {
+              "ActionTypeId": {
+                "Category": "Source",
+                "Owner": "AWS",
+                "Provider": "S3",
+                "Version": "1"
+              },
+              "Configuration": {
+                "S3Bucket": "cdkrdhunt0714pipe-huntartifacts-xm3nndqspxtg",
+                "S3ObjectKey": "src.zip"
+              },
+              "Name": "Src",
+              "OutputArtifacts": [
+                {
+                  "Name": "SrcOut"
+                }
+              ]
+            }
+          ],
+          "Name": "Source"
+        },
+        {
+          "Actions": [
+            {
+              "ActionTypeId": {
+                "Category": "Approval",
+                "Owner": "AWS",
+                "Provider": "Manual",
+                "Version": "1"
+              },
+              "Name": "Gate"
+            }
+          ],
+          "Name": "Approve"
+        }
+      ],
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Variables": [],
+    "ArtifactStores": [],
+    "Version": "1",
+    "ArtifactStore": {
+      "Type": "S3",
+      "Location": "cdkrdhunt0714pipe-huntartifacts-xm3nndqspxtg"
+    },
+    "DisableInboundStageTransitions": [],
+    "Stages": [
+      {
+        "Blockers": [],
+        "Actions": [
+          {
+            "ActionTypeId": {
+              "Owner": "AWS",
+              "Category": "Source",
+              "Version": "1",
+              "Provider": "S3"
+            },
+            "Configuration": {
+              "S3Bucket": "cdkrdhunt0714pipe-huntartifacts-xm3nndqspxtg",
+              "S3ObjectKey": "src.zip"
+            },
+            "InputArtifacts": [],
+            "OutputArtifacts": [
+              {
+                "Files": [],
+                "Name": "SrcOut"
+              }
+            ],
+            "Commands": [],
+            "OutputVariables": [],
+            "RunOrder": 1,
+            "Name": "Src"
+          }
+        ],
+        "Name": "Source"
+      },
+      {
+        "Blockers": [],
+        "Actions": [
+          {
+            "ActionTypeId": {
+              "Owner": "AWS",
+              "Category": "Approval",
+              "Version": "1",
+              "Provider": "Manual"
+            },
+            "Configuration": {},
+            "InputArtifacts": [],
+            "OutputArtifacts": [],
+            "Commands": [],
+            "OutputVariables": [],
+            "RunOrder": 1,
+            "Name": "Gate"
+          }
+        ],
+        "Name": "Approve"
+      }
+    ],
+    "PipelineType": "V2",
+    "ExecutionMode": "SUPERSEDED",
+    "Arn": "arn:aws:codepipeline:us-east-1:111111111111:CdkrdHunt0714Pipe-HuntPipeline-9IkuBuDKn9hg",
+    "RoleArn": "arn:aws:iam::111111111111:role/CdkrdHunt0714Pipe-HuntPipeRole1A5D3DA7-g5M0oQ5WMQd1",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "Name": "CdkrdHunt0714Pipe-HuntPipeline-9IkuBuDKn9hg"
+  },
+  "schema": {
+    "readOnly": ["Arn", "Version"],
+    "writeOnly": ["RestartExecutionOnUpdate"],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn", "Version"],
+    "writeOnlyPaths": ["RestartExecutionOnUpdate"],
+    "createOnlyPaths": ["Name"],
+    "defaults": {
+      "ExecutionMode": "SUPERSEDED"
+    },
+    "defaultPaths": {
+      "ExecutionMode": "SUPERSEDED"
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntPipeline",
+      "resourceType": "AWS::CodePipeline::Pipeline",
+      "path": "PipelineType",
+      "actual": "V2",
+      "physicalId": "CdkrdHunt0714Pipe-HuntPipeline-9IkuBuDKn9hg",
+      "constructPath": "CdkrdHunt0714Pipe/HuntPipeline"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntPipeline",
+      "resourceType": "AWS::CodePipeline::Pipeline",
+      "path": "ExecutionMode",
+      "actual": "SUPERSEDED",
+      "physicalId": "CdkrdHunt0714Pipe-HuntPipeline-9IkuBuDKn9hg",
+      "constructPath": "CdkrdHunt0714Pipe/HuntPipeline"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntPipeline",
+      "resourceType": "AWS::CodePipeline::Pipeline",
+      "path": "Stages[Source].Actions[Src].RunOrder",
+      "actual": 1,
+      "nested": true,
+      "physicalId": "CdkrdHunt0714Pipe-HuntPipeline-9IkuBuDKn9hg",
+      "constructPath": "CdkrdHunt0714Pipe/HuntPipeline"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntPipeline",
+      "resourceType": "AWS::CodePipeline::Pipeline",
+      "path": "Stages[Approve].Actions[Gate].RunOrder",
+      "actual": 1,
+      "nested": true,
+      "physicalId": "CdkrdHunt0714Pipe-HuntPipeline-9IkuBuDKn9hg",
+      "constructPath": "CdkrdHunt0714Pipe/HuntPipeline"
+    }
+  ]
+}

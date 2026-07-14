@@ -23,6 +23,7 @@ import {
   isAllAwsTags,
   identityField,
   isCaseInsensitiveEqualScalarSet,
+  canonicalizeGuardDutyCriterionKeys,
   isCaseInsensitiveKeyMapEqual,
   isCaseInsensitiveScalarEqual,
   BOOLEAN_PARAM_MAP_PATHS,
@@ -401,6 +402,9 @@ const MEANINGFUL_WHEN_OFF_NESTED: Record<
 // agent-management members (a modern-era-only construct materialized OFF) stay single-status
 // DISABLED, so an out-of-band ENABLE — a billable protection turned on later — still surfaces.
 const GUARDDUTY_FEATURE_CREATION_STATUS: Record<string, readonly string[]> = {
+  // #1612: AI_PROTECTION (2026-new, ships OFF) joined AI_ANALYST — a fresh barest detector
+  // read it DISABLED and the whole Features array first-run-FP'd again (guardduty-hunt).
+  AI_PROTECTION: ['DISABLED'],
   AI_ANALYST: ['DISABLED'],
   RUNTIME_MONITORING: ['DISABLED', 'ENABLED'],
   EKS_RUNTIME_MONITORING: ['DISABLED', 'ENABLED'],
@@ -2911,10 +2915,17 @@ export function classifyResource(
     opts.stackTags ?? {},
     declaredTagKeys(declaredForCompare)
   );
-  const declared = canonicalizeForCompare(
+  let declared = canonicalizeForCompare(
     rewriteOaiPrincipalsDeep(declaredForCompare, oaiMap),
     resourceType
   ) as Record<string, unknown>;
+  // #1612: GuardDuty stores a filter's short condition keys (Gte/Eq/...) as their long
+  // synonyms (GreaterThanOrEqual/Equals/...), value unchanged — canonicalize the declared
+  // side to the long forms the Cloud Control read echoes so a short-key template does not
+  // double-FP (declared "removed" + long twin "appeared").
+  if (resourceType === 'AWS::GuardDuty::Filter') {
+    declared = canonicalizeGuardDutyCriterionKeys(declared);
+  }
   // Drop a parent's reflected child-aggregate property (e.g. SNS Topic.Subscription)
   // UNLESS the template declares it inline — cdkrd tracks those children as their own
   // resources (+ the `added` enumerator), so comparing the reflection would double-report

@@ -1,0 +1,170 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntDdbEsm",
+    "resourceType": "AWS::Lambda::EventSourceMapping",
+    "physicalId": "631f0458-b1f1-4442-95da-32499d25aa63",
+    "constructPath": "CdkrdHunt0714Esm/HuntDdbEsm",
+    "declared": {
+      "EventSourceArn": "arn:aws:dynamodb:us-east-1:111111111111:table/CdkrdHunt0714Esm-HuntEsmTable-1RSCQP4LX3B6Q/stream/2026-07-14T06:39:17.645",
+      "FunctionName": "CdkrdHunt0714Esm-HuntEsmFn-cGyRi7EveaXl",
+      "StartingPosition": "LATEST",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "StartingPosition": "LATEST",
+    "BatchSize": 100,
+    "MaximumRetryAttempts": -1,
+    "ParallelizationFactor": 1,
+    "Enabled": true,
+    "EventSourceArn": "arn:aws:dynamodb:us-east-1:111111111111:table/CdkrdHunt0714Esm-HuntEsmTable-1RSCQP4LX3B6Q/stream/2026-07-14T06:39:17.645",
+    "FunctionName": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdHunt0714Esm-HuntEsmFn-cGyRi7EveaXl",
+    "TumblingWindowInSeconds": 0,
+    "BisectBatchOnFunctionError": false,
+    "DestinationConfig": {
+      "OnFailure": {}
+    },
+    "EventSourceMappingArn": "arn:aws:lambda:us-east-1:111111111111:event-source-mapping:631f0458-b1f1-4442-95da-32499d25aa63",
+    "MaximumRecordAgeInSeconds": -1,
+    "Id": "631f0458-b1f1-4442-95da-32499d25aa63",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0714Esm/b4cfcd10-7f4e-11f1-b820-0e9d46a73fdd",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "HuntDdbEsm",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "CdkrdHunt0714Esm",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ],
+    "MaximumBatchingWindowInSeconds": 0
+  },
+  "schema": {
+    "readOnly": ["EventSourceMappingArn", "Id"],
+    "writeOnly": [],
+    "createOnly": [
+      "EventSourceArn",
+      "SelfManagedEventSource",
+      "StartingPosition",
+      "StartingPositionTimestamp"
+    ],
+    "readOnlyPaths": ["EventSourceMappingArn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "EventSourceArn",
+      "SelfManagedEventSource",
+      "StartingPosition",
+      "StartingPositionTimestamp"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {
+      "alias/aws/acm": "b3729196-d9c5-4e2a-9e8e-d733b92c8317",
+      "alias/aws/appflow": "a2152495-1376-4c30-9183-7ee24ad10386",
+      "alias/aws/backup": "b405e2ab-23b0-48e9-834e-aa3aeeded51d",
+      "alias/aws/cloud9": "c656784b-cd79-45fa-a302-4670428047dc",
+      "alias/aws/codeartifact": "f4915da2-dabd-4aaa-a58b-6cc98c3bcbc6",
+      "alias/aws/codecommit": "f4b560a8-2769-4fdc-95ce-67e234814090",
+      "alias/aws/dms": "8b0bca8d-7f3f-4f19-bebf-bf6c72f3f1e6",
+      "alias/aws/dynamodb": "e6ab85f6-b5b2-4f38-9782-d1d3f0ca9bad",
+      "alias/aws/ebs": "76039e55-2469-4c94-95ab-e12d8615bb98",
+      "alias/aws/elasticfilesystem": "ed4a6b88-bcd1-43fe-beff-35a748bded74",
+      "alias/aws/es": "db99576a-7bcf-4386-a93e-0334efbed006",
+      "alias/aws/kinesis": "51c70be1-ec2a-4e9f-ae04-aa16f1bfdcad",
+      "alias/aws/lambda": "67e127ea-46c8-4b0b-b3de-18a40e8a84a4",
+      "alias/aws/lightsail": "4085ed99-9004-436f-b8c6-e81417e55591",
+      "alias/aws/rds": "9ee8feba-ae18-445a-bcab-306f7748fb6c",
+      "alias/aws/s3": "b471f899-bf30-4944-a7d9-70f37d183eaa",
+      "alias/aws/secretsmanager": "6419a4af-eac7-4cb3-babe-297fdceba8a1",
+      "alias/aws/sns": "aa9c1b5f-821f-418a-a1b1-a60435b7dc1c",
+      "alias/aws/ssm": "4040fe62-b533-4a5d-ab2c-6301fb6bbd2a"
+    },
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntDdbEsm",
+      "resourceType": "AWS::Lambda::EventSourceMapping",
+      "path": "BatchSize",
+      "actual": 100,
+      "physicalId": "631f0458-b1f1-4442-95da-32499d25aa63",
+      "constructPath": "CdkrdHunt0714Esm/HuntDdbEsm"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntDdbEsm",
+      "resourceType": "AWS::Lambda::EventSourceMapping",
+      "path": "MaximumRetryAttempts",
+      "actual": -1,
+      "physicalId": "631f0458-b1f1-4442-95da-32499d25aa63",
+      "constructPath": "CdkrdHunt0714Esm/HuntDdbEsm"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntDdbEsm",
+      "resourceType": "AWS::Lambda::EventSourceMapping",
+      "path": "ParallelizationFactor",
+      "actual": 1,
+      "physicalId": "631f0458-b1f1-4442-95da-32499d25aa63",
+      "constructPath": "CdkrdHunt0714Esm/HuntDdbEsm"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntDdbEsm",
+      "resourceType": "AWS::Lambda::EventSourceMapping",
+      "path": "Enabled",
+      "actual": true,
+      "physicalId": "631f0458-b1f1-4442-95da-32499d25aa63",
+      "constructPath": "CdkrdHunt0714Esm/HuntDdbEsm"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntDdbEsm",
+      "resourceType": "AWS::Lambda::EventSourceMapping",
+      "path": "TumblingWindowInSeconds",
+      "actual": 0,
+      "physicalId": "631f0458-b1f1-4442-95da-32499d25aa63",
+      "constructPath": "CdkrdHunt0714Esm/HuntDdbEsm"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntDdbEsm",
+      "resourceType": "AWS::Lambda::EventSourceMapping",
+      "path": "MaximumRecordAgeInSeconds",
+      "actual": -1,
+      "physicalId": "631f0458-b1f1-4442-95da-32499d25aa63",
+      "constructPath": "CdkrdHunt0714Esm/HuntDdbEsm"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntDdbEsm",
+      "resourceType": "AWS::Lambda::EventSourceMapping",
+      "path": "MaximumBatchingWindowInSeconds",
+      "actual": 0,
+      "physicalId": "631f0458-b1f1-4442-95da-32499d25aa63",
+      "constructPath": "CdkrdHunt0714Esm/HuntDdbEsm"
+    }
+  ]
+}

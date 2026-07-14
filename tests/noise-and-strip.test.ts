@@ -572,6 +572,8 @@ describe('noise suppressors', () => {
     expect(KNOWN_DEFAULTS['AWS::Cognito::UserPoolClient'].RefreshTokenValidity).toBe(30);
     expect(KNOWN_DEFAULTS['AWS::ECS::Service'].HealthCheckGracePeriodSeconds).toBe(0);
     expect(KNOWN_DEFAULT_PATHS['AWS::ECS::Service']).toEqual({
+      // #1610: the awsvpc-mode public-IP default a barest Fargate service reads back.
+      'NetworkConfiguration.AwsvpcConfiguration.AssignPublicIp': 'DISABLED',
       'DeploymentConfiguration.Strategy': 'ROLLING',
       'DeploymentConfiguration.BakeTimeInMinutes': 0,
       'DeploymentConfiguration.DeploymentCircuitBreaker.ResetOnHealthyTask': true,
@@ -671,6 +673,9 @@ describe('noise suppressors', () => {
       MaximumRecordAgeInSeconds: -1,
       Enabled: true,
       MaximumBatchingWindowInSeconds: 0,
+      // #1608: stream-source (DDB/Kinesis) concurrency + windowing defaults.
+      ParallelizationFactor: 1,
+      TumblingWindowInSeconds: 0,
     });
   });
 
