@@ -889,6 +889,13 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
       MinimumHealthyPercent: 100,
     },
   },
+  // A ConfigurationProfile that declares no Type reads back the freeform default
+  // (the only other value, AWS.AppConfig.FeatureFlags, is always user-declared).
+  // Observed live on a barest hosted profile (second-deploy-echo3, 2026-07-14; #1622).
+  // Equality-gated: a feature-flags profile no longer matches and surfaces.
+  'AWS::AppConfig::ConfigurationProfile': {
+    Type: 'AWS.Freeform',
+  },
   'AWS::AppSync::GraphQLApi': {
     ApiType: 'GRAPHQL',
     Visibility: 'GLOBAL',
@@ -1152,6 +1159,13 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // `modify-scheduled-action --disable` (Enable=false) no longer matches and surfaces.
   'AWS::Redshift::ScheduledAction': {
     Enable: true,
+  },
+  // An endpoint service that declares no SupportedIpAddressTypes reads back the ipv4-only
+  // creation default (live, a barest NLB-backed service, attach-echo-hunt 2026-07-14;
+  // #1626). Equality-gated — a dualstack service reads ["ipv4","ipv6"] and still
+  // surfaces, as does an out-of-band modify-vpc-endpoint-service-configuration.
+  'AWS::EC2::VPCEndpointService': {
+    SupportedIpAddressTypes: ['ipv4'],
   },
   'AWS::EC2::VPCEndpoint': {
     IpAddressType: 'ipv4',
@@ -4623,25 +4637,37 @@ export const ELB_TG_ATTRIBUTE_DEFAULTS_BY_PROTOCOL: Record<string, Record<string
     'target_failover.on_deregistration': 'no_rebalance',
     'target_failover.on_unhealthy': 'no_rebalance',
   },
+  // #1626: the target_health_state.unhealthy.* pair are NLB-family attributes AWS returns
+  // at their defaults on a barest TCP group (live, attach-echo-hunt 2026-07-14); mirrored
+  // across the TCP-family siblings like the other entries (equality-gated — a non-matching
+  // variant value simply does not fold, and an out-of-band change still surfaces).
   TCP: {
     'stickiness.type': 'source_ip',
     'deregistration_delay.connection_termination.enabled': 'false',
     'proxy_protocol_v2.enabled': 'false',
+    'target_health_state.unhealthy.connection_termination.enabled': 'true',
+    'target_health_state.unhealthy.draining_interval_seconds': '0',
   },
   TLS: {
     'stickiness.type': 'source_ip',
     'deregistration_delay.connection_termination.enabled': 'false',
     'proxy_protocol_v2.enabled': 'false',
+    'target_health_state.unhealthy.connection_termination.enabled': 'true',
+    'target_health_state.unhealthy.draining_interval_seconds': '0',
   },
   UDP: {
     'stickiness.type': 'source_ip',
     'deregistration_delay.connection_termination.enabled': 'false',
     'proxy_protocol_v2.enabled': 'false',
+    'target_health_state.unhealthy.connection_termination.enabled': 'true',
+    'target_health_state.unhealthy.draining_interval_seconds': '0',
   },
   TCP_UDP: {
     'stickiness.type': 'source_ip',
     'deregistration_delay.connection_termination.enabled': 'false',
     'proxy_protocol_v2.enabled': 'false',
+    'target_health_state.unhealthy.connection_termination.enabled': 'true',
+    'target_health_state.unhealthy.draining_interval_seconds': '0',
   },
 };
 
@@ -4650,6 +4676,10 @@ export const ELB_TG_ATTRIBUTE_DEFAULTS_BY_PROTOCOL: Record<string, Record<string
 // overrides; live-verified on the same deploy.
 export const ELB_TG_ATTRIBUTE_DEFAULTS_BY_TARGET_TYPE: Record<string, Record<string, string>> = {
   alb: { 'preserve_client_ip.enabled': 'true' },
+  // #1626: an `ip`-target group defaults to NOT preserving client IPs — the inverse of
+  // the alb entry above (live, a barest TCP/ip group, attach-echo-hunt 2026-07-14).
+  // Equality-gated: an out-of-band preserve-client-ip ENABLE still surfaces.
+  ip: { 'preserve_client_ip.enabled': 'false' },
 };
 
 // (R95) The generic `projectLiveToDeclaredSubset` was REMOVED. It projected the live
@@ -4889,6 +4919,23 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
   // (the MemoryDB-family determination).
   'AWS::DMS::ReplicationInstance': new Set(['ReplicationInstanceIdentifier']),
   'AWS::DMS::ReplicationSubnetGroup': new Set(['ReplicationSubnetGroupIdentifier']),
+  // DAX stores parameter-group / subnet-group names lowercased (live-probed 2026-07-14:
+  // `create-parameter-group --parameter-group-name CdkrdHunt-Mixed-DaxPG` reads back
+  // `cdkrdhunt-mixed-daxpg`, subnet group likewise), and CFn reaches the raw API through
+  // the legacy provider with no client-side case rejection (the CC CREATE handler does not
+  // exist — UnsupportedActionException — so no MemoryDB-style server-side guard applies).
+  // Both names are create-only, so case-insensitive equality hides no revertable drift
+  // (#1621). Cluster.ClusterName is NOT listed — unprobed (cluster create is paid/slow).
+  'AWS::DAX::ParameterGroup': new Set(['ParameterGroupName']),
+  'AWS::DAX::SubnetGroup': new Set(['SubnetGroupName']),
+  // ACM lowercases certificate domain names on request (live-probed 2026-07-14:
+  // `request-certificate --domain-name CdkrdHunt-0714-Probe.Example.Com` describes back
+  // `cdkrdhunt-0714-probe.example.com`, SANs likewise), and the CFn path passes mixed case
+  // through — DNS names are case-insensitive, so users legitimately declare
+  // `MyApp.Example.Com` and hit a permanent declared FP. DomainName is create-only and two
+  // genuinely different names still differ after case-fold (#1620). SubjectAlternativeNames
+  // is an ARRAY compared wholesale, so it lives in CASE_INSENSITIVE_ARRAY_PATHS below.
+  'AWS::CertificateManager::Certificate': new Set(['DomainName']),
   // DMS Endpoint `EndpointType` — the CFn/CDK value is lowercase (`source` /
   // `target`) but the DMS API echoes it UPPERCASE (`SOURCE` / `TARGET`) on the
   // DescribeEndpoints read (the SDK_OVERRIDES reader), so a case-sensitive compare
@@ -5294,6 +5341,11 @@ export const CASE_INSENSITIVE_ARRAY_PATHS: Record<string, ReadonlySet<string>> =
     'CorsConfiguration.ExposeHeaders',
   ]),
   'AWS::Lambda::Url': new Set(['Cors.AllowHeaders', 'Cors.ExposeHeaders']),
+  // ACM stores SAN domain names lowercased (the array twin of the DomainName entry in
+  // CASE_INSENSITIVE_PATHS — see #1620): the same SAN set modulo case is not drift; a
+  // genuine SAN add/remove/rename still differs. DNS names are case-insensitive, so the
+  // fold hides no real change.
+  'AWS::CertificateManager::Certificate': new Set(['SubjectAlternativeNames']),
 };
 // True when both values are string arrays holding the same multiset of values
 // modulo ASCII case (order- and case-insensitive). Non-string-array inputs never
@@ -6104,6 +6156,14 @@ export const READGAP_COLLECTION_PATHS: Record<string, ReadonlySet<string>> = {
   // every DNS-validated cert. It is a true readGap: AWS genuinely never returns the input
   // shape (#1090).
   'AWS::CertificateManager::Certificate': new Set(['DomainValidationOptions']),
+  // `OpenTableFormatInput` — the open-table-format (Iceberg) create-time INPUT
+  // ({IcebergInput: {MetadataOperation, Version}}). Glue GetTable never echoes it back
+  // (the format shows up as service-managed TableInput.Parameters instead — see the
+  // #1624 iceberg-params fold in classify), and the registry schema has no
+  // writeOnlyProperties, so schema-strip keeps it in the declared model → classify's
+  // removed-collection branch false-flagged `[CFn-Declared Drift] OpenTableFormatInput
+  // actual=undefined` on every Iceberg table (live, variants3-hunt 2026-07-14; #1624).
+  'AWS::Glue::Table': new Set(['OpenTableFormatInput']),
   // `TagSpecifications` — the EC2 create-time tag INPUT shape ([{ResourceType, Tags}]). The live
   // resource carries its tags under `Tags` (where the Cloud Control read returns them); the
   // `TagSpecifications` input wrapper is NEVER echoed back, so classify's removed-collection

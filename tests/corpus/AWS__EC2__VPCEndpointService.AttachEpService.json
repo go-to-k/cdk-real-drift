@@ -1,0 +1,76 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "AttachEpService",
+    "resourceType": "AWS::EC2::VPCEndpointService",
+    "physicalId": "vpce-svc-03982c2ca53eb5b7b",
+    "constructPath": "CdkrdHunt0714AttachEcho/AttachEpService",
+    "declared": {
+      "AcceptanceRequired": true,
+      "NetworkLoadBalancerArns": [
+        "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkrdH-Attac-rurZLpodmvYZ/d2c747579badb68f"
+      ],
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "NetworkLoadBalancerArns": [
+      "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkrdH-Attac-rurZLpodmvYZ/d2c747579badb68f"
+    ],
+    "AcceptanceRequired": true,
+    "SupportedIpAddressTypes": ["ipv4"],
+    "GatewayLoadBalancerArns": [],
+    "SupportedRegions": ["us-east-1"],
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "ServiceId": "vpce-svc-03982c2ca53eb5b7b"
+  },
+  "schema": {
+    "readOnly": ["ServiceId"],
+    "writeOnly": ["ContributorInsightsEnabled"],
+    "createOnly": [],
+    "readOnlyPaths": ["ServiceId"],
+    "writeOnlyPaths": ["ContributorInsightsEnabled"],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["SupportedIpAddressTypes", "SupportedRegions"],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "AttachEpService",
+      "resourceType": "AWS::EC2::VPCEndpointService",
+      "path": "SupportedIpAddressTypes",
+      "actual": ["ipv4"],
+      "physicalId": "vpce-svc-03982c2ca53eb5b7b",
+      "constructPath": "CdkrdHunt0714AttachEcho/AttachEpService"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "AttachEpService",
+      "resourceType": "AWS::EC2::VPCEndpointService",
+      "path": "SupportedRegions",
+      "actual": ["us-east-1"],
+      "physicalId": "vpce-svc-03982c2ca53eb5b7b",
+      "constructPath": "CdkrdHunt0714AttachEcho/AttachEpService"
+    }
+  ]
+}

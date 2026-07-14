@@ -211,6 +211,18 @@ resource_gone() {
           { [ -z "$state" ] || [ "$state" = "terminated" ]; } && return 0
           return 1
           ;;
+        *:vpc-endpoint-service/vpce-svc-*)
+          # arn:aws:ec2:<region>:<acct>:vpc-endpoint-service/vpce-svc-<id> — the seventh
+          # RGT-lag subtype (2026-07-14 hunt, attach-echo fixture): an endpoint service
+          # deleted with its stack lingered in the tag index while
+          # DescribeVpcEndpointServiceConfigurations answered
+          # InvalidVpcEndpointServiceId.NotFound. Only NotFound counts as gone
+          # (fail-safe, mirrors the vpc-endpoint arm).
+          id="${arn##*/}"
+          err="$(aws ec2 describe-vpc-endpoint-service-configurations --service-ids "$id" --region "$REGION" 2>&1 >/dev/null)" && return 1
+          printf '%s' "$err" | grep -q 'InvalidVpcEndpointServiceId.NotFound' && return 0
+          return 1
+          ;;
         *:volume/vol-*)
           # arn:aws:ec2:<region>:<acct>:volume/vol-<id> — the fourth RGT-lag subtype
           # (2026-07-11, #1463): a just-deleted EBS volume lingers in the tag index for

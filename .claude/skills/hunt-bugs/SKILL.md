@@ -334,6 +334,21 @@ siblings converge — non-uniform WITHIN SQS again), **SFN `LoggingConfiguration
 `DeletionProtectionEnabled`, Scheduler Schedule `State` converged via the bare
 `remove` — ~1-in-2 this round. Excluded as SERVER-SIDE IRREVERSIBLE (not a
 convergence probe): SSM Parameter `Tier` (AWS cannot downgrade Advanced→Standard).
+Batch 5 (2026-07-14, `revconv4-hunt` fixture, #1619): **ECS Cluster
+`ClusterSettings`**, **ApiGateway RestApi `ApiKeySourceType`**, **Glue Crawler
+`SchemaChangePolicy`** no-oped (RSDP entries converge them); CW Alarm
+`TreatMissingData`, AppSync `IntrospectionConfig`, Scheduler
+`ScheduleExpressionTimezone`, Pipes `DesiredState` converged — ~1-in-2 again. And a
+THIRD class appeared: **CloudWatch CompositeAlarm `ActionsEnabled`** no-ops even an
+EXPLICIT `add /ActionsEnabled true` CC patch (SUCCESS reported, value unchanged), so
+an RSDP set-default CANNOT converge it — the fix is an `SDK_PROP_WRITERS` entry
+driving the dedicated Enable/DisableAlarmActions API. **Probe that class for free
+before writing the fix: `aws cloudcontrol update-resource --patch-document
+'[{"op":"add","path":"/X","value":<default>}]'` against a CLI-created resource
+answers "does the explicit write converge?" with no stack.** Also found: CodeBuild
+Project + MediaConvert Queue detect fine but are read-only ("type not revertable
+yet") — when a probe target is such a type, restore it OUT OF BAND before `revert`
+or the fixture can never converge to zero (#1623).
 
 ### 5. Harvest the live read into the golden corpus (EVERY round — bug or not)
 
@@ -811,6 +826,20 @@ tests/integration/sweep-orphans.sh` to restore main to HEAD — the committed
   fixture names FIRST — before any paid re-deploy — and abort if they already exist.
   A clean abort (remove the worktree; the AWS side was already swept) beats burning a
   deploy on a duplicate PR that will only conflict.
+- **Fixture buckets MUST set `removalPolicy: DESTROY` — the L2 `Bucket` default is
+  RETAIN, and a rollback/teardown then silently ORPHANS the bucket** (a failed
+  variants3-hunt deploy left `DELETE_SKIPPED` on its bucket, 2026-07-14; the sweep's
+  ephemeral-tag net catches it, but don't rely on that). Same for any L2 stateful
+  default-RETAIN construct in a hunt fixture.
+- **A service that VALIDATES a role's permissions at create races a `grant()`-style
+  attached policy — use `inlinePolicies` in hunt fixtures.** Firehose validated
+  glue/s3 access before the separate `AWS::IAM::Policy` resource attached (the
+  DeliveryStream only depended on the role) and failed create; inline policies are
+  part of the role create, so no dependency plumbing is needed (variants3-hunt,
+  2026-07-14). Related create-time determinations worth reusing: a table-less
+  Firehose Iceberg destination is REJECTED ("a single default destination table
+  configuration must be provided" — DestinationTableConfigurationList is part of the
+  barest form), and a CFn Glue Iceberg table requires `TableType: EXTERNAL_TABLE`.
 - **Working a filed issue → run `/work-issues` (don't re-implement its rules
   here).** The issues this hunt files get picked up by later parallel sessions that
   race for the same ones and collide on the same central tables (`noise.ts` /

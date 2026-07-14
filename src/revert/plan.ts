@@ -464,6 +464,27 @@ export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // handler DOES re-enable on an omitted State — proven in the same fixture — so it needs no
   // entry here.)
   'AWS::Kinesis::Stream\0RetentionPeriodHours',
+  // #1619 (batch 5, live-proven on revconv4-hunt 2026-07-14): four more omit-ignored
+  // update handlers — a bare `remove` revert of an out-of-band change reported SUCCESS
+  // yet the convergence re-read showed the live value unchanged. Write each
+  // KNOWN_DEFAULTS default back explicitly:
+  // - ECS UpdateCluster keeps an omitted Settings list (containerInsights enabled out of
+  //   band survived a `remove`); default [{containerInsights, disabled}].
+  // - CloudWatch CompositeAlarm ActionsEnabled: worse than omit-ignored — the CC handler
+  //   ignores even an EXPLICIT `add /ActionsEnabled true` patch (probed live), so this
+  //   set-default alone cannot converge it; the op routes to the SDK_PROP_WRITERS
+  //   Enable/DisableAlarmActions writer (writers.ts), which consumes the explicit value.
+  // - API Gateway's RestApi handler keeps an omitted ApiKeySourceType (an AUTHORIZER flip
+  //   survived); default 'HEADER'.
+  // - Glue UpdateCrawler keeps an omitted SchemaChangePolicy (a LOG/LOG flip survived);
+  //   default {UPDATE_IN_DATABASE, DEPRECATE_IN_DATABASE}.
+  // (Controls proven to CONVERGE via the bare `remove` in the same run — no entries needed:
+  // CloudWatch Alarm TreatMissingData, AppSync GraphQLApi IntrospectionConfig, Scheduler
+  // Schedule ScheduleExpressionTimezone, Pipes Pipe DesiredState.)
+  'AWS::ECS::Cluster\0ClusterSettings',
+  'AWS::CloudWatch::CompositeAlarm\0ActionsEnabled',
+  'AWS::ApiGateway::RestApi\0ApiKeySourceType',
+  'AWS::Glue::Crawler\0SchemaChangePolicy',
 ]);
 
 // Set-default values for REVERT_SET_DEFAULT_PATHS entries whose default is a plain constant

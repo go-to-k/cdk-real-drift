@@ -1,0 +1,116 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Var3SpotCe",
+    "resourceType": "AWS::Batch::ComputeEnvironment",
+    "physicalId": "arn:aws:batch:us-east-1:111111111111:compute-environment/Var3SpotCe-d6kzcbCD7oUgwvYX",
+    "constructPath": "CdkrdHunt0714Variants3/Var3SpotCe",
+    "declared": {
+      "ComputeResources": {
+        "MaxvCpus": 1,
+        "SecurityGroupIds": ["sg-04c22d544f676a7bb"],
+        "Subnets": ["subnet-01e0fd51da4daf84e"],
+        "Type": "FARGATE_SPOT"
+      },
+      "Tags": {
+        "cdkrd:ephemeral": "1"
+      },
+      "Type": "MANAGED"
+    }
+  },
+  "liveRaw": {
+    "Type": "MANAGED",
+    "ServiceRole": "arn:aws:iam::111111111111:role/aws-service-role/batch.amazonaws.com/AWSServiceRoleForBatch",
+    "ComputeEnvironmentName": "Var3SpotCe-d6kzcbCD7oUgwvYX",
+    "ComputeResources": {
+      "Subnets": ["subnet-01e0fd51da4daf84e"],
+      "Type": "FARGATE_SPOT",
+      "MaxvCpus": 1,
+      "InstanceTypes": [],
+      "Ec2Configuration": [],
+      "SecurityGroupIds": ["sg-04c22d544f676a7bb"]
+    },
+    "State": "ENABLED",
+    "ComputeEnvironmentArn": "arn:aws:batch:us-east-1:111111111111:compute-environment/Var3SpotCe-d6kzcbCD7oUgwvYX",
+    "Tags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "schema": {
+    "readOnly": ["ComputeEnvironmentArn"],
+    "writeOnly": ["ReplaceComputeEnvironment", "UpdatePolicy"],
+    "createOnly": ["ComputeEnvironmentName", "EksConfiguration", "Tags", "Type"],
+    "readOnlyPaths": [
+      "ComputeEnvironmentArn",
+      "ComputeResources.Ec2Configuration.*.BatchImageStatus"
+    ],
+    "writeOnlyPaths": [
+      "ComputeResources.UpdateToLatestImageVersion",
+      "ReplaceComputeEnvironment",
+      "UpdatePolicy"
+    ],
+    "createOnlyPaths": [
+      "ComputeEnvironmentName",
+      "ComputeResources.SpotIamFleetRole",
+      "EksConfiguration",
+      "Tags",
+      "Type"
+    ],
+    "defaults": {
+      "ReplaceComputeEnvironment": true
+    },
+    "defaultPaths": {
+      "ComputeResources.UpdateToLatestImageVersion": false,
+      "ReplaceComputeEnvironment": true,
+      "UpdatePolicy.TerminateJobsOnUpdate": false,
+      "UpdatePolicy.JobExecutionTimeoutMinutes": 30,
+      "EksConfiguration.EksClusterArn": false,
+      "EksConfiguration.KubernetesNamespace": false
+    },
+    "unorderedScalarPaths": [
+      "ComputeResources.InstanceTypes",
+      "ComputeResources.SecurityGroupIds",
+      "ComputeResources.Subnets"
+    ],
+    "unorderedObjectArrayPaths": [
+      "ComputeResources.Ec2Configuration",
+      "ComputeResources.LaunchTemplate.Overrides"
+    ],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Var3SpotCe",
+      "resourceType": "AWS::Batch::ComputeEnvironment",
+      "path": "ServiceRole",
+      "actual": "arn:aws:iam::111111111111:role/aws-service-role/batch.amazonaws.com/AWSServiceRoleForBatch",
+      "physicalId": "arn:aws:batch:us-east-1:111111111111:compute-environment/Var3SpotCe-d6kzcbCD7oUgwvYX",
+      "constructPath": "CdkrdHunt0714Variants3/Var3SpotCe"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "Var3SpotCe",
+      "resourceType": "AWS::Batch::ComputeEnvironment",
+      "path": "ComputeEnvironmentName",
+      "actual": "Var3SpotCe-d6kzcbCD7oUgwvYX",
+      "physicalId": "arn:aws:batch:us-east-1:111111111111:compute-environment/Var3SpotCe-d6kzcbCD7oUgwvYX",
+      "constructPath": "CdkrdHunt0714Variants3/Var3SpotCe"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Var3SpotCe",
+      "resourceType": "AWS::Batch::ComputeEnvironment",
+      "path": "State",
+      "actual": "ENABLED",
+      "physicalId": "arn:aws:batch:us-east-1:111111111111:compute-environment/Var3SpotCe-d6kzcbCD7oUgwvYX",
+      "constructPath": "CdkrdHunt0714Variants3/Var3SpotCe"
+    }
+  ]
+}

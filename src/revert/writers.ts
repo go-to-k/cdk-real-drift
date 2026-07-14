@@ -37,7 +37,12 @@ import {
   UpdateStageCommand as UpdateApiGatewayV2StageCommand,
 } from '@aws-sdk/client-apigatewayv2';
 import { AppSyncClient, DeleteApiKeyCommand } from '@aws-sdk/client-appsync';
-import { CloudWatchClient, PutAnomalyDetectorCommand } from '@aws-sdk/client-cloudwatch';
+import {
+  CloudWatchClient,
+  DisableAlarmActionsCommand,
+  EnableAlarmActionsCommand,
+  PutAnomalyDetectorCommand,
+} from '@aws-sdk/client-cloudwatch';
 import {
   DLMClient,
   GetLifecyclePolicyCommand,
@@ -1554,6 +1559,31 @@ const writeLogGroupBearerTokenAuth: SdkWriter = async (ctx, ops) => {
   }
 };
 
+// AWS::CloudWatch::CompositeAlarm.ActionsEnabled — the Cloud Control update handler
+// reports SUCCESS yet applies NOTHING for this boolean: both a bare `remove` AND an
+// explicit `add /ActionsEnabled true` patch leave a disable-alarm-actions'd composite
+// at False (probed live via cloudcontrol update-resource, 2026-07-14; #1619), so even a
+// REVERT_SET_DEFAULT_PATHS set-default cannot converge. CloudWatch exposes the dedicated
+// Enable/DisableAlarmActions APIs for exactly this toggle (live-proven to converge), so
+// route the revert through them. The composite alarm's physical id IS its name. A
+// `remove` (undeclared, not in baseline) reverts to the schema default of enabled; an
+// `add` carries the desired boolean (declared drift / recorded baseline value).
+const writeCompositeAlarmActionsEnabled: SdkWriter = async (ctx, ops) => {
+  const name = str(ctx.physicalId) ?? str(ctx.declared['AlarmName']);
+  if (!name) throw new Error('cannot resolve composite alarm name for ActionsEnabled revert');
+  const c = new CloudWatchClient({ region: ctx.region, ...CLIENT_TIMEOUTS });
+  for (const op of ops) {
+    // plan.ts groups this prop-scoped item to the single ActionsEnabled path, so there is
+    // one op; a `remove` means "back to default (actions enabled)".
+    const enabled = op.op === 'remove' ? true : op.value === true;
+    await c.send(
+      enabled
+        ? new EnableAlarmActionsCommand({ AlarmNames: [name] })
+        : new DisableAlarmActionsCommand({ AlarmNames: [name] })
+    );
+  }
+};
+
 // AWS::Cognito::IdentityPool `CognitoEvents` (the writeOnly "Cognito Events" Sync
 // trigger) cannot be patched through Cloud Control — it is set via the cognito-sync
 // SetCognitoEvents API. Reconstruct the DESIRED event map (current live + revert ops)
@@ -2975,6 +3005,7 @@ export const SDK_WRITERS: Record<string, SdkWriter> = {
 // resource type -> EXACT top-level finding path. Deeper paths (e.g. a declared
 // drift at Policies.0...) still go through Cloud Control as before.
 export const SDK_PROP_WRITERS: Record<string, Record<string, SdkWriter>> = {
+  'AWS::CloudWatch::CompositeAlarm': { ActionsEnabled: writeCompositeAlarmActionsEnabled },
   'AWS::Cognito::IdentityPool': { CognitoEvents: writeCognitoIdentityPoolEvents },
   'AWS::Config::ConfigRule': { InputParameters: writeConfigRuleInputParameters },
   'AWS::KinesisVideo::Stream': { DataRetentionInHours: writeKinesisVideoStreamRetention },

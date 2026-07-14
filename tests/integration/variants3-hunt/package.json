@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-integ-variants3-hunt",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Variant-axis first-run FP probe batch 3: Firehose Iceberg, Batch FARGATE_SPOT, CodeBuild Lambda/ARM, ELBv2 redirect action, Scheduler FLEXIBLE window. Run via verify.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module"
+}

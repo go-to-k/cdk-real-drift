@@ -1,0 +1,155 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Var3ArmCb",
+    "resourceType": "AWS::CodeBuild::Project",
+    "physicalId": "cdkrd-hunt0714-var3-cb-arm",
+    "constructPath": "CdkrdHunt0714Variants3/Var3ArmCb",
+    "declared": {
+      "Artifacts": {
+        "Type": "NO_ARTIFACTS"
+      },
+      "Environment": {
+        "ComputeType": "BUILD_GENERAL1_SMALL",
+        "Image": "aws/codebuild/amazonlinux2-aarch64-standard:3.0",
+        "Type": "ARM_CONTAINER"
+      },
+      "Name": "cdkrd-hunt0714-var3-cb-arm",
+      "ServiceRole": "arn:aws:iam::111111111111:role/CdkrdHunt0714Variants3-Var3CbRole3C45F627-i6bK6L1U80La",
+      "Source": {
+        "BuildSpec": "{\"version\":\"0.2\",\"phases\":{}}",
+        "Type": "NO_SOURCE"
+      },
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Name": "cdkrd-hunt0714-var3-cb-arm",
+    "ServiceRole": "arn:aws:iam::111111111111:role/CdkrdHunt0714Variants3-Var3CbRole3C45F627-i6bK6L1U80La",
+    "TimeoutInMinutes": 60,
+    "QueuedTimeoutInMinutes": 480,
+    "EncryptionKey": "arn:aws:kms:us-east-1:111111111111:alias/aws/s3",
+    "Source": {
+      "Type": "NO_SOURCE",
+      "BuildSpec": "{\"version\":\"0.2\",\"phases\":{}}",
+      "InsecureSsl": false
+    },
+    "Artifacts": {
+      "Type": "NO_ARTIFACTS"
+    },
+    "Environment": {
+      "Type": "ARM_CONTAINER",
+      "ComputeType": "BUILD_GENERAL1_SMALL",
+      "Image": "aws/codebuild/amazonlinux2-aarch64-standard:3.0",
+      "PrivilegedMode": false,
+      "ImagePullCredentialsType": "CODEBUILD",
+      "EnvironmentVariables": []
+    },
+    "Visibility": "PRIVATE",
+    "BadgeEnabled": false,
+    "Cache": {
+      "Type": "NO_CACHE"
+    },
+    "Tags": [
+      {
+        "Key": "aws:cloudformation:stack-name",
+        "Value": "CdkrdHunt0714Variants3"
+      },
+      {
+        "Key": "aws:cloudformation:logical-id",
+        "Value": "Var3ArmCb"
+      },
+      {
+        "Key": "aws:cloudformation:stack-id",
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0714Variants3/ede9fa20-7f63-11f1-b1a2-123a84cbb8d5"
+      },
+      {
+        "Key": "cdkrd:ephemeral",
+        "Value": "1"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Var3ArmCb",
+      "resourceType": "AWS::CodeBuild::Project",
+      "path": "TimeoutInMinutes",
+      "actual": 60,
+      "physicalId": "cdkrd-hunt0714-var3-cb-arm",
+      "constructPath": "CdkrdHunt0714Variants3/Var3ArmCb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Var3ArmCb",
+      "resourceType": "AWS::CodeBuild::Project",
+      "path": "QueuedTimeoutInMinutes",
+      "actual": 480,
+      "physicalId": "cdkrd-hunt0714-var3-cb-arm",
+      "constructPath": "CdkrdHunt0714Variants3/Var3ArmCb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Var3ArmCb",
+      "resourceType": "AWS::CodeBuild::Project",
+      "path": "EncryptionKey",
+      "actual": "arn:aws:kms:us-east-1:111111111111:alias/aws/s3",
+      "physicalId": "cdkrd-hunt0714-var3-cb-arm",
+      "constructPath": "CdkrdHunt0714Variants3/Var3ArmCb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Var3ArmCb",
+      "resourceType": "AWS::CodeBuild::Project",
+      "path": "Visibility",
+      "actual": "PRIVATE",
+      "physicalId": "cdkrd-hunt0714-var3-cb-arm",
+      "constructPath": "CdkrdHunt0714Variants3/Var3ArmCb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Var3ArmCb",
+      "resourceType": "AWS::CodeBuild::Project",
+      "path": "Cache",
+      "actual": {
+        "Type": "NO_CACHE"
+      },
+      "physicalId": "cdkrd-hunt0714-var3-cb-arm",
+      "constructPath": "CdkrdHunt0714Variants3/Var3ArmCb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Var3ArmCb",
+      "resourceType": "AWS::CodeBuild::Project",
+      "path": "Environment.ImagePullCredentialsType",
+      "actual": "CODEBUILD",
+      "nested": true,
+      "physicalId": "cdkrd-hunt0714-var3-cb-arm",
+      "constructPath": "CdkrdHunt0714Variants3/Var3ArmCb"
+    }
+  ]
+}

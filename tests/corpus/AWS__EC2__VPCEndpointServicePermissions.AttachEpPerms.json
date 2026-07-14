@@ -1,0 +1,37 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "AttachEpPerms",
+    "resourceType": "AWS::EC2::VPCEndpointServicePermissions",
+    "physicalId": "vpce-svc-03982c2ca53eb5b7b",
+    "constructPath": "CdkrdHunt0714AttachEcho/AttachEpPerms",
+    "declared": {
+      "AllowedPrincipals": ["arn:aws:iam::111111111111:root"],
+      "ServiceId": "vpce-svc-03982c2ca53eb5b7b"
+    }
+  },
+  "liveRaw": {
+    "AllowedPrincipals": ["arn:aws:iam::111111111111:root"],
+    "ServiceId": "vpce-svc-03982c2ca53eb5b7b"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["ServiceId"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ServiceId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

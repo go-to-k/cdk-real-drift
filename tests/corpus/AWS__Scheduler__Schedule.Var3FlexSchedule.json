@@ -1,0 +1,121 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Var3FlexSchedule",
+    "resourceType": "AWS::Scheduler::Schedule",
+    "physicalId": "cdkrd-hunt0714-var3-flex",
+    "constructPath": "CdkrdHunt0714Variants3/Var3FlexSchedule",
+    "declared": {
+      "FlexibleTimeWindow": {
+        "MaximumWindowInMinutes": 15,
+        "Mode": "FLEXIBLE"
+      },
+      "Name": "cdkrd-hunt0714-var3-flex",
+      "ScheduleExpression": "rate(12 hours)",
+      "Target": {
+        "Arn": "arn:aws:sqs:us-east-1:111111111111:CdkrdHunt0714Variants3-Var3SchedQueue-06f7Tw4ucZUz",
+        "RoleArn": "arn:aws:iam::111111111111:role/CdkrdHunt0714Variants3-Var3SchedRoleBB058680-huQo3yI4KgUM"
+      }
+    }
+  },
+  "liveRaw": {
+    "Name": "cdkrd-hunt0714-var3-flex",
+    "GroupName": "default",
+    "ScheduleExpression": "rate(12 hours)",
+    "ScheduleExpressionTimezone": "UTC",
+    "FlexibleTimeWindow": {
+      "Mode": "FLEXIBLE",
+      "MaximumWindowInMinutes": 15
+    },
+    "State": "ENABLED",
+    "ActionAfterCompletion": "NONE",
+    "Target": {
+      "Arn": "arn:aws:sqs:us-east-1:111111111111:CdkrdHunt0714Variants3-Var3SchedQueue-06f7Tw4ucZUz",
+      "RoleArn": "arn:aws:iam::111111111111:role/CdkrdHunt0714Variants3-Var3SchedRoleBB058680-huQo3yI4KgUM",
+      "RetryPolicy": {
+        "MaximumEventAgeInSeconds": 86400,
+        "MaximumRetryAttempts": 185
+      }
+    }
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {
+      "Target.EcsParameters.CapacityProviderStrategy.*.Weight": 0,
+      "Target.EcsParameters.CapacityProviderStrategy.*.Base": 0
+    },
+    "unorderedScalarPaths": [
+      "Target.EcsParameters.NetworkConfiguration.AwsvpcConfiguration.SecurityGroups",
+      "Target.EcsParameters.NetworkConfiguration.AwsvpcConfiguration.Subnets"
+    ],
+    "unorderedObjectArrayPaths": [
+      "Target.EcsParameters.CapacityProviderStrategy",
+      "Target.EcsParameters.PlacementConstraints",
+      "Target.EcsParameters.PlacementStrategy"
+    ],
+    "freeFormMapPaths": ["Target.EcsParameters.Tags.*"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Var3FlexSchedule",
+      "resourceType": "AWS::Scheduler::Schedule",
+      "path": "GroupName",
+      "actual": "default",
+      "physicalId": "cdkrd-hunt0714-var3-flex",
+      "constructPath": "CdkrdHunt0714Variants3/Var3FlexSchedule"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Var3FlexSchedule",
+      "resourceType": "AWS::Scheduler::Schedule",
+      "path": "ScheduleExpressionTimezone",
+      "actual": "UTC",
+      "physicalId": "cdkrd-hunt0714-var3-flex",
+      "constructPath": "CdkrdHunt0714Variants3/Var3FlexSchedule"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Var3FlexSchedule",
+      "resourceType": "AWS::Scheduler::Schedule",
+      "path": "State",
+      "actual": "ENABLED",
+      "physicalId": "cdkrd-hunt0714-var3-flex",
+      "constructPath": "CdkrdHunt0714Variants3/Var3FlexSchedule"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Var3FlexSchedule",
+      "resourceType": "AWS::Scheduler::Schedule",
+      "path": "ActionAfterCompletion",
+      "actual": "NONE",
+      "physicalId": "cdkrd-hunt0714-var3-flex",
+      "constructPath": "CdkrdHunt0714Variants3/Var3FlexSchedule"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Var3FlexSchedule",
+      "resourceType": "AWS::Scheduler::Schedule",
+      "path": "Target.RetryPolicy",
+      "actual": {
+        "MaximumEventAgeInSeconds": 86400,
+        "MaximumRetryAttempts": 185
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0714-var3-flex",
+      "constructPath": "CdkrdHunt0714Variants3/Var3FlexSchedule"
+    }
+  ]
+}

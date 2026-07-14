@@ -643,6 +643,72 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  // #1619 (revconv4 batch-5, live-proven 2026-07-14): four more omit-keeps-value handlers —
+  // each mutated out of band, reverted via a bare `remove` that reported success, and the
+  // convergence re-read caught the live value persisting. Each is now in
+  // REVERT_SET_DEFAULT_PATHS so revert writes the KNOWN_DEFAULTS default back explicitly.
+  it('#1619: ECS Cluster ClusterSettings (SET-DEFAULT) -> add op writing the containerInsights-disabled default', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::ECS::Cluster',
+      path: 'ClusterSettings',
+      actual: [{ Name: 'containerInsights', Value: 'enabled' }],
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/ClusterSettings',
+      value: [{ Name: 'containerInsights', Value: 'disabled' }],
+    });
+  });
+
+  it('#1619: CloudWatch CompositeAlarm ActionsEnabled (SET-DEFAULT) -> add op writing the true default', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::CloudWatch::CompositeAlarm',
+      path: 'ActionsEnabled',
+      actual: false,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/ActionsEnabled',
+      value: true,
+      prior: false,
+    });
+  });
+
+  it('#1619: ApiGateway RestApi ApiKeySourceType (SET-DEFAULT) -> add op writing the HEADER default', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::ApiGateway::RestApi',
+      path: 'ApiKeySourceType',
+      actual: 'AUTHORIZER',
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/ApiKeySourceType',
+      value: 'HEADER',
+      prior: 'AUTHORIZER',
+    });
+  });
+
+  it('#1619: Glue Crawler SchemaChangePolicy (SET-DEFAULT) -> add op writing the whole-object default', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::Glue::Crawler',
+      path: 'SchemaChangePolicy',
+      actual: { UpdateBehavior: 'LOG', DeleteBehavior: 'LOG' },
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/SchemaChangePolicy',
+      value: { UpdateBehavior: 'UPDATE_IN_DATABASE', DeleteBehavior: 'DEPRECATE_IN_DATABASE' },
+    });
+  });
+
   // #1588: the remaining ModifyDBInstance revert-no-op twins of #1541 — same selective-modify
   // semantics (an omitted property keeps its existing value), so a bare `remove` revert of an
   // out-of-band, undeclared, KNOWN_DEFAULTS-folded change is a silent no-op. Each is now in
