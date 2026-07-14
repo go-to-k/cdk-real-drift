@@ -14,6 +14,8 @@ import {
 import {
   CloudWatchClient,
   DescribeAnomalyDetectorsCommand,
+  DisableAlarmActionsCommand,
+  EnableAlarmActionsCommand,
   PutAnomalyDetectorCommand,
 } from '@aws-sdk/client-cloudwatch';
 import {
@@ -3097,6 +3099,56 @@ describe('Logs LogGroup BearerTokenAuthenticationEnabled prop-scoped writer (CC 
     expect(
       logs.commandCalls(PutBearerTokenAuthenticationCommand)[0].args[0].input.logGroupIdentifier
     ).toBe(LG);
+  });
+});
+
+describe('CloudWatch CompositeAlarm ActionsEnabled prop-scoped writer (#1619 — the CC handler ignores even an explicit write)', () => {
+  const NAME = 'cdkrd-composite';
+  const actionsRemoveOp: PatchOp = {
+    op: 'remove',
+    path: '/ActionsEnabled',
+    prior: false,
+    human: 'ActionsEnabled -> AWS default (undeclared, not in baseline)',
+  };
+  const actionsAddOp = (value: unknown): PatchOp => ({
+    op: 'add',
+    path: '/ActionsEnabled',
+    value,
+    human: 'ActionsEnabled -> deployed-template value',
+  });
+
+  it('resolveSdkWriter routes ActionsEnabled to the prop-scoped writer, other paths stay CC', () => {
+    expect(resolveSdkWriter('AWS::CloudWatch::CompositeAlarm', [actionsRemoveOp])).toBeDefined();
+    expect(
+      resolveSdkWriter('AWS::CloudWatch::CompositeAlarm', [
+        { op: 'remove', path: '/AlarmDescription', human: '' },
+      ])
+    ).toBeUndefined();
+  });
+
+  it('a remove (undeclared, not in baseline) re-ENABLES actions via EnableAlarmActions', async () => {
+    cloudwatch.on(EnableAlarmActionsCommand).resolves({});
+    const writer = resolveSdkWriter('AWS::CloudWatch::CompositeAlarm', [actionsRemoveOp])!;
+    await writer(ctx({ physicalId: NAME }), [actionsRemoveOp]);
+    const calls = cloudwatch.commandCalls(EnableAlarmActionsCommand);
+    expect(calls).toHaveLength(1);
+    expect(calls[0].args[0].input).toEqual({ AlarmNames: [NAME] });
+  });
+
+  it('an add true (the REVERT_SET_DEFAULT_PATHS set-default) also routes to EnableAlarmActions', async () => {
+    cloudwatch.on(EnableAlarmActionsCommand).resolves({});
+    const writer = resolveSdkWriter('AWS::CloudWatch::CompositeAlarm', [actionsAddOp(true)])!;
+    await writer(ctx({ physicalId: NAME }), [actionsAddOp(true)]);
+    expect(cloudwatch.commandCalls(EnableAlarmActionsCommand)).toHaveLength(1);
+  });
+
+  it('an add false (declared / baseline restore of a disable) routes to DisableAlarmActions', async () => {
+    cloudwatch.on(DisableAlarmActionsCommand).resolves({});
+    const writer = resolveSdkWriter('AWS::CloudWatch::CompositeAlarm', [actionsAddOp(false)])!;
+    await writer(ctx({ physicalId: NAME }), [actionsAddOp(false)]);
+    expect(cloudwatch.commandCalls(DisableAlarmActionsCommand)[0].args[0].input).toEqual({
+      AlarmNames: [NAME],
+    });
   });
 });
 

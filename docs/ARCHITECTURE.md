@@ -857,7 +857,13 @@ only when non-zero — unrecorded values are named as such, never folded into
     string) reverts via `PutConfigRule`, writing a COMPACT JSON string with
     string-coerced param values: a CC `UpdateResource` re-serializes the JSON into
     Config's string field with spaces / a numeric value, which the provider rejects
-    ("Blank spaces are not acceptable for input parameter" — proven live). classify
+    ("Blank spaces are not acceptable for input parameter" — proven live). A
+    CloudWatch CompositeAlarm's `ActionsEnabled` reverts via the dedicated
+    `EnableAlarmActions`/`DisableAlarmActions` APIs: the CC update handler reports
+    SUCCESS yet applies NOTHING for this boolean — even an explicit
+    `add /ActionsEnabled true` patch leaves a disabled alarm disabled (proven live,
+    #1619), so neither a bare `remove` nor a `REVERT_SET_DEFAULT_PATHS` set-default
+    can converge it through Cloud Control. classify
     reports such a property WHOLE at its top-level path (never a fragile sub-path
     finding). Scoped to the EXACT top-level path: deeper
     `Policies.*` declared drift still patches via CC. A resource with both kinds

@@ -1547,6 +1547,33 @@ function configRecordingStrategyAtDefault(
   return useOnly !== undefined && deepEqual(value, { UseOnly: useOnly });
 }
 
+// #1624: a Glue OpenTableFormat (Iceberg) table materializes SERVICE-MANAGED
+// TableInput.Parameters on create — `table_type: "ICEBERG"` (constant) plus
+// `metadata_location` (a per-commit S3 metadata pointer that MOVES on every table
+// commit; not pinnable, not derivable). Tier-2 shape-gated fold: keyed on the declared
+// `OpenTableFormatInput.IcebergInput` (the reliable in-template discriminator — a plain
+// table never reaches this), fold the appeared map ONLY when its keys are exactly the
+// managed pair (metadata_location optional) with table_type === "ICEBERG". Any extra or
+// changed key makes the whole map surface, so an out-of-band user parameter add on an
+// Iceberg table stays detected. Live-proven on a barest Iceberg table (variants3-hunt,
+// 2026-07-14).
+function glueIcebergManagedParamsAtDefault(
+  resourceType: string,
+  schemaPath: string,
+  value: unknown,
+  declared: Record<string, unknown>
+): boolean {
+  if (resourceType !== 'AWS::Glue::Table') return false;
+  if (schemaPath !== 'TableInput.Parameters') return false;
+  const otf = declared.OpenTableFormatInput;
+  if (!isNestedObject(otf) || !('IcebergInput' in (otf as Record<string, unknown>))) return false;
+  if (!isNestedObject(value)) return false;
+  const params = value as Record<string, unknown>;
+  const managed = new Set(['table_type', 'metadata_location']);
+  if (!Object.keys(params).every((k) => managed.has(k))) return false;
+  return params.table_type === 'ICEBERG';
+}
+
 // #705: a Classic ELB (ElasticLoadBalancing::LoadBalancer) with an HTTPS/SSL listener but no
 // declared SSL policy reads back an AWS-assigned SSL negotiation policy. The whole `Policies`
 // array was folded value-independently, which made an out-of-band SSL-policy DOWNGRADE (an older
@@ -3391,6 +3418,16 @@ export function classifyResource(
     if (typeof artifactName === 'string') {
       knownDefPaths = { ...knownDefPaths, 'Artifacts.Name': artifactName };
     }
+    // #1625: a Lambda-compute project (Environment.Type *_LAMBDA_CONTAINER) defaults
+    // TimeoutInMinutes to 15, not the standard-container 60 the KNOWN_DEFAULTS constant
+    // pins (the #1477 variant-axis class — live-proven on a barest LINUX_LAMBDA_CONTAINER
+    // project, variants3-hunt 2026-07-14). Derive from the declared environment type and
+    // equality-gate (fold tier 2): a changed timeout still surfaces, and a declared one
+    // is compared in the declared dimension.
+    const envType = (declared['Environment'] as Record<string, unknown> | undefined)?.['Type'];
+    if (typeof envType === 'string' && envType.endsWith('_LAMBDA_CONTAINER')) {
+      knownDef = { ...knownDef, TimeoutInMinutes: 15 };
+    }
   }
   // #845: a SecretsManager RotationSchedule declaring `RotationRules.ScheduleExpression`
   // "rate(N days)" reads back an undeclared `RotationRules.AutomaticallyAfterDays: N` — AWS
@@ -3449,6 +3486,24 @@ export function classifyResource(
           },
         }),
       };
+    }
+  }
+  // #1626: an NLB-family target group (create-only Protocol TCP/TLS/UDP/TCP_UDP) defaults
+  // its health check to TCP with a 10s timeout — the HTTP-family constants KNOWN_DEFAULTS
+  // pins (HTTP / 5) belong to the ALB variant (the #1477 variant-axis class; live-proven
+  // on a barest TCP/ip group, attach-echo-hunt 2026-07-14). Derive from the declared
+  // Protocol and equality-gate (fold tier 2): an out-of-band health-check change still
+  // surfaces, and a declared value is compared in the declared dimension.
+  if (resourceType === 'AWS::ElasticLoadBalancingV2::TargetGroup') {
+    const proto = declared['Protocol'];
+    if (
+      typeof proto === 'string' &&
+      (proto === 'TCP' || proto === 'TLS' || proto === 'UDP' || proto === 'TCP_UDP') &&
+      // an alb-TARGET group (ALB behind an NLB) has its OWN derived defaults
+      // (timeout 6 + Matcher, #1546) — do not clobber them with the TCP-family pair.
+      declared['TargetType'] !== 'alb'
+    ) {
+      knownDef = { ...knownDef, HealthCheckProtocol: 'TCP', HealthCheckTimeoutSeconds: 10 };
     }
   }
   // #975: an ElastiCache ReplicationGroup with in-transit encryption enabled at creation
@@ -3827,7 +3882,11 @@ export function classifyResource(
         value === declared['StatementId']) ||
       // #1553: a Config recorder's undeclared RecordingGroup.RecordingStrategy mirror, derived
       // from the live sibling RecordingGroup and equality-gated (helper above).
-      configRecordingStrategyAtDefault(resourceType, schemaPath, value, live);
+      configRecordingStrategyAtDefault(resourceType, schemaPath, value, live) ||
+      // #1624: a Glue Iceberg table's service-managed TableInput.Parameters pair
+      // (table_type + moving metadata_location), shape-gated on the declared
+      // OpenTableFormatInput.IcebergInput (helper above).
+      glueIcebergManagedParamsAtDefault(resourceType, schemaPath, value, declared);
     const tier = atDefault
       ? 'atDefault'
       : // R142: a GENERATED_PATHS value folds as `generated` ONLY when it echoes a

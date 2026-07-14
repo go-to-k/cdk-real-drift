@@ -3163,11 +3163,16 @@ const readAcmCertificate: OverrideReader = async ({ physicalId, declared, region
   // removes ONLY the DomainName-matching element, so any OTHER extra/missing SAN still
   // surfaces (#1090). If the user DID declare the DomainName as a SAN, keep the live list
   // verbatim (they intend it, so it is a faithful compare).
-  const apex = str(cert.DomainName);
-  if (declaresSans && apex !== undefined && !declaredSans.includes(apex)) {
+  // Case-insensitively: ACM stores domain names lowercased while the template may
+  // declare mixed case (DNS names are case-insensitive), so a case-sensitive apex
+  // match would fail to subtract the implied SAN for a mixed-case declaration and
+  // false-surface it (#1620).
+  const apex = str(cert.DomainName)?.toLowerCase();
+  const declaredSansLower = declaredSans.map((s) => s.toLowerCase());
+  if (declaresSans && apex !== undefined && !declaredSansLower.includes(apex)) {
     let dropped = false;
     sans = sans.filter((s) => {
-      if (!dropped && s === apex) {
+      if (!dropped && s.toLowerCase() === apex) {
         dropped = true;
         return false;
       }

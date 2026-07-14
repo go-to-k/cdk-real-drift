@@ -1,0 +1,122 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Var3RedirectListener",
+    "resourceType": "AWS::ElasticLoadBalancingV2::Listener",
+    "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/app/CdkrdH-Var3A-2U9apPGL3QQv/e1d73be1c32091e7/8dd0897fa0c49ac1",
+    "constructPath": "CdkrdHunt0714Variants3/Var3RedirectListener",
+    "declared": {
+      "DefaultActions": [
+        {
+          "RedirectConfig": {
+            "Protocol": "HTTPS",
+            "StatusCode": "HTTP_301"
+          },
+          "Type": "redirect"
+        }
+      ],
+      "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/CdkrdH-Var3A-2U9apPGL3QQv/e1d73be1c32091e7",
+      "Port": 80,
+      "Protocol": "HTTP"
+    }
+  },
+  "liveRaw": {
+    "ListenerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/app/CdkrdH-Var3A-2U9apPGL3QQv/e1d73be1c32091e7/8dd0897fa0c49ac1",
+    "ListenerAttributes": [
+      {
+        "Value": "true",
+        "Key": "routing.http.response.server.enabled"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.access_control_allow_headers.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.x_frame_options.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.access_control_allow_methods.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.access_control_allow_origin.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.access_control_allow_credentials.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.x_content_type_options.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.content_security_policy.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.access_control_expose_headers.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.strict_transport_security.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.access_control_max_age.header_value"
+      }
+    ],
+    "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/CdkrdH-Var3A-2U9apPGL3QQv/e1d73be1c32091e7",
+    "DefaultActions": [
+      {
+        "Type": "redirect",
+        "RedirectConfig": {
+          "Path": "/#{path}",
+          "Query": "#{query}",
+          "Port": "#{port}",
+          "Host": "#{host}",
+          "Protocol": "HTTPS",
+          "StatusCode": "HTTP_301"
+        }
+      }
+    ],
+    "Port": 80,
+    "Protocol": "HTTP"
+  },
+  "schema": {
+    "readOnly": ["ListenerArn"],
+    "writeOnly": [],
+    "createOnly": ["LoadBalancerArn"],
+    "readOnlyPaths": ["ListenerArn"],
+    "writeOnlyPaths": ["DefaultActions.*.AuthenticateOidcConfig.ClientSecret"],
+    "createOnlyPaths": ["LoadBalancerArn"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": [
+      "DefaultActions.*.AuthenticateCognitoConfig.AuthenticationRequestExtraParams",
+      "DefaultActions.*.AuthenticateOidcConfig.AuthenticationRequestExtraParams"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Var3RedirectListener",
+      "resourceType": "AWS::ElasticLoadBalancingV2::Listener",
+      "path": "ListenerAttributes[routing.http.response.server.enabled]",
+      "actual": "true",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/app/CdkrdH-Var3A-2U9apPGL3QQv/e1d73be1c32091e7/8dd0897fa0c49ac1",
+      "constructPath": "CdkrdHunt0714Variants3/Var3RedirectListener"
+    }
+  ]
+}

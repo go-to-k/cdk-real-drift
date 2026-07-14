@@ -1,0 +1,121 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Var3IcebergTable",
+    "resourceType": "AWS::Glue::Table",
+    "physicalId": "cdkrd_hunt0714_var3_tbl",
+    "constructPath": "CdkrdHunt0714Variants3/Var3IcebergTable",
+    "declared": {
+      "CatalogId": "111111111111",
+      "DatabaseName": "cdkrd_hunt0714_var3_db",
+      "OpenTableFormatInput": {
+        "IcebergInput": {
+          "MetadataOperation": "CREATE",
+          "Version": "2"
+        }
+      },
+      "TableInput": {
+        "Name": "cdkrd_hunt0714_var3_tbl",
+        "StorageDescriptor": {
+          "Columns": [
+            {
+              "Name": "id",
+              "Type": "string"
+            }
+          ],
+          "Location": "s3://cdkrdhunt0714variants3-var3icebergbucketa4990b9c-jwkbf443egea/table/"
+        },
+        "TableType": "EXTERNAL_TABLE"
+      }
+    }
+  },
+  "liveRaw": {
+    "DatabaseName": "cdkrd_hunt0714_var3_db",
+    "TableInput": {
+      "Name": "cdkrd_hunt0714_var3_tbl",
+      "Retention": 0,
+      "TableType": "EXTERNAL_TABLE",
+      "Parameters": {
+        "metadata_location": "s3://cdkrdhunt0714variants3-var3icebergbucketa4990b9c-jwkbf443egea/table/metadata/00000-8517df65-f2ae-4049-8069-123e27b72d63.metadata.json",
+        "table_type": "ICEBERG"
+      },
+      "StorageDescriptor": {
+        "Columns": [
+          {
+            "Name": "id",
+            "Type": "string"
+          }
+        ],
+        "Location": "s3://cdkrdhunt0714variants3-var3icebergbucketa4990b9c-jwkbf443egea/table/",
+        "Compressed": false,
+        "NumberOfBuckets": 0,
+        "SortColumns": [],
+        "StoredAsSubDirectories": false
+      }
+    },
+    "CatalogId": "111111111111"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["CatalogId", "DatabaseName", "Name"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["CatalogId", "DatabaseName", "Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "Var3IcebergTable",
+      "resourceType": "AWS::Glue::Table",
+      "path": "OpenTableFormatInput",
+      "note": "declared but not returned by live read",
+      "physicalId": "cdkrd_hunt0714_var3_tbl",
+      "constructPath": "CdkrdHunt0714Variants3/Var3IcebergTable"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Var3IcebergTable",
+      "resourceType": "AWS::Glue::Table",
+      "path": "TableInput.Retention",
+      "actual": 0,
+      "nested": true,
+      "physicalId": "cdkrd_hunt0714_var3_tbl",
+      "constructPath": "CdkrdHunt0714Variants3/Var3IcebergTable"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Var3IcebergTable",
+      "resourceType": "AWS::Glue::Table",
+      "path": "TableInput.Parameters",
+      "actual": {
+        "metadata_location": "s3://cdkrdhunt0714variants3-var3icebergbucketa4990b9c-jwkbf443egea/table/metadata/00000-8517df65-f2ae-4049-8069-123e27b72d63.metadata.json",
+        "table_type": "ICEBERG"
+      },
+      "nested": true,
+      "physicalId": "cdkrd_hunt0714_var3_tbl",
+      "constructPath": "CdkrdHunt0714Variants3/Var3IcebergTable"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Var3IcebergTable",
+      "resourceType": "AWS::Glue::Table",
+      "path": "TableInput.StorageDescriptor.NumberOfBuckets",
+      "actual": 0,
+      "nested": true,
+      "physicalId": "cdkrd_hunt0714_var3_tbl",
+      "constructPath": "CdkrdHunt0714Variants3/Var3IcebergTable"
+    }
+  ]
+}

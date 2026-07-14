@@ -1,0 +1,85 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Echo3AcProfile",
+    "resourceType": "AWS::AppConfig::ConfigurationProfile",
+    "physicalId": "y9b3uxn",
+    "constructPath": "CdkrdHuntEcho3/Echo3AcProfile",
+    "declared": {
+      "ApplicationId": "o9fy8c3",
+      "Description": "cdkrd echo3 probe rev 1",
+      "LocationUri": "hosted",
+      "Name": "cdkrd-echo3-profile",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        },
+        {
+          "Key": "cdkrd:rev",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "ConfigurationProfileId": "y9b3uxn",
+    "LocationUri": "hosted",
+    "Type": "AWS.Freeform",
+    "Description": "cdkrd echo3 probe rev 1",
+    "ApplicationId": "o9fy8c3",
+    "Tags": [
+      {
+        "Value": "Echo3AcProfile",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHuntEcho3/12d04e40-7f62-11f1-8d5f-0afff0323aef",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "CdkrdHuntEcho3",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:rev"
+      }
+    ],
+    "Name": "cdkrd-echo3-profile"
+  },
+  "schema": {
+    "readOnly": ["ConfigurationProfileId", "KmsKeyArn"],
+    "writeOnly": ["DeletionProtectionCheck"],
+    "createOnly": ["ApplicationId", "LocationUri", "Type"],
+    "readOnlyPaths": ["ConfigurationProfileId", "KmsKeyArn"],
+    "writeOnlyPaths": ["DeletionProtectionCheck"],
+    "createOnlyPaths": ["ApplicationId", "LocationUri", "Type"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["Validators"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Echo3AcProfile",
+      "resourceType": "AWS::AppConfig::ConfigurationProfile",
+      "path": "Type",
+      "actual": "AWS.Freeform",
+      "physicalId": "y9b3uxn",
+      "constructPath": "CdkrdHuntEcho3/Echo3AcProfile"
+    }
+  ]
+}
