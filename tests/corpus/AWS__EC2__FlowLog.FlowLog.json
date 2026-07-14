@@ -1,0 +1,141 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "FlowLog",
+    "resourceType": "AWS::EC2::FlowLog",
+    "physicalId": "fl-02e2f9eb4ca0c4938",
+    "constructPath": "CdkrdHunt0714Barest4A/FlowLog",
+    "declared": {
+      "LogDestination": "arn:aws:s3:::cdkrdhunt0714barest4a-bucket-dhwv0z2i7mtc",
+      "LogDestinationType": "s3",
+      "ResourceId": "vpc-00346b7ce53be4f32",
+      "ResourceType": "VPC",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        },
+        {
+          "Key": "cdkrd:rev",
+          "Value": "2"
+        }
+      ],
+      "TrafficType": "ALL"
+    }
+  },
+  "liveRaw": {
+    "LogFormat": "${version} ${account-id} ${interface-id} ${srcaddr} ${dstaddr} ${srcport} ${dstport} ${protocol} ${packets} ${bytes} ${start} ${end} ${action} ${log-status}",
+    "ResourceId": "vpc-00346b7ce53be4f32",
+    "MaxAggregationInterval": 600,
+    "DestinationOptions": {
+      "PerHourPartition": false,
+      "HiveCompatiblePartitions": false,
+      "FileFormat": "plain-text"
+    },
+    "ResourceType": "VPC",
+    "Id": "fl-02e2f9eb4ca0c4938",
+    "LogDestination": "arn:aws:s3:::cdkrdhunt0714barest4a-bucket-dhwv0z2i7mtc",
+    "LogDestinationType": "s3",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0714Barest4A",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "FlowLog",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "2",
+        "Key": "cdkrd:rev"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0714Barest4A/f1cbff30-7f77-11f1-b2c4-12e64a14fec7",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "TrafficType": "ALL"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": [
+      "DeliverCrossAccountRole",
+      "DeliverLogsPermissionArn",
+      "DestinationOptions",
+      "LogDestination",
+      "LogDestinationType",
+      "LogFormat",
+      "LogGroupName",
+      "MaxAggregationInterval",
+      "ResourceId",
+      "ResourceType",
+      "TagFieldSpecifications",
+      "TrafficType"
+    ],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "DeliverCrossAccountRole",
+      "DeliverLogsPermissionArn",
+      "DestinationOptions",
+      "LogDestination",
+      "LogDestinationType",
+      "LogFormat",
+      "LogGroupName",
+      "MaxAggregationInterval",
+      "ResourceId",
+      "ResourceType",
+      "TagFieldSpecifications",
+      "TrafficType"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "FlowLog",
+      "resourceType": "AWS::EC2::FlowLog",
+      "path": "LogFormat",
+      "actual": "${version} ${account-id} ${interface-id} ${srcaddr} ${dstaddr} ${srcport} ${dstport} ${protocol} ${packets} ${bytes} ${start} ${end} ${action} ${log-status}",
+      "physicalId": "fl-02e2f9eb4ca0c4938",
+      "constructPath": "CdkrdHunt0714Barest4A/FlowLog"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "FlowLog",
+      "resourceType": "AWS::EC2::FlowLog",
+      "path": "MaxAggregationInterval",
+      "actual": 600,
+      "physicalId": "fl-02e2f9eb4ca0c4938",
+      "constructPath": "CdkrdHunt0714Barest4A/FlowLog"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "FlowLog",
+      "resourceType": "AWS::EC2::FlowLog",
+      "path": "DestinationOptions",
+      "actual": {
+        "PerHourPartition": false,
+        "HiveCompatiblePartitions": false,
+        "FileFormat": "plain-text"
+      },
+      "physicalId": "fl-02e2f9eb4ca0c4938",
+      "constructPath": "CdkrdHunt0714Barest4A/FlowLog"
+    }
+  ]
+}

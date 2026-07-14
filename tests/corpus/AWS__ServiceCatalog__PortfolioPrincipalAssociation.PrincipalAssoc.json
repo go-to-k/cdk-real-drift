@@ -1,0 +1,39 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "PrincipalAssoc",
+    "resourceType": "AWS::ServiceCatalog::PortfolioPrincipalAssociation",
+    "physicalId": "port-sne42owbwaygs|arn:aws:iam::111111111111:role/CdkrdHunt0714CcPi-PrincipalRole0B9742B6-JAc317Im0xrI",
+    "constructPath": "CdkrdHunt0714CcPi/PrincipalAssoc",
+    "declared": {
+      "PortfolioId": "port-sne42owbwaygs",
+      "PrincipalARN": "arn:aws:iam::111111111111:role/CdkrdHunt0714CcPi-PrincipalRole0B9742B6-JAc317Im0xrI",
+      "PrincipalType": "IAM"
+    }
+  },
+  "liveRaw": {
+    "PrincipalARN": "arn:aws:iam::111111111111:role/CdkrdHunt0714CcPi-PrincipalRole0B9742B6-JAc317Im0xrI",
+    "PortfolioId": "port-sne42owbwaygs",
+    "PrincipalType": "IAM"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": ["AcceptLanguage"],
+    "createOnly": ["AcceptLanguage", "PortfolioId", "PrincipalARN", "PrincipalType"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": ["AcceptLanguage"],
+    "createOnlyPaths": ["AcceptLanguage", "PortfolioId", "PrincipalARN", "PrincipalType"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

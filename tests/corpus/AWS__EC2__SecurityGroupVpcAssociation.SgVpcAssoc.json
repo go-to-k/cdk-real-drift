@@ -1,0 +1,40 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SgVpcAssoc",
+    "resourceType": "AWS::EC2::SecurityGroupVpcAssociation",
+    "physicalId": "sg-0ae2c710f410e108b|vpc-041aad4f6fa0fea23",
+    "constructPath": "CdkrdHunt0714CcPi/SgVpcAssoc",
+    "declared": {
+      "GroupId": "sg-0ae2c710f410e108b",
+      "VpcId": "vpc-041aad4f6fa0fea23"
+    }
+  },
+  "liveRaw": {
+    "VpcId": "vpc-041aad4f6fa0fea23",
+    "State": "associated",
+    "StateReason": "",
+    "VpcOwnerId": "111111111111",
+    "GroupId": "sg-0ae2c710f410e108b"
+  },
+  "schema": {
+    "readOnly": ["State", "StateReason", "VpcOwnerId"],
+    "writeOnly": [],
+    "createOnly": ["GroupId", "VpcId"],
+    "readOnlyPaths": ["State", "StateReason", "VpcOwnerId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["GroupId", "VpcId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

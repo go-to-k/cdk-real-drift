@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-integ-barest4-hunt",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Barest-form first-run FP probe batch 4: Synthetics Canary, CloudTrail Trail, EC2 FlowLog, WAFv2 WebACL, RUM AppMonitor, APS Workspace, CodeArtifact, Bedrock Guardrail. Run via verify.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module"
+}

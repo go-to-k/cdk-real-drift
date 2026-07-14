@@ -1,0 +1,49 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "TagOption",
+    "resourceType": "AWS::ServiceCatalog::TagOption",
+    "physicalId": "tag-ijpe32hv55kou",
+    "constructPath": "CdkrdHunt0714CcPi/TagOption",
+    "declared": {
+      "Key": "cdkrd-hunt",
+      "Value": "ccpi"
+    }
+  },
+  "liveRaw": {
+    "Active": true,
+    "Value": "ccpi",
+    "Id": "tag-ijpe32hv55kou",
+    "Key": "cdkrd-hunt"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["Key", "Value"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Key", "Value"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "TagOption",
+      "resourceType": "AWS::ServiceCatalog::TagOption",
+      "path": "Active",
+      "actual": true,
+      "physicalId": "tag-ijpe32hv55kou",
+      "constructPath": "CdkrdHunt0714CcPi/TagOption"
+    }
+  ]
+}

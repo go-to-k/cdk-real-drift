@@ -754,12 +754,22 @@ describe('noise suppressors', () => {
       AccountId: '',
       UseLakeFormationCredentials: false,
     });
-    // CloudWatch RUM AppMonitor (observed live on rum-appmonitor-rich): an undeclared
-    // Platform reads back "Web", and undeclared source-map deobfuscation reads back the
-    // disabled-state object. Equality-gated, so Android/iOS or an enabled config surfaces.
+    // CloudWatch RUM AppMonitor (observed live on rum-appmonitor-rich, extended by the
+    // barest4 hunt 2026-07-14): an undeclared Platform reads back "Web", undeclared
+    // source-map deobfuscation reads back the disabled-state object, and a BAREST monitor
+    // (Name + Domain only) also materializes the disabled custom-events toggle and the
+    // default AppMonitorConfiguration. Equality-gated, so any out-of-band change surfaces.
     expect(KNOWN_DEFAULTS['AWS::RUM::AppMonitor']).toEqual({
       Platform: 'Web',
       DeobfuscationConfiguration: { JavaScriptSourceMaps: { Status: 'DISABLED' } },
+      CustomEvents: { Status: 'DISABLED' },
+      AppMonitorConfiguration: {
+        IncludedPages: [],
+        ExcludedPages: [],
+        FavoritePages: [],
+        SessionSampleRate: 0.1,
+        Telemetries: [],
+      },
     });
   });
 

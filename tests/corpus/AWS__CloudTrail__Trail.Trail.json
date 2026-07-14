@@ -1,0 +1,95 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Trail",
+    "resourceType": "AWS::CloudTrail::Trail",
+    "physicalId": "CdkrdHunt0714Barest4A-Trail-kUG6FnhgRSJ2",
+    "constructPath": "CdkrdHunt0714Barest4A/Trail",
+    "declared": {
+      "IsLogging": true,
+      "S3BucketName": "cdkrdhunt0714barest4a-bucket-dhwv0z2i7mtc",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        },
+        {
+          "Key": "cdkrd:rev",
+          "Value": "2"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "IncludeGlobalServiceEvents": false,
+    "EventSelectors": [
+      {
+        "IncludeManagementEvents": true,
+        "ReadWriteType": "All",
+        "ExcludeManagementEventSources": [],
+        "DataResources": []
+      }
+    ],
+    "AggregationConfigurations": [],
+    "AdvancedEventSelectors": [],
+    "TrailName": "CdkrdHunt0714Barest4A-Trail-kUG6FnhgRSJ2",
+    "IsOrganizationTrail": false,
+    "InsightSelectors": [],
+    "IsMultiRegionTrail": false,
+    "S3BucketName": "cdkrdhunt0714barest4a-bucket-dhwv0z2i7mtc",
+    "EnableLogFileValidation": false,
+    "Arn": "arn:aws:cloudtrail:us-east-1:111111111111:trail/CdkrdHunt0714Barest4A-Trail-kUG6FnhgRSJ2",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      },
+      {
+        "Value": "2",
+        "Key": "cdkrd:rev"
+      }
+    ],
+    "IsLogging": true
+  },
+  "schema": {
+    "readOnly": ["Arn", "SnsTopicArn"],
+    "writeOnly": [],
+    "createOnly": ["TrailName"],
+    "readOnlyPaths": ["Arn", "SnsTopicArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["TrailName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [
+      "AggregationConfigurations",
+      "EventSelectors",
+      "InsightSelectors"
+    ],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Trail",
+      "resourceType": "AWS::CloudTrail::Trail",
+      "path": "EventSelectors",
+      "actual": [
+        {
+          "IncludeManagementEvents": true,
+          "ReadWriteType": "All",
+          "ExcludeManagementEventSources": [],
+          "DataResources": []
+        }
+      ],
+      "physicalId": "CdkrdHunt0714Barest4A-Trail-kUG6FnhgRSJ2",
+      "constructPath": "CdkrdHunt0714Barest4A/Trail"
+    }
+  ]
+}

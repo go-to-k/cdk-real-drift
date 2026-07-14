@@ -272,6 +272,16 @@ export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // (EnableTokenRevocation, AuthSessionValidity) ride the same call and are LIKELY the
   // same class but stay unlisted until individually live-proven (the per-property rule).
   'AWS::Cognito::UserPoolClient\0RefreshTokenValidity',
+  // barest4 hunt (live-proven 2026-07-14): RUM UpdateAppMonitor keeps an omitted
+  // CustomEvents (an out-of-band ENABLED persisted through a `remove` revert — the revert
+  // reported "reverted" yet convergence re-read ENABLED). Write the {Status:"DISABLED"}
+  // default (from KNOWN_DEFAULTS) back explicitly.
+  'AWS::RUM::AppMonitor\0CustomEvents',
+  // barest4/ccpi hunt (live-proven 2026-07-14): ServiceCatalog UpdateTagOption REJECTS the
+  // `remove` patch outright ("Active and new value cannot both be null") — the hard-reject
+  // flavor of the class (not a silent no-op, a hard error). Write the `true` default (from
+  // KNOWN_DEFAULTS) back explicitly.
+  'AWS::ServiceCatalog::TagOption\0Active',
   // Lambda UpdateFunctionUrlConfig IGNORES an omitted InvokeMode (live-proven on
   // revert-noop-probe 2026-07-14, #1583: a URL flipped BUFFERED->RESPONSE_STREAM out of
   // band, then `revert` planned a `remove`, reported reverted, yet the URL stayed

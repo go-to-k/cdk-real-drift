@@ -1,0 +1,71 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "CaDomain",
+    "resourceType": "AWS::CodeArtifact::Domain",
+    "physicalId": "arn:aws:codeartifact:us-east-1:111111111111:domain/cdkrd-hunt-brst4",
+    "constructPath": "CdkrdHunt0714Barest4B/CaDomain",
+    "declared": {
+      "DomainName": "cdkrd-hunt-brst4",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        },
+        {
+          "Key": "cdkrd:rev",
+          "Value": "2"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Owner": "111111111111",
+    "DomainName": "cdkrd-hunt-brst4",
+    "EncryptionKey": "arn:aws:kms:us-east-1:111111111111:key/f4915da2-dabd-4aaa-a58b-6cc98c3bcbc6",
+    "Arn": "arn:aws:codeartifact:us-east-1:111111111111:domain/cdkrd-hunt-brst4",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0714Barest4B",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "CaDomain",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "2",
+        "Key": "cdkrd:rev"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0714Barest4B/ddaaa560-7f77-11f1-b23e-0affeef325ef",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "Name": "cdkrd-hunt-brst4"
+  },
+  "schema": {
+    "readOnly": ["Arn", "EncryptionKey", "Name", "Owner"],
+    "writeOnly": [],
+    "createOnly": ["DomainName", "EncryptionKey"],
+    "readOnlyPaths": ["Arn", "EncryptionKey", "Name", "Owner"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["DomainName", "EncryptionKey"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

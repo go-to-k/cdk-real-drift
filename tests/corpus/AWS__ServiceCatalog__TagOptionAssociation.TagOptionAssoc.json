@@ -1,0 +1,37 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "TagOptionAssoc",
+    "resourceType": "AWS::ServiceCatalog::TagOptionAssociation",
+    "physicalId": "tag-ijpe32hv55kou|port-sne42owbwaygs",
+    "constructPath": "CdkrdHunt0714CcPi/TagOptionAssoc",
+    "declared": {
+      "ResourceId": "port-sne42owbwaygs",
+      "TagOptionId": "tag-ijpe32hv55kou"
+    }
+  },
+  "liveRaw": {
+    "TagOptionId": "tag-ijpe32hv55kou",
+    "ResourceId": "port-sne42owbwaygs"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["ResourceId", "TagOptionId"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ResourceId", "TagOptionId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

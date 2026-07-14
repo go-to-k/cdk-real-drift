@@ -1,0 +1,89 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Aps",
+    "resourceType": "AWS::APS::Workspace",
+    "physicalId": "arn:aws:aps:us-east-1:111111111111:workspace/ws-6cdb1420-779f-4c03-8f20-f174f09a6f4f",
+    "constructPath": "CdkrdHunt0714Barest4B/Aps",
+    "declared": {
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        },
+        {
+          "Key": "cdkrd:rev",
+          "Value": "2"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "PrometheusEndpoint": "https://aps-workspaces.us-east-1.amazonaws.com/workspaces/ws-6cdb1420-779f-4c03-8f20-f174f09a6f4f/",
+    "WorkspaceId": "ws-6cdb1420-779f-4c03-8f20-f174f09a6f4f",
+    "WorkspaceConfiguration": {
+      "RuleQueryOffsetInSeconds": 60,
+      "RetentionPeriodInDays": 150,
+      "OutOfOrderTimeWindowInSeconds": 60,
+      "LimitsPerLabelSets": []
+    },
+    "Arn": "arn:aws:aps:us-east-1:111111111111:workspace/ws-6cdb1420-779f-4c03-8f20-f174f09a6f4f",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0714Barest4B",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Aps",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "2",
+        "Key": "cdkrd:rev"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0714Barest4B/ddaaa560-7f77-11f1-b23e-0affeef325ef",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "PrometheusEndpoint", "WorkspaceId"],
+    "writeOnly": [],
+    "createOnly": ["KmsKeyArn"],
+    "readOnlyPaths": ["Arn", "PrometheusEndpoint", "WorkspaceId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["KmsKeyArn"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["WorkspaceConfiguration.LimitsPerLabelSets"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Aps",
+      "resourceType": "AWS::APS::Workspace",
+      "path": "WorkspaceConfiguration",
+      "actual": {
+        "RuleQueryOffsetInSeconds": 60,
+        "RetentionPeriodInDays": 150,
+        "OutOfOrderTimeWindowInSeconds": 60,
+        "LimitsPerLabelSets": []
+      },
+      "physicalId": "arn:aws:aps:us-east-1:111111111111:workspace/ws-6cdb1420-779f-4c03-8f20-f174f09a6f4f",
+      "constructPath": "CdkrdHunt0714Barest4B/Aps"
+    }
+  ]
+}
