@@ -1,3 +1,10 @@
+## [0.22.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.22.2...v0.22.3) (2026-07-15)
+
+
+### Bug Fixes
+
+* **read:** Route53 RecordSet added children fold to cross-region sibling-managed ([#1651](https://github.com/go-to-k/cdk-real-drift/issues/1651)) ([#1659](https://github.com/go-to-k/cdk-real-drift/issues/1659)) ([b581548](https://github.com/go-to-k/cdk-real-drift/commit/b581548395bf2b165e37bc792ba7bb15e7a78985))
+
 ## [0.22.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.22.1...v0.22.2) (2026-07-15)
 
 
