@@ -70,6 +70,8 @@ import {
   GlueClient,
 } from '@aws-sdk/client-glue';
 import {
+  ListHostedZonesByNameCommand,
+  type ListHostedZonesByNameCommandOutput,
   ListResourceRecordSetsCommand,
   type ListResourceRecordSetsCommandOutput,
   type ResourceRecordSet,
@@ -1714,14 +1716,42 @@ const alignTrailingDot = (live: string | undefined, declared: unknown): string |
 // fallback below therefore only ever fires on a bare name (no `_`, or a `_`-prefixed name like
 // `_dmarc.example.com`) → `hasIdParts` is false → it contributes nothing; declared values carry
 // the read. (A record declared via HostedZoneName instead of HostedZoneId has no declared
-// HostedZoneId and the bare-name id cannot supply one, so such a read returns undefined — a known
-// gap, tracked separately; unchanged by #1651.)
+// HostedZoneId and the bare-name id cannot supply one; such a read now resolves the name to a
+// zone id via ListHostedZonesByName below — #1660.)
+//
+// Resolve a Route53 HostedZoneName (apex, e.g. `example.com.`) to its zone id. A RecordSet may
+// reference its zone by NAME instead of id (both are valid CFn), and then neither the declared
+// props nor the bare-name physical id carry a zone id — without which ListResourceRecordSets
+// cannot be called and the record is a readGap (its declared drift invisible). Fail-OPEN
+// (undefined → readGap, the prior behaviour) when the name resolves to zero or MULTIPLE zones:
+// one apex name can host both a PUBLIC and a PRIVATE hosted zone, and picking the wrong one would
+// compare the record against the wrong zone. Only an unambiguous single match is used.
+const canonZone = (s: string): string => unescapeRoute53Name(s).replace(/\.$/, '').toLowerCase();
+const resolveHostedZoneIdByName = async (
+  c: Route53Client,
+  zoneName: string
+): Promise<string | undefined> => {
+  const target = canonZone(zoneName);
+  const r: ListHostedZonesByNameCommandOutput = await c.send(
+    // DNSName anchors the (lexicographically-sorted) listing at the target name, so any same-apex
+    // public/private pair lands at the front of the first page — no pagination needed to see both.
+    new ListHostedZonesByNameCommand({ DNSName: zoneName })
+  );
+  const matches = (r.HostedZones ?? []).filter((z) => !!z.Name && canonZone(z.Name) === target);
+  const only = matches.length === 1 ? matches[0] : undefined;
+  return only?.Id?.replace(/^\/hostedzone\//, '');
+};
 const readRoute53RecordSet: OverrideReader = async ({ physicalId, declared, region }) => {
   const parts = physicalId.split('_');
   const hasIdParts = parts.length >= 3;
-  const hostedZoneId = str(declared.HostedZoneId) ?? (hasIdParts ? parts[0] : undefined);
+  const c = new Route53Client({ region, ...READ_RETRY });
+  const declaredZoneId = str(declared.HostedZoneId);
+  let hostedZoneId = declaredZoneId ?? (hasIdParts ? parts[0] : undefined);
   const name = str(declared.Name) ?? (hasIdParts ? parts[1] : undefined);
   const type = str(declared.Type) ?? (hasIdParts ? parts[parts.length - 1] : undefined);
+  const zoneName = str(declared.HostedZoneName);
+  const byName = !declaredZoneId && !!zoneName;
+  if (!hostedZoneId && zoneName) hostedZoneId = await resolveHostedZoneIdByName(c, zoneName);
   if (!hostedZoneId || !name || !type) return undefined;
   // A name+type can have MANY records that differ only by SetIdentifier (weighted,
   // latency, failover, geolocation, multivalue routing — an L1 CfnRecordSet pattern).
@@ -1730,7 +1760,6 @@ const readRoute53RecordSet: OverrideReader = async ({ physicalId, declared, regi
   // or missed entirely. Drop the cap (Route53's default page is 100 records from the
   // StartRecord cursor, which holds all variants of one name+type consecutively) and
   // disambiguate by SetIdentifier below.
-  const c = new Route53Client({ region, ...READ_RETRY });
   const canon = (s: string): string => unescapeRoute53Name(s).replace(/\.$/, '').toLowerCase();
   // Match the declared SetIdentifier too: a simple record declares none and AWS
   // returns none (undefined === undefined), while a weighted/latency variant matches
@@ -1786,7 +1815,13 @@ const readRoute53RecordSet: OverrideReader = async ({ physicalId, declared, regi
       declared.Name
     ),
     Type: rec.Type,
-    HostedZoneId: hostedZoneId,
+    // Mirror the DECLARED zone identifier. A record declared via HostedZoneName has no declared
+    // HostedZoneId, so emitting the resolved id would surface it as undeclared drift on a clean
+    // deploy (and the declared HostedZoneName would readGap, never returned by the live read).
+    // Echo the declared name instead — it is an immutable identity input (changing it replaces the
+    // record), so echoing loses no meaningful detection. A record declared by id emits the id as
+    // before (including the physical-id fallback, where zoneName is absent).
+    ...(byName ? { HostedZoneName: zoneName } : { HostedZoneId: hostedZoneId }),
   };
   if (rec.TTL !== undefined) model.TTL = String(rec.TTL); // CFn TTL is a string
   const records = rec.ResourceRecords?.map((rr) => rr.Value).filter((v): v is string => !!v);
