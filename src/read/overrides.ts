@@ -190,6 +190,7 @@ import { GetTopicAttributesCommand, SNSClient } from '@aws-sdk/client-sns';
 import { GetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { ResourceGoneError } from '../aws-errors.js';
 import { partitionForRegion } from '../desired/template-adapter.js';
+import { unescapeRoute53Name } from './child-enumerators.js';
 import { CLIENT_REQUEST_HANDLER, READ_RETRY } from './client-config.js';
 import { isDefinitiveDenial } from './kms-aliases.js';
 import { hashCaBundle, sha256Hex } from './pem.js';
@@ -1703,20 +1704,18 @@ const alignTrailingDot = (live: string | undefined, declared: unknown): string |
   return declHasDot ? (live.endsWith('.') ? live : `${live}.`) : live.replace(/\.$/, '');
 };
 
-// Route53 stores/returns special characters in a record name as octal escapes
-// (`\ooo`): a wildcard `*.example.net` comes back as `\052.example.net.`, and space
-// → `\040`, etc. The declared/template name uses the literal character, so a
-// verbatim compare misreads the wildcard record as absent — throwing ResourceGoneError
-// → a FALSE `deleted` finding (and leaving the record's returned Name as false
-// declared drift). Unescape before matching AND in the returned model so both the
-// existence check and the value compare see the literal form. See
-// https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/DomainNameFormat.html
-const unescapeRoute53Name = (s: string): string =>
-  s.replace(/\\(\d{3})/g, (_m, oct: string) => String.fromCharCode(Number.parseInt(oct, 8)));
-
-// AWS::Route53::RecordSet — CC API GetResource throws UnsupportedActionException.
-// Read via Route53 ListResourceRecordSets (the CFn physical id is
-// `<HostedZoneId>_<Name>_<Type>`; declared values are preferred, id is the fallback).
+// AWS::Route53::RecordSet — CC API GetResource throws UnsupportedActionException, read via
+// Route53 ListResourceRecordSets. Declared values (HostedZoneId / Name / Type) are the primary
+// source and are ALWAYS present for a declared record's read, so this reader keys on them.
+// NOTE on the physical id: the RecordSet's real CloudFormation PhysicalResourceId is the BARE
+// record NAME (`*.example.net`), NOT the `<HostedZoneId>_<Name>_<Type>` form an earlier comment
+// here claimed — that composite is cdkrd's own `route53RecordSetIdentifier` display token
+// (child-enumerators.ts), which never reaches this reader (#1651). The `physicalId.split('_')`
+// fallback below therefore only ever fires on a bare name (no `_`, or a `_`-prefixed name like
+// `_dmarc.example.com`) → `hasIdParts` is false → it contributes nothing; declared values carry
+// the read. (A record declared via HostedZoneName instead of HostedZoneId has no declared
+// HostedZoneId and the bare-name id cannot supply one, so such a read returns undefined — a known
+// gap, tracked separately; unchanged by #1651.)
 const readRoute53RecordSet: OverrideReader = async ({ physicalId, declared, region }) => {
   const parts = physicalId.split('_');
   const hasIdParts = parts.length >= 3;

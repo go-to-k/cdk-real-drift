@@ -9,6 +9,7 @@ import {
 import {
   DescribeSecurityGroupsCommand,
   DescribeSubnetsCommand,
+  DescribeRegionsCommand,
   EC2Client,
   GetDefaultCreditSpecificationCommand,
   GetEbsEncryptionByDefaultCommand,
@@ -760,6 +761,102 @@ export async function isManagedBySiblingStack(
     if (seg === 'unverified') sawUnverified = true;
   }
   return sawUnverified ? 'unverified' : 'notManaged';
+}
+
+// Combine a global-service child's per-region sibling probes into one verdict, fail-SAFE. Given a
+// child whose run-region probe was already a DEFINITIVE not-managed, sweep the OTHER enabled
+// regions: ANY region proving sibling ownership wins ('managed' — the child is CFn-managed, just by
+// a stack in another region, so NOT out of band); otherwise if ANY region was UNVERIFIABLE
+// (throttle / AccessDenied / network) return 'unverified' (report as coverage-incomplete, NEVER a
+// destructive DeleteResource on a record a foreign-region stack legitimately owns — #754/#959);
+// only when EVERY region is a definitive not-managed is the child a genuine out-of-band `added`
+// (#1651). `probeInRegion` is injected so this combine logic is unit-testable without AWS.
+export async function resolveCrossRegionSibling(
+  regions: string[],
+  probeInRegion: (region: string) => Promise<SiblingCheck>
+): Promise<SiblingCheck> {
+  let sawUnverified = false;
+  for (const region of regions) {
+    const r = await probeInRegion(region);
+    if (r === 'managed') return 'managed';
+    if (r === 'unverified') sawUnverified = true;
+  }
+  return sawUnverified ? 'unverified' : 'notManaged';
+}
+
+// A run-scoped cross-region sibling probe for GLOBAL-service children (#1651). The
+// AWS::Route53::RecordSet case: the zone is managed by a stack in the check's region, but its
+// records may be managed by other apps' stacks in DIFFERENT regions — invisible to the run-region
+// DescribeStackResources, so they false-flag `added`. When the run-region probe is a definitive
+// not-managed, `escalate` sweeps the account's OTHER enabled regions before concluding out-of-band.
+// Fail-SAFE throughout: if the enabled-region list cannot be enumerated (denied / throttled), or
+// any region's probe is unverifiable, it returns 'unverified' — coverage-incomplete, never a
+// destructive delete offer. The enabled-region list, per-region CloudFormation clients, and each
+// region's probe cache are memoized for the whole run (a zone can enumerate many candidate records).
+export interface CrossRegionSiblingProbe {
+  escalate(c: AddedChild): Promise<SiblingCheck>;
+}
+
+export function makeCrossRegionSiblingProbe(
+  accountId: string,
+  runRegion: string,
+  // Injectable for tests; defaults to a real EC2 DescribeRegions of the account's enabled regions
+  // (excluding the run region, already probed) and a real per-region CloudFormation probe.
+  deps?: {
+    enabledRegions?: () => Promise<string[] | undefined>;
+    probeInRegion?: (c: AddedChild, region: string) => Promise<SiblingCheck>;
+  }
+): CrossRegionSiblingProbe {
+  let regionsPromise: Promise<string[] | undefined> | undefined;
+  const cfnClients = new Map<string, CloudFormationClient>();
+  const caches = new Map<string, Map<string, SiblingCheck>>();
+
+  const fetchEnabledRegions =
+    deps?.enabledRegions ??
+    (async (): Promise<string[] | undefined> => {
+      try {
+        const ec2 = new EC2Client({ region: runRegion, ...READ_RETRY });
+        const res = await ec2.send(new DescribeRegionsCommand({ AllRegions: false }));
+        return (res.Regions ?? [])
+          .map((r) => r.RegionName)
+          .filter((n): n is string => typeof n === 'string' && n !== '' && n !== runRegion);
+      } catch {
+        // Cannot enumerate regions -> cannot prove the child is unmanaged everywhere. The caller
+        // fail-safes this to 'unverified' (never a destructive delete on a possibly foreign-managed
+        // record).
+        return undefined;
+      }
+    });
+  // Enumerate the enabled regions ONCE per run (a zone can enumerate many candidate records).
+  const enabledRegions = (): Promise<string[] | undefined> =>
+    (regionsPromise ??= fetchEnabledRegions());
+
+  const probeInRegion =
+    deps?.probeInRegion ??
+    ((c: AddedChild, region: string): Promise<SiblingCheck> => {
+      let client = cfnClients.get(region);
+      if (!client) {
+        client = new CloudFormationClient({ region, ...READ_RETRY });
+        cfnClients.set(region, client);
+      }
+      let cache = caches.get(region);
+      if (!cache) {
+        cache = new Map();
+        caches.set(region, cache);
+      }
+      // A global-service child's siblingLookupId is its bare CFn physical id (no `|` composite),
+      // so probe it directly against this region's account scope.
+      const physicalId = c.siblingLookupId ?? c.identifier;
+      return probeSiblingPhysicalId(client, c, physicalId, cache, accountId, region);
+    });
+
+  return {
+    async escalate(c: AddedChild): Promise<SiblingCheck> {
+      const regions = await enabledRegions();
+      if (regions === undefined) return 'unverified';
+      return resolveCrossRegionSibling(regions, (region) => probeInRegion(c, region));
+    },
+  };
 }
 
 interface ClassifyOpts {
@@ -1758,6 +1855,9 @@ export async function gatherFindings(
   // as drift (PR4). An enumeration failure is a coverage gap, not drift — surfaced as a
   // `skipped` finding on the parent so it is never silently lost.
   const siblingStackCache = new Map<string, SiblingCheck>();
+  // Cross-region escalation for GLOBAL-service children (Route53 RecordSet, #1651): built lazily,
+  // its enabled-region list + per-region clients/caches memoized for the whole run.
+  const crossRegionProbe = makeCrossRegionSiblingProbe(desired.accountId, region);
   for (const r of desired.resources) {
     const enumerate = CHILD_ENUMERATORS[r.resourceType];
     if (!enumerate || !r.physicalId) continue;
@@ -1776,13 +1876,20 @@ export async function gatherFindings(
       for (const c of children) {
         // A child CDK placed in a SIBLING stack of the same app (cross-stack refs, #666)
         // is fully CloudFormation-managed — not out of band, so skip it.
-        const sibling = await isManagedBySiblingStack(
+        let sibling = await isManagedBySiblingStack(
           cfn,
           c,
           siblingStackCache,
           desired.accountId,
           region
         );
+        // A GLOBAL-service child (Route53 RecordSet) whose run-region probe was a DEFINITIVE
+        // not-managed may still be CFn-managed by a stack in ANOTHER region (#1651) — the zone is
+        // managed here, its records elsewhere. Sweep the account's other enabled regions before
+        // reporting it out of band; the escalation is itself fail-safe ('unverified' on any doubt).
+        if (sibling === 'notManaged' && c.crossRegionSibling) {
+          sibling = await crossRegionProbe.escalate(c);
+        }
         if (sibling === 'managed') continue;
         if (sibling === 'unverified') {
           // The sibling-membership check FAILED (throttle / denied), so we cannot say whether this

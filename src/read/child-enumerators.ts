@@ -276,6 +276,16 @@ export interface AddedChild {
   // signal wins: a foreign owner / endpoint ARN downgrades the ValidationError to `unverified`.
   ownerAccountId?: string | undefined; // the child's OWNING account (SNS subscription `Owner`)
   scopeArns?: string[] | undefined; // extra ARNs carrying the child's true account/region (SNS `Endpoint` when an ARN)
+  // GLOBAL-service child whose owning CloudFormation stack may live in ANY region (#1651). The
+  // sibling-membership probe runs on the check's own account+region, so a definitive local
+  // ValidationError only proves "not in a stack of THIS region" — a child fully CFn-managed by a
+  // stack in a DIFFERENT region reads as a false `added`. The canonical case: an
+  // AWS::Route53::RecordSet whose zone is managed by a stack in one region while its records are
+  // managed by other apps' stacks in another (Route53 is global; its records' physical id carries
+  // no region signal, so isDefinitiveNotManaged reads them LOCAL). When set, gather escalates a
+  // definitive local not-managed to a cross-region sweep of the account's enabled regions before
+  // concluding the child is genuinely out of band.
+  crossRegionSibling?: boolean | undefined;
 }
 
 export interface EnumeratorContext {
@@ -5389,6 +5399,27 @@ export async function enumerateRdsClusterChildren(ctx: EnumeratorContext): Promi
 // usually omits it, so compare dot- and case-insensitively.
 const canonRoute53Name = (s: string): string => s.replace(/\.$/, '').toLowerCase();
 
+// Route53 stores/returns special characters in a record name as octal escapes (`\ooo`): a
+// wildcard `*.example.net` comes back as `\052.example.net.`, and space -> `\040`, etc. The
+// declared/template name (and the CloudFormation physical id, below) use the literal character.
+// Unescape before matching. Home of this helper (readRoute53RecordSet in read/overrides.ts
+// imports it from here) so its consumers can never drift from the enumerator's own escaping.
+// https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/DomainNameFormat.html
+export const unescapeRoute53Name = (s: string): string =>
+  s.replace(/\\(\d{3})/g, (_m, oct: string) => String.fromCharCode(Number.parseInt(oct, 8)));
+
+// The CloudFormation PhysicalResourceId of an AWS::Route53::RecordSet is the BARE record NAME
+// (verified live 2026-07-15: `DescribeStackResources --physical-resource-id <name>` resolves the
+// owning stack, the returned resource's PhysicalResourceId IS that bare name, and the A/AAAA
+// variants of one name SHARE it — while the cdkrd-internal `<ZoneId>_<Name>_<Type>` composite
+// [route53RecordSetIdentifier] matches NOTHING in any region). So the sibling-stack membership
+// probe (DescribeStackResources) MUST look the record up by this bare name, not by the composite
+// `identifier` (#1651). ListResourceRecordSets returns the name octal-escaped with a trailing dot
+// (`\052.example.net.`); CFn stores the literal, dot-less form (`*.example.net`), so unescape and
+// strip the trailing dot. NOT lowercased — the physical id preserves the name's case.
+export const route53RecordSetCfnPhysicalId = (liveName: string): string =>
+  unescapeRoute53Name(liveName).replace(/\.$/, '');
+
 // ACM DNS-validation CNAMEs (#1652): an AWS::CertificateManager::Certificate with
 // DomainValidationOptions.HostedZoneId makes the CFn/ACM handler write its validation record
 // (`_<32-hex>.<domain> CNAME _<token>.<random>.acm-validations.aws.`) DIRECTLY into the zone —
@@ -5489,6 +5520,13 @@ export function diffRoute53HostedZoneChildren(input: Route53HostedZoneChildInput
       identifier,
       label: `${type} ${name}`,
       live: r.live ?? { Name: r.name, Type: r.type },
+      // The CC `identifier` above is cdkrd's own `<ZoneId>_<Name>_<Type>` display/record token,
+      // NOT the CFn physical id — so the sibling probe must look the record up by the BARE record
+      // name (the real PhysicalResourceId, #1651). Route53 RecordSets are global-service children:
+      // their owning stack may sit in a different region than the zone, so mark them for the
+      // cross-region escalation in gather.
+      siblingLookupId: route53RecordSetCfnPhysicalId(r.name),
+      crossRegionSibling: true,
     });
   }
   return added;
