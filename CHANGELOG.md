@@ -1,3 +1,10 @@
+# [0.21.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.20.1...v0.21.0) (2026-07-15)
+
+
+### Features
+
+* **read:** SES ConfigurationSetEventDestination SDK_OVERRIDES reader (CC read handler broken upstream) ([#1645](https://github.com/go-to-k/cdk-real-drift/issues/1645)) ([90256c0](https://github.com/go-to-k/cdk-real-drift/commit/90256c05dedf1e765409d2094e98e33875af72b7))
+
 ## [0.20.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.20.0...v0.20.1) (2026-07-14)
 
 
