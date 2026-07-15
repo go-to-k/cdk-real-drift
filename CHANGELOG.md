@@ -1,3 +1,12 @@
+## [0.22.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.22.1...v0.22.2) (2026-07-15)
+
+
+### Bug Fixes
+
+* **diff:** Chatbot SlackChannelId G/C prefix-tolerant equality (Slack id migration echo) ([#1656](https://github.com/go-to-k/cdk-real-drift/issues/1656)) ([484beff](https://github.com/go-to-k/cdk-real-drift/commit/484beff13e971e56f4e69760d6b5fa8d5e88b54e))
+* **read:** ACM DNS-validation CNAME pattern fold for Route53 added children ([#1654](https://github.com/go-to-k/cdk-real-drift/issues/1654)) ([cd0ccfc](https://github.com/go-to-k/cdk-real-drift/commit/cd0ccfc3f05b7efff0739f1edfca5c26c029e104))
+* **read:** Budgets CostTypes projection + ACM KeyAlgorithm canonicalization + StackSet TemplateBody fold ([#1658](https://github.com/go-to-k/cdk-real-drift/issues/1658)) ([d8e6b20](https://github.com/go-to-k/cdk-real-drift/commit/d8e6b2057d614162a8532f40c48b682ef938c810))
+
 ## [0.22.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.22.0...v0.22.1) (2026-07-15)
 
 
