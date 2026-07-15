@@ -1,3 +1,10 @@
+## [0.22.4](https://github.com/go-to-k/cdk-real-drift/compare/v0.22.3...v0.22.4) (2026-07-15)
+
+
+### Bug Fixes
+
+* **read:** Route53 RecordSet declared via HostedZoneName resolves to a zone id (no readGap) ([#1660](https://github.com/go-to-k/cdk-real-drift/issues/1660)) ([#1661](https://github.com/go-to-k/cdk-real-drift/issues/1661)) ([009a3f0](https://github.com/go-to-k/cdk-real-drift/commit/009a3f0cdd51d2fbcfa06f2d140cf3ce538d77ac))
+
 ## [0.22.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.22.2...v0.22.3) (2026-07-15)
 
 
