@@ -5466,6 +5466,14 @@ export const CASE_INSENSITIVE_ARRAY_PATHS: Record<string, ReadonlySet<string>> =
   // genuine SAN add/remove/rename still differs. DNS names are case-insensitive, so the
   // fold hides no real change.
   'AWS::CertificateManager::Certificate': new Set(['SubjectAlternativeNames']),
+  // SES event-destination MatchingEventTypes — the SDK_OVERRIDES reader translates the
+  // SESv2 UPPERCASE_SNAKE enum back to the CFn-canonical spelling (send/bounce/…), but CFn
+  // itself folds pure case on the DECLARED side too: a template that declares the values
+  // UPPERCASE (SEND/BOUNCE) is IN_SYNC with the lowercase-canonical live value (live-verified
+  // 2026-07-15 via DetectStackDrift). The two enum members differ beyond case, so the same
+  // event-type set modulo case is not drift while a genuine add/remove still surfaces. The
+  // array is schema insertionOrder:false, so order is already immaterial (#1643).
+  'AWS::SES::ConfigurationSetEventDestination': new Set(['EventDestination.MatchingEventTypes']),
 };
 // True when both values are string arrays holding the same multiset of values
 // modulo ASCII case (order- and case-insensitive). Non-string-array inputs never

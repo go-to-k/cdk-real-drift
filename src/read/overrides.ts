@@ -171,6 +171,7 @@ import {
   type ReceiptRule,
   SESClient,
 } from '@aws-sdk/client-ses';
+import { GetConfigurationSetEventDestinationsCommand, SESv2Client } from '@aws-sdk/client-sesv2';
 import { DescribeParametersCommand, SSMClient } from '@aws-sdk/client-ssm';
 import {
   DescribeEndpointConfigCommand,
@@ -3106,6 +3107,114 @@ const readSesReceiptFilter: OverrideReader = async ({ physicalId, declared, regi
   };
 };
 
+// AWS::SES::ConfigurationSetEventDestination — the Cloud Control read handler is BROKEN
+// upstream (#1643): GetResource throws HandlerInternalFailureException ("Parameter
+// 'ConfigurationSetName' must not be null") because the handler needs the parent config-set
+// name, which the bare generated primaryIdentifier Id (`CsEventDest-…`) does not carry. Every
+// composite identifier form was probed and still fails, so it is NOT a CC_IDENTIFIER_ADAPTERS
+// case — the handler is genuinely unusable, and the type was silently `skipped=1` on every
+// check (a moderately common email-infra type). Read via SESv2
+// GetConfigurationSetEventDestinations keyed by the resolved DECLARED ConfigurationSetName and
+// pick the destination by its declared Name (the CFn physical id is the fallback for an
+// undeclared Name — CFn then generates the SES destination name).
+//
+// SESv2 (not the already-present SESv1 client) because the CFn resource provider is itself
+// SESv2-based: the read handler in the registry schema is `ses:GetConfigurationSetEventDestinations`
+// (a SESv2-only operation), and ONLY SESv2 models the EventBridgeDestination.
+//
+// Casing translation (live-verified 2026-07-15 via CloudFormation's OWN drift detection, which
+// cdkrd mirrors — "reality vs intent"): the raw SESv2 API returns enum values in UPPERCASE_SNAKE
+// (MatchingEventTypes SEND/BOUNCE/RENDERING_FAILURE, DimensionValueSource MESSAGE_TAG), but CFn's
+// read handler — and its DetectStackDrift ActualProperties — canonicalize them back to the
+// lowercase/camelCase spelling the registry schema documents (send/bounce/renderingFailure,
+// messageTag). A raw-verbatim projection would false-flag a declared drift on every check, so the
+// SESv2 enums are translated to the CFn-canonical spelling here (SES_EVENT_TYPE_TO_CFN /
+// SES_DIMENSION_VALUE_SOURCE_TO_CFN). CFn ALSO folds pure case on the declared side (an
+// UPPERCASE-declared template is IN_SYNC), so MatchingEventTypes is additionally registered in
+// CASE_INSENSITIVE_ARRAY_PATHS to fold residual case variance regardless of the declared casing.
+//
+// The SESv2 EventDestination otherwise mirrors the CFn EventDestination shape 1:1 EXCEPT the ARN
+// keys are camelCased (IamRoleArn/DeliveryStreamArn/TopicArn) — remapped here to the CFn all-caps
+// spelling (IAMRoleARN/DeliveryStreamARN/TopicARN). MatchingEventTypes and DimensionConfigurations
+// are schema-marked insertionOrder:false, so a reorder folds via the schema-driven unordered-array
+// handling — the reader emits them WITHOUT an in-reader sort. Enabled defaults false and folds via
+// isTrivialEmpty when undeclared. A deleted parent config set throws NotFoundException → router
+// maps `deleted`; a config set that no longer carries the named destination is an out-of-band
+// delete → ResourceGoneError (→ `deleted`).
+const SES_EVENT_TYPE_TO_CFN: Record<string, string> = {
+  SEND: 'send',
+  REJECT: 'reject',
+  BOUNCE: 'bounce',
+  COMPLAINT: 'complaint',
+  DELIVERY: 'delivery',
+  OPEN: 'open',
+  CLICK: 'click',
+  RENDERING_FAILURE: 'renderingFailure',
+  DELIVERY_DELAY: 'deliveryDelay',
+  SUBSCRIPTION: 'subscription',
+};
+const SES_DIMENSION_VALUE_SOURCE_TO_CFN: Record<string, string> = {
+  MESSAGE_TAG: 'messageTag',
+  EMAIL_HEADER: 'emailHeader',
+  LINK_TAG: 'linkTag',
+};
+const readSesConfigurationSetEventDestination: OverrideReader = async ({
+  physicalId,
+  declared,
+  region,
+}) => {
+  const csName = str(declared.ConfigurationSetName);
+  if (!csName) return undefined;
+  const declDest = declared.EventDestination as Record<string, unknown> | undefined;
+  const destName = str(declDest?.Name) ?? str(physicalId);
+  if (!destName) return undefined;
+  const c = new SESv2Client({ region, ...READ_RETRY });
+  // NotFoundException (the parent config set was deleted out of band) propagates → `deleted`.
+  const r = await c.send(
+    new GetConfigurationSetEventDestinationsCommand({ ConfigurationSetName: csName })
+  );
+  const live = (r.EventDestinations ?? []).find((d) => d.Name === destName);
+  // The config set exists but no longer carries the named destination → it was deleted out of
+  // band (the read handler being broken previously hid exactly this). Map it to `deleted`.
+  if (!live)
+    throw new ResourceGoneError(
+      `SES event destination ${destName} absent from configuration set ${csName}`
+    );
+  const dest: Record<string, unknown> = {};
+  // Name is projected ONLY when the template DECLARES it. When undeclared, CFn/SES assigns a
+  // generated identifier (`CsEventDest-<rand>`, equal to the physical id — live-verified) that
+  // the user delegated to AWS; projecting it false-flags an undeclared drift on every clean
+  // deploy (the ACM SubjectAlternativeNames pattern). The generated name is still used to MATCH
+  // the destination above — this only governs what is emitted for the classifier.
+  if (str(declDest?.Name) !== undefined) dest.Name = live.Name;
+  if (live.Enabled !== undefined) dest.Enabled = live.Enabled;
+  if (live.MatchingEventTypes && live.MatchingEventTypes.length > 0)
+    dest.MatchingEventTypes = live.MatchingEventTypes.map((t) => SES_EVENT_TYPE_TO_CFN[t] ?? t);
+  const dims = live.CloudWatchDestination?.DimensionConfigurations;
+  if (dims && dims.length > 0)
+    dest.CloudWatchDestination = {
+      DimensionConfigurations: dims.map((d) => ({
+        DimensionName: d.DimensionName,
+        DimensionValueSource: d.DimensionValueSource
+          ? (SES_DIMENSION_VALUE_SOURCE_TO_CFN[d.DimensionValueSource] ?? d.DimensionValueSource)
+          : d.DimensionValueSource,
+        DefaultDimensionValue: d.DefaultDimensionValue,
+      })),
+    };
+  const kfh = live.KinesisFirehoseDestination;
+  if (kfh)
+    dest.KinesisFirehoseDestination = {
+      ...(str(kfh.IamRoleArn) !== undefined && { IAMRoleARN: kfh.IamRoleArn }),
+      ...(str(kfh.DeliveryStreamArn) !== undefined && { DeliveryStreamARN: kfh.DeliveryStreamArn }),
+    };
+  const sns = live.SnsDestination;
+  if (sns && str(sns.TopicArn) !== undefined) dest.SnsDestination = { TopicARN: sns.TopicArn };
+  const eb = live.EventBridgeDestination;
+  if (eb && str(eb.EventBusArn) !== undefined)
+    dest.EventBridgeDestination = { EventBusArn: eb.EventBusArn };
+  return { ConfigurationSetName: csName, EventDestination: dest };
+};
+
 // AWS::CertificateManager::Certificate — Cloud Control GetResource throws
 // UnsupportedActionException (the registry type exists but ships NO read handler), so
 // every ACM certificate was silently `skipped` on EVERY check (#974): undeclared drift,
@@ -3364,6 +3473,7 @@ export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::SES::ReceiptRuleSet': readSesReceiptRuleSet,
   'AWS::SES::ReceiptRule': readSesReceiptRule,
   'AWS::SES::ReceiptFilter': readSesReceiptFilter,
+  'AWS::SES::ConfigurationSetEventDestination': readSesConfigurationSetEventDestination,
   'AWS::Cognito::IdentityPool': readCognitoIdentityPool,
   'AWS::AppSync::ApiKey': readAppSyncApiKey,
   'AWS::ServiceDiscovery::HttpNamespace': readServiceDiscoveryNamespace,

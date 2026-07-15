@@ -99,6 +99,7 @@ import {
   ListReceiptFiltersCommand,
   SESClient,
 } from '@aws-sdk/client-ses';
+import { GetConfigurationSetEventDestinationsCommand, SESv2Client } from '@aws-sdk/client-sesv2';
 import {
   GetNamespaceCommand,
   GetServiceCommand,
@@ -128,6 +129,7 @@ const serviceDiscovery = mockClient(ServiceDiscoveryClient);
 const docdb = mockClient(DocDBClient);
 const ec2 = mockClient(EC2Client);
 const ses = mockClient(SESClient);
+const sesv2 = mockClient(SESv2Client);
 const cloudwatch = mockClient(CloudWatchClient);
 const dlm = mockClient(DLMClient);
 const dms = mockClient(DatabaseMigrationServiceClient);
@@ -166,6 +168,7 @@ beforeEach(() => {
     appsync,
     ec2,
     ses,
+    sesv2,
     cloudwatch,
     dlm,
     dms,
@@ -3239,6 +3242,150 @@ describe('SES inbound receipt-rule family (Cloud Control read-gap: no handlers)'
 
   it('ReceiptFilter: undefined (skipped) when neither physical id nor declared name resolves', async () => {
     expect(await SDK_OVERRIDES['AWS::SES::ReceiptFilter'](ctx({}))).toBeUndefined();
+  });
+});
+
+describe('SES ConfigurationSetEventDestination (#1643 — CC read handler broken upstream)', () => {
+  const declared = {
+    ConfigurationSetName: 'cs-a',
+    EventDestination: {
+      Name: 'dest-a',
+      Enabled: true,
+      MatchingEventTypes: ['DELIVERY', 'BOUNCE', 'SEND', 'COMPLAINT'],
+      CloudWatchDestination: {
+        DimensionConfigurations: [
+          {
+            DimensionName: 'ses-source',
+            DimensionValueSource: 'messageTag',
+            DefaultDimensionValue: 'none',
+          },
+        ],
+      },
+    },
+  };
+
+  it('reads the destination by declared name, translating the SESv2 enums to the CFn-canonical spelling', async () => {
+    sesv2.on(GetConfigurationSetEventDestinationsCommand).resolves({
+      EventDestinations: [
+        { Name: 'other', MatchingEventTypes: ['SEND'] },
+        {
+          Name: 'dest-a',
+          Enabled: true,
+          // SESv2 returns MatchingEventTypes in UPPERCASE_SNAKE, arbitrary order — the reader
+          // translates back to the CFn-canonical send/bounce/renderingFailure/deliveryDelay
+          // spelling; order is immaterial (schema insertionOrder:false).
+          MatchingEventTypes: ['DELIVERY', 'RENDERING_FAILURE', 'DELIVERY_DELAY', 'COMPLAINT'],
+          CloudWatchDestination: {
+            DimensionConfigurations: [
+              {
+                DimensionName: 'ses-source',
+                DimensionValueSource: 'MESSAGE_TAG',
+                DefaultDimensionValue: 'none',
+              },
+            ],
+          },
+        },
+      ],
+    });
+    const out = await SDK_OVERRIDES['AWS::SES::ConfigurationSetEventDestination'](
+      ctx(declared, 'CsEventDest-0EsPuYMlS1rU')
+    );
+    expect(out).toEqual({
+      ConfigurationSetName: 'cs-a',
+      EventDestination: {
+        Name: 'dest-a',
+        Enabled: true,
+        MatchingEventTypes: ['delivery', 'renderingFailure', 'deliveryDelay', 'complaint'],
+        CloudWatchDestination: {
+          DimensionConfigurations: [
+            {
+              DimensionName: 'ses-source',
+              DimensionValueSource: 'messageTag',
+              DefaultDimensionValue: 'none',
+            },
+          ],
+        },
+      },
+    });
+    // keyed on the resolved DECLARED ConfigurationSetName, not the physical id
+    const calls = sesv2.commandCalls(GetConfigurationSetEventDestinationsCommand);
+    expect(calls[0].args[0].input).toEqual({ ConfigurationSetName: 'cs-a' });
+  });
+
+  it('remaps the camelCased destination ARN keys to the CFn all-caps spelling', async () => {
+    sesv2.on(GetConfigurationSetEventDestinationsCommand).resolves({
+      EventDestinations: [
+        {
+          Name: 'dest-a',
+          Enabled: true,
+          MatchingEventTypes: ['SEND', 'SUBSCRIPTION'],
+          KinesisFirehoseDestination: {
+            IamRoleArn: 'arn:aws:iam::123456789012:role/fh',
+            DeliveryStreamArn: 'arn:aws:firehose:us-east-1:123456789012:deliverystream/s',
+          },
+          SnsDestination: { TopicArn: 'arn:aws:sns:us-east-1:123456789012:t' },
+          EventBridgeDestination: {
+            EventBusArn: 'arn:aws:events:us-east-1:123456789012:event-bus/default',
+          },
+        },
+      ],
+    });
+    const out = await SDK_OVERRIDES['AWS::SES::ConfigurationSetEventDestination'](ctx(declared));
+    expect(out).toEqual({
+      ConfigurationSetName: 'cs-a',
+      EventDestination: {
+        Name: 'dest-a',
+        Enabled: true,
+        MatchingEventTypes: ['send', 'subscription'],
+        KinesisFirehoseDestination: {
+          IAMRoleARN: 'arn:aws:iam::123456789012:role/fh',
+          DeliveryStreamARN: 'arn:aws:firehose:us-east-1:123456789012:deliverystream/s',
+        },
+        SnsDestination: { TopicARN: 'arn:aws:sns:us-east-1:123456789012:t' },
+        EventBridgeDestination: {
+          EventBusArn: 'arn:aws:events:us-east-1:123456789012:event-bus/default',
+        },
+      },
+    });
+  });
+
+  it('matches by the physical id when Name is undeclared, and OMITS the AWS-generated Name', async () => {
+    // When the template declares no EventDestination.Name, CFn/SES assigns a generated
+    // identifier (== the physical id). The reader MATCHES on that id but does NOT project the
+    // generated Name — projecting it false-flags an undeclared drift on every clean deploy
+    // (live-verified 2026-07-15). Enabled:false folds via isTrivialEmpty downstream.
+    sesv2.on(GetConfigurationSetEventDestinationsCommand).resolves({
+      EventDestinations: [
+        { Name: 'CsEventDest-gen', Enabled: false, MatchingEventTypes: ['REJECT'] },
+      ],
+    });
+    const out = await SDK_OVERRIDES['AWS::SES::ConfigurationSetEventDestination'](
+      ctx(
+        { ConfigurationSetName: 'cs-a', EventDestination: { MatchingEventTypes: ['reject'] } },
+        'CsEventDest-gen'
+      )
+    );
+    expect(out).toEqual({
+      ConfigurationSetName: 'cs-a',
+      EventDestination: { Enabled: false, MatchingEventTypes: ['reject'] },
+    });
+  });
+
+  it('config set exists but the named destination is absent -> ResourceGoneError (deleted)', async () => {
+    sesv2.on(GetConfigurationSetEventDestinationsCommand).resolves({
+      EventDestinations: [{ Name: 'other', MatchingEventTypes: ['SEND'] }],
+    });
+    await expect(
+      SDK_OVERRIDES['AWS::SES::ConfigurationSetEventDestination'](ctx(declared, 'CsEventDest-x'))
+    ).rejects.toBeInstanceOf(ResourceGoneError);
+  });
+
+  it('undefined (skipped) when the parent ConfigurationSetName is unresolved', async () => {
+    expect(
+      await SDK_OVERRIDES['AWS::SES::ConfigurationSetEventDestination'](
+        ctx({ EventDestination: { Name: 'dest-a', MatchingEventTypes: ['SEND'] } })
+      )
+    ).toBeUndefined();
   });
 });
 
