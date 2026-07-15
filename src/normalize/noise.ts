@@ -2078,6 +2078,49 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
   // Equality-gated — a plan whose window was shortened/lengthened out of band still
   // surfaces. Observed live on a fresh misspack-hunt deploy (2026-07-15).
   'AWS::Backup::RestoreTestingPlan': { 'RecoveryPointSelection.SelectionWindowDays': 30 },
+  // #1647: DescribeBudget returns the full 11-boolean CostTypes object for every budget —
+  // the documented cost-aggregation defaults (9 true, UseBlended/UseAmortized false),
+  // live-confirmed 2026-07-15. Pinned in BOTH shapes because the declared parent `Budget`
+  // always descends per-leaf (it carries BudgetName/BudgetType/...):
+  //   * the WHOLE-OBJECT pin folds a wholly-undeclared CostTypes (emitted as one sub-object)
+  //     — matchesKnownDefault is equality-gated per leaf, so ANY out-of-band flip (including
+  //     a truthy pin flipped false, which a per-leaf pin alone would lose to isTrivialEmpty)
+  //     breaks the match and re-surfaces the whole object;
+  //   * the per-leaf pins fold the undeclared truthy SIBLING leaves of a partially-declared
+  //     CostTypes (e.g. `{IncludeTax: true}` declared, ten live-only siblings). In that
+  //     shape a truthy sibling flipped false is swallowed by isTrivialEmpty before the pin
+  //     gate (#660 item 3) — CostTypes is cost-report scoping, not a security hazard, so no
+  //     MEANINGFUL_WHEN_OFF_NESTED pairing is added. The two FALSE defaults
+  //     (UseBlended/UseAmortized) have NO per-leaf pin: a live false is already dropped by
+  //     isTrivialEmpty before any pin gate, and a flip to true surfaces as undeclared with
+  //     or without one — a pin would be behaviorally dead (and every listed entry must
+  //     emit an atDefault finding, the classify.test audit invariant).
+  // A user who declares any leaf is compared in the declared dimension (fixing both the
+  // truthy-FP and the all-false-FN of #1647).
+  'AWS::Budgets::Budget': {
+    'Budget.CostTypes': {
+      IncludeTax: true,
+      IncludeSubscription: true,
+      UseBlended: false,
+      IncludeRefund: true,
+      IncludeCredit: true,
+      IncludeUpfront: true,
+      IncludeRecurring: true,
+      IncludeOtherSubscription: true,
+      IncludeSupport: true,
+      IncludeDiscount: true,
+      UseAmortized: false,
+    },
+    'Budget.CostTypes.IncludeTax': true,
+    'Budget.CostTypes.IncludeSubscription': true,
+    'Budget.CostTypes.IncludeRefund': true,
+    'Budget.CostTypes.IncludeCredit': true,
+    'Budget.CostTypes.IncludeUpfront': true,
+    'Budget.CostTypes.IncludeRecurring': true,
+    'Budget.CostTypes.IncludeOtherSubscription': true,
+    'Budget.CostTypes.IncludeSupport': true,
+    'Budget.CostTypes.IncludeDiscount': true,
+  },
   // An IoT TopicRule that declares TopicRulePayload with only Sql + Actions reads back the
   // default `AwsIotSqlVersion: "2015-10-08"` — the older, stable compat default IoT assigns
   // when the version is unspecified (NOT a moving GA value). TopicRulePayload is partially
@@ -4296,6 +4339,15 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   cfn-exec-role ARN shape: the `cdk-<qualifier>-cfn-exec-role-<acct>-<region>` role folds, any
   //   other RoleARN surfaces as undeclared (recordable, then watched).
   'AWS::CloudFormation::Stack': new Set(['TemplateBody', 'Capabilities']),
+  //   AWS::CloudFormation::StackSet — the StackSet twin of the Stack `TemplateBody` fold above
+  //   (#1649): an asset-based StackSet (CDK `StackSetTemplate.fromStackSetStack`) declares
+  //   `TemplateURL` (write-only → readGap) while the live read returns the materialized
+  //   `TemplateBody` — the ENTIRE child template as one string, surfacing as [Potential Drift]
+  //   on every first check. Same rationale: the body is the deterministic materialization of a
+  //   versioned asset URL the user delegated to AWS, it changes on every legitimate redeploy,
+  //   and it is unpinnable → value-independent. A user who cares about the body DECLARES
+  //   `TemplateBody`, which stays compared in the declared dimension.
+  'AWS::CloudFormation::StackSet': new Set(['TemplateBody']),
   //   AWS::SageMaker::MonitoringSchedule — the resource schema marks ONLY
   //   [MonitoringScheduleArn, CreationTime, LastModifiedTime] readOnly, so three AWS-managed
   //   RUNTIME-STATE props leak as undeclared on a clean deploy (a schema gap — they are
