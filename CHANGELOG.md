@@ -1,3 +1,10 @@
+# [0.22.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.21.0...v0.22.0) (2026-07-15)
+
+
+### Features
+
+* **revert:** SES ConfigurationSetEventDestination revert writer (SESv2 UpdateConfigurationSetEventDestination) ([#1646](https://github.com/go-to-k/cdk-real-drift/issues/1646)) ([18f230f](https://github.com/go-to-k/cdk-real-drift/commit/18f230fec075a5885baa47e9155db13f1a2aee25))
+
 # [0.21.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.20.1...v0.21.0) (2026-07-15)
 
 
