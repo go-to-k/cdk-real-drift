@@ -5388,6 +5388,33 @@ export async function enumerateRdsClusterChildren(ctx: EnumeratorContext): Promi
 // multivalue variants). Route53 stores names as FQDNs with a trailing `.` and the template
 // usually omits it, so compare dot- and case-insensitively.
 const canonRoute53Name = (s: string): string => s.replace(/\.$/, '').toLowerCase();
+
+// ACM DNS-validation CNAMEs (#1652): an AWS::CertificateManager::Certificate with
+// DomainValidationOptions.HostedZoneId makes the CFn/ACM handler write its validation record
+// (`_<32-hex>.<domain> CNAME _<token>.<random>.acm-validations.aws.`) DIRECTLY into the zone —
+// the record is not a stack resource in ANY stack, so no declared-record (or sibling-stack)
+// match can ever fold it, and every certificate shows a false `[Added]` CNAME on the zone.
+// Deterministic pattern fold, same mechanism as the apex NS/SOA filter below: a live CNAME
+// whose ResourceRecords are a SINGLE value inside acm-validations.aws is by construction an
+// ACM-managed validation record. No detection value is lost: both sides are ACM-minted tokens
+// a user cannot meaningfully author, and an attacker-created "validation" record would also
+// have to point at acm-validations.aws (granting nothing beyond what ACM itself does).
+// SES DKIM / verification records (`*.dkim.amazonses.com` CNAMEs, `_amazonses` TXT) are
+// DELIBERATELY NOT folded — a rogue DKIM CNAME is a mail-spoofing / takeover vector.
+const ACM_VALIDATION_TARGET = /\.acm-validations\.aws\.?$/i;
+const isAcmValidationRecord = (
+  type: string,
+  live: Record<string, unknown> | undefined
+): boolean => {
+  if (type !== 'CNAME') return false;
+  const values = live?.ResourceRecords;
+  return (
+    Array.isArray(values) &&
+    values.length === 1 &&
+    typeof values[0] === 'string' &&
+    ACM_VALIDATION_TARGET.test(values[0])
+  );
+};
 const route53RecordKey = (name: string, type: string, setIdentifier?: string): string =>
   `${canonRoute53Name(name)}|${type.toUpperCase()}${setIdentifier !== undefined ? `|${setIdentifier}` : ''}`;
 
@@ -5449,6 +5476,9 @@ export function diffRoute53HostedZoneChildren(input: Route53HostedZoneChildInput
     // is NOT filtered.
     if (type === 'SOA') continue;
     if (type === 'NS' && apex !== undefined && name === apex) continue;
+    // ACM-managed DNS-validation CNAME (see isAcmValidationRecord above) — service-created,
+    // never a template resource, filtered like the apex SOA/NS.
+    if (isAcmValidationRecord(type, r.live)) continue;
     if (declared.has(route53RecordKey(r.name, r.type, r.setIdentifier))) continue;
     // NON_PROVISIONABLE in the CC registry -> this identifier is NOT a CC DeleteResource target
     // (see the block comment above); it is the best composite from the CC identity fields for
