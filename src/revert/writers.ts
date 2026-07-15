@@ -109,6 +109,12 @@ import {
 } from '@aws-sdk/client-wafv2';
 import { type ReceiptRule, SESClient, UpdateReceiptRuleCommand } from '@aws-sdk/client-ses';
 import {
+  type DimensionValueSource,
+  type EventType,
+  SESv2Client,
+  UpdateConfigurationSetEventDestinationCommand,
+} from '@aws-sdk/client-sesv2';
+import {
   ElasticLoadBalancingV2Client,
   ModifyLoadBalancerAttributesCommand,
   ModifyTargetGroupAttributesCommand,
@@ -1153,6 +1159,110 @@ const writeSesReceiptRule: SdkWriter = async (ctx, ops) => {
     throw new Error('cannot resolve SES receipt rule target for revert');
   await new SESClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
     new UpdateReceiptRuleCommand({ RuleSetName: ruleSetName, Rule: rule })
+  );
+};
+
+// AWS::SES::ConfigurationSetEventDestination — read via the SESv2
+// GetConfigurationSetEventDestinations override (#1643; the Cloud Control read handler is
+// broken upstream), so it was detect-only. SESv2 UpdateConfigurationSetEventDestination REPLACES
+// the whole event-destination definition in place, keyed by (ConfigurationSetName,
+// EventDestinationName). Reconstruct the desired model (current live + revert ops) and send the
+// WHOLE EventDestination back — covering any drift on Enabled / MatchingEventTypes / the
+// CloudWatch/KinesisFirehose/Sns/EventBridge destination members — so a never-declared Enabled is
+// preserved rather than reset to the SES create-default.
+//
+// The desired model is in CFn-canonical casing (the reader translated it FROM SESv2), so the
+// writer applies the INVERSE translation back to the SESv2 enum spelling the API requires:
+// MatchingEventTypes → UPPERCASE_SNAKE (send/renderingFailure → SEND/RENDERING_FAILURE, any
+// declared casing normalized), DimensionValueSource → MESSAGE_TAG/EMAIL_HEADER/LINK_TAG, and the
+// all-caps ARN keys (IAMRoleARN/DeliveryStreamARN/TopicARN) back to camelCase
+// (IamRoleArn/DeliveryStreamArn/TopicArn). EventBusArn is spelled the same on both sides. The
+// target EventDestinationName comes from the desired/declared Name, falling back to the physical
+// id (== the SES destination name when Name is undeclared, live-verified) since the reader omits
+// an AWS-generated Name.
+const toSesv2EventType = (v: unknown): string | undefined => {
+  const s = str(v);
+  if (!s) return undefined;
+  const key = s.toLowerCase().replace(/[_-]/g, '');
+  const map: Record<string, string> = {
+    send: 'SEND',
+    reject: 'REJECT',
+    bounce: 'BOUNCE',
+    complaint: 'COMPLAINT',
+    delivery: 'DELIVERY',
+    open: 'OPEN',
+    click: 'CLICK',
+    renderingfailure: 'RENDERING_FAILURE',
+    deliverydelay: 'DELIVERY_DELAY',
+    subscription: 'SUBSCRIPTION',
+  };
+  return map[key] ?? s; // fall back to the raw value — SES validates the enum
+};
+const toSesv2DimensionValueSource = (v: unknown): string | undefined => {
+  const s = str(v);
+  if (!s) return undefined;
+  const key = s.toLowerCase().replace(/[_-]/g, '');
+  const map: Record<string, string> = {
+    messagetag: 'MESSAGE_TAG',
+    emailheader: 'EMAIL_HEADER',
+    linktag: 'LINK_TAG',
+  };
+  return map[key] ?? s;
+};
+const writeSesConfigurationSetEventDestination: SdkWriter = async (ctx, ops) => {
+  const m = await desiredModel('AWS::SES::ConfigurationSetEventDestination', ctx, ops);
+  const csName = str(m.ConfigurationSetName) ?? str(ctx.declared['ConfigurationSetName']);
+  const dest = m.EventDestination as Record<string, unknown> | undefined;
+  const declDest = ctx.declared['EventDestination'] as Record<string, unknown> | undefined;
+  const destName = str(dest?.Name) ?? str(declDest?.Name) ?? str(ctx.physicalId);
+  if (!csName || !dest || !destName)
+    throw new Error('cannot resolve SES event-destination target for revert');
+  const cw = dest.CloudWatchDestination as
+    | { DimensionConfigurations?: Record<string, unknown>[] }
+    | undefined;
+  const kfh = dest.KinesisFirehoseDestination as Record<string, unknown> | undefined;
+  const sns = dest.SnsDestination as Record<string, unknown> | undefined;
+  const eb = dest.EventBridgeDestination as Record<string, unknown> | undefined;
+  const matchingEventTypes = (
+    Array.isArray(dest.MatchingEventTypes)
+      ? dest.MatchingEventTypes.map(toSesv2EventType).filter((t): t is string => t !== undefined)
+      : []
+  ) as EventType[];
+  await new SESv2Client({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
+    new UpdateConfigurationSetEventDestinationCommand({
+      ConfigurationSetName: csName,
+      EventDestinationName: destName,
+      EventDestination: {
+        ...(dest.Enabled !== undefined && { Enabled: Boolean(dest.Enabled) }),
+        MatchingEventTypes: matchingEventTypes,
+        ...(cw?.DimensionConfigurations &&
+          cw.DimensionConfigurations.length > 0 && {
+            CloudWatchDestination: {
+              DimensionConfigurations: cw.DimensionConfigurations.map((d) => ({
+                DimensionName: str(d.DimensionName),
+                DimensionValueSource: toSesv2DimensionValueSource(
+                  d.DimensionValueSource
+                ) as DimensionValueSource,
+                DefaultDimensionValue: str(d.DefaultDimensionValue),
+              })),
+            },
+          }),
+        ...(kfh && {
+          KinesisFirehoseDestination: {
+            IamRoleArn: str(kfh.IAMRoleARN),
+            DeliveryStreamArn: str(kfh.DeliveryStreamARN),
+          },
+        }),
+        ...(sns &&
+          str(sns.TopicARN) !== undefined && {
+            SnsDestination: { TopicArn: str(sns.TopicARN) },
+          }),
+        ...(eb &&
+          str(eb.EventBusArn) !== undefined && {
+            EventBridgeDestination: { EventBusArn: str(eb.EventBusArn) },
+          }),
+      },
+    })
   );
 };
 
@@ -3087,6 +3197,7 @@ export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::Glue::Workflow': writeGlueWorkflow,
   'AWS::Glue::Connection': writeGlueConnection,
   'AWS::SES::ReceiptRule': writeSesReceiptRule,
+  'AWS::SES::ConfigurationSetEventDestination': writeSesConfigurationSetEventDestination,
   'AWS::CloudWatch::AnomalyDetector': writeCloudWatchAnomalyDetector,
   'AWS::DLM::LifecyclePolicy': writeDlmLifecyclePolicy,
   'AWS::Logs::MetricFilter': writeMetricFilter,
