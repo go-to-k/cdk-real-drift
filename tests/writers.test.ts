@@ -41,6 +41,11 @@ import {
   UpdateReceiptRuleCommand,
 } from '@aws-sdk/client-ses';
 import {
+  GetConfigurationSetEventDestinationsCommand,
+  SESv2Client,
+  UpdateConfigurationSetEventDestinationCommand,
+} from '@aws-sdk/client-sesv2';
+import {
   ElasticLoadBalancingV2Client,
   ModifyLoadBalancerAttributesCommand,
   ModifyTargetGroupAttributesCommand,
@@ -216,6 +221,7 @@ const wafv2 = mockClient(WAFV2Client);
 const opensearch = mockClient(OpenSearchClient);
 const glue = mockClient(GlueClient);
 const ses = mockClient(SESClient);
+const sesv2 = mockClient(SESv2Client);
 const logs = mockClient(CloudWatchLogsClient);
 const route53 = mockClient(Route53Client);
 const configService = mockClient(ConfigServiceClient);
@@ -277,6 +283,7 @@ beforeEach(() => {
   opensearch.reset();
   glue.reset();
   ses.reset();
+  sesv2.reset();
   logs.reset();
   route53.reset();
   configService.reset();
@@ -1285,6 +1292,113 @@ describe('SES ReceiptRule writer (CC has no handlers; UpdateReceiptRule whole-ru
     await expect(
       SDK_WRITERS['AWS::SES::ReceiptRule'](ctx({ physicalId: '', declared: {} }), [])
     ).rejects.toThrow(/SES receipt rule target/);
+  });
+});
+
+describe('SES ConfigurationSetEventDestination writer (#1643; SESv2 UpdateConfigurationSetEventDestination whole-definition overwrite)', () => {
+  // The reader (desiredModel) sees this LIVE shape and translates it to CFn casing; the writer
+  // then applies the INVERSE translation back to SESv2 casing.
+  const live = {
+    EventDestinations: [
+      {
+        Name: 'dest-a',
+        Enabled: true,
+        MatchingEventTypes: ['SEND', 'BOUNCE', 'RENDERING_FAILURE'],
+        CloudWatchDestination: {
+          DimensionConfigurations: [
+            {
+              DimensionName: 'src',
+              DimensionValueSource: 'MESSAGE_TAG',
+              DefaultDimensionValue: 'none',
+            },
+          ],
+        },
+        SnsDestination: { TopicArn: 'arn:aws:sns:us-east-1:123456789012:t' },
+      },
+    ],
+  };
+  const typesOp = (value: unknown): PatchOp => ({
+    op: 'add',
+    path: '/EventDestination/MatchingEventTypes',
+    value,
+    human: 'EventDestination.MatchingEventTypes -> deployed-template value',
+  });
+
+  it('reverts via UpdateConfigurationSetEventDestination, re-sending the WHOLE definition in SESv2 casing', async () => {
+    sesv2.on(GetConfigurationSetEventDestinationsCommand).resolves(live as never);
+    sesv2.on(UpdateConfigurationSetEventDestinationCommand).resolves({});
+    // revert MatchingEventTypes back to the declared (lowercase-canonical) set
+    await SDK_WRITERS['AWS::SES::ConfigurationSetEventDestination'](
+      ctx({
+        physicalId: 'dest-a',
+        declared: { ConfigurationSetName: 'cs-a', EventDestination: { Name: 'dest-a' } },
+      }),
+      [typesOp(['send', 'bounce'])]
+    );
+    const calls = sesv2.commandCalls(UpdateConfigurationSetEventDestinationCommand);
+    expect(calls).toHaveLength(1);
+    const input = calls[0]!.args[0].input as unknown as Record<string, unknown>;
+    expect(input.ConfigurationSetName).toBe('cs-a');
+    expect(input.EventDestinationName).toBe('dest-a');
+    const ed = input.EventDestination as Record<string, unknown>;
+    // reverted set, translated CFn -> SESv2 UPPERCASE_SNAKE
+    expect(ed.MatchingEventTypes).toEqual(['SEND', 'BOUNCE']);
+    // the rest of the live definition is re-sent so the overwrite never wipes it, in SESv2 casing
+    expect(ed.Enabled).toBe(true);
+    expect(ed.CloudWatchDestination).toEqual({
+      DimensionConfigurations: [
+        {
+          DimensionName: 'src',
+          DimensionValueSource: 'MESSAGE_TAG',
+          DefaultDimensionValue: 'none',
+        },
+      ],
+    });
+    expect(ed.SnsDestination).toEqual({ TopicArn: 'arn:aws:sns:us-east-1:123456789012:t' });
+  });
+
+  it('translates the all-caps ARN keys back to camelCase and normalizes any declared casing', async () => {
+    sesv2.on(GetConfigurationSetEventDestinationsCommand).resolves({
+      EventDestinations: [
+        {
+          Name: 'CsEventDest-gen',
+          Enabled: false,
+          MatchingEventTypes: ['DELIVERY_DELAY'],
+          KinesisFirehoseDestination: {
+            IamRoleArn: 'arn:aws:iam::123456789012:role/fh',
+            DeliveryStreamArn: 'arn:aws:firehose:us-east-1:123456789012:deliverystream/s',
+          },
+        },
+      ],
+    } as never);
+    sesv2.on(UpdateConfigurationSetEventDestinationCommand).resolves({});
+    // Name undeclared -> targeted by physical id; declared types are camelCase, normalized to SNAKE
+    await SDK_WRITERS['AWS::SES::ConfigurationSetEventDestination'](
+      ctx({
+        physicalId: 'CsEventDest-gen',
+        declared: { ConfigurationSetName: 'cs-a', EventDestination: {} },
+      }),
+      [typesOp(['deliveryDelay', 'send'])]
+    );
+    const input = sesv2.commandCalls(UpdateConfigurationSetEventDestinationCommand)[0]!.args[0]
+      .input as unknown as Record<string, unknown>;
+    expect(input.EventDestinationName).toBe('CsEventDest-gen'); // physical-id fallback
+    const ed = input.EventDestination as Record<string, unknown>;
+    expect(ed.MatchingEventTypes).toEqual(['DELIVERY_DELAY', 'SEND']);
+    expect(ed.KinesisFirehoseDestination).toEqual({
+      IamRoleArn: 'arn:aws:iam::123456789012:role/fh',
+      DeliveryStreamArn: 'arn:aws:firehose:us-east-1:123456789012:deliverystream/s',
+    });
+  });
+
+  it('throws when the event-destination target is unresolvable', async () => {
+    sesv2.on(GetConfigurationSetEventDestinationsCommand).resolves({ EventDestinations: [] });
+    await expect(
+      SDK_WRITERS['AWS::SES::ConfigurationSetEventDestination'](
+        ctx({ physicalId: '', declared: {} }),
+        []
+      )
+    ).rejects.toThrow(/SES event-destination target/);
   });
 });
 
