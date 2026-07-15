@@ -84,7 +84,11 @@ import {
   ListAccessKeysCommand,
   ListEntitiesForPolicyCommand,
 } from '@aws-sdk/client-iam';
-import { ListResourceRecordSetsCommand, Route53Client } from '@aws-sdk/client-route-53';
+import {
+  ListHostedZonesByNameCommand,
+  ListResourceRecordSetsCommand,
+  Route53Client,
+} from '@aws-sdk/client-route-53';
 import {
   DescribeResourceCommand as DescribeLakeFormationResourceCommand,
   EntityNotFoundException as LakeFormationEntityNotFoundException,
@@ -771,6 +775,91 @@ describe('SDK overrides', () => {
       // No HostedZoneId/Name/Type in declared and a non-composite physical id -> the
       // query can't be formed: stay skipped (NOT deleted), the list is never even called.
       expect(await SDK_OVERRIDES['AWS::Route53::RecordSet'](ctx({}, 'opaque-id'))).toBeUndefined();
+    });
+
+    it('#1660: resolves a record declared via HostedZoneName (no HostedZoneId) to a zone id and reads it', async () => {
+      // A record can reference its zone by NAME instead of id (both valid CFn). The bare-name
+      // physical id carries no zone id either, so without resolving the name this would be a
+      // readGap. ListHostedZonesByName resolves the apex -> zone id, then the record is read.
+      route53.on(ListHostedZonesByNameCommand).resolves({
+        HostedZones: [{ Id: '/hostedzone/Z9', Name: 'example.com.', CallerReference: 'r1' }],
+      });
+      route53.on(ListResourceRecordSetsCommand).resolves({
+        ResourceRecordSets: [
+          { Name: 'x.example.com.', Type: 'TXT', TTL: 300, ResourceRecords: [{ Value: '"hi"' }] },
+        ],
+      });
+      const out = (await SDK_OVERRIDES['AWS::Route53::RecordSet'](
+        ctx(
+          { HostedZoneName: 'example.com.', Name: 'x.example.com.', Type: 'TXT' },
+          'x.example.com'
+        )
+      )) as Record<string, unknown>;
+      expect(out).toMatchObject({ Type: 'TXT', TTL: '300', ResourceRecords: ['"hi"'] });
+      // the resolved (prefix-stripped) zone id is used for ListResourceRecordSets
+      const listCall = route53.commandCalls(ListResourceRecordSetsCommand)[0];
+      expect(listCall.args[0].input.HostedZoneId).toBe('Z9');
+      // the model MIRRORS the declared identifier: echoes HostedZoneName, does NOT emit the
+      // resolved HostedZoneId (which would surface as undeclared drift on a clean deploy).
+      expect(out.HostedZoneName).toBe('example.com.');
+      expect(out.HostedZoneId).toBeUndefined();
+    });
+
+    it('#1660: fail-open (readGap) when a HostedZoneName resolves to MULTIPLE zones (public/private split)', async () => {
+      // One apex can host both a public and a private zone; picking either would compare the
+      // record against the wrong zone, so stay a readGap (undefined) and never list records.
+      route53.on(ListHostedZonesByNameCommand).resolves({
+        HostedZones: [
+          { Id: '/hostedzone/Zpub', Name: 'example.com.', CallerReference: 'r1' },
+          { Id: '/hostedzone/Zpriv', Name: 'example.com.', CallerReference: 'r2' },
+        ],
+      });
+      expect(
+        await SDK_OVERRIDES['AWS::Route53::RecordSet'](
+          ctx(
+            { HostedZoneName: 'example.com.', Name: 'x.example.com.', Type: 'TXT' },
+            'x.example.com'
+          )
+        )
+      ).toBeUndefined();
+      expect(route53.commandCalls(ListResourceRecordSetsCommand)).toHaveLength(0);
+    });
+
+    it('#1660: fail-open (readGap) when a HostedZoneName resolves to ZERO zones', async () => {
+      route53.on(ListHostedZonesByNameCommand).resolves({
+        // ListHostedZonesByName returns the lexicographically-nearest zones even with no exact
+        // match; the exact-apex filter must reject them.
+        HostedZones: [
+          { Id: '/hostedzone/Zother', Name: 'other.example.org.', CallerReference: 'r3' },
+        ],
+      });
+      expect(
+        await SDK_OVERRIDES['AWS::Route53::RecordSet'](
+          ctx(
+            { HostedZoneName: 'example.com.', Name: 'x.example.com.', Type: 'TXT' },
+            'x.example.com'
+          )
+        )
+      ).toBeUndefined();
+      expect(route53.commandCalls(ListResourceRecordSetsCommand)).toHaveLength(0);
+    });
+
+    it('#1660: a declared HostedZoneId still wins — ListHostedZonesByName is not called', async () => {
+      route53.on(ListResourceRecordSetsCommand).resolves({
+        ResourceRecordSets: [
+          { Name: 'x.example.com.', Type: 'TXT', TTL: 60, ResourceRecords: [{ Value: '"hi"' }] },
+        ],
+      });
+      const out = await SDK_OVERRIDES['AWS::Route53::RecordSet'](
+        ctx({
+          HostedZoneId: 'Z1',
+          HostedZoneName: 'example.com.',
+          Name: 'x.example.com.',
+          Type: 'TXT',
+        })
+      );
+      expect(out).toMatchObject({ Type: 'TXT', HostedZoneId: 'Z1' });
+      expect(route53.commandCalls(ListHostedZonesByNameCommand)).toHaveLength(0);
     });
 
     it('matches a WILDCARD record: Route53 returns `\\052.` for a declared `*.` (no false deleted)', async () => {

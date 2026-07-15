@@ -870,7 +870,9 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   `iam:GetUserPolicy`, `iam:GetGroupPolicy`, `iam:GetPolicy`, `iam:GetPolicyVersion`,
   `lambda:GetPolicy`, `budgets:ViewBudget`, `ec2:DescribeAddresses`,
   `ec2:DescribeLaunchTemplateVersions`, `ec2:DescribeNetworkAcls`,
-  `route53:ListResourceRecordSets`,
+  `route53:ListResourceRecordSets`, `route53:ListHostedZonesByName` (resolves a
+  RecordSet declared via `HostedZoneName` instead of `HostedZoneId` to its zone
+  id),
   `ses:DescribeReceiptRuleSet`, `ses:DescribeReceiptRule`, `ses:ListReceiptFilters`
   (the SES inbound receipt-rule family — `ReceiptRuleSet` / `ReceiptRule` /
   `ReceiptFilter` — has no Cloud Control handlers),
