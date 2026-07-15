@@ -98,6 +98,7 @@ import {
   diffNetworkAclEntryChildren,
   diffRdsClusterChildren,
   diffRoute53HostedZoneChildren,
+  route53RecordSetCfnPhysicalId,
   diffRouteTableChildren,
   diffS3BucketPolicy,
   diffSecretsManagerResourcePolicy,
@@ -4808,12 +4809,18 @@ describe('diffRoute53HostedZoneChildren (Route53 hosted zone record sets, #1042)
           Type: 'CNAME',
           ResourceRecords: ['evil.example.net'],
         },
+        // #1651: the sibling probe keys on the BARE record name (the real CFn physical id), NOT the
+        // `<ZoneId>_<Name>_<Type>` display identifier; RecordSets are global-service children.
+        siblingLookupId: 'login.example.com',
+        crossRegionSibling: true,
       },
       {
         resourceType: 'AWS::Route53::RecordSet',
         identifier: `${ZONE}__verify.example.com._TXT`,
         label: 'TXT _verify.example.com',
         live: { Name: '_verify.example.com.', Type: 'TXT' },
+        siblingLookupId: '_verify.example.com',
+        crossRegionSibling: true,
       },
     ]);
   });
@@ -4880,6 +4887,39 @@ describe('diffRoute53HostedZoneChildren (Route53 hosted zone record sets, #1042)
     });
     expect(added).toEqual([]);
   });
+
+  // #1651: siblingLookupId must be the record's real CFn PhysicalResourceId — the BARE record name:
+  // ListResourceRecordSets returns it octal-escaped with a trailing dot, but CFn stores the literal,
+  // dot-less form, and DescribeStackResources matches on that. Case is preserved (not lowercased).
+  it('sets siblingLookupId to the bare CFn physical id (octal-unescaped, trailing dot stripped, #1651)', () => {
+    const added = diffRoute53HostedZoneChildren({
+      hostedZoneId: ZONE,
+      zoneApex: 'example.net',
+      declaredRecords: [],
+      liveRecords: [
+        // Wildcard record: Route53 returns the octal escape `\052` for `*`.
+        {
+          name: '\\052.example.net.',
+          type: 'A',
+          live: { Name: '\\052.example.net.', Type: 'A' },
+        },
+        // Mixed-case name — the physical id preserves case (DNS resolution is case-insensitive but
+        // the CFn physical id is the name as stored).
+        { name: 'API.Example.NET.', type: 'A', live: { Name: 'API.Example.NET.', Type: 'A' } },
+      ],
+    });
+    expect(added.map((a) => a.siblingLookupId)).toEqual(['*.example.net', 'API.Example.NET']);
+    expect(added.every((a) => a.crossRegionSibling === true)).toBe(true);
+  });
+});
+
+describe('route53RecordSetCfnPhysicalId (#1651)', () => {
+  it('unescapes octal, strips the trailing dot, and preserves case', () => {
+    expect(route53RecordSetCfnPhysicalId('www.example.com.')).toBe('www.example.com');
+    expect(route53RecordSetCfnPhysicalId('\\052.example.net.')).toBe('*.example.net'); // wildcard
+    expect(route53RecordSetCfnPhysicalId('API.Example.NET.')).toBe('API.Example.NET'); // case kept
+    expect(route53RecordSetCfnPhysicalId('_dmarc.example.com.')).toBe('_dmarc.example.com'); // leading _
+  });
 });
 
 describe('enumerateRoute53HostedZoneChildren (#1042)', () => {
@@ -4942,6 +4982,8 @@ describe('enumerateRoute53HostedZoneChildren (#1042)', () => {
           TTL: '60',
           ResourceRecords: ['evil.net'],
         },
+        siblingLookupId: 'rogue.example.com',
+        crossRegionSibling: true,
       },
     ]);
     r53.restore();

@@ -29,7 +29,9 @@ import {
   gatherFindings,
   isDefinitiveNotManaged,
   isManagedBySiblingStack,
+  makeCrossRegionSiblingProbe,
   regatherTouched,
+  resolveCrossRegionSibling,
   type SiblingCheck,
 } from '../src/commands/gather.js';
 import type { AddedChild } from '../src/read/child-enumerators.js';
@@ -1949,6 +1951,89 @@ describe('isManagedBySiblingStack (#666 cross-stack added FP)', () => {
       expect(
         isDefinitiveNotManaged('arn:aws:iam::111122223333:role/R', LOCAL_ACCOUNT, LOCAL_REGION)
       ).toBe(true);
+    });
+  });
+});
+
+describe('cross-region sibling probe (Route53 RecordSet global-service, #1651)', () => {
+  const recordChild = (): AddedChild => ({
+    resourceType: 'AWS::Route53::RecordSet',
+    identifier: 'Z1_api.example.com._A',
+    label: 'A api.example.com',
+    live: {},
+    siblingLookupId: 'api.example.com',
+    crossRegionSibling: true,
+  });
+
+  describe('resolveCrossRegionSibling (pure combine, fail-safe)', () => {
+    it('ANY region proving ownership wins -> managed (and short-circuits)', async () => {
+      const seen: string[] = [];
+      const r = await resolveCrossRegionSibling(['a', 'b', 'c'], (region) => {
+        seen.push(region);
+        return Promise.resolve<SiblingCheck>(region === 'b' ? 'managed' : 'notManaged');
+      });
+      expect(r).toBe('managed');
+      expect(seen).toEqual(['a', 'b']); // stopped at the managing region
+    });
+
+    it('no owner but ANY region unverifiable -> unverified (never a destructive delete)', async () => {
+      const map: Record<string, SiblingCheck> = {
+        a: 'notManaged',
+        b: 'unverified',
+        c: 'notManaged',
+      };
+      const r = await resolveCrossRegionSibling(['a', 'b', 'c'], (region) =>
+        Promise.resolve(map[region] ?? 'notManaged')
+      );
+      expect(r).toBe('unverified');
+    });
+
+    it('every region a definitive not-managed -> notManaged (genuine out-of-band)', async () => {
+      const r = await resolveCrossRegionSibling(['a', 'b'], () =>
+        Promise.resolve<SiblingCheck>('notManaged')
+      );
+      expect(r).toBe('notManaged');
+    });
+
+    it('no other regions -> notManaged (local definitive-miss stands)', async () => {
+      const r = await resolveCrossRegionSibling([], () => Promise.resolve<SiblingCheck>('managed'));
+      expect(r).toBe('notManaged');
+    });
+  });
+
+  describe('makeCrossRegionSiblingProbe.escalate', () => {
+    it('fails SAFE to unverified when the enabled-region list cannot be enumerated', async () => {
+      const probe = makeCrossRegionSiblingProbe('111122223333', 'us-east-1', {
+        enabledRegions: () => Promise.resolve(undefined),
+        probeInRegion: () => Promise.reject(new Error('must not be called')),
+      });
+      expect(await probe.escalate(recordChild())).toBe('unverified');
+    });
+
+    it('folds a record OWNED by a stack in another region -> managed', async () => {
+      const probe = makeCrossRegionSiblingProbe('111122223333', 'us-east-1', {
+        enabledRegions: () => Promise.resolve(['ap-northeast-1', 'eu-west-1']),
+        probeInRegion: (_c, region) =>
+          Promise.resolve<SiblingCheck>(region === 'ap-northeast-1' ? 'managed' : 'notManaged'),
+      });
+      expect(await probe.escalate(recordChild())).toBe('managed');
+    });
+
+    it('reports notManaged only when NO enabled region owns the record', async () => {
+      const probe = makeCrossRegionSiblingProbe('111122223333', 'us-east-1', {
+        enabledRegions: () => Promise.resolve(['ap-northeast-1', 'eu-west-1']),
+        probeInRegion: () => Promise.resolve<SiblingCheck>('notManaged'),
+      });
+      expect(await probe.escalate(recordChild())).toBe('notManaged');
+    });
+
+    it('downgrades to unverified when any region probe is unverifiable', async () => {
+      const probe = makeCrossRegionSiblingProbe('111122223333', 'us-east-1', {
+        enabledRegions: () => Promise.resolve(['ap-northeast-1', 'eu-west-1']),
+        probeInRegion: (_c, region) =>
+          Promise.resolve<SiblingCheck>(region === 'eu-west-1' ? 'unverified' : 'notManaged'),
+      });
+      expect(await probe.escalate(recordChild())).toBe('unverified');
     });
   });
 });
