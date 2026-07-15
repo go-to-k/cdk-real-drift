@@ -928,6 +928,30 @@ const IDENTITY_KEYED_SUBSET_ARRAYS: Record<string, Record<string, SubsetArraySpe
 const VALUE_INDEPENDENT_KEYED_ELEMENTS: Record<string, Record<string, ReadonlySet<string>>> = {
   'AWS::Cognito::UserPoolUser': { UserAttributes: new Set(['sub']) },
 };
+// #1650: Slack MIGRATED legacy private-group ids (`G…`) to modern conversation ids (`C…`)
+// preserving every character after the prefix, and Chatbot's read echoes the CURRENT
+// (migrated) id — so a template still holding the legacy `G0XXXXXXXXX` id reports a permanent
+// declared FP against the live `C0XXXXXXXXX` that `record` cannot accept. This is the #881
+// service-transformed-echo class, but the Chatbot registry schema carries no
+// `propertyTransform`, so a per-type table hosts the tolerance here (like the noise.ts
+// TRAILING_DOT_PATHS / VERSION_PREFIX_PATHS kin the declared loop already consults). Declared
+// and live are EQUAL when they differ ONLY by the leading 'G' vs 'C' with an identical
+// NON-EMPTY remainder (symmetric, though the real-world direction is declared G… vs live C…).
+// A genuine re-point to a different channel changes the remainder, so it still surfaces.
+const SLACK_ID_MIGRATION_PATHS: Record<string, ReadonlySet<string>> = {
+  'AWS::Chatbot::SlackChannelConfiguration': new Set(['SlackChannelId']),
+};
+const SLACK_MIGRATION_PREFIXES: ReadonlySet<string> = new Set(['G', 'C']);
+function isSlackIdMigrationEqual(a: unknown, b: unknown): boolean {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  return (
+    a.length > 1 &&
+    b.length > 1 &&
+    SLACK_MIGRATION_PREFIXES.has(a[0] ?? '') &&
+    SLACK_MIGRATION_PREFIXES.has(b[0] ?? '') &&
+    a.slice(1) === b.slice(1)
+  );
+}
 // Nested object-arrays whose element identity is a NON-standard field (not Key/Id/
 // AttributeName/IndexName/Name). collectNestedUndeclared aligns identity-keyed arrays so a
 // live-only sub-key inside a declared element surfaces; without a known identity it skips
@@ -4780,6 +4804,15 @@ export function classifyResource(
       if (
         INTELLIGENT_TIERING_PATHS[resourceType]?.has(d.path) &&
         isIntelligentTieringMatch(d.stateValue, d.awsValue)
+      )
+        continue;
+      // Per-type Slack channel-id paths (#1650: Chatbot SlackChannelId) — a declared legacy
+      // G-prefixed group id that Slack migrated to the C-prefixed conversation id (identical
+      // non-empty remainder) is not drift; a genuine re-point to a different channel changes
+      // the remainder and still surfaces.
+      if (
+        SLACK_ID_MIGRATION_PATHS[resourceType]?.has(d.path) &&
+        isSlackIdMigrationEqual(d.stateValue, d.awsValue)
       )
         continue;
       // Unordered scalar-array sets — same elements in the service's canonical order
