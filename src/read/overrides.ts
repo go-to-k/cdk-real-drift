@@ -587,9 +587,16 @@ const readBudget: OverrideReader = async ({ physicalId, declared, accountId, reg
   // returns `{}` (or omits it) for an unfiltered budget, which `isTrivialEmpty`
   // suppresses, so a budget that declares no filters stays CLEAN; a declared filter set
   // is compared, and one added out of band surfaces. The projection still stays thin
-  // where it must: COMPUTED fields (CalculatedSpend) and AWS-defaulted blobs (TimePeriod's
-  // 2087 end date, the full CostTypes default set) are deliberately NOT offered — they
-  // would be live-only noise.
+  // where it must: COMPUTED fields (CalculatedSpend) and the AWS-defaulted TimePeriod
+  // (its 2087 end date) are deliberately NOT offered — they would be live-only noise.
+  //
+  // CostTypes IS projected (#1647): omitting it made classify's removed-declared-collection
+  // branch fire on any truthy declared CostTypes (`desired={"IncludeTax":true}
+  // actual=undefined` false drift on every clean check), while an all-false declared
+  // CostTypes was swallowed by the isTrivialEmpty exemption — so a declared CostTypes was
+  // never compared in EITHER direction. DescribeBudget returns the full 11-boolean object;
+  // the undeclared default set folds via the KNOWN_DEFAULT_PATHS `Budget.CostTypes.*`
+  // constants (noise.ts), so a budget that declares no CostTypes stays CLEAN.
   // PlannedBudgetLimits — a time-phased budget's per-period limits. Omitting it made an
   // out-of-band change to a future month's limit invisible (a declared one became a
   // readGap; an undeclared one wholly invisible). FP-safe: DescribeBudget returns it ONLY
@@ -611,6 +618,7 @@ const readBudget: OverrideReader = async ({ physicalId, declared, accountId, reg
       ...(b.BudgetLimit !== undefined && { BudgetLimit: b.BudgetLimit }),
       ...(b.PlannedBudgetLimits !== undefined && { PlannedBudgetLimits: b.PlannedBudgetLimits }),
       ...(b.CostFilters !== undefined && { CostFilters: b.CostFilters }),
+      ...(b.CostTypes !== undefined && { CostTypes: b.CostTypes }),
       ...(aad && {
         AutoAdjustData: {
           ...(aad.AutoAdjustType !== undefined && { AutoAdjustType: aad.AutoAdjustType }),
@@ -3248,6 +3256,23 @@ const readSesConfigurationSetEventDestination: OverrideReader = async ({
 //     rather than a fabricated projection — projecting the runtime shape against the declared
 //     input shape would false-flag every cert.
 const ACM_DEFAULT_TRANSPARENCY = 'ENABLED';
+// #1648: DescribeCertificate returns a HYPHENATED KeyAlgorithm spelling ("RSA-2048") for
+// some certificates (era-/path-dependent — live-observed on 2024-era certs in two regions)
+// while the SDK enum and the CFn resource schema both spell it with an underscore
+// ("RSA_2048"). The mismatch broke BOTH dimensions: the KNOWN_DEFAULTS RSA_2048 pin never
+// folded (permanent first-run [Potential Drift]) and a declared RSA_2048 false-flagged
+// declared drift. Canonicalize reader-side onto the CFn enum spelling via an EXPLICIT map
+// of the known enum members only — an unknown/future value passes through untouched (never
+// mangle a spelling we have not verified).
+const ACM_KEY_ALGORITHM_CANONICAL: Record<string, string> = {
+  'RSA-1024': 'RSA_1024',
+  'RSA-2048': 'RSA_2048',
+  'RSA-3072': 'RSA_3072',
+  'RSA-4096': 'RSA_4096',
+  'EC-prime256v1': 'EC_prime256v1',
+  'EC-secp384r1': 'EC_secp384r1',
+  'EC-secp521r1': 'EC_secp521r1',
+};
 const readAcmCertificate: OverrideReader = async ({ physicalId, declared, region }) => {
   const arn = str(physicalId);
   // The CFn physical id of an ACM certificate IS its ARN; without it we cannot address it.
@@ -3258,7 +3283,9 @@ const readAcmCertificate: OverrideReader = async ({ physicalId, declared, region
   if (!cert) return undefined;
   const model: Record<string, unknown> = {};
   if (str(cert.DomainName)) model.DomainName = cert.DomainName;
-  if (str(cert.KeyAlgorithm)) model.KeyAlgorithm = cert.KeyAlgorithm;
+  const keyAlg = str(cert.KeyAlgorithm);
+  // Canonicalize the hyphenated live spelling onto the CFn enum spelling (#1648).
+  if (keyAlg) model.KeyAlgorithm = ACM_KEY_ALGORITHM_CANONICAL[keyAlg] ?? keyAlg;
   // SANs only when declared — AWS always folds DomainName in as an implied SAN, so an
   // undeclared live list would false-flag every single-domain cert (see note above).
   const declaredSans = Array.isArray(declared.SubjectAlternativeNames)
