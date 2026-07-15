@@ -1,10 +1,11 @@
-// cdk-real-drift SES ConfigurationSetEventDestination read-gap test.
+// cdk-real-drift SES ConfigurationSetEventDestination read test.
 // AWS::SES::ConfigurationSetEventDestination is NOT readable via Cloud Control
-// (GetResource throws HandlerInternalFailureException), so cdkrd surfaces it as
-// `skipped=1` in the info footer — honestly, NOT as a silent false negative. The
-// parent ConfigurationSet reads clean. (It is an SDK_OVERRIDES candidate; the
-// MatchingEventTypes enum-set reorder cannot be probed until the EventDestination is
-// readable.) A freshly deployed + recorded stack MUST be CLEAN with the skip surfaced.
+// (GetResource throws HandlerInternalFailureException — the read handler is broken
+// upstream), so cdkrd reads it via an SDK_OVERRIDES reader (SESv2
+// GetConfigurationSetEventDestinations, #1643) instead of surfacing `skipped=1`. The
+// reader translates the SESv2 UPPERCASE_SNAKE enums back to the CFn-canonical spelling
+// and folds MatchingEventTypes case-insensitively (this fixture declares them UPPERCASE),
+// so a freshly deployed + recorded stack MUST be CLEAN.
 import { App, Stack } from "aws-cdk-lib";
 import {
   CfnConfigurationSet,

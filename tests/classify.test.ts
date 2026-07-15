@@ -3932,6 +3932,35 @@ describe('declared-compare false-positive classes from harvest4 (R75)', () => {
     });
   });
 
+  // #1643: SES::ConfigurationSetEventDestination MatchingEventTypes — the SDK_OVERRIDES reader
+  // translates the SESv2 UPPERCASE_SNAKE enum to the CFn-canonical lowercase, but CFn also folds
+  // pure case on the DECLARED side (an UPPERCASE-declared template is IN_SYNC, live-verified).
+  describe('case-insensitive SES event-type array path (MatchingEventTypes)', () => {
+    const T = 'AWS::SES::ConfigurationSetEventDestination';
+    const dest = (types: string[]) => ({
+      ConfigurationSetName: 'cs',
+      EventDestination: { Name: 'd', MatchingEventTypes: types },
+    });
+
+    it('UPPERCASE-declared vs lowercase-canonical live MatchingEventTypes is NOT drift', () => {
+      expect(
+        classifyResource(res(T, dest(['SEND', 'BOUNCE'])), dest(['bounce', 'send']), emptySchema)
+      ).toEqual([]);
+    });
+
+    it('a genuinely changed event type (same length) is still drift', () => {
+      expect(
+        tiers(
+          classifyResource(
+            res(T, dest(['send', 'bounce'])),
+            dest(['send', 'complaint']),
+            emptySchema
+          )
+        ).declared
+      ).toEqual(['EventDestination.MatchingEventTypes']);
+    });
+  });
+
   // #874: AWS::Lambda::Url exhibits the same platform behavior as apigwv2 (#257) —
   // the Function URL CORS header lists (`Cors.AllowHeaders` / `Cors.ExposeHeaders`)
   // are stored/echoed LOWERCASED, so a declared `["Content-Type","Authorization"]`
