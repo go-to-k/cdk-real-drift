@@ -1,3 +1,10 @@
+## [0.22.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.22.0...v0.22.1) (2026-07-15)
+
+
+### Bug Fixes
+
+* **diff:** fold Aurora DBCluster cluster-level AutoMinorVersionUpgrade echo of an instance-declared false ([#1653](https://github.com/go-to-k/cdk-real-drift/issues/1653)) ([#1655](https://github.com/go-to-k/cdk-real-drift/issues/1655)) ([4b102a4](https://github.com/go-to-k/cdk-real-drift/commit/4b102a4373dec596c7e76814cb99d68b90a34f5b))
+
 # [0.22.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.21.0...v0.22.0) (2026-07-15)
 
 
