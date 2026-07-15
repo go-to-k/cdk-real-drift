@@ -166,6 +166,16 @@ const ELB_ATTRIBUTE_BAGS: Record<string, string> = {
 // Route53 HealthCheck reads EnableSNI=false. The predicate returns true only when the OFF
 // state is a genuine divergence in THIS resource's config. Add an entry ONLY after a live
 // confirm that the OFF state is meaningful in EVERY clean-deploy configuration of the type.
+//
+// #1653: for a CLUSTER-scoped type with member-instance resources (RDS / DocDB / Neptune /
+// ElastiCache / MemoryDB / Redshift), "every clean-deploy configuration" INCLUDES the shape
+// where a MEMBER INSTANCE declares the flag off while the cluster leaves it undeclared —
+// per-resource corpus fixtures (nothing declared anywhere) never exhibit it. A cluster-level
+// read can ECHO the members' instance-level setting (Aurora AutoMinorVersionUpgrade: a writer
+// DBInstance declaring false makes the undeclared cluster value read false at CREATION), so
+// that off state is declared intent on a sibling resource, not an out-of-band disable. Where
+// the echo exists, gate the cluster entry out (detection stays on the member-instance entry);
+// see the AWS::RDS::DBCluster engine gate below.
 type OffStateContext = { declared: Record<string, unknown>; live: Record<string, unknown> };
 // #660 item 1: a MEANINGFUL_WHEN_OFF predicate for a `true`-default switch that a snapshot /
 // point-in-time RESTORE can carry over as an untouched `false`. A fresh, NON-restored resource
