@@ -289,8 +289,20 @@ const MEANINGFUL_WHEN_OFF: Record<string, Record<string, (ctx: OffStateContext) 
   // a snapshot-restored resource, whose undeclared `false` is an inherited creation-time value
   // (see the `notRestored` note above) — live-proven on RDS::DBInstance.
   'AWS::RDS::DBInstance': { AutoMinorVersionUpgrade: notRestored('DBSnapshotIdentifier') },
+  // #1653: the cluster-level flag is genuinely cluster-level ONLY on a Multi-AZ DB cluster
+  // (engine mysql/postgres). On an Aurora cluster it ECHOES the member instances'
+  // instance-level setting: a writer DBInstance that DECLARES AutoMinorVersionUpgrade=false
+  // makes the undeclared cluster-level value read false at CREATION (declared intent on a
+  // sibling resource, not an out-of-band disable; a fresh all-default Aurora cluster reads
+  // true — corpus-confirmed on aurora-mysql / aurora-postgresql / ServerlessV2). So gate on
+  // the engine. Detection is preserved on Aurora via the member AWS::RDS::DBInstance entry
+  // above (undeclared flip) or the instance's declared loop (declared flip).
   'AWS::RDS::DBCluster': {
-    AutoMinorVersionUpgrade: notRestored('SnapshotIdentifier', 'SourceDBClusterIdentifier'),
+    AutoMinorVersionUpgrade: (ctx) => {
+      const engine = ctx.live['Engine'] ?? ctx.declared['Engine'];
+      if (typeof engine === 'string' && engine.startsWith('aurora')) return false;
+      return notRestored('SnapshotIdentifier', 'SourceDBClusterIdentifier')(ctx);
+    },
   },
   // A Neptune DBInstance has no instance-level restore source (only AWS::Neptune::DBCluster
   // restores from a snapshot; its member instances are always CREATED fresh and read the flag

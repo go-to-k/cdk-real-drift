@@ -50,11 +50,13 @@ const CASES: Case[] = [
     baseDeclared: { DBInstanceClass: 'db.t3.micro', Engine: 'mariadb' },
   },
   {
+    // #1653: the off state is cluster-level-meaningful only on a Multi-AZ DB cluster
+    // (engine mysql/postgres) — the Aurora echo cases live in their own describe below.
     resourceType: 'AWS::RDS::DBCluster',
     flag: 'AutoMinorVersionUpgrade',
     restoreProp: 'SnapshotIdentifier',
     restoreValue: 'my-cluster-snap',
-    baseDeclared: { Engine: 'aurora-mysql' },
+    baseDeclared: { Engine: 'mysql' },
   },
   {
     resourceType: 'AWS::Neptune::DBInstance',
@@ -141,4 +143,65 @@ describe('#660 item 1 restore-risk version-upgrade booleans', () => {
       });
     }
   }
+});
+
+// #1653: on an Aurora cluster (engine `aurora*`) the cluster-level flag ECHOES the member
+// instances' instance-level setting — a writer DBInstance that DECLARES
+// AutoMinorVersionUpgrade=false makes the UNDECLARED cluster-level value read `false` at
+// CREATION. That is declared intent on a sibling resource, not an out-of-band disable, so it
+// must NOT surface (core invariant: clean deploy ⇒ zero potential drift). Out-of-band
+// detection on Aurora lives on the member AWS::RDS::DBInstance entry instead. Only a
+// Multi-AZ DB cluster (engine mysql/postgres — the CASES entry above) keeps the #660
+// off-state surface.
+describe('#1653 Aurora DBCluster cluster-level AutoMinorVersionUpgrade echo', () => {
+  const mkCluster = (declared: Record<string, unknown>): DesiredResource => ({
+    logicalId: 'Cluster',
+    resourceType: 'AWS::RDS::DBCluster',
+    physicalId: 'my-aurora-cluster',
+    declared,
+  });
+
+  for (const engine of ['aurora', 'aurora-mysql', 'aurora-postgresql']) {
+    it(`${engine}: undeclared cluster-level false folds (instance-declared echo, no first-check FP)`, () => {
+      const declared = { Engine: engine };
+      const f = classifyResource(
+        mkCluster(declared),
+        { ...declared, AutoMinorVersionUpgrade: false },
+        emptySchema
+      );
+      expect(pathsByTier(f, 'undeclared')).toEqual([]);
+    });
+
+    it(`${engine}: undeclared cluster-level true still folds atDefault`, () => {
+      const declared = { Engine: engine };
+      const f = classifyResource(
+        mkCluster(declared),
+        { ...declared, AutoMinorVersionUpgrade: true },
+        emptySchema
+      );
+      expect(pathsByTier(f, 'atDefault')).toContain('AutoMinorVersionUpgrade');
+      expect(pathsByTier(f, 'undeclared')).toEqual([]);
+    });
+  }
+
+  it('engine known only from the LIVE model (declared side unresolved) still folds', () => {
+    // The predicate prefers live.Engine, so an intrinsic-declared Engine cannot flip the
+    // gate to the Multi-AZ (surface) path.
+    const f = classifyResource(
+      mkCluster({}),
+      { Engine: 'aurora-mysql', AutoMinorVersionUpgrade: false },
+      emptySchema
+    );
+    expect(pathsByTier(f, 'undeclared')).not.toContain('AutoMinorVersionUpgrade');
+  });
+
+  it('postgres Multi-AZ engine keeps the #660 surface for the undeclared off state', () => {
+    const declared = { Engine: 'postgres' };
+    const f = classifyResource(
+      mkCluster(declared),
+      { ...declared, AutoMinorVersionUpgrade: false },
+      emptySchema
+    );
+    expect(pathsByTier(f, 'undeclared')).toContain('AutoMinorVersionUpgrade');
+  });
 });
