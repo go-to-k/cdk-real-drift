@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-integ-fpmisc-hunt",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Bug-hunt 2026-07-17 probe fixture (fpmisc-hunt). Run via verify.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module"
+}

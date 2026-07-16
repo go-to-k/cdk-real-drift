@@ -1,0 +1,81 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "RhpCors",
+    "resourceType": "AWS::CloudFront::ResponseHeadersPolicy",
+    "physicalId": "b42808c4-febc-4ac4-9177-d8b8e21146ea",
+    "constructPath": "CdkrdHunt0717FpMisc/RhpCors",
+    "declared": {
+      "ResponseHeadersPolicyConfig": {
+        "CorsConfig": {
+          "AccessControlAllowCredentials": false,
+          "AccessControlAllowHeaders": {
+            "Items": ["X-Zebra-Header", "authorization", "Content-Type"]
+          },
+          "AccessControlAllowMethods": {
+            "Items": ["POST", "GET"]
+          },
+          "AccessControlAllowOrigins": {
+            "Items": ["https://example.com"]
+          },
+          "AccessControlExposeHeaders": {
+            "Items": ["X-Zulu-Expose", "content-length", "ETag"]
+          },
+          "OriginOverride": false
+        },
+        "Name": "CdkrdHunt0717RhpCors"
+      }
+    }
+  },
+  "liveRaw": {
+    "LastModifiedTime": "2026-07-16T15:15:55.991Z",
+    "Id": "b42808c4-febc-4ac4-9177-d8b8e21146ea",
+    "ResponseHeadersPolicyConfig": {
+      "CorsConfig": {
+        "AccessControlAllowCredentials": false,
+        "AccessControlAllowHeaders": {
+          "Items": ["X-Zebra-Header", "authorization", "Content-Type"]
+        },
+        "OriginOverride": false,
+        "AccessControlAllowMethods": {
+          "Items": ["POST", "GET"]
+        },
+        "AccessControlExposeHeaders": {
+          "Items": ["X-Zulu-Expose", "content-length", "ETag"]
+        },
+        "AccessControlAllowOrigins": {
+          "Items": ["https://example.com"]
+        }
+      },
+      "Name": "CdkrdHunt0717RhpCors"
+    }
+  },
+  "schema": {
+    "readOnly": ["Id", "LastModifiedTime"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Id", "LastModifiedTime"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [
+      "ResponseHeadersPolicyConfig.CorsConfig.AccessControlAllowHeaders.Items",
+      "ResponseHeadersPolicyConfig.CorsConfig.AccessControlAllowMethods.Items",
+      "ResponseHeadersPolicyConfig.CorsConfig.AccessControlAllowOrigins.Items",
+      "ResponseHeadersPolicyConfig.CorsConfig.AccessControlExposeHeaders.Items"
+    ],
+    "unorderedObjectArrayPaths": [
+      "ResponseHeadersPolicyConfig.CustomHeadersConfig.Items",
+      "ResponseHeadersPolicyConfig.RemoveHeadersConfig.Items"
+    ],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

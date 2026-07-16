@@ -1,0 +1,158 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "NakedKey",
+    "resourceType": "AWS::KMS::Key",
+    "physicalId": "bfbf9bf5-f340-4ce2-8482-49c1f6ada439",
+    "constructPath": "CdkrdHunt0717KmsA/NakedKey",
+    "declared": {
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Origin": "AWS_KMS",
+    "MultiRegion": false,
+    "Description": "",
+    "KeyPolicy": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": "kms:*",
+          "Resource": "*",
+          "Effect": "Allow",
+          "Principal": {
+            "AWS": "arn:aws:iam::111111111111:root"
+          },
+          "Sid": "Enable IAM User Permissions"
+        }
+      ],
+      "Id": "key-default-1"
+    },
+    "KeySpec": "SYMMETRIC_DEFAULT",
+    "Enabled": true,
+    "EnableKeyRotation": false,
+    "KeyUsage": "ENCRYPT_DECRYPT",
+    "KeyId": "bfbf9bf5-f340-4ce2-8482-49c1f6ada439",
+    "Arn": "arn:aws:kms:us-east-1:111111111111:key/bfbf9bf5-f340-4ce2-8482-49c1f6ada439",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "KeyId"],
+    "writeOnly": ["BypassPolicyLockoutSafetyCheck", "PendingWindowInDays", "RotationPeriodInDays"],
+    "createOnly": [],
+    "readOnlyPaths": ["Arn", "KeyId"],
+    "writeOnlyPaths": [
+      "BypassPolicyLockoutSafetyCheck",
+      "PendingWindowInDays",
+      "RotationPeriodInDays"
+    ],
+    "createOnlyPaths": [],
+    "defaults": {
+      "KeyPolicy": "{\n    \"Version\": \"2012-10-17\",\n    \"Id\": \"key-default\",\n    \"Statement\": [\n        {\n            \"Sid\": \"Enable IAM User Permissions\",\n            \"Effect\": \"Allow\",\n            \"Principal\": {\n                \"AWS\": \"arn:<partition>:iam::<account-id>:root\"\n            },\n            \"Action\": \"kms:*\",\n            \"Resource\": \"*\"\n        }\n    ]\n}",
+      "KeyUsage": "ENCRYPT_DECRYPT",
+      "Origin": "AWS_KMS",
+      "KeySpec": "SYMMETRIC_DEFAULT",
+      "MultiRegion": false,
+      "BypassPolicyLockoutSafetyCheck": false,
+      "RotationPeriodInDays": 365
+    },
+    "defaultPaths": {
+      "KeyPolicy": "{\n    \"Version\": \"2012-10-17\",\n    \"Id\": \"key-default\",\n    \"Statement\": [\n        {\n            \"Sid\": \"Enable IAM User Permissions\",\n            \"Effect\": \"Allow\",\n            \"Principal\": {\n                \"AWS\": \"arn:<partition>:iam::<account-id>:root\"\n            },\n            \"Action\": \"kms:*\",\n            \"Resource\": \"*\"\n        }\n    ]\n}",
+      "KeyUsage": "ENCRYPT_DECRYPT",
+      "Origin": "AWS_KMS",
+      "KeySpec": "SYMMETRIC_DEFAULT",
+      "MultiRegion": false,
+      "BypassPolicyLockoutSafetyCheck": false,
+      "RotationPeriodInDays": 365
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "NakedKey",
+      "resourceType": "AWS::KMS::Key",
+      "path": "Origin",
+      "actual": "AWS_KMS",
+      "physicalId": "bfbf9bf5-f340-4ce2-8482-49c1f6ada439",
+      "constructPath": "CdkrdHunt0717KmsA/NakedKey"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "NakedKey",
+      "resourceType": "AWS::KMS::Key",
+      "path": "MultiRegion",
+      "actual": false,
+      "physicalId": "bfbf9bf5-f340-4ce2-8482-49c1f6ada439",
+      "constructPath": "CdkrdHunt0717KmsA/NakedKey"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "NakedKey",
+      "resourceType": "AWS::KMS::Key",
+      "path": "KeyPolicy",
+      "actual": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Action": ["kms:*"],
+            "Effect": "Allow",
+            "Principal": {
+              "AWS": ["111111111111"]
+            },
+            "Resource": ["*"],
+            "Sid": "Enable IAM User Permissions"
+          }
+        ],
+        "Id": "key-default-1"
+      },
+      "physicalId": "bfbf9bf5-f340-4ce2-8482-49c1f6ada439",
+      "constructPath": "CdkrdHunt0717KmsA/NakedKey"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "NakedKey",
+      "resourceType": "AWS::KMS::Key",
+      "path": "KeySpec",
+      "actual": "SYMMETRIC_DEFAULT",
+      "physicalId": "bfbf9bf5-f340-4ce2-8482-49c1f6ada439",
+      "constructPath": "CdkrdHunt0717KmsA/NakedKey"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "NakedKey",
+      "resourceType": "AWS::KMS::Key",
+      "path": "Enabled",
+      "actual": true,
+      "physicalId": "bfbf9bf5-f340-4ce2-8482-49c1f6ada439",
+      "constructPath": "CdkrdHunt0717KmsA/NakedKey"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "NakedKey",
+      "resourceType": "AWS::KMS::Key",
+      "path": "KeyUsage",
+      "actual": "ENCRYPT_DECRYPT",
+      "physicalId": "bfbf9bf5-f340-4ce2-8482-49c1f6ada439",
+      "constructPath": "CdkrdHunt0717KmsA/NakedKey"
+    }
+  ]
+}

@@ -45,7 +45,6 @@ import {
 } from '@aws-sdk/client-cloudwatch';
 import {
   DLMClient,
-  GetLifecyclePolicyCommand,
   type SettablePolicyStateValues,
   UpdateLifecyclePolicyCommand,
 } from '@aws-sdk/client-dlm';
@@ -1357,16 +1356,15 @@ const writeDlmLifecyclePolicy: SdkWriter = async (ctx, ops) => {
   }
   const c = new DLMClient({ region: ctx.region, ...CLIENT_TIMEOUTS });
   const m = await desiredModel('AWS::DLM::LifecyclePolicy', ctx, ops);
-  let details = m.PolicyDetails as Record<string, unknown> | undefined;
-  if (details === undefined && DLM_DEFAULT_POLICY_SHORTHAND.some((k) => m[k] !== undefined)) {
-    // Shorthand style: Update only accepts a full PolicyDetails, so start from the live
-    // PolicyDetails (carries the immutable PolicyType/ResourceType the API folded in) and
-    // overlay the desired shorthand values.
-    const live = (await c.send(new GetLifecyclePolicyCommand({ PolicyId: id }))).Policy
-      ?.PolicyDetails as Record<string, unknown> | undefined;
-    details = { ...(live ?? {}) };
-    for (const k of DLM_DEFAULT_POLICY_SHORTHAND) if (m[k] !== undefined) details[k] = m[k];
-  }
+  const details = m.PolicyDetails as Record<string, unknown> | undefined;
+  // #1666: the default-policy shorthand keys are TOP-LEVEL UpdateLifecyclePolicy request
+  // params ([Default policies only] in the API); PolicyDetails is [Custom policies only].
+  // The previous shape — overlaying the shorthand values onto the live PolicyDetails and
+  // sending THAT — targeted the wrong request field for a default policy (written blind;
+  // the type had zero live fixtures until the 2026-07-17 hunt). Pass them through as-is.
+  const shorthand: Record<string, unknown> = {};
+  if (details === undefined)
+    for (const k of DLM_DEFAULT_POLICY_SHORTHAND) if (m[k] !== undefined) shorthand[k] = m[k];
   await c.send(
     new UpdateLifecyclePolicyCommand({
       PolicyId: id,
@@ -1374,6 +1372,7 @@ const writeDlmLifecyclePolicy: SdkWriter = async (ctx, ops) => {
       ...(str(m.State) !== undefined && { State: str(m.State) as SettablePolicyStateValues }),
       ...(str(m.ExecutionRoleArn) !== undefined && { ExecutionRoleArn: str(m.ExecutionRoleArn) }),
       ...(details !== undefined && { PolicyDetails: details as never }),
+      ...(shorthand as Partial<{ CreateInterval: number; RetainInterval: number }>),
     })
   );
 };

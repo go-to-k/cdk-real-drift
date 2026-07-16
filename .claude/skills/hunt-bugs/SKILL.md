@@ -875,6 +875,29 @@ tests/integration/sweep-orphans.sh` to restore main to HEAD — the committed
   lowercase-only-name service (VPC Lattice) mints its CFn generated name LOWERCASED
   (`cdkrdhunt0715lattice-sn-<random>`), which the exact-case isCfnGeneratedName
   branches missed until #1639.
+- **A per-variant fold TABLE row that was MIRRORED from a live-proven sibling is itself
+  unproven — audit the split tables for never-deployed rows.** The BY_PROTOCOL /
+  BY_LB_TYPE / BY_TARGET_TYPE-style variant tables are built one live variant at a
+  time, and the untested rows get filled by copying the proven sibling's constants
+  "for symmetry" — which bakes the do-NOT-copy-sibling-constants trap INTO the fold
+  table (ELB_TG_ATTRIBUTE_DEFAULTS_BY_PROTOCOL's UDP/TCP_UDP rows carried TCP's
+  `deregistration_delay.connection_termination.enabled: 'false'`; AWS's UDP-family
+  default is `'true'` → first-run FP, #1664). A barest deploy of each mirrored-row
+  variant is cheap (a TargetGroup needs no LB); grep the split tables for rows whose
+  comment cites a DIFFERENT variant's deploy as evidence.
+- **An FN detect-probe needs its resource at readGap=0 — a reader-projection readGap
+  silently disables appeared-since-record for the WHOLE resource, and the report
+  masks it as "No baseline yet".** The R62 mechanism only fires on snapshot-COMPLETE
+  resources; a declared prop the reader never projects (DLM's shorthand
+  `DefaultPolicy`, #1665) keeps the resource incomplete forever, so every undeclared
+  OOB change stays [Potential Drift] and `check --fail` exits 0 — and (pre-#1665) the
+  preamble printed "No baseline yet" right after a successful `record`, sending you
+  to re-record instead of at the readGap. When a detect probe unexpectedly misses:
+  check the target resource's `readGap=` in the info: footer FIRST, and either close
+  the gap (project the declared-shaped value from what the API does return, gated so
+  it never emits on other shapes — the #1660 lesson) or probe a readGap-free sibling
+  resource. The readGap-closing fix then needs the SAME live proof pair as any reader
+  fix: clean first run + detection restored.
 - **A clean result IS a result — but it must still leave an asset.** "6 common+rich
   stacks, zero FPs, detection+revert verified" is a legitimate, valuable outcome. Do
   NOT manufacture a fix to have something to show. The deliverable of a bug-free

@@ -874,6 +874,19 @@ const readDlmLifecyclePolicy: OverrideReader = async ({ physicalId, declared, re
   } else if (Object.keys(details).length > 0) {
     model.PolicyDetails = details;
   }
+  // #1665: the declared DefaultPolicy ("VOLUME"|"INSTANCE") has no same-shaped field in the
+  // response — GetLifecyclePolicy reports a BOOLEAN Policy.DefaultPolicy plus the details'
+  // singular ResourceType ([Default policies only]). Project the declared-shaped enum back
+  // only when live CONFIRMS a default policy, so the declared value gains a live counterpart.
+  // Without it the prop was a genuine readGap, which (by the #795 completeness fail-safe)
+  // blocked the resource from ever being snapshot-complete and silently disabled
+  // appeared-since-record detection for EVERY undeclared out-of-band change on the policy.
+  // A custom policy (DefaultPolicy false/absent) never emits the key — no new undeclared FP
+  // (the #1660 readGap-fix lesson).
+  if (p.DefaultPolicy === true) {
+    const rt = str(details.ResourceType);
+    if (rt !== undefined) model.DefaultPolicy = rt;
+  }
   // Tags — AWS::DLM::LifecyclePolicy declares the LIST shape ([{Key, Value}]), but
   // GetLifecyclePolicy already returns the policy's tags as a { k: v } MAP on `Policy.Tags`
   // (no extra call / IAM perm). Convert to the CFn list shape so a declared `Tags` value has

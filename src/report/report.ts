@@ -109,6 +109,12 @@ export interface ReportOptions {
   // report agrees with check.ts's #727 stderr note (#883). Genuine gaps (CC-unsupported,
   // read errors) still render as "coverage incomplete".
   preDeploy?: boolean;
+  // #1665: whether this stack HAS a committed baseline. The unrecorded-values preamble
+  // used to claim "No baseline yet" unconditionally — wrong (and alarming) when a
+  // baseline exists and the values are unrecorded only because their resource is not
+  // snapshot-complete (a readGap/skipped member, the #795 fail-safe). `undefined` =
+  // baseline not consulted (--show-all / --pre-deploy) — keep the generic wording.
+  hasBaseline?: boolean;
   log?: (s: string) => void;
 }
 
@@ -489,9 +495,16 @@ export function report(rawFindings: Finding[], header: string, opts: ReportOptio
   // drift. Gated on the SHOWN count: nested undeclared values now surface too (R96 fold
   // removed), and they are exactly the live-only sub-keys this preamble describes.
   if (unrecordedShown.length > 0) {
+    // #1665: with a baseline PRESENT, unrecorded values mean their resource is not
+    // snapshot-complete (a readGap/skipped member kept `record` from capturing its full
+    // undeclared state — the #795 fail-safe), not that the stack was never recorded.
+    // Saying "No baseline yet" right after a `record` misled a real probe; name the
+    // actual reason so the user looks at the info: footer instead of re-recording.
     log(
       style.undeclaredTier(
-        "No baseline yet — these live-only values can't be confirmed as drift. Record them right from this `cdkrd check` prompt, or run `cdkrd record`."
+        opts.hasBaseline
+          ? "Not in your baseline — these live-only values are on resources record couldn't fully snapshot (see readGap/skipped in info:), so cdkrd can't confirm them as drift. Record to accept them."
+          : "No baseline yet — these live-only values can't be confirmed as drift. Record them right from this `cdkrd check` prompt, or run `cdkrd record`."
       )
     );
     log(''); // blank line so the no-baseline note reads as its own preamble, not a section header

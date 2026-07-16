@@ -993,6 +993,14 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     KeyUsage: 'ENCRYPT_DECRYPT',
     Origin: 'AWS_KMS',
   },
+  // A default-policy shorthand DLM policy (`DefaultPolicy: VOLUME|INSTANCE`) that leaves
+  // RetainInterval unset reads back the documented default of 7 days (#1663; CreateInterval's
+  // sibling default is 1, and CopyTags/ExtendDeletion read back `false` — folded via
+  // isTrivialEmpty). Equality-gated: a retain interval changed out of band still surfaces.
+  // Proven live on a fresh kmsdlm-hunt deploy.
+  'AWS::DLM::LifecyclePolicy': {
+    RetainInterval: 7,
+  },
   'AWS::IAM::Group': {
     Path: '/',
   },
@@ -4397,6 +4405,13 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
 //   (#1501, live-repro'd 2026-07-12 on tests/integration/s3kms-ddb-batch-min).
 export const VALUE_INDEPENDENT_DEFAULT_NESTED_PATHS: Record<string, ReadonlySet<string>> = {
   'AWS::Batch::ComputeEnvironment': new Set(['ComputeResources.DesiredvCpus']),
+  // #1663: an interval-based schedule CreateRule that declares no Times reads back a
+  // creation-time-assigned start time (e.g. `Times: ["03:06"]` — DLM picks a time within a
+  // window after policy creation, different per resource). Not a constant and not derivable
+  // from the declared inputs, so it cannot be equality-gated; a user who cares about the
+  // start time DECLARES Times, which is then compared in the declared dimension. Proven
+  // live on a fresh kmsdlm-hunt deploy (undeclared-Times interval schedule).
+  'AWS::DLM::LifecyclePolicy': new Set(['PolicyDetails.Schedules.*.CreateRule.Times']),
   // #1540 hunt (CdkrdHunt0713cEnumChildren, 2026-07-13): DescribeAutoScalingGroups
   // augments every DECLARED tag entry with the read-only TagDescription echo fields
   // ResourceId (the group's own name) and ResourceType ("auto-scaling-group") — pure
@@ -4822,16 +4837,21 @@ export const ELB_TG_ATTRIBUTE_DEFAULTS_BY_PROTOCOL: Record<string, Record<string
     'target_health_state.unhealthy.connection_termination.enabled': 'true',
     'target_health_state.unhealthy.draining_interval_seconds': '0',
   },
+  // #1664: connection termination on deregistration defaults to TRUE for the UDP-family
+  // protocols (a flow that outlives deregistration must be cut for connectionless
+  // traffic) — the 'false' these two rows initially mirrored from the live-proven TCP
+  // row first-run-FP'd on a barest UDP/TCP_UDP group (variants5-hunt, 2026-07-17).
+  // Every other mirrored value below was live-confirmed correct on the same deploy.
   UDP: {
     'stickiness.type': 'source_ip',
-    'deregistration_delay.connection_termination.enabled': 'false',
+    'deregistration_delay.connection_termination.enabled': 'true',
     'proxy_protocol_v2.enabled': 'false',
     'target_health_state.unhealthy.connection_termination.enabled': 'true',
     'target_health_state.unhealthy.draining_interval_seconds': '0',
   },
   TCP_UDP: {
     'stickiness.type': 'source_ip',
-    'deregistration_delay.connection_termination.enabled': 'false',
+    'deregistration_delay.connection_termination.enabled': 'true',
     'proxy_protocol_v2.enabled': 'false',
     'target_health_state.unhealthy.connection_termination.enabled': 'true',
     'target_health_state.unhealthy.draining_interval_seconds': '0',

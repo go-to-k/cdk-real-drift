@@ -1,0 +1,142 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "EccSignKey",
+    "resourceType": "AWS::KMS::Key",
+    "physicalId": "4b591a78-7cda-424a-97c0-89c9ca4a85ba",
+    "constructPath": "CdkrdHunt0717KmsA/EccSignKey",
+    "declared": {
+      "KeySpec": "ECC_NIST_P256",
+      "KeyUsage": "SIGN_VERIFY",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Origin": "AWS_KMS",
+    "MultiRegion": false,
+    "Description": "",
+    "KeyPolicy": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": "kms:*",
+          "Resource": "*",
+          "Effect": "Allow",
+          "Principal": {
+            "AWS": "arn:aws:iam::111111111111:root"
+          },
+          "Sid": "Enable IAM User Permissions"
+        }
+      ],
+      "Id": "key-default-1"
+    },
+    "KeySpec": "ECC_NIST_P256",
+    "Enabled": true,
+    "EnableKeyRotation": false,
+    "KeyUsage": "SIGN_VERIFY",
+    "KeyId": "4b591a78-7cda-424a-97c0-89c9ca4a85ba",
+    "Arn": "arn:aws:kms:us-east-1:111111111111:key/4b591a78-7cda-424a-97c0-89c9ca4a85ba",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "KeyId"],
+    "writeOnly": ["BypassPolicyLockoutSafetyCheck", "PendingWindowInDays", "RotationPeriodInDays"],
+    "createOnly": [],
+    "readOnlyPaths": ["Arn", "KeyId"],
+    "writeOnlyPaths": [
+      "BypassPolicyLockoutSafetyCheck",
+      "PendingWindowInDays",
+      "RotationPeriodInDays"
+    ],
+    "createOnlyPaths": [],
+    "defaults": {
+      "KeyPolicy": "{\n    \"Version\": \"2012-10-17\",\n    \"Id\": \"key-default\",\n    \"Statement\": [\n        {\n            \"Sid\": \"Enable IAM User Permissions\",\n            \"Effect\": \"Allow\",\n            \"Principal\": {\n                \"AWS\": \"arn:<partition>:iam::<account-id>:root\"\n            },\n            \"Action\": \"kms:*\",\n            \"Resource\": \"*\"\n        }\n    ]\n}",
+      "KeyUsage": "ENCRYPT_DECRYPT",
+      "Origin": "AWS_KMS",
+      "KeySpec": "SYMMETRIC_DEFAULT",
+      "MultiRegion": false,
+      "BypassPolicyLockoutSafetyCheck": false,
+      "RotationPeriodInDays": 365
+    },
+    "defaultPaths": {
+      "KeyPolicy": "{\n    \"Version\": \"2012-10-17\",\n    \"Id\": \"key-default\",\n    \"Statement\": [\n        {\n            \"Sid\": \"Enable IAM User Permissions\",\n            \"Effect\": \"Allow\",\n            \"Principal\": {\n                \"AWS\": \"arn:<partition>:iam::<account-id>:root\"\n            },\n            \"Action\": \"kms:*\",\n            \"Resource\": \"*\"\n        }\n    ]\n}",
+      "KeyUsage": "ENCRYPT_DECRYPT",
+      "Origin": "AWS_KMS",
+      "KeySpec": "SYMMETRIC_DEFAULT",
+      "MultiRegion": false,
+      "BypassPolicyLockoutSafetyCheck": false,
+      "RotationPeriodInDays": 365
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "EccSignKey",
+      "resourceType": "AWS::KMS::Key",
+      "path": "Origin",
+      "actual": "AWS_KMS",
+      "physicalId": "4b591a78-7cda-424a-97c0-89c9ca4a85ba",
+      "constructPath": "CdkrdHunt0717KmsA/EccSignKey"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EccSignKey",
+      "resourceType": "AWS::KMS::Key",
+      "path": "MultiRegion",
+      "actual": false,
+      "physicalId": "4b591a78-7cda-424a-97c0-89c9ca4a85ba",
+      "constructPath": "CdkrdHunt0717KmsA/EccSignKey"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EccSignKey",
+      "resourceType": "AWS::KMS::Key",
+      "path": "KeyPolicy",
+      "actual": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Action": ["kms:*"],
+            "Effect": "Allow",
+            "Principal": {
+              "AWS": ["111111111111"]
+            },
+            "Resource": ["*"],
+            "Sid": "Enable IAM User Permissions"
+          }
+        ],
+        "Id": "key-default-1"
+      },
+      "physicalId": "4b591a78-7cda-424a-97c0-89c9ca4a85ba",
+      "constructPath": "CdkrdHunt0717KmsA/EccSignKey"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EccSignKey",
+      "resourceType": "AWS::KMS::Key",
+      "path": "Enabled",
+      "actual": true,
+      "physicalId": "4b591a78-7cda-424a-97c0-89c9ca4a85ba",
+      "constructPath": "CdkrdHunt0717KmsA/EccSignKey"
+    }
+  ]
+}

@@ -1,0 +1,152 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "CustomPolicy",
+    "resourceType": "AWS::DLM::LifecyclePolicy",
+    "physicalId": "policy-0b572b0e2d2dcc541",
+    "constructPath": "CdkrdHunt0717DlmB/CustomPolicy",
+    "declared": {
+      "Description": "cdkrd hunt 0717 custom snapshot policy",
+      "ExecutionRoleArn": "arn:aws:iam::111111111111:role/CdkrdHunt0717DlmB-DlmRoleCE7C5775-KcJNfbZJBitj",
+      "PolicyDetails": {
+        "PolicyType": "EBS_SNAPSHOT_MANAGEMENT",
+        "ResourceTypes": ["VOLUME"],
+        "Schedules": [
+          {
+            "CreateRule": {
+              "Interval": 12,
+              "IntervalUnit": "HOURS"
+            },
+            "Name": "cdkrd-hunt-daily",
+            "RetainRule": {
+              "Count": 1
+            }
+          }
+        ],
+        "TargetTags": [
+          {
+            "Key": "cdkrd-hunt",
+            "Value": "0717"
+          }
+        ]
+      },
+      "State": "ENABLED",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Description": "cdkrd hunt 0717 custom snapshot policy",
+    "State": "ENABLED",
+    "ExecutionRoleArn": "arn:aws:iam::111111111111:role/CdkrdHunt0717DlmB-DlmRoleCE7C5775-KcJNfbZJBitj",
+    "PolicyDetails": {
+      "PolicyType": "EBS_SNAPSHOT_MANAGEMENT",
+      "ResourceTypes": ["VOLUME"],
+      "ResourceLocations": ["CLOUD"],
+      "TargetTags": [
+        {
+          "Key": "cdkrd-hunt",
+          "Value": "0717"
+        }
+      ],
+      "Schedules": [
+        {
+          "Name": "cdkrd-hunt-daily",
+          "CopyTags": false,
+          "CreateRule": {
+            "Location": "CLOUD",
+            "Interval": 12,
+            "IntervalUnit": "HOURS",
+            "Times": ["03:06"]
+          },
+          "RetainRule": {
+            "Count": 1,
+            "Interval": 0
+          }
+        }
+      ],
+      "PolicyLanguage": "STANDARD"
+    },
+    "Tags": [
+      {
+        "Key": "cdkrd:ephemeral",
+        "Value": "1"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "CustomPolicy",
+      "resourceType": "AWS::DLM::LifecyclePolicy",
+      "path": "PolicyDetails.ResourceLocations",
+      "actual": ["CLOUD"],
+      "nested": true,
+      "physicalId": "policy-0b572b0e2d2dcc541",
+      "constructPath": "CdkrdHunt0717DlmB/CustomPolicy"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "CustomPolicy",
+      "resourceType": "AWS::DLM::LifecyclePolicy",
+      "path": "PolicyDetails.Schedules[cdkrd-hunt-daily].CreateRule.Location",
+      "actual": "CLOUD",
+      "nested": true,
+      "physicalId": "policy-0b572b0e2d2dcc541",
+      "constructPath": "CdkrdHunt0717DlmB/CustomPolicy"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "CustomPolicy",
+      "resourceType": "AWS::DLM::LifecyclePolicy",
+      "path": "PolicyDetails.Schedules[cdkrd-hunt-daily].CreateRule.Times",
+      "actual": ["03:06"],
+      "nested": true,
+      "physicalId": "policy-0b572b0e2d2dcc541",
+      "constructPath": "CdkrdHunt0717DlmB/CustomPolicy"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "CustomPolicy",
+      "resourceType": "AWS::DLM::LifecyclePolicy",
+      "path": "PolicyDetails.Schedules[cdkrd-hunt-daily].RetainRule.Interval",
+      "actual": 0,
+      "nested": true,
+      "physicalId": "policy-0b572b0e2d2dcc541",
+      "constructPath": "CdkrdHunt0717DlmB/CustomPolicy"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "CustomPolicy",
+      "resourceType": "AWS::DLM::LifecyclePolicy",
+      "path": "PolicyDetails.PolicyLanguage",
+      "actual": "STANDARD",
+      "nested": true,
+      "physicalId": "policy-0b572b0e2d2dcc541",
+      "constructPath": "CdkrdHunt0717DlmB/CustomPolicy"
+    }
+  ]
+}

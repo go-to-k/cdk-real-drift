@@ -320,3 +320,66 @@ describe('#1628 TCP/instance-target group preserve_client_ip default', () => {
     ]);
   });
 });
+
+// #1664 — the UDP-family deregistration connection-termination default is TRUE (the
+// 'false' initially mirrored from the live-proven TCP row first-run-FP'd on a barest
+// UDP/TCP_UDP group; TLS folds clean at 'false' like TCP). Live-proven 2026-07-17
+// (variants5-hunt); the AWS__ElasticLoadBalancingV2__TargetGroup.UdpTg/TcpUdpTg/TlsTg
+// corpus cases pin all three variants.
+describe('#1664 UDP/TCP_UDP deregistration connection-termination default', () => {
+  const mk = (protocol: string): DesiredResource => ({
+    logicalId: `${protocol}Tg`,
+    resourceType: 'AWS::ElasticLoadBalancingV2::TargetGroup',
+    physicalId: `arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/${protocol.toLowerCase()}/abc`,
+    declared: { Protocol: protocol, Port: 53, VpcId: 'vpc-0123456789abcdef0' },
+  });
+  const udpBag = (termination: string) =>
+    attrs({
+      'deregistration_delay.connection_termination.enabled': termination,
+      'stickiness.type': 'source_ip',
+      'proxy_protocol_v2.enabled': 'false',
+    });
+
+  for (const protocol of ['UDP', 'TCP_UDP']) {
+    it(`folds the ${protocol} creation default "true" to atDefault (ZERO first-run drift)`, () => {
+      const f = classifyResource(
+        mk(protocol),
+        { ...mk(protocol).declared, TargetGroupAttributes: udpBag('true') },
+        emptySchema
+      );
+      expect(pathsByTier(f, 'undeclared')).toEqual([]);
+      expect(pathsByTier(f, 'atDefault')).toContain(
+        'TargetGroupAttributes[deregistration_delay.connection_termination.enabled]'
+      );
+    });
+
+    it(`an out-of-band ${protocol} termination DISABLE still surfaces (equality gate)`, () => {
+      const f = classifyResource(
+        mk(protocol),
+        { ...mk(protocol).declared, TargetGroupAttributes: udpBag('false') },
+        emptySchema
+      );
+      expect(pathsByTier(f, 'undeclared')).toEqual([
+        'TargetGroupAttributes[deregistration_delay.connection_termination.enabled]',
+      ]);
+    });
+  }
+
+  it('a TLS group keeps the "false" default — "true" there is a real divergence', () => {
+    const tls = mk('TLS');
+    const f = classifyResource(
+      tls,
+      { ...tls.declared, TargetGroupAttributes: udpBag('false') },
+      emptySchema
+    );
+    expect(pathsByTier(f, 'undeclared')).toEqual([]);
+    const g = classifyResource(
+      tls,
+      { ...tls.declared, TargetGroupAttributes: udpBag('true') },
+      emptySchema
+    );
+    expect(pathsByTier(g, 'undeclared')).toEqual([
+      'TargetGroupAttributes[deregistration_delay.connection_termination.enabled]',
+    ]);
+  });
+});

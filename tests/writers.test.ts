@@ -505,10 +505,15 @@ describe('DLM LifecyclePolicy writer (UpdateLifecyclePolicy, issue #468)', () =>
     expect(input.State).toBe('ENABLED');
   });
 
-  it('default-policy shorthand: overlays the desired shorthand key onto the live PolicyDetails', async () => {
+  it('default-policy shorthand: sends the shorthand keys as TOP-LEVEL Update params (#1666)', async () => {
+    // The shorthand keys are [Default policies only] TOP-LEVEL UpdateLifecyclePolicy
+    // request params; PolicyDetails is [Custom policies only]. The writer used to
+    // synthesize a live-overlaid PolicyDetails here — the wrong request field for a
+    // default policy (written blind; zero live fixtures until the 2026-07-17 hunt).
     dlm.on(GetLifecyclePolicyCommand).resolves({
       Policy: {
         PolicyId: 'policy-0def',
+        DefaultPolicy: true,
         PolicyDetails: {
           PolicyType: 'EBS_SNAPSHOT_MANAGEMENT',
           PolicyLanguage: 'SIMPLIFIED',
@@ -535,11 +540,10 @@ describe('DLM LifecyclePolicy writer (UpdateLifecyclePolicy, issue #468)', () =>
     );
     const input = dlm.commandCalls(UpdateLifecyclePolicyCommand)[0]!.args[0]
       .input as unknown as Record<string, unknown>;
-    const details = input.PolicyDetails as Record<string, unknown>;
-    // the immutable PolicyType/ResourceType survive from the live read; the drifted
-    // shorthand key is reverted
-    expect(details.PolicyType).toBe('EBS_SNAPSHOT_MANAGEMENT');
-    expect(details.CreateInterval).toBe(12);
+    // the drifted shorthand key is reverted top-level; PolicyDetails is never sent
+    expect(input.CreateInterval).toBe(12);
+    expect(input.RetainInterval).toBe(7);
+    expect(input.PolicyDetails).toBeUndefined();
   });
 
   it('throws when the policy id cannot be resolved', async () => {

@@ -1,0 +1,106 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "CfAcl",
+    "resourceType": "AWS::WAFv2::WebACL",
+    "physicalId": "CfAcl-lFuJ3bwEbTCj|7e819c39-5be2-4c3c-a0de-2acca4f86fb6|CLOUDFRONT",
+    "constructPath": "CdkrdHunt0717Variants5/CfAcl",
+    "declared": {
+      "DefaultAction": {
+        "Allow": {}
+      },
+      "Scope": "CLOUDFRONT",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "VisibilityConfig": {
+        "CloudWatchMetricsEnabled": false,
+        "MetricName": "cdkrdHunt0717CfAcl",
+        "SampledRequestsEnabled": false
+      }
+    }
+  },
+  "liveRaw": {
+    "Description": "",
+    "DefaultAction": {
+      "Allow": {}
+    },
+    "Scope": "CLOUDFRONT",
+    "Capacity": 0,
+    "Id": "7e819c39-5be2-4c3c-a0de-2acca4f86fb6",
+    "Arn": "arn:aws:wafv2:us-east-1:111111111111:global/webacl/CfAcl-lFuJ3bwEbTCj/7e819c39-5be2-4c3c-a0de-2acca4f86fb6",
+    "OnSourceDDoSProtectionConfig": {
+      "ALBLowReputationMode": "ACTIVE_UNDER_DDOS"
+    },
+    "Rules": [],
+    "VisibilityConfig": {
+      "MetricName": "cdkrdHunt0717CfAcl",
+      "SampledRequestsEnabled": false,
+      "CloudWatchMetricsEnabled": false
+    },
+    "LabelNamespace": "awswaf:111111111111:webacl:CfAcl-lFuJ3bwEbTCj:",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0717Variants5",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "CfAcl",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0717Variants5/fd781c00-812b-11f1-95a9-12ee848f7c35",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "Name": "CfAcl-lFuJ3bwEbTCj"
+  },
+  "schema": {
+    "readOnly": ["Arn", "Capacity", "Id", "LabelNamespace"],
+    "writeOnly": [],
+    "createOnly": ["Name", "Scope"],
+    "readOnlyPaths": ["Arn", "Capacity", "Id", "LabelNamespace"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name", "Scope"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": ["AssociationConfig.RequestBody", "CustomResponseBodies"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "CfAcl",
+      "resourceType": "AWS::WAFv2::WebACL",
+      "path": "OnSourceDDoSProtectionConfig",
+      "actual": {
+        "ALBLowReputationMode": "ACTIVE_UNDER_DDOS"
+      },
+      "physicalId": "CfAcl-lFuJ3bwEbTCj|7e819c39-5be2-4c3c-a0de-2acca4f86fb6|CLOUDFRONT",
+      "constructPath": "CdkrdHunt0717Variants5/CfAcl"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "CfAcl",
+      "resourceType": "AWS::WAFv2::WebACL",
+      "path": "Name",
+      "actual": "CfAcl-lFuJ3bwEbTCj",
+      "physicalId": "CfAcl-lFuJ3bwEbTCj|7e819c39-5be2-4c3c-a0de-2acca4f86fb6|CLOUDFRONT",
+      "constructPath": "CdkrdHunt0717Variants5/CfAcl"
+    }
+  ]
+}
