@@ -144,15 +144,15 @@ At the prompt you act on each finding: **record** it (accept and watch),
 ### Every kind of drift and how it prints
 
 Those are just the two a first run can show. The full set, confirmed or
-potential, what each is judged against, and the section label it prints under:
+potential:
 
-| drift                                                                                    | judged against         | prints as                | drives `--fail` |
-| ---------------------------------------------------------------------------------------- | ---------------------- | ------------------------ | :-------------: |
-| a declared property whose live value differs — no baseline needed                        | the deployed template  | `[CFn-Declared Drift]`   |       ✅        |
-| a live-only value changed after you record it — the differentiator                       | your `.cdkrd` baseline | `[CFn-Undeclared Drift]` |       ✅        |
-| a recorded [out-of-band resource](#added-out-of-band-resources) changed since the record | your `.cdkrd` baseline | `[Added Resource]`       |       ✅        |
-| a declared resource deleted out of band — the most blatant                               | the deployed template  | `[Deleted]`              |       ✅        |
-| live-only values (and unrecorded added resources) with no baseline yet — unconfirmed     | nothing yet            | `[Potential Drift]`      |       ❌        |
+| label                    | drift                                                                                      | judged against               | drives `--fail` |
+| ------------------------ | ------------------------------------------------------------------------------------------ | ---------------------------- | :-------------: |
+| `[CFn-Declared Drift]`   | a declared property whose live value differs — no baseline needed                          | the deployed template        |       ✅        |
+| `[CFn-Undeclared Drift]` | a live-only value changed after you record it — the differentiator                         | your `.cdkrd` baseline       |       ✅        |
+| `[Added Resource]`       | a recorded [out-of-band resource](#added-out-of-band-resources) changed since the record   | your `.cdkrd` baseline       |       ✅        |
+| `[Deleted]`              | a resource deleted out of band — declared, or an added one you recorded — the most blatant | the template / your baseline |       ✅        |
+| `[Potential Drift]`      | live-only values (and unrecorded added resources) with no baseline yet — unconfirmed       | nothing yet                  |       ❌        |
 
 `[CFn-Undeclared Drift]` and `[Added Resource]` are armed by recording — next
 section. Everything else `check` prints is informational, not drift — folded
@@ -301,11 +301,12 @@ A whole child resource that exists live but isn't in your template (e.g. an API
 Gateway `ANY` method added on `/` via the console) is the resource-level sibling
 of an undeclared property, and is reconciled the same way against your baseline:
 
-| state                       | reported as                                    |
-| --------------------------- | ---------------------------------------------- |
-| added, **not** recorded     | **Potential Drift** (no baseline, unconfirmed) |
-| recorded, unchanged         | suppressed                                     |
-| recorded, **changed** since | failing drift                                  |
+| state                       | reported as                                                      |
+| --------------------------- | ---------------------------------------------------------------- |
+| added, **not** recorded     | **Potential Drift** (no baseline, unconfirmed)                   |
+| recorded, unchanged         | suppressed                                                       |
+| recorded, **changed** since | failing drift (`[Added Resource]`)                               |
+| recorded, **deleted** since | failing drift (`[Deleted]` — record keeps watching; detect-only) |
 
 `cdk drift` / CFn drift detection compare only template-declared resources, so an
 out-of-band addition is invisible to them. Decide it like any finding: `record`
