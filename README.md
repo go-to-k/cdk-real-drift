@@ -146,23 +146,22 @@ At the prompt you act on each finding: **record** it (accept and watch),
 Those are just the two a first run can show. The full set, confirmed or
 potential:
 
-| label                    | drift                                                                                      | judged against               | appears            |
-| ------------------------ | ------------------------------------------------------------------------------------------ | ---------------------------- | ------------------ |
-| `[CFn-Declared Drift]`   | a declared property whose live value differs                                               | the deployed template        | from the first run |
-| `[CFn-Undeclared Drift]` | a live-only value changed out of band — the differentiator                                 | your `.cdkrd` baseline       | after you `record` |
-| `[Added Resource]`       | a recorded [out-of-band resource](#added-out-of-band-resources) changed since the record   | your `.cdkrd` baseline       | after you `record` |
-| `[Deleted]`              | a resource deleted out of band — declared, or an added one you recorded — the most blatant | the template / your baseline | from the first run |
-| `[Potential Drift]`      | live-only values (and unrecorded added resources) — unconfirmed                            | nothing yet                  | until you `record` |
+| label                    | drift                                                                                     | judged against               | appears            |
+| ------------------------ | ----------------------------------------------------------------------------------------- | ---------------------------- | ------------------ |
+| `[CFn-Declared Drift]`   | a declared property whose live value differs                                              | the deployed template        | from the first run |
+| `[CFn-Undeclared Drift]` | a live-only value changed out of band (the differentiator)                                | your `.cdkrd` baseline       | after you `record` |
+| `[Added Resource]`       | a recorded [out-of-band resource](#added-out-of-band-resources) changed since the record  | your `.cdkrd` baseline       | after you `record` |
+| `[Deleted]`              | a declared resource, or an added one you recorded, deleted out of band (the most blatant) | the template / your baseline | from the first run |
+| `[Potential Drift]`      | unconfirmed live-only values (and unrecorded added resources)                             | nothing yet                  | until you `record` |
 
-The first four are confirmed drift — what fails CI (see
+The first four are confirmed drift, the kind that fails CI (see
 [In CI](#in-ci)); `[Potential Drift]`, being unconfirmed, never does: it waits
 for your record / revert / ignore decision. Record it (next section) and it
 leaves the report but **stays watched**: a later out-of-band change to that
 value surfaces as confirmed `[CFn-Undeclared Drift]`, and a whole recorded
-resource comes back as `[Added Resource]` if changed — `[Deleted]` if deleted.
-Everything else `check` prints is informational, not
-drift — folded into a one-line `info:` footer and detailed in
-[Output](#output).
+resource comes back as `[Added Resource]` if changed, or `[Deleted]` if
+deleted. Everything else `check` prints is informational, not drift: it is
+folded into a one-line `info:` footer and detailed in [Output](#output).
 
 ### Recording
 
@@ -187,8 +186,8 @@ result: 1 drift(s) (undeclared=1)
 ```
 
 The same applies one level up: a whole out-of-band resource you've recorded
-surfaces as **`[Added Resource]`** if its live model changes after the record —
-see [Added out-of-band resources](#added-out-of-band-resources).
+surfaces as **`[Added Resource]`** if its live model changes after the record
+(see [Added out-of-band resources](#added-out-of-band-resources)).
 
 `record` covers live-only state only, not a `[CFn-Declared Drift]`; the other
 verbs are in [The model](#the-model-one-verb-you-run-three-it-offers).
@@ -307,12 +306,12 @@ A whole child resource that exists live but isn't in your template (e.g. an API
 Gateway `ANY` method added on `/` via the console) is the resource-level sibling
 of an undeclared property, and is reconciled the same way against your baseline:
 
-| state                       | reported as                                                      |
-| --------------------------- | ---------------------------------------------------------------- |
-| added, **not** recorded     | **Potential Drift** (no baseline, unconfirmed)                   |
-| recorded, unchanged         | suppressed                                                       |
-| recorded, **changed** since | failing drift (`[Added Resource]`)                               |
-| recorded, **deleted** since | failing drift (`[Deleted]` — record keeps watching; detect-only) |
+| state                       | reported as                                                     |
+| --------------------------- | --------------------------------------------------------------- |
+| added, **not** recorded     | **Potential Drift** (no baseline, unconfirmed)                  |
+| recorded, unchanged         | suppressed                                                      |
+| recorded, **changed** since | failing drift (`[Added Resource]`)                              |
+| recorded, **deleted** since | failing drift (`[Deleted]`: record keeps watching; detect-only) |
 
 `cdk drift` / CFn drift detection compare only template-declared resources, so an
 out-of-band addition is invisible to them. Decide it like any finding: `record`
