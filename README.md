@@ -141,6 +141,28 @@ Each block above is one kind of finding, and neither needed a baseline:
 At the prompt you act on each finding: **record** it (accept and watch),
 **revert** it (undo the change), or **ignore** it (stop reporting).
 
+### Every kind of drift and how it prints
+
+Those are just the two a first run can show. The full set, confirmed or
+potential:
+
+| label                    | drift                                                                                     | judged against               | appears            |
+| ------------------------ | ----------------------------------------------------------------------------------------- | ---------------------------- | ------------------ |
+| `[CFn-Declared Drift]`   | a declared property whose live value differs                                              | the deployed template        | from the first run |
+| `[CFn-Undeclared Drift]` | a live-only value changed out of band (the differentiator)                                | your `.cdkrd` baseline       | after you `record` |
+| `[Added Resource]`       | a recorded [out-of-band resource](#added-out-of-band-resources) changed since the record  | your `.cdkrd` baseline       | after you `record` |
+| `[Deleted]`              | a declared resource, or an added one you recorded, deleted out of band (the most blatant) | the template / your baseline | from the first run |
+| `[Potential Drift]`      | unconfirmed live-only values (and unrecorded added resources)                             | nothing yet                  | until you `record` |
+
+The first four are confirmed drift, the kind that fails CI (see
+[In CI](#in-ci)); `[Potential Drift]`, being unconfirmed, never does: it waits
+for your record / revert / ignore decision. Record it (next section) and it
+leaves the report but **stays watched**: a later out-of-band change to that
+value surfaces as confirmed `[CFn-Undeclared Drift]`, and a whole recorded
+resource comes back as `[Added Resource]` if changed, or `[Deleted]` if
+deleted. Everything else `check` prints is informational, not drift: it is
+folded into a one-line `info:` footer and detailed in [Output](#output).
+
 ### Recording
 
 Recording snapshots those live-only values into a git-committed `.cdkrd` baseline,
@@ -162,6 +184,10 @@ your CloudFormation template, the kind `cdk drift` can't see:
 result: 1 drift(s) (undeclared=1)
 ─────────────────────────────────
 ```
+
+The same applies one level up: a whole out-of-band resource you've recorded
+surfaces as **`[Added Resource]`** if its live model changes after the record
+(see [Added out-of-band resources](#added-out-of-band-resources)).
 
 `record` covers live-only state only, not a `[CFn-Declared Drift]`; the other
 verbs are in [The model](#the-model-one-verb-you-run-three-it-offers).
@@ -250,20 +276,14 @@ undeployed code changes don't show up as drift by default. `--pre-deploy` invert
 that, checking live state against the freshly synthesized template (see
 [`--pre-deploy`](#--pre-deploy)).
 
-### The kinds of drift
+### Naming and mechanics
 
-Named so "declared" is never ambiguous (`CFn-declared` means **in the deployed
-template**, not your CDK code and not your `.cdkrd` baseline):
-
-| term                           | source                               | how it's judged                                                         |
-| ------------------------------ | ------------------------------------ | ----------------------------------------------------------------------- |
-| **CFn-declared**               | in the deployed template             | vs the deployed template; drift from the first run, no baseline needed  |
-| **CFn-undeclared** (live-only) | on the resource, not in the template | vs your `.cdkrd` baseline; the key differentiator                       |
-| **Added resource**             | a whole resource not in the template | reconciled against the baseline like an undeclared property (see below) |
-| **Deleted**                    | in the template, gone live           | the most blatant drift; always fails `--fail`                           |
-
-(`CFn-undeclared` is a template axis; `recorded` / `unrecorded` is a separate
-baseline-file axis: whether you've snapshotted that value yet.)
+The kinds themselves, and the label each prints under, are the
+[table in How to use](#every-kind-of-drift-and-how-it-prints). The names are
+chosen so "declared" is never ambiguous: `CFn-declared` means **in the deployed
+template**, not your CDK code and not your `.cdkrd` baseline. (`CFn-undeclared`
+is a template axis; `recorded` / `unrecorded` is a separate baseline-file axis:
+whether you've snapshotted that value yet.)
 
 The mechanics:
 
@@ -286,11 +306,12 @@ A whole child resource that exists live but isn't in your template (e.g. an API
 Gateway `ANY` method added on `/` via the console) is the resource-level sibling
 of an undeclared property, and is reconciled the same way against your baseline:
 
-| state                       | reported as                                    |
-| --------------------------- | ---------------------------------------------- |
-| added, **not** recorded     | **Potential Drift** (no baseline, unconfirmed) |
-| recorded, unchanged         | suppressed                                     |
-| recorded, **changed** since | failing drift                                  |
+| state                       | reported as                                                     |
+| --------------------------- | --------------------------------------------------------------- |
+| added, **not** recorded     | **Potential Drift** (no baseline, unconfirmed)                  |
+| recorded, unchanged         | suppressed                                                      |
+| recorded, **changed** since | failing drift (`[Added Resource]`)                              |
+| recorded, **deleted** since | failing drift (`[Deleted]`: record keeps watching; detect-only) |
 
 `cdk drift` / CFn drift detection compare only template-declared resources, so an
 out-of-band addition is invisible to them. Decide it like any finding: `record`
@@ -657,8 +678,12 @@ info:
   run with --verbose for the list
 ```
 
-- **Drift tiers** (`deleted` / `declared` / `undeclared`) are always listed in
-  full and drive the `--fail` exit. They are the point.
+The table of every drift kind and its section label is up in
+[How to use](#every-kind-of-drift-and-how-it-prints); the mechanics:
+
+- The four **confirmed drift tiers** (`deleted` / `declared` / `undeclared` /
+  `added`) are always listed in full and drive the `--fail` exit. They are the
+  point.
 - **`[Potential Drift: N]`**: undeclared values with no baseline yet; cdkrd
   can't tell an intentional setting from an out-of-band change, so they're listed
   in full as _potential_ (unconfirmed) drift and don't drive the `--fail` exit;
