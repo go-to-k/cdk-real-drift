@@ -1029,3 +1029,30 @@ describe('#883 — --pre-deploy footer renders pending-creation skips as their o
     );
   });
 });
+
+describe('#1665 unrecorded preamble names the snapshot-completeness reason when a baseline exists', () => {
+  const U1665 = (path = 'P'): Finding => ({
+    tier: 'undeclared',
+    logicalId: 'L',
+    resourceType: 'AWS::X::Y',
+    path,
+    actual: 1,
+    unrecorded: true,
+  });
+
+  it('with hasBaseline: true, does NOT claim "No baseline yet" (it exists)', () => {
+    const { text } = run([U1665()], { hasBaseline: true });
+    expect(text).not.toContain('No baseline yet');
+    expect(text).toContain("record couldn't fully snapshot");
+    expect(text).toContain('[Potential Drift: 1]');
+  });
+
+  it('with hasBaseline: false or omitted, keeps the original no-baseline wording', () => {
+    for (const opts of [{ hasBaseline: false }, {}]) {
+      const { text } = run([U1665()], opts);
+      expect(text).toContain(
+        "No baseline yet — these live-only values can't be confirmed as drift"
+      );
+    }
+  });
+});

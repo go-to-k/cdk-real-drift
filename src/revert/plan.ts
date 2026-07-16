@@ -118,6 +118,12 @@ const CC_REVERTABLE_DESPITE_READ_OVERRIDE = new Set<string>([
 // entry here (#702): UpdateUserPool ignores an omitted property, so a fold WITHOUT an RSDP
 // entry silently reverts as a no-op `remove`. Keyed `${resourceType}\0${path}`.
 export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
+  // #1666: writeDlmLifecyclePolicy builds the Update payload from the desired model, so a
+  // bare `remove` of the default-policy shorthand RetainInterval never reaches the call —
+  // UpdateLifecyclePolicy keeps the live value (silent no-op, live-proven: an out-of-band
+  // 7->5 survived a "reverted" report). Write the documented default 7 (the #1663
+  // KNOWN_DEFAULTS pin) explicitly so the revert converges.
+  'AWS::DLM::LifecyclePolicy\0RetainInterval',
   'AWS::IAM::Role\0MaxSessionDuration',
   // IAM UpdateRole ignores an omitted Description the same way it ignores an omitted
   // MaxSessionDuration (both are UpdateRole params) — a `remove` revert of an out-of-band

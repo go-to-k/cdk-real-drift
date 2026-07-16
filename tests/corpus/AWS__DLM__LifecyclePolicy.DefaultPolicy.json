@@ -1,0 +1,68 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "DefaultPolicy",
+    "resourceType": "AWS::DLM::LifecyclePolicy",
+    "physicalId": "policy-090b4ed616a61a2aa",
+    "constructPath": "CdkrdHunt0717DlmB/DefaultPolicy",
+    "declared": {
+      "CreateInterval": 1,
+      "DefaultPolicy": "VOLUME",
+      "Description": "cdkrd hunt 0717 default policy shorthand",
+      "ExecutionRoleArn": "arn:aws:iam::111111111111:role/CdkrdHunt0717DlmB-DlmRoleCE7C5775-KcJNfbZJBitj",
+      "State": "ENABLED",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Description": "cdkrd hunt 0717 default policy shorthand",
+    "State": "ENABLED",
+    "ExecutionRoleArn": "arn:aws:iam::111111111111:role/CdkrdHunt0717DlmB-DlmRoleCE7C5775-KcJNfbZJBitj",
+    "CreateInterval": 1,
+    "RetainInterval": 7,
+    "CopyTags": false,
+    "ExtendDeletion": false,
+    "Tags": [
+      {
+        "Key": "cdkrd:ephemeral",
+        "Value": "1"
+      }
+    ],
+    "DefaultPolicy": "VOLUME"
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "DefaultPolicy",
+      "resourceType": "AWS::DLM::LifecyclePolicy",
+      "path": "RetainInterval",
+      "actual": 7,
+      "physicalId": "policy-090b4ed616a61a2aa",
+      "constructPath": "CdkrdHunt0717DlmB/DefaultPolicy"
+    }
+  ]
+}

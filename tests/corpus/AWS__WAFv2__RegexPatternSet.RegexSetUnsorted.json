@@ -1,0 +1,75 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "RegexSet",
+    "resourceType": "AWS::WAFv2::RegexPatternSet",
+    "physicalId": "RegexSet-QhJ2vtRyxHqp|51e7c970-65a4-49c9-bac4-c65f161745b4|REGIONAL",
+    "constructPath": "CdkrdHunt0717FpMisc/RegexSet",
+    "declared": {
+      "RegularExpressionList": ["zzz.*", "aaa[0-9]+", "mmm-.*"],
+      "Scope": "REGIONAL",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Description": "",
+    "RegularExpressionList": ["zzz.*", "aaa[0-9]+", "mmm-.*"],
+    "Scope": "REGIONAL",
+    "Id": "51e7c970-65a4-49c9-bac4-c65f161745b4",
+    "Arn": "arn:aws:wafv2:us-east-1:111111111111:regional/regexpatternset/RegexSet-QhJ2vtRyxHqp/51e7c970-65a4-49c9-bac4-c65f161745b4",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0717FpMisc",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "RegexSet",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0717FpMisc/36f0a9a0-8129-11f1-b6a3-0e15234e24e9",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "Name": "RegexSet-QhJ2vtRyxHqp"
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": [],
+    "createOnly": ["Name", "Scope"],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name", "Scope"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "generated",
+      "logicalId": "RegexSet",
+      "resourceType": "AWS::WAFv2::RegexPatternSet",
+      "path": "Name",
+      "actual": "RegexSet-QhJ2vtRyxHqp",
+      "physicalId": "RegexSet-QhJ2vtRyxHqp|51e7c970-65a4-49c9-bac4-c65f161745b4|REGIONAL",
+      "constructPath": "CdkrdHunt0717FpMisc/RegexSet"
+    }
+  ]
+}

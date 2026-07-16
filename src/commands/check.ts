@@ -826,6 +826,9 @@ export async function runCheck(args: string[]): Promise<number> {
           // --show-all is inventory mode: list every undeclared value, including the
           // ones at an AWS default (otherwise folded to a count) (R86).
           expandAtDefault: a.showAll,
+          // #1665: baseline presence — --show-all skips applyBaseline, so it must not
+          // claim either way (mirrors the #1335 omit-when-unconsulted rule).
+          ...(a.showAll ? {} : { hasBaseline: baseline !== undefined }),
         });
       }
       const hasUnrecorded = reconciled.some((f) => f.unrecorded === true);

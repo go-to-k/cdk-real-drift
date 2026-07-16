@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-integ-variants5-hunt",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Bug-hunt 2026-07-17 barest-variant batch 5: WAFv2 CLOUDFRONT-scope WebACL, ELBv2 TargetGroup UDP/TLS/TCP_UDP. Run via verify.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module"
+}
