@@ -144,15 +144,15 @@ At the prompt you act on each finding: **record** it (accept and watch),
 ### Every kind of drift and how it prints
 
 Those are just the two a first run can show. The full set, confirmed or
-potential, and the section label each prints under:
+potential, what each is judged against, and the section label it prints under:
 
-| drift                                                                                    | prints as                | drives `--fail` |
-| ---------------------------------------------------------------------------------------- | ------------------------ | :-------------: |
-| a declared resource deleted out of band — the most blatant                               | `[Deleted]`              |       ✅        |
-| a declared property whose live value differs                                             | `[CFn-Declared Drift]`   |       ✅        |
-| a live-only value changed since your baseline — the differentiator                       | `[CFn-Undeclared Drift]` |       ✅        |
-| a recorded [out-of-band resource](#added-out-of-band-resources) changed since the record | `[Added Resource]`       |       ✅        |
-| live-only values (and unrecorded added resources) with no baseline yet — unconfirmed     | `[Potential Drift]`      |       ❌        |
+| drift                                                                                    | judged against         | prints as                | drives `--fail` |
+| ---------------------------------------------------------------------------------------- | ---------------------- | ------------------------ | :-------------: |
+| a declared resource deleted out of band — the most blatant                               | the deployed template  | `[Deleted]`              |       ✅        |
+| a declared property whose live value differs — no baseline needed                        | the deployed template  | `[CFn-Declared Drift]`   |       ✅        |
+| a live-only value changed after you record it — the differentiator                       | your `.cdkrd` baseline | `[CFn-Undeclared Drift]` |       ✅        |
+| a recorded [out-of-band resource](#added-out-of-band-resources) changed since the record | your `.cdkrd` baseline | `[Added Resource]`       |       ✅        |
+| live-only values (and unrecorded added resources) with no baseline yet — unconfirmed     | nothing yet            | `[Potential Drift]`      |       ❌        |
 
 `[CFn-Undeclared Drift]` and `[Added Resource]` are armed by recording — next
 section. Everything else `check` prints is informational, not drift — folded
@@ -271,20 +271,14 @@ undeployed code changes don't show up as drift by default. `--pre-deploy` invert
 that, checking live state against the freshly synthesized template (see
 [`--pre-deploy`](#--pre-deploy)).
 
-### The kinds of drift
+### Naming and mechanics
 
-Named so "declared" is never ambiguous (`CFn-declared` means **in the deployed
-template**, not your CDK code and not your `.cdkrd` baseline):
-
-| term                           | source                               | how it's judged                                                         |
-| ------------------------------ | ------------------------------------ | ----------------------------------------------------------------------- |
-| **CFn-declared**               | in the deployed template             | vs the deployed template; drift from the first run, no baseline needed  |
-| **CFn-undeclared** (live-only) | on the resource, not in the template | vs your `.cdkrd` baseline; the key differentiator                       |
-| **Added resource**             | a whole resource not in the template | reconciled against the baseline like an undeclared property (see below) |
-| **Deleted**                    | in the template, gone live           | the most blatant drift; always fails `--fail`                           |
-
-(`CFn-undeclared` is a template axis; `recorded` / `unrecorded` is a separate
-baseline-file axis: whether you've snapshotted that value yet.)
+The kinds themselves, and the label each prints under, are the
+[table in How to use](#every-kind-of-drift-and-how-it-prints). The names are
+chosen so "declared" is never ambiguous: `CFn-declared` means **in the deployed
+template**, not your CDK code and not your `.cdkrd` baseline. (`CFn-undeclared`
+is a template axis; `recorded` / `unrecorded` is a separate baseline-file axis:
+whether you've snapshotted that value yet.)
 
 The mechanics:
 
