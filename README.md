@@ -156,10 +156,11 @@ potential:
 
 The first four are confirmed drift — what fails CI (see
 [In CI](#in-ci)); `[Potential Drift]`, being unconfirmed, never does: it waits
-for your record / revert / ignore decision. `[CFn-Undeclared Drift]` and
-`[Added Resource]` are armed by recording — next section. Everything else
-`check` prints is informational, not drift — folded into a one-line `info:`
-footer and detailed in [Output](#output).
+for your record / revert / ignore decision. Recording it (next section) makes
+it go quiet — and if the value then changes out of band _again_, it comes back
+confirmed: as `[CFn-Undeclared Drift]`, or `[Added Resource]` for a whole
+resource. Everything else `check` prints is informational, not drift — folded
+into a one-line `info:` footer and detailed in [Output](#output).
 
 ### Recording
 
