@@ -146,13 +146,13 @@ At the prompt you act on each finding: **record** it (accept and watch),
 Those are just the two a first run can show. The full set, confirmed or
 potential:
 
-| label                    | drift                                                                                      | judged against               |
-| ------------------------ | ------------------------------------------------------------------------------------------ | ---------------------------- |
-| `[CFn-Declared Drift]`   | a declared property whose live value differs — no baseline needed                          | the deployed template        |
-| `[CFn-Undeclared Drift]` | a live-only value changed after you record it — the differentiator                         | your `.cdkrd` baseline       |
-| `[Added Resource]`       | a recorded [out-of-band resource](#added-out-of-band-resources) changed since the record   | your `.cdkrd` baseline       |
-| `[Deleted]`              | a resource deleted out of band — declared, or an added one you recorded — the most blatant | the template / your baseline |
-| `[Potential Drift]`      | live-only values (and unrecorded added resources) with no baseline yet — unconfirmed       | nothing yet                  |
+| label                    | drift                                                                                      | judged against               | appears            |
+| ------------------------ | ------------------------------------------------------------------------------------------ | ---------------------------- | ------------------ |
+| `[CFn-Declared Drift]`   | a declared property whose live value differs                                               | the deployed template        | from the first run |
+| `[CFn-Undeclared Drift]` | a live-only value changed out of band — the differentiator                                 | your `.cdkrd` baseline       | after you `record` |
+| `[Added Resource]`       | a recorded [out-of-band resource](#added-out-of-band-resources) changed since the record   | your `.cdkrd` baseline       | after you `record` |
+| `[Deleted]`              | a resource deleted out of band — declared, or an added one you recorded — the most blatant | the template / your baseline | from the first run |
+| `[Potential Drift]`      | live-only values (and unrecorded added resources) — unconfirmed                            | nothing yet                  | until you `record` |
 
 The first four are confirmed drift — what fails CI (see
 [In CI](#in-ci)); `[Potential Drift]`, being unconfirmed, never does: it waits
