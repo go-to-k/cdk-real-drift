@@ -158,8 +158,9 @@ The first four are confirmed drift — what fails CI (see
 [In CI](#in-ci)); `[Potential Drift]`, being unconfirmed, never does: it waits
 for your record / revert / ignore decision. Record it (next section) and it
 leaves the report but **stays watched**: a later out-of-band change to that
-value surfaces as confirmed `[CFn-Undeclared Drift]` — or `[Added Resource]`
-for a whole resource. Everything else `check` prints is informational, not
+value surfaces as confirmed `[CFn-Undeclared Drift]`, and a whole recorded
+resource comes back as `[Added Resource]` if changed — `[Deleted]` if deleted.
+Everything else `check` prints is informational, not
 drift — folded into a one-line `info:` footer and detailed in
 [Output](#output).
 
