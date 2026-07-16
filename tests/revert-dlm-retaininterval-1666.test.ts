@@ -100,3 +100,23 @@ describe('#1666 DLM default-policy RetainInterval revert', () => {
     expect(input.PolicyDetails).toBeUndefined();
   });
 });
+
+describe('#1668 DLM default-policy CreateInterval revert', () => {
+  it('plans an explicit set-default add (1 from KNOWN_DEFAULTS), not a bare remove', () => {
+    const f: Finding = {
+      tier: 'undeclared',
+      logicalId: 'DefaultPolicyInstance',
+      physicalId: 'policy-0abc',
+      resourceType: 'AWS::DLM::LifecyclePolicy',
+      path: 'CreateInterval',
+      actual: 3,
+    };
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/CreateInterval',
+      value: 1,
+      prior: 3,
+    });
+  });
+});

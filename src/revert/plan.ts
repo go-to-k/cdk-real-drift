@@ -124,6 +124,9 @@ export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // 7->5 survived a "reverted" report). Write the documented default 7 (the #1663
   // KNOWN_DEFAULTS pin) explicitly so the revert converges.
   'AWS::DLM::LifecyclePolicy\0RetainInterval',
+  // #1668: CreateInterval shares the same writer/silent-no-op contract (a bare `remove`
+  // never reaches UpdateLifecyclePolicy) — write the documented default 1 explicitly.
+  'AWS::DLM::LifecyclePolicy\0CreateInterval',
   'AWS::IAM::Role\0MaxSessionDuration',
   // IAM UpdateRole ignores an omitted Description the same way it ignores an omitted
   // MaxSessionDuration (both are UpdateRole params) — a `remove` revert of an out-of-band

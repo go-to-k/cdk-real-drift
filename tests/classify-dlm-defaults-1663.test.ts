@@ -123,3 +123,38 @@ describe('#1663 DLM LifecyclePolicy first-run default folds', () => {
     expect(tierPaths(f)).toEqual(['undeclared:RetainInterval']);
   });
 });
+
+// #1668 — the no-shorthand default-policy shape: the reader now projects the shorthand
+// keys top-level, so the undeclared CreateInterval must fold at its documented default 1
+// (equality-gated) alongside RetainInterval=7.
+describe('#1668 no-shorthand default policy folds', () => {
+  const bare: DesiredResource = {
+    logicalId: 'DefaultPolicyInstance',
+    resourceType: 'AWS::DLM::LifecyclePolicy',
+    physicalId: 'policy-0aaa1112223334445',
+    declared: {
+      Description: 'instance default policy',
+      ExecutionRoleArn: 'arn:aws:iam::111111111111:role/DlmRole',
+      State: 'ENABLED',
+    },
+  };
+  const live = (createInterval: number) => ({
+    Description: 'instance default policy',
+    State: 'ENABLED',
+    ExecutionRoleArn: 'arn:aws:iam::111111111111:role/DlmRole',
+    CreateInterval: createInterval,
+    RetainInterval: 7,
+    CopyTags: false,
+    ExtendDeletion: false,
+  });
+
+  it('folds the undeclared CreateInterval at the documented default 1', () => {
+    const f = classifyResource(bare, live(1), emptySchema);
+    expect(tierPaths(f)).toEqual(['atDefault:CreateInterval', 'atDefault:RetainInterval']);
+  });
+
+  it('still surfaces a CreateInterval changed away from the default (equality-gated)', () => {
+    const f = classifyResource(bare, live(3), emptySchema);
+    expect(tierPaths(f)).toEqual(['atDefault:RetainInterval', 'undeclared:CreateInterval']);
+  });
+});

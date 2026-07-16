@@ -1000,6 +1000,10 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // Proven live on a fresh kmsdlm-hunt deploy.
   'AWS::DLM::LifecyclePolicy': {
     RetainInterval: 7,
+    // #1668: the sibling creation-frequency default (documented 1 day) — surfaces once the
+    // no-shorthand default-policy read projects it top-level. Equality-gated like
+    // RetainInterval; CopyTags/ExtendDeletion read back `false` (isTrivialEmpty).
+    CreateInterval: 1,
   },
   'AWS::IAM::Group': {
     Path: '/',
