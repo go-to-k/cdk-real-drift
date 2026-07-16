@@ -1,3 +1,10 @@
+## [0.22.5](https://github.com/go-to-k/cdk-real-drift/compare/v0.22.4...v0.22.5) (2026-07-16)
+
+
+### Bug Fixes
+
+* **diff:** DLM + UDP-family TargetGroup first-run FPs, DLM readGap/revert convergence ([#1663](https://github.com/go-to-k/cdk-real-drift/issues/1663) [#1664](https://github.com/go-to-k/cdk-real-drift/issues/1664) [#1665](https://github.com/go-to-k/cdk-real-drift/issues/1665) [#1666](https://github.com/go-to-k/cdk-real-drift/issues/1666)) ([#1667](https://github.com/go-to-k/cdk-real-drift/issues/1667)) ([550b1ba](https://github.com/go-to-k/cdk-real-drift/commit/550b1ba326f771b4c7bf4a5cf37170b3ed1b2da8))
+
 ## [0.22.4](https://github.com/go-to-k/cdk-real-drift/compare/v0.22.3...v0.22.4) (2026-07-15)
 
 
