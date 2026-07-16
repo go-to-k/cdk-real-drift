@@ -138,10 +138,20 @@ Each block above is one kind of finding, and neither needed a baseline:
   value is really noise, [please report it](https://github.com/go-to-k/cdk-real-drift/issues)
   so it becomes a fold-table fix.
 
-These are the two kinds a first run can show. Recording arms two more confirmed
-tiers — `[CFn-Undeclared Drift]` just below, and `[Added Resource]` for a whole
-[out-of-band resource](#added-out-of-band-resources) — and every section label
-`check` prints is listed in one place in [Output](#output).
+These are just the two a first run can show. Every kind of drift (confirmed or
+potential) and the section label it prints under:
+
+| drift                                                                                    | prints as                | drives `--fail` |
+| ---------------------------------------------------------------------------------------- | ------------------------ | :-------------: |
+| a declared resource deleted out of band — the most blatant                               | `[Deleted]`              |       ✅        |
+| a declared property whose live value differs                                             | `[CFn-Declared Drift]`   |       ✅        |
+| a live-only value changed since your baseline — the differentiator                       | `[CFn-Undeclared Drift]` |       ✅        |
+| a recorded [out-of-band resource](#added-out-of-band-resources) changed since the record | `[Added Resource]`       |       ✅        |
+| live-only values (and unrecorded added resources) with no baseline yet — unconfirmed     | `[Potential Drift]`      |       ❌        |
+
+`[CFn-Undeclared Drift]` and `[Added Resource]` are armed by recording — next
+section. Everything else `check` prints is informational, not drift — folded
+into a one-line `info:` footer and detailed in [Output](#output).
 
 At the prompt you act on each finding: **record** it (accept and watch),
 **revert** it (undo the change), or **ignore** it (stop reporting).
@@ -666,16 +676,8 @@ info:
   run with --verbose for the list
 ```
 
-Every `[Section Label]` the report can print, in one place:
-
-| section label                                                                                      | what it is                                                                                                | drives `--fail` |
-| -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | :-------------: |
-| `[Deleted]`                                                                                        | a declared resource deleted out of band — the most blatant drift                                          |       ✅        |
-| `[CFn-Declared Drift]`                                                                             | a property declared in the deployed template whose live value differs                                     |       ✅        |
-| `[CFn-Undeclared Drift]`                                                                           | a live-only value (not in the template) that changed since your `.cdkrd` baseline — the differentiator    |       ✅        |
-| `[Added Resource]`                                                                                 | a recorded [out-of-band resource](#added-out-of-band-resources) whose live model changed since the record |       ✅        |
-| `[Potential Drift]`                                                                                | live-only values (and unrecorded added resources) with no baseline yet — unconfirmed, detailed below      |       ❌        |
-| `[At AWS Default]` / `[AWS Generated]` / `[Ignored]` / `[Read Gap]` / `[Unresolved]` / `[Skipped]` | informational — folded into the one-line `info:` footer; `--verbose` expands them to full sections        |       ❌        |
+The table of every drift kind and its section label is up in
+[How to use](#your-first-run-needs-no-baseline); the mechanics:
 
 - The four **confirmed drift tiers** (`deleted` / `declared` / `undeclared` /
   `added`) are always listed in full and drive the `--fail` exit. They are the
