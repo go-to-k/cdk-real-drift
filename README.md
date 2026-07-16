@@ -138,6 +138,11 @@ Each block above is one kind of finding, and neither needed a baseline:
   value is really noise, [please report it](https://github.com/go-to-k/cdk-real-drift/issues)
   so it becomes a fold-table fix.
 
+These are the two kinds a first run can show. Recording arms two more confirmed
+tiers — `[CFn-Undeclared Drift]` just below, and `[Added Resource]` for a whole
+[out-of-band resource](#added-out-of-band-resources) — and every section label
+`check` prints is listed in one place in [Output](#output).
+
 At the prompt you act on each finding: **record** it (accept and watch),
 **revert** it (undo the change), or **ignore** it (stop reporting).
 
@@ -162,6 +167,10 @@ your CloudFormation template, the kind `cdk drift` can't see:
 result: 1 drift(s) (undeclared=1)
 ─────────────────────────────────
 ```
+
+The same applies one level up: a whole out-of-band resource you've recorded
+surfaces as **`[Added Resource]`** if its live model changes after the record —
+see [Added out-of-band resources](#added-out-of-band-resources).
 
 `record` covers live-only state only, not a `[CFn-Declared Drift]`; the other
 verbs are in [The model](#the-model-one-verb-you-run-three-it-offers).
@@ -657,8 +666,20 @@ info:
   run with --verbose for the list
 ```
 
-- **Drift tiers** (`deleted` / `declared` / `undeclared`) are always listed in
-  full and drive the `--fail` exit. They are the point.
+Every `[Section Label]` the report can print, in one place:
+
+| section label                                                                                      | what it is                                                                                                | drives `--fail` |
+| -------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- | :-------------: |
+| `[Deleted]`                                                                                        | a declared resource deleted out of band — the most blatant drift                                          |       ✅        |
+| `[CFn-Declared Drift]`                                                                             | a property declared in the deployed template whose live value differs                                     |       ✅        |
+| `[CFn-Undeclared Drift]`                                                                           | a live-only value (not in the template) that changed since your `.cdkrd` baseline — the differentiator    |       ✅        |
+| `[Added Resource]`                                                                                 | a recorded [out-of-band resource](#added-out-of-band-resources) whose live model changed since the record |       ✅        |
+| `[Potential Drift]`                                                                                | live-only values (and unrecorded added resources) with no baseline yet — unconfirmed, detailed below      |       ❌        |
+| `[At AWS Default]` / `[AWS Generated]` / `[Ignored]` / `[Read Gap]` / `[Unresolved]` / `[Skipped]` | informational — folded into the one-line `info:` footer; `--verbose` expands them to full sections        |       ❌        |
+
+- The four **confirmed drift tiers** (`deleted` / `declared` / `undeclared` /
+  `added`) are always listed in full and drive the `--fail` exit. They are the
+  point.
 - **`[Potential Drift: N]`**: undeclared values with no baseline yet; cdkrd
   can't tell an intentional setting from an out-of-band change, so they're listed
   in full as _potential_ (unconfirmed) drift and don't drive the `--fail` exit;
