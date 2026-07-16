@@ -148,10 +148,10 @@ potential, what each is judged against, and the section label it prints under:
 
 | drift                                                                                    | judged against         | prints as                | drives `--fail` |
 | ---------------------------------------------------------------------------------------- | ---------------------- | ------------------------ | :-------------: |
-| a declared resource deleted out of band — the most blatant                               | the deployed template  | `[Deleted]`              |       ✅        |
 | a declared property whose live value differs — no baseline needed                        | the deployed template  | `[CFn-Declared Drift]`   |       ✅        |
 | a live-only value changed after you record it — the differentiator                       | your `.cdkrd` baseline | `[CFn-Undeclared Drift]` |       ✅        |
 | a recorded [out-of-band resource](#added-out-of-band-resources) changed since the record | your `.cdkrd` baseline | `[Added Resource]`       |       ✅        |
+| a declared resource deleted out of band — the most blatant                               | the deployed template  | `[Deleted]`              |       ✅        |
 | live-only values (and unrecorded added resources) with no baseline yet — unconfirmed     | nothing yet            | `[Potential Drift]`      |       ❌        |
 
 `[CFn-Undeclared Drift]` and `[Added Resource]` are armed by recording — next
