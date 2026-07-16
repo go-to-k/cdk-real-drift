@@ -865,9 +865,14 @@ const readDlmLifecyclePolicy: OverrideReader = async ({ physicalId, declared, re
   // Emit in the template's style. The default-policy shorthand declares the schedule
   // knobs at the TOP level and no PolicyDetails; the API folds them into PolicyDetails, so
   // project just those keys back up. Every other case is a custom policy → PolicyDetails.
+  // #1668: live confirming a DEFAULT policy (Policy.DefaultPolicy) forces shorthand mode —
+  // a default policy that declares NO shorthand key at all (every knob has a server
+  // default) otherwise fell into the custom branch and emitted the API's folded
+  // PolicyDetails wholesale, a whole-object first-run FP the template never declared.
   const usesShorthand =
-    declared.PolicyDetails === undefined &&
-    DLM_DEFAULT_POLICY_SHORTHAND.some((k) => declared[k] !== undefined);
+    p.DefaultPolicy === true ||
+    (declared.PolicyDetails === undefined &&
+      DLM_DEFAULT_POLICY_SHORTHAND.some((k) => declared[k] !== undefined));
   if (usesShorthand) {
     for (const k of DLM_DEFAULT_POLICY_SHORTHAND)
       if (details[k] !== undefined) model[k] = details[k];

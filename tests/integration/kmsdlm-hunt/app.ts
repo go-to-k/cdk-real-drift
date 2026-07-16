@@ -7,6 +7,10 @@
 // (DefaultPolicy readGap blocked snapshot-completeness → appeared-since-record was
 // silently disabled), #1666 (RetainInterval revert no-op: RSDP + top-level shorthand
 // Update params). verify-detect.sh live-proves detection + revert convergence.
+// Follow-up #1668: a default policy with NO shorthand key declared (the
+// DefaultPolicyInstance shape below) fell into the reader's custom branch and FP'd a
+// whole-object PolicyDetails; DefaultPolicy===true now forces shorthand projection
+// (CreateInterval joins KNOWN_DEFAULTS + RSDP; detect→revert→converge live-proven).
 // - AWS::KMS::Key non-symmetric variants: every existing fixture/corpus key is
 //   symmetric (KNOWN_DEFAULTS pins KeySpec=SYMMETRIC_DEFAULT / KeyUsage=ENCRYPT_DECRYPT
 //   around that shape). Asymmetric RSA/ECC sign-verify keys and HMAC keys cannot
@@ -92,4 +96,15 @@ new CfnLifecyclePolicy(b, "DefaultPolicy", {
   state: "ENABLED",
   executionRoleArn: dlmRole.roleArn,
   createInterval: 1,
+});
+
+// Barest default policy with NO shorthand keys declared — only the live-required
+// Description/State + role (CreateInterval etc. all omitted). Probes the reader's
+// usesShorthand=false branch for a DEFAULT policy (the prior two policies both
+// declare a shorthand key), plus the INSTANCE variant axis (VOLUME above).
+new CfnLifecyclePolicy(b, "DefaultPolicyInstance", {
+  defaultPolicy: "INSTANCE",
+  description: "cdkrd hunt 0717b default policy instance barest",
+  state: "ENABLED",
+  executionRoleArn: dlmRole.roleArn,
 });

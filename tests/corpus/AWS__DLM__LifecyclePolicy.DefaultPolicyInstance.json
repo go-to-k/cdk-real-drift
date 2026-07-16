@@ -1,0 +1,76 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "DefaultPolicyInstance",
+    "resourceType": "AWS::DLM::LifecyclePolicy",
+    "physicalId": "policy-06cd9ebea2963ab4b",
+    "constructPath": "CdkrdHunt0717DlmB/DefaultPolicyInstance",
+    "declared": {
+      "DefaultPolicy": "INSTANCE",
+      "Description": "cdkrd hunt 0717b default policy instance barest",
+      "ExecutionRoleArn": "arn:aws:iam::111111111111:role/CdkrdHunt0717DlmB-DlmRoleCE7C5775-on0PhgCTZWJB",
+      "State": "ENABLED",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Description": "cdkrd hunt 0717b default policy instance barest",
+    "State": "ENABLED",
+    "ExecutionRoleArn": "arn:aws:iam::111111111111:role/CdkrdHunt0717DlmB-DlmRoleCE7C5775-on0PhgCTZWJB",
+    "CreateInterval": 1,
+    "RetainInterval": 7,
+    "CopyTags": false,
+    "ExtendDeletion": false,
+    "DefaultPolicy": "INSTANCE",
+    "Tags": [
+      {
+        "Key": "cdkrd:ephemeral",
+        "Value": "1"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "DefaultPolicyInstance",
+      "resourceType": "AWS::DLM::LifecyclePolicy",
+      "path": "CreateInterval",
+      "actual": 1,
+      "physicalId": "policy-06cd9ebea2963ab4b",
+      "constructPath": "CdkrdHunt0717DlmB/DefaultPolicyInstance"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DefaultPolicyInstance",
+      "resourceType": "AWS::DLM::LifecyclePolicy",
+      "path": "RetainInterval",
+      "actual": 7,
+      "physicalId": "policy-06cd9ebea2963ab4b",
+      "constructPath": "CdkrdHunt0717DlmB/DefaultPolicyInstance"
+    }
+  ]
+}

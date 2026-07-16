@@ -93,3 +93,42 @@ describe('DLM default-policy DefaultPolicy projection (#1665)', () => {
     expect(out?.DefaultPolicy).toBeUndefined();
   });
 });
+
+// #1668 — a default policy that declares NO shorthand key at all fell into the custom
+// branch and emitted the API's folded PolicyDetails wholesale (a whole-object first-run
+// FP). Live confirming a default policy (Policy.DefaultPolicy) now forces shorthand mode.
+describe('DLM no-shorthand default policy projection (#1668)', () => {
+  it('projects shorthand keys top-level (never PolicyDetails) when live confirms a default policy', async () => {
+    dlm.on(GetLifecyclePolicyCommand).resolves({
+      Policy: {
+        Description: 'instance default policy',
+        State: 'ENABLED',
+        ExecutionRoleArn: 'arn:aws:iam::123456789012:role/dlm',
+        DefaultPolicy: true,
+        PolicyDetails: {
+          PolicyType: 'IMAGE_MANAGEMENT',
+          PolicyLanguage: 'SIMPLIFIED',
+          ResourceType: 'INSTANCE',
+          CreateInterval: 1,
+          RetainInterval: 7,
+          CopyTags: false,
+          ExtendDeletion: false,
+        },
+      },
+    } as never);
+    const out = await SDK_OVERRIDES['AWS::DLM::LifecyclePolicy'](
+      ctx({
+        DefaultPolicy: 'INSTANCE',
+        Description: 'instance default policy',
+        State: 'ENABLED',
+        ExecutionRoleArn: 'arn:aws:iam::123456789012:role/dlm',
+      })
+    );
+    expect(out?.PolicyDetails).toBeUndefined();
+    expect(out?.DefaultPolicy).toBe('INSTANCE');
+    expect(out?.CreateInterval).toBe(1);
+    expect(out?.RetainInterval).toBe(7);
+    expect(out?.CopyTags).toBe(false);
+    expect(out?.ExtendDeletion).toBe(false);
+  });
+});
