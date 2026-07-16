@@ -1,3 +1,10 @@
+## [0.22.6](https://github.com/go-to-k/cdk-real-drift/compare/v0.22.5...v0.22.6) (2026-07-16)
+
+
+### Bug Fixes
+
+* **read:** DLM default policy with no declared shorthand key FP'd a whole-object PolicyDetails ([#1668](https://github.com/go-to-k/cdk-real-drift/issues/1668)) ([#1669](https://github.com/go-to-k/cdk-real-drift/issues/1669)) ([ba1c56a](https://github.com/go-to-k/cdk-real-drift/commit/ba1c56aaa7dbc2d4003b460ef601d3c5e12ab743))
+
 ## [0.22.5](https://github.com/go-to-k/cdk-real-drift/compare/v0.22.4...v0.22.5) (2026-07-16)
 
 
