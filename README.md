@@ -138,8 +138,13 @@ Each block above is one kind of finding, and neither needed a baseline:
   value is really noise, [please report it](https://github.com/go-to-k/cdk-real-drift/issues)
   so it becomes a fold-table fix.
 
-These are just the two a first run can show. Every kind of drift (confirmed or
-potential) and the section label it prints under:
+At the prompt you act on each finding: **record** it (accept and watch),
+**revert** it (undo the change), or **ignore** it (stop reporting).
+
+### Every kind of drift and how it prints
+
+Those are just the two a first run can show. The full set, confirmed or
+potential, and the section label each prints under:
 
 | drift                                                                                    | prints as                | drives `--fail` |
 | ---------------------------------------------------------------------------------------- | ------------------------ | :-------------: |
@@ -152,9 +157,6 @@ potential) and the section label it prints under:
 `[CFn-Undeclared Drift]` and `[Added Resource]` are armed by recording — next
 section. Everything else `check` prints is informational, not drift — folded
 into a one-line `info:` footer and detailed in [Output](#output).
-
-At the prompt you act on each finding: **record** it (accept and watch),
-**revert** it (undo the change), or **ignore** it (stop reporting).
 
 ### Recording
 
@@ -677,7 +679,7 @@ info:
 ```
 
 The table of every drift kind and its section label is up in
-[How to use](#your-first-run-needs-no-baseline); the mechanics:
+[How to use](#every-kind-of-drift-and-how-it-prints); the mechanics:
 
 - The four **confirmed drift tiers** (`deleted` / `declared` / `undeclared` /
   `added`) are always listed in full and drive the `--fail` exit. They are the
