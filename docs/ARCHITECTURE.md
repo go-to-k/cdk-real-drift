@@ -1309,7 +1309,7 @@ live state from AWS — the app only decides which stacks are in scope.
 (`drift-calculator`, `cc-api-strip`, CC-gap deny-list, a few SDK-override readers)
 and adds what cdkd lacks (schema-strip, policy canonicalizer, desired-adapter,
 baseline I/O, report, the fail-closed resolver). Same toolchain as cdk-local
-(Vite+ `vp`, pnpm, tsgo, oxc, semantic-release).
+(Vite+ `vp`, pnpm, tsc, oxc, semantic-release).
 
 The shared `drift-calculator` lineage means bugs can be bi-directional: the
 tag-order + id-array-order false positives found here were **back-ported to cdkd**

@@ -10,7 +10,7 @@ and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full design.
 
 ## Prerequisites
 
-The toolchain is **Vite+ (`vp`) + pnpm + tsgo + oxc** (not eslint/prettier/biome) —
+The toolchain is **Vite+ (`vp`) + pnpm + tsc (TypeScript native) + oxc** (not eslint/prettier/biome) —
 the same stack as `cdk-local`. `vp` and `markgate` are pinned in `.mise.toml`:
 
 ```bash
@@ -23,7 +23,7 @@ pnpm install      # installs Node dependencies
 ```bash
 vp run build       # vp pack — tsdown ESM bundle to dist/ (bin: cdkrd)
 vp run test        # vp test run — Vitest unit tests
-vp run typecheck   # tsgo --project tsconfig.json --noEmit
+vp run typecheck   # tsc --project tsconfig.json --noEmit
 vp check --fix     # lint + format (oxc), with auto-fix
 vp run check       # lint + format check (what CI runs)
 ```

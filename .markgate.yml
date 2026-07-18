@@ -5,7 +5,7 @@
 # migration), so cdkd's destroy / broad / schema-migration gates are not needed.
 #
 # Gates:
-#   check     — typecheck (tsgo) / lint+fmt (vp check) / build / unit tests
+#   check     — typecheck (tsc) / lint+fmt (vp check) / build / unit tests
 #               (set by /check and /verify-pr).
 #   docs      — README / DESIGN / docs consistency with src
 #               (set by /check-docs and /verify-pr).
