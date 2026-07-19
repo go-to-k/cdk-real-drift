@@ -803,7 +803,33 @@ create-parameter-group` both ACCEPT a mixed-case identifier (storing it lowercas
 - **`example.com` / `.test` / `.example` are AWS-RESERVED for Route53 hosted zones**
   (`InvalidDomainNameException` on create). A Route53 fixture must use a non-reserved
   placeholder domain (e.g. `cdkrd-fphunt-x9z7q.com.`) — a public hosted zone for a
-  domain you don't own still creates fine (it just isn't authoritative).
+  domain you don't own still creates fine (it just isn't authoritative). The related
+  HealthCheck trap: Route53 REJECTS documentation-range IPs (`192.0.2.x` TEST-NET) in
+  `HealthCheckConfig.IPAddress` with a bare `InvalidRequest` — point the check at a
+  resolvable FQDN (`FullyQualifiedDomainName: example.com` IS fine here) instead
+  (route53-policy-hunt, 2026-07-20).
+- **A NEW all-boolean pin family can arrive via a READER-projection fix — re-run the
+  off-flip audit over the diff window, not just the historical tables.** The #1658
+  Budgets reader fix (projecting the full 11-boolean `CostTypes`) necessarily added a
+  whole-object + per-leaf all-`true` pin family, silently re-opening the #1092/#1635
+  all-boolean-object class: an out-of-band `update-budget` disabling ALL nine
+  `Include*` cost types read back an all-false object that `isTrivialEmpty` swallowed
+  — check stayed CLEAN while the budget was gutted (live-proven + fixed with a
+  `MEANINGFUL_WHEN_OFF_NESTED['AWS::Budgets::Budget']['Budget.CostTypes']` gate,
+  2026-07-20). The cheap recurring audit: `git diff <last-hunt>..HEAD -- noise.ts |
+grep ': true'` and pair every new truthy pin with its off-state gate. A SINGLE
+  off-flip usually still surfaces (surviving true siblings keep the object
+  non-trivial) — the mechanical probe must test the ALL-false shape. Bonus mechanics
+  learned: the offline classify-replay (synthesize the current reader's projection
+  into a harvested corpus case's liveRaw, flip, assert) proves the FN for free before
+  any deploy, and `DescribeBudget` RETURNS the all-false object (not vanished), so
+  the fix is the isTrivialEmpty gate, not the vanished-default baseline family.
+- **CloudFront ContinuousDeploymentPolicy cannot be attached at distribution
+  CREATION** ("Continuous deployment policy is not supported during distribution
+  creation" InvalidRequest) — a CD fixture must deploy the primary WITHOUT
+  `ContinuousDeploymentPolicyId`, then attach it via a second `-c attach=1` UPDATE
+  deploy (which doubles as a post-update echo probe; cloudfront-cd-hunt,
+  2026-07-20).
 - **Not every type is revertable — the FN half may stop at detection.** Route53
   RecordSet, for instance, has no SDK writer (`revert` says "type not revertable
   yet"), so a detect→revert→clean cycle can't complete. Prove the FN by mutating the

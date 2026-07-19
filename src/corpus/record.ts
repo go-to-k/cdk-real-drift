@@ -120,6 +120,11 @@ export interface CorpusCase {
     // classify's probe order), present only when a declared sibling target-network association
     // derives it, so replay reproduces the association-echoed `VpcId` fold. Optional for back-compat.
     siblingClientVpnEndpointVpcs?: Record<string, string | null>;
+    // This STAGING CloudFront Distribution's own sibling-derived ContinuousDeploymentPolicy id
+    // entry (keyed by logicalId, else physicalId — classify's probe order), present only when an
+    // in-stack declared policy links to it, so replay reproduces the reverse-pointer
+    // `DistributionConfig.ContinuousDeploymentPolicyId` fold. Optional for back-compat.
+    siblingCloudFrontCdPolicyIds?: Record<string, string | null>;
   };
   expected: Finding[]; // what classifyResource produced at record time (reviewed at commit)
 }
@@ -160,6 +165,7 @@ export function buildCorpusCase(
     siblingListenerPorts?: Record<string, number>;
     accountDefaults?: { dmsAllocatedStorageDefaults?: Record<string, number> };
     siblingClientVpnEndpointVpcs?: Record<string, string | null>;
+    siblingCloudFrontCdPolicyIds?: Record<string, string | null>;
   },
   findings: Finding[]
 ): CorpusCase {
@@ -249,6 +255,18 @@ export function buildCorpusCase(
         : resource.physicalId !== undefined && resource.physicalId in cvpnVpcMap
           ? resource.physicalId
           : undefined;
+  // Carry ONLY this Distribution's own sibling-derived ContinuousDeploymentPolicy id entry
+  // (same probe order as classify: logicalId first, then physicalId), so replay folds the
+  // staging reverse-pointer the same way the live check did.
+  const cfCdMap = opts.siblingCloudFrontCdPolicyIds;
+  const cfCdKey =
+    resource.resourceType !== 'AWS::CloudFront::Distribution' || cfCdMap === undefined
+      ? undefined
+      : resource.logicalId in cfCdMap
+        ? resource.logicalId
+        : resource.physicalId !== undefined && resource.physicalId in cfCdMap
+          ? resource.physicalId
+          : undefined;
   const c: CorpusCase = {
     corpusVersion: 1,
     resource: {
@@ -297,6 +315,9 @@ export function buildCorpusCase(
       ...(dmsStorageDefault ? { accountDefaults: dmsStorageDefault } : {}),
       ...(cvpnVpcKey !== undefined && cvpnVpcMap !== undefined
         ? { siblingClientVpnEndpointVpcs: { [cvpnVpcKey]: cvpnVpcMap[cvpnVpcKey] ?? null } }
+        : {}),
+      ...(cfCdKey !== undefined && cfCdMap !== undefined
+        ? { siblingCloudFrontCdPolicyIds: { [cfCdKey]: cfCdMap[cfCdKey] ?? null } }
         : {}),
     },
     expected: findings,

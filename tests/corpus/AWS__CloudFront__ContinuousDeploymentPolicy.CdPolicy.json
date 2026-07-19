@@ -1,0 +1,82 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "CdPolicy",
+    "resourceType": "AWS::CloudFront::ContinuousDeploymentPolicy",
+    "physicalId": "90b13500-2b8e-4ebd-b8d7-8c66f55e76f6",
+    "constructPath": "CdkrdHunt0720CfCd/CdPolicy",
+    "declared": {
+      "ContinuousDeploymentPolicyConfig": {
+        "Enabled": true,
+        "StagingDistributionDnsNames": ["d2ye9f1xy4vlf6.cloudfront.net"],
+        "TrafficConfig": {
+          "SingleWeightConfig": {
+            "Weight": 0.05
+          },
+          "Type": "SingleWeight"
+        }
+      }
+    }
+  },
+  "liveRaw": {
+    "ContinuousDeploymentPolicyConfig": {
+      "Type": "SingleWeight",
+      "Enabled": true,
+      "StagingDistributionDnsNames": ["d2ye9f1xy4vlf6.cloudfront.net"],
+      "TrafficConfig": {
+        "SingleWeightConfig": {
+          "Weight": 0.05
+        },
+        "Type": "SingleWeight"
+      },
+      "SingleWeightPolicyConfig": {
+        "Weight": 0.05
+      }
+    },
+    "LastModifiedTime": "2026-07-19T19:43:09.181Z",
+    "Id": "90b13500-2b8e-4ebd-b8d7-8c66f55e76f6"
+  },
+  "schema": {
+    "readOnly": ["Id", "LastModifiedTime"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Id", "LastModifiedTime"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "CdPolicy",
+      "resourceType": "AWS::CloudFront::ContinuousDeploymentPolicy",
+      "path": "ContinuousDeploymentPolicyConfig.Type",
+      "actual": "SingleWeight",
+      "nested": true,
+      "physicalId": "90b13500-2b8e-4ebd-b8d7-8c66f55e76f6",
+      "constructPath": "CdkrdHunt0720CfCd/CdPolicy"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "CdPolicy",
+      "resourceType": "AWS::CloudFront::ContinuousDeploymentPolicy",
+      "path": "ContinuousDeploymentPolicyConfig.SingleWeightPolicyConfig",
+      "actual": {
+        "Weight": 0.05
+      },
+      "nested": true,
+      "physicalId": "90b13500-2b8e-4ebd-b8d7-8c66f55e76f6",
+      "constructPath": "CdkrdHunt0720CfCd/CdPolicy"
+    }
+  ]
+}

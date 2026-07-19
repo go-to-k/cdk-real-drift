@@ -1,0 +1,49 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "FailPrimary",
+    "resourceType": "AWS::Route53::RecordSet",
+    "physicalId": "fo.cdkrd-hunt0720-x3f9.com",
+    "constructPath": "CdkrdHunt0720R53Policy/FailPrimary",
+    "declared": {
+      "Failover": "PRIMARY",
+      "HealthCheckId": "797c6bee-46a0-448e-9bb8-339a0fb1387e",
+      "HostedZoneId": "Z0164857358YUQJWZ03A5",
+      "Name": "fo.cdkrd-hunt0720-x3f9.com.",
+      "ResourceRecords": ["192.0.2.20"],
+      "SetIdentifier": "primary",
+      "TTL": "60",
+      "Type": "A"
+    }
+  },
+  "liveRaw": {
+    "Name": "fo.cdkrd-hunt0720-x3f9.com.",
+    "Type": "A",
+    "HostedZoneId": "Z0164857358YUQJWZ03A5",
+    "TTL": "60",
+    "ResourceRecords": ["192.0.2.20"],
+    "SetIdentifier": "primary",
+    "Failover": "PRIMARY",
+    "HealthCheckId": "797c6bee-46a0-448e-9bb8-339a0fb1387e"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["HostedZoneId", "HostedZoneName", "Name"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["HostedZoneId", "HostedZoneName", "Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

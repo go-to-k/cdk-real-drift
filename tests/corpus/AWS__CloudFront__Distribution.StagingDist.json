@@ -1,0 +1,356 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "StagingDist",
+    "resourceType": "AWS::CloudFront::Distribution",
+    "physicalId": "E3FSJ4WUENSFWJ",
+    "constructPath": "CdkrdHunt0720CfCd/StagingDist",
+    "declared": {
+      "DistributionConfig": {
+        "DefaultCacheBehavior": {
+          "CachePolicyId": "4135ea2d-6df8-44a3-9df3-4b5a84be39ad",
+          "TargetOriginId": "origin1",
+          "ViewerProtocolPolicy": "allow-all"
+        },
+        "Enabled": true,
+        "Origins": [
+          {
+            "CustomOriginConfig": {
+              "OriginProtocolPolicy": "https-only"
+            },
+            "DomainName": "example.com",
+            "Id": "origin1"
+          }
+        ],
+        "Staging": true
+      },
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "DistributionConfig": {
+      "Logging": {
+        "IncludeCookies": false,
+        "Bucket": "",
+        "Prefix": ""
+      },
+      "Comment": "",
+      "DefaultRootObject": "",
+      "Origins": [
+        {
+          "ConnectionTimeout": 10,
+          "OriginAccessControlId": "",
+          "ConnectionAttempts": 3,
+          "OriginCustomHeaders": [],
+          "DomainName": "example.com",
+          "OriginShield": {
+            "Enabled": false
+          },
+          "OriginPath": "",
+          "Id": "origin1",
+          "CustomOriginConfig": {
+            "OriginReadTimeout": 30,
+            "HTTPSPort": 443,
+            "OriginKeepaliveTimeout": 5,
+            "OriginSSLProtocols": ["SSLv3", "TLSv1"],
+            "HTTPPort": 80,
+            "OriginProtocolPolicy": "https-only"
+          }
+        }
+      ],
+      "ViewerCertificate": {
+        "SslSupportMethod": "vip",
+        "MinimumProtocolVersion": "TLSv1",
+        "CloudFrontDefaultCertificate": true
+      },
+      "PriceClass": "PriceClass_All",
+      "DefaultCacheBehavior": {
+        "Compress": false,
+        "FunctionAssociations": [],
+        "LambdaFunctionAssociations": [],
+        "TargetOriginId": "origin1",
+        "ViewerProtocolPolicy": "allow-all",
+        "GrpcConfig": {
+          "Enabled": false
+        },
+        "TrustedSigners": [],
+        "FieldLevelEncryptionId": "",
+        "TrustedKeyGroups": [],
+        "AllowedMethods": ["HEAD", "GET"],
+        "CachedMethods": ["HEAD", "GET"],
+        "SmoothStreaming": false,
+        "CachePolicyId": "4135ea2d-6df8-44a3-9df3-4b5a84be39ad"
+      },
+      "Staging": true,
+      "CustomErrorResponses": [],
+      "ContinuousDeploymentPolicyId": "90b13500-2b8e-4ebd-b8d7-8c66f55e76f6",
+      "OriginGroups": {
+        "Quantity": 0,
+        "Items": []
+      },
+      "Enabled": true,
+      "Aliases": [],
+      "IPV6Enabled": true,
+      "WebACLId": "",
+      "HttpVersion": "http1.1",
+      "Restrictions": {
+        "GeoRestriction": {
+          "Locations": [],
+          "RestrictionType": "none"
+        }
+      },
+      "CacheBehaviors": []
+    },
+    "DomainName": "d2ye9f1xy4vlf6.cloudfront.net",
+    "Id": "E3FSJ4WUENSFWJ",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["DomainName", "Id"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["DomainName", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {
+      "DistributionConfig.CacheBehaviors.*.AllowedMethods": ["GET", "HEAD"],
+      "DistributionConfig.CacheBehaviors.*.CachedMethods": ["GET", "HEAD"],
+      "DistributionConfig.CacheBehaviors.*.Compress": false,
+      "DistributionConfig.CacheBehaviors.*.DefaultTTL": 86400,
+      "DistributionConfig.CacheBehaviors.*.FieldLevelEncryptionId": "",
+      "DistributionConfig.CacheBehaviors.*.MaxTTL": 31536000,
+      "DistributionConfig.CacheBehaviors.*.MinTTL": 0,
+      "DistributionConfig.CacheBehaviors.*.SmoothStreaming": false,
+      "DistributionConfig.Comment": "",
+      "DistributionConfig.CustomErrorResponses.*.ErrorCachingMinTTL": 300,
+      "DistributionConfig.CustomOrigin.HTTPPort": 80,
+      "DistributionConfig.CustomOrigin.HTTPSPort": 443,
+      "DistributionConfig.DefaultCacheBehavior.AllowedMethods": ["GET", "HEAD"],
+      "DistributionConfig.DefaultCacheBehavior.CachePolicyId": "",
+      "DistributionConfig.DefaultCacheBehavior.CachedMethods": ["GET", "HEAD"],
+      "DistributionConfig.DefaultCacheBehavior.Compress": false,
+      "DistributionConfig.DefaultCacheBehavior.DefaultTTL": 86400,
+      "DistributionConfig.DefaultCacheBehavior.FieldLevelEncryptionId": "",
+      "DistributionConfig.DefaultCacheBehavior.MaxTTL": 31536000,
+      "DistributionConfig.DefaultCacheBehavior.MinTTL": 0,
+      "DistributionConfig.DefaultCacheBehavior.OriginRequestPolicyId": "",
+      "DistributionConfig.DefaultCacheBehavior.RealtimeLogConfigArn": "",
+      "DistributionConfig.DefaultCacheBehavior.ResponseHeadersPolicyId": "",
+      "DistributionConfig.DefaultCacheBehavior.SmoothStreaming": false,
+      "DistributionConfig.DefaultRootObject": "",
+      "DistributionConfig.HttpVersion": "http1.1",
+      "DistributionConfig.Logging.IncludeCookies": false,
+      "DistributionConfig.Logging.Prefix": "",
+      "DistributionConfig.Origins.*.CustomOriginConfig.HTTPPort": 80,
+      "DistributionConfig.Origins.*.CustomOriginConfig.HTTPSPort": 443,
+      "DistributionConfig.Origins.*.CustomOriginConfig.OriginKeepaliveTimeout": 5,
+      "DistributionConfig.Origins.*.CustomOriginConfig.OriginReadTimeout": 30,
+      "DistributionConfig.Origins.*.CustomOriginConfig.OriginSSLProtocols": ["TLSv1", "SSLv3"],
+      "DistributionConfig.Origins.*.OriginPath": "",
+      "DistributionConfig.Origins.*.S3OriginConfig.OriginAccessIdentity": "",
+      "DistributionConfig.Origins.*.S3OriginConfig.OriginReadTimeout": 30,
+      "DistributionConfig.Origins.*.VpcOriginConfig.OriginKeepaliveTimeout": 5,
+      "DistributionConfig.Origins.*.VpcOriginConfig.OriginReadTimeout": 30,
+      "DistributionConfig.PriceClass": "PriceClass_All",
+      "DistributionConfig.S3Origin.OriginAccessIdentity": "",
+      "DistributionConfig.WebACLId": ""
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "siblingCloudFrontCdPolicyIds": {
+      "StagingDist": "90b13500-2b8e-4ebd-b8d7-8c66f55e76f6"
+    }
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "StagingDist",
+      "resourceType": "AWS::CloudFront::Distribution",
+      "path": "DistributionConfig.Origins[origin1].ConnectionTimeout",
+      "actual": 10,
+      "nested": true,
+      "physicalId": "E3FSJ4WUENSFWJ",
+      "constructPath": "CdkrdHunt0720CfCd/StagingDist"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "StagingDist",
+      "resourceType": "AWS::CloudFront::Distribution",
+      "path": "DistributionConfig.Origins[origin1].ConnectionAttempts",
+      "actual": 3,
+      "nested": true,
+      "physicalId": "E3FSJ4WUENSFWJ",
+      "constructPath": "CdkrdHunt0720CfCd/StagingDist"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "StagingDist",
+      "resourceType": "AWS::CloudFront::Distribution",
+      "path": "DistributionConfig.Origins[origin1].CustomOriginConfig.OriginReadTimeout",
+      "actual": 30,
+      "nested": true,
+      "physicalId": "E3FSJ4WUENSFWJ",
+      "constructPath": "CdkrdHunt0720CfCd/StagingDist"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "StagingDist",
+      "resourceType": "AWS::CloudFront::Distribution",
+      "path": "DistributionConfig.Origins[origin1].CustomOriginConfig.HTTPSPort",
+      "actual": 443,
+      "nested": true,
+      "physicalId": "E3FSJ4WUENSFWJ",
+      "constructPath": "CdkrdHunt0720CfCd/StagingDist"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "StagingDist",
+      "resourceType": "AWS::CloudFront::Distribution",
+      "path": "DistributionConfig.Origins[origin1].CustomOriginConfig.OriginKeepaliveTimeout",
+      "actual": 5,
+      "nested": true,
+      "physicalId": "E3FSJ4WUENSFWJ",
+      "constructPath": "CdkrdHunt0720CfCd/StagingDist"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "StagingDist",
+      "resourceType": "AWS::CloudFront::Distribution",
+      "path": "DistributionConfig.Origins[origin1].CustomOriginConfig.OriginSSLProtocols",
+      "actual": ["SSLv3", "TLSv1"],
+      "nested": true,
+      "physicalId": "E3FSJ4WUENSFWJ",
+      "constructPath": "CdkrdHunt0720CfCd/StagingDist"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "StagingDist",
+      "resourceType": "AWS::CloudFront::Distribution",
+      "path": "DistributionConfig.Origins[origin1].CustomOriginConfig.HTTPPort",
+      "actual": 80,
+      "nested": true,
+      "physicalId": "E3FSJ4WUENSFWJ",
+      "constructPath": "CdkrdHunt0720CfCd/StagingDist"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "StagingDist",
+      "resourceType": "AWS::CloudFront::Distribution",
+      "path": "DistributionConfig.ViewerCertificate",
+      "actual": {
+        "SslSupportMethod": "vip",
+        "MinimumProtocolVersion": "TLSv1",
+        "CloudFrontDefaultCertificate": true
+      },
+      "nested": true,
+      "physicalId": "E3FSJ4WUENSFWJ",
+      "constructPath": "CdkrdHunt0720CfCd/StagingDist"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "StagingDist",
+      "resourceType": "AWS::CloudFront::Distribution",
+      "path": "DistributionConfig.PriceClass",
+      "actual": "PriceClass_All",
+      "nested": true,
+      "physicalId": "E3FSJ4WUENSFWJ",
+      "constructPath": "CdkrdHunt0720CfCd/StagingDist"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "StagingDist",
+      "resourceType": "AWS::CloudFront::Distribution",
+      "path": "DistributionConfig.DefaultCacheBehavior.AllowedMethods",
+      "actual": ["GET", "HEAD"],
+      "nested": true,
+      "physicalId": "E3FSJ4WUENSFWJ",
+      "constructPath": "CdkrdHunt0720CfCd/StagingDist"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "StagingDist",
+      "resourceType": "AWS::CloudFront::Distribution",
+      "path": "DistributionConfig.DefaultCacheBehavior.CachedMethods",
+      "actual": ["GET", "HEAD"],
+      "nested": true,
+      "physicalId": "E3FSJ4WUENSFWJ",
+      "constructPath": "CdkrdHunt0720CfCd/StagingDist"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "StagingDist",
+      "resourceType": "AWS::CloudFront::Distribution",
+      "path": "DistributionConfig.ContinuousDeploymentPolicyId",
+      "actual": "90b13500-2b8e-4ebd-b8d7-8c66f55e76f6",
+      "nested": true,
+      "physicalId": "E3FSJ4WUENSFWJ",
+      "constructPath": "CdkrdHunt0720CfCd/StagingDist"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "StagingDist",
+      "resourceType": "AWS::CloudFront::Distribution",
+      "path": "DistributionConfig.OriginGroups",
+      "actual": {
+        "Quantity": 0,
+        "Items": []
+      },
+      "nested": true,
+      "physicalId": "E3FSJ4WUENSFWJ",
+      "constructPath": "CdkrdHunt0720CfCd/StagingDist"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "StagingDist",
+      "resourceType": "AWS::CloudFront::Distribution",
+      "path": "DistributionConfig.IPV6Enabled",
+      "actual": true,
+      "nested": true,
+      "physicalId": "E3FSJ4WUENSFWJ",
+      "constructPath": "CdkrdHunt0720CfCd/StagingDist"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "StagingDist",
+      "resourceType": "AWS::CloudFront::Distribution",
+      "path": "DistributionConfig.HttpVersion",
+      "actual": "http1.1",
+      "nested": true,
+      "physicalId": "E3FSJ4WUENSFWJ",
+      "constructPath": "CdkrdHunt0720CfCd/StagingDist"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "StagingDist",
+      "resourceType": "AWS::CloudFront::Distribution",
+      "path": "DistributionConfig.Restrictions",
+      "actual": {
+        "GeoRestriction": {
+          "Locations": [],
+          "RestrictionType": "none"
+        }
+      },
+      "nested": true,
+      "physicalId": "E3FSJ4WUENSFWJ",
+      "constructPath": "CdkrdHunt0720CfCd/StagingDist"
+    }
+  ]
+}

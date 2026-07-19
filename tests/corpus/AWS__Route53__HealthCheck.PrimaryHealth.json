@@ -1,0 +1,69 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "PrimaryHealth",
+    "resourceType": "AWS::Route53::HealthCheck",
+    "physicalId": "797c6bee-46a0-448e-9bb8-339a0fb1387e",
+    "constructPath": "CdkrdHunt0720R53Policy/PrimaryHealth",
+    "declared": {
+      "HealthCheckConfig": {
+        "FailureThreshold": 3,
+        "FullyQualifiedDomainName": "example.com",
+        "Port": 80,
+        "RequestInterval": 30,
+        "ResourcePath": "/",
+        "Type": "HTTP"
+      },
+      "HealthCheckTags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "HealthCheckId": "797c6bee-46a0-448e-9bb8-339a0fb1387e",
+    "HealthCheckConfig": {
+      "EnableSNI": false,
+      "Type": "HTTP",
+      "ResourcePath": "/",
+      "FullyQualifiedDomainName": "example.com",
+      "MeasureLatency": false,
+      "Inverted": false,
+      "Port": 80,
+      "RequestInterval": 30,
+      "FailureThreshold": 3
+    },
+    "HealthCheckTags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["HealthCheckId"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["HealthCheckId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "HealthCheckConfig.MeasureLatency",
+      "HealthCheckConfig.RequestInterval",
+      "HealthCheckConfig.Type"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["HealthCheckConfig.ChildHealthChecks", "HealthCheckConfig.Regions"],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

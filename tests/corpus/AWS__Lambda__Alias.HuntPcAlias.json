@@ -1,0 +1,58 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "LiveAlias9B8FFEA9",
+    "resourceType": "AWS::Lambda::Alias",
+    "physicalId": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdHunt0720LambdaPc-Fn9270CBC0-rSosQAKZwL6a:live",
+    "constructPath": "CdkrdHunt0720LambdaPc/LiveAlias",
+    "declared": {
+      "FunctionName": "CdkrdHunt0720LambdaPc-Fn9270CBC0-rSosQAKZwL6a",
+      "FunctionVersion": "1",
+      "Name": "live",
+      "ProvisionedConcurrencyConfig": {
+        "ProvisionedConcurrentExecutions": 1
+      }
+    }
+  },
+  "liveRaw": {
+    "FunctionName": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdHunt0720LambdaPc-Fn9270CBC0-rSosQAKZwL6a",
+    "ProvisionedConcurrencyConfig": {
+      "ProvisionedConcurrentExecutions": 1
+    },
+    "Description": "",
+    "FunctionVersion": "1",
+    "AliasArn": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdHunt0720LambdaPc-Fn9270CBC0-rSosQAKZwL6a:live",
+    "RoutingConfig": {},
+    "Name": "live"
+  },
+  "schema": {
+    "readOnly": ["AliasArn"],
+    "writeOnly": [],
+    "createOnly": ["FunctionName", "Name"],
+    "readOnlyPaths": ["AliasArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["FunctionName", "Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["RoutingConfig.AdditionalVersionWeights"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "LiveAlias9B8FFEA9",
+      "resourceType": "AWS::Lambda::Alias",
+      "path": "Description",
+      "actual": "",
+      "physicalId": "arn:aws:lambda:us-east-1:111111111111:function:CdkrdHunt0720LambdaPc-Fn9270CBC0-rSosQAKZwL6a:live",
+      "constructPath": "CdkrdHunt0720LambdaPc/LiveAlias"
+    }
+  ]
+}

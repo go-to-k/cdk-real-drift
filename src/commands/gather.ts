@@ -1320,6 +1320,75 @@ export function buildClientVpnEndpointSiblingVpcs(desired: Desired): Record<stri
   return out;
 }
 
+// Per STAGING CloudFront Distribution identity (logicalId + physicalId), the physical id of the
+// in-stack declared AWS::CloudFront::ContinuousDeploymentPolicy whose StagingDistributionDnsNames
+// references it. Attaching a policy materializes the reverse
+// `DistributionConfig.ContinuousDeploymentPolicyId` pointer on the STAGING distribution — a
+// deterministic echo of the stack's own declared link (the sibling-attachment echo class;
+// cloudfront-cd-hunt, 2026-07-20) — so classify folds a live pointer equal to the derived policy
+// id (an out-of-band re-link to a DIFFERENT policy still surfaces). The derivation is purely
+// in-stack: a RAW policy's StagingDistributionDnsNames elements are `Fn::GetAtt
+// [<distLogicalId>, DomainName]` (link by logical id) — but at classify time the declared model
+// is RE-RESOLVED and the GetAtt has already collapsed to the LITERAL domain string (live-hit on
+// the fixture's own first run), so literal elements are matched against each declared
+// distribution's LIVE `DomainName` via the optional `liveByLogical` map (the attribute is
+// registry-readOnly and stripped from the classify surface, so the raw live model is the only
+// place it exists). Unmatched literals map nothing (the pointer keeps surfacing — conservative);
+// conflicting links degrade to `null` (fail open) like the ClientVPN sibling map.
+export function buildCloudFrontStagingDistCdPolicyIds(
+  desired: Desired,
+  liveByLogical?: Map<string, Record<string, unknown>>
+): Record<string, string | null> {
+  const refLogicalId = (ref: unknown): string | undefined => {
+    if (ref && typeof ref === 'object') {
+      if ('Ref' in ref && typeof (ref as { Ref: unknown }).Ref === 'string')
+        return (ref as { Ref: string }).Ref;
+      if ('Fn::GetAtt' in ref) {
+        const g = (ref as { 'Fn::GetAtt': unknown })['Fn::GetAtt'];
+        if (Array.isArray(g) && typeof g[0] === 'string') return g[0];
+      }
+    }
+    return undefined;
+  };
+  const distIdentities = new Map<string, string[]>();
+  const distByDomain = new Map<string, string>(); // live DomainName -> dist logicalId
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::CloudFront::Distribution') continue;
+    const ids = [r.logicalId];
+    if (r.physicalId) ids.push(r.physicalId);
+    distIdentities.set(r.logicalId, ids);
+    const domain = liveByLogical?.get(r.logicalId)?.['DomainName'];
+    if (typeof domain === 'string' && domain) distByDomain.set(domain.toLowerCase(), r.logicalId);
+  }
+  const out: Record<string, string | null> = {};
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::CloudFront::ContinuousDeploymentPolicy') continue;
+    const cfg = (r.declared as Record<string, unknown> | undefined)?.[
+      'ContinuousDeploymentPolicyConfig'
+    ];
+    const dns =
+      cfg !== null && typeof cfg === 'object' && !Array.isArray(cfg)
+        ? (cfg as Record<string, unknown>)['StagingDistributionDnsNames']
+        : undefined;
+    if (!Array.isArray(dns)) continue;
+    // The policy's physical id IS the ContinuousDeploymentPolicyId the staging side echoes;
+    // without it (pre-deploy) there is nothing to equality-gate against → fail open (null).
+    const policyId = r.physicalId ?? null;
+    for (const el of dns) {
+      const distLogical =
+        refLogicalId(el) ??
+        (typeof el === 'string' ? distByDomain.get(el.toLowerCase()) : undefined);
+      if (distLogical === undefined) continue;
+      for (const key of distIdentities.get(distLogical) ?? []) {
+        // Two policies referencing the same distribution degrade to fail-open null.
+        if (key in out && out[key] !== policyId) out[key] = null;
+        else out[key] = policyId;
+      }
+    }
+  }
+  return out;
+}
+
 // #1498: the set of Subnet identities (logicalId + physicalId) whose IPv6 CIDR is assigned by a
 // sibling AWS::EC2::SubnetCidrBlock (the normal dual-stack CDK shape). The Subnet's own live model
 // echoes an undeclared Ipv6CidrBlock/Ipv6CidrBlocks that the SubnetCidrBlock sibling declares — so
@@ -2061,6 +2130,10 @@ export async function gatherFindings(
     clusterEchoModel: buildClusterEchoModels(desired),
     scalableTargetBands: buildScalableTargetBands(desired),
     siblingClientVpnEndpointVpcs: buildClientVpnEndpointSiblingVpcs(desired),
+    siblingCloudFrontCdPolicyIds: buildCloudFrontStagingDistCdPolicyIds(
+      desired,
+      liveModelMap(reads)
+    ),
     rdsOptionSettingDefaults: await buildRdsOptionSettingDefaults(desired, region),
   };
 
@@ -2175,6 +2248,10 @@ export async function regatherTouched(
     clusterEchoModel: buildClusterEchoModels(desired),
     scalableTargetBands: buildScalableTargetBands(desired),
     siblingClientVpnEndpointVpcs: buildClientVpnEndpointSiblingVpcs(desired),
+    siblingCloudFrontCdPolicyIds: buildCloudFrontStagingDistCdPolicyIds(
+      desired,
+      liveModelMap(reads)
+    ),
     rdsOptionSettingDefaults: await buildRdsOptionSettingDefaults(desired, region),
   };
 

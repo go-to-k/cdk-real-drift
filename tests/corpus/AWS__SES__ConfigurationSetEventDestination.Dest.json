@@ -1,0 +1,63 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Dest",
+    "resourceType": "AWS::SES::ConfigurationSetEventDestination",
+    "physicalId": "cdkrd-dest",
+    "constructPath": "CdkRealDriftIntegSesEventDestReadGap/Dest",
+    "declared": {
+      "ConfigurationSetName": "cdkrd-ses-reorder",
+      "EventDestination": {
+        "CloudWatchDestination": {
+          "DimensionConfigurations": [
+            {
+              "DefaultDimensionValue": "none",
+              "DimensionName": "ses-source",
+              "DimensionValueSource": "messageTag"
+            }
+          ]
+        },
+        "Enabled": true,
+        "MatchingEventTypes": ["DELIVERY", "BOUNCE", "SEND", "COMPLAINT"],
+        "Name": "cdkrd-dest"
+      }
+    }
+  },
+  "liveRaw": {
+    "ConfigurationSetName": "cdkrd-ses-reorder",
+    "EventDestination": {
+      "Name": "cdkrd-dest",
+      "Enabled": true,
+      "MatchingEventTypes": ["bounce", "complaint", "delivery", "send"],
+      "CloudWatchDestination": {
+        "DimensionConfigurations": [
+          {
+            "DimensionName": "ses-source",
+            "DimensionValueSource": "messageTag",
+            "DefaultDimensionValue": "none"
+          }
+        ]
+      }
+    }
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["ConfigurationSetName"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ConfigurationSetName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["EventDestination.MatchingEventTypes"],
+    "unorderedObjectArrayPaths": ["EventDestination.CloudWatchDestination.DimensionConfigurations"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
