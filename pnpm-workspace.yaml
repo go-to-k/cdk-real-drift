@@ -1,0 +1,5 @@
+# pnpm settings (pnpm >= 11 no longer reads the package.json "pnpm" field —
+# https://pnpm.io/settings). Settings-only: this repo is a single package, not a
+# multi-package workspace, so there is deliberately no "packages" list here.
+overrides:
+  '@smithy/types': 4.15.0

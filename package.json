@@ -22,12 +22,7 @@
     "url": "https://github.com/go-to-k/cdk-real-drift/issues"
   },
   "type": "module",
-  "packageManager": "pnpm@10.15.1",
-  "pnpm": {
-    "overrides": {
-      "@smithy/types": "4.15.0"
-    }
-  },
+  "packageManager": "pnpm@11.14.0",
   "keywords": [
     "cdk",
     "cloudformation",
