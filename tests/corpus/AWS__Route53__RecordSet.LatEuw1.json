@@ -1,0 +1,47 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "LatEuw1",
+    "resourceType": "AWS::Route53::RecordSet",
+    "physicalId": "lat.cdkrd-hunt0720-x3f9.com",
+    "constructPath": "CdkrdHunt0720R53Policy/LatEuw1",
+    "declared": {
+      "HostedZoneId": "Z0164857358YUQJWZ03A5",
+      "Name": "lat.cdkrd-hunt0720-x3f9.com.",
+      "Region": "eu-west-1",
+      "ResourceRecords": ["192.0.2.2"],
+      "SetIdentifier": "euw1",
+      "TTL": "60",
+      "Type": "A"
+    }
+  },
+  "liveRaw": {
+    "Name": "lat.cdkrd-hunt0720-x3f9.com.",
+    "Type": "A",
+    "HostedZoneId": "Z0164857358YUQJWZ03A5",
+    "TTL": "60",
+    "ResourceRecords": ["192.0.2.2"],
+    "SetIdentifier": "euw1",
+    "Region": "eu-west-1"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["HostedZoneId", "HostedZoneName", "Name"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["HostedZoneId", "HostedZoneName", "Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

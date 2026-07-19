@@ -426,6 +426,21 @@ const MEANINGFUL_WHEN_OFF_NESTED: Record<
   'AWS::EKS::Cluster': {
     'ResourcesVpcConfig.EndpointPublicAccess': () => true,
   },
+  // A budget's CostTypes is an ALL-BOOLEAN object whose nine Include* members default true
+  // (the #1658 `Budget.CostTypes` whole-object + per-leaf pins). An out-of-band
+  // `update-budget` disabling ALL nine (the budget then measures almost nothing — its
+  // alerts silently go dead) reads back an all-false object: the pin equality breaks, but
+  // the all-false object is trivially empty, so it was swallowed here before the pin gate
+  // — invisible (the #1092 GuardDuty DataSources / S3 PublicAccessBlockConfiguration
+  // shape; live-proven 2026-07-20 on a fresh budget-scope deploy: DescribeBudget RETURNS
+  // the all-false object, and check stayed CLEAN). A single off-flip already surfaces (the
+  // surviving true leaves keep the object non-trivial), so this gate closes exactly the
+  // all-false shape. Unconditionally meaningful when off: a user who wants cost types off
+  // DECLARES CostTypes (compared in the declared loop); a budget has no snapshot/restore
+  // lineage that could yield an untouched all-false.
+  'AWS::Budgets::Budget': {
+    'Budget.CostTypes': () => true,
+  },
   // #1530: an ECS service that ENABLES the deployment circuit breaker reads back the AWS-filled
   // sub-default ResetOnHealthyTask=true (the KNOWN_DEFAULT_PATHS pin, live-observed on a fresh
   // Fargate service). An out-of-band UpdateService flipping it false is swallowed by
@@ -1667,6 +1682,56 @@ function glueIcebergManagedParamsAtDefault(
   const managed = new Set(['table_type', 'metadata_location']);
   if (!Object.keys(params).every((k) => managed.has(k))) return false;
   return params.table_type === 'ICEBERG';
+}
+
+// A CloudFront ContinuousDeploymentPolicy's config carries the SAME traffic split in TWO
+// writable representations — the canonical `TrafficConfig` ({Type, SingleWeightConfig /
+// SingleHeaderConfig}) and the flattened console-era synonyms (`Type` +
+// `SingleWeightPolicyConfig` / `SingleHeaderPolicyConfig`, note the differing member name) —
+// and the CC read echoes BOTH regardless of which one the template declared. The undeclared
+// mirror representation first-run-FP'd on a fresh policy (cloudfront-cd-hunt, 2026-07-20:
+// declared TrafficConfig read back undeclared `Type: "SingleWeight"` +
+// `SingleWeightPolicyConfig: {Weight: 0.05}`). Tier-2 DERIVED fold, symmetric in both
+// directions: fold the undeclared member ONLY when it equals the value derived from the
+// DECLARED counterpart representation. Detection is preserved — the declared representation
+// is compared in the declared loop, and an out-of-band traffic change diverges the mirror
+// from the declared-derived value, so it surfaces too.
+function cloudFrontCdPolicySynonymAtDefault(
+  resourceType: string,
+  schemaPath: string,
+  value: unknown,
+  declared: Record<string, unknown>
+): boolean {
+  if (resourceType !== 'AWS::CloudFront::ContinuousDeploymentPolicy') return false;
+  const cfg = declared.ContinuousDeploymentPolicyConfig;
+  if (!isNestedObject(cfg)) return false;
+  const c = cfg as Record<string, unknown>;
+  const traffic = isNestedObject(c.TrafficConfig)
+    ? (c.TrafficConfig as Record<string, unknown>)
+    : undefined;
+  switch (schemaPath) {
+    // Flattened mirrors of a declared TrafficConfig.
+    case 'ContinuousDeploymentPolicyConfig.Type':
+      return traffic !== undefined && deepEqual(value, traffic.Type);
+    case 'ContinuousDeploymentPolicyConfig.SingleWeightPolicyConfig':
+      return traffic !== undefined && deepEqual(value, traffic.SingleWeightConfig);
+    case 'ContinuousDeploymentPolicyConfig.SingleHeaderPolicyConfig':
+      return traffic !== undefined && deepEqual(value, traffic.SingleHeaderConfig);
+    // The inverse: a template that declared the flattened form reads back the canonical
+    // TrafficConfig as the undeclared mirror.
+    case 'ContinuousDeploymentPolicyConfig.TrafficConfig': {
+      if (traffic !== undefined || !isNestedObject(value)) return false;
+      if (c.Type === undefined) return false;
+      const derived: Record<string, unknown> = { Type: c.Type };
+      if (c.SingleWeightPolicyConfig !== undefined)
+        derived.SingleWeightConfig = c.SingleWeightPolicyConfig;
+      if (c.SingleHeaderPolicyConfig !== undefined)
+        derived.SingleHeaderConfig = c.SingleHeaderPolicyConfig;
+      return deepEqual(value, derived);
+    }
+    default:
+      return false;
+  }
 }
 
 // #705: a Classic ELB (ElasticLoadBalancing::LoadBalancer) with an HTTPS/SSL listener but no
@@ -3014,6 +3079,14 @@ export function classifyResource(
     // association exists but its VPC is not derivable (imported subnet) → fail open (fold any VpcId).
     // NO entry = no declared association → a live VpcId is an out-of-band association echo, SURFACES.
     siblingClientVpnEndpointVpcs?: Record<string, string | null>;
+    // Per STAGING CloudFront Distribution identity (logicalId + physicalId), the physical id of
+    // the in-stack declared ContinuousDeploymentPolicy whose StagingDistributionDnsNames
+    // references it (gather.ts buildCloudFrontStagingDistCdPolicyIds). The policy materializes
+    // the reverse `DistributionConfig.ContinuousDeploymentPolicyId` pointer on the staging
+    // distribution — a deterministic echo of the stack's own declared link, folded when equal.
+    // `null` = a policy is declared but not linkable to a specific distribution (literal DNS
+    // names) → fail open. NO entry = out-of-band link → surfaces.
+    siblingCloudFrontCdPolicyIds?: Record<string, string | null>;
   } = {}
 ): Finding[] {
   const { logicalId, resourceType, physicalId, declared: declaredIn } = resource;
@@ -3987,6 +4060,32 @@ export function classifyResource(
       // #1553: a Config recorder's undeclared RecordingGroup.RecordingStrategy mirror, derived
       // from the live sibling RecordingGroup and equality-gated (helper above).
       configRecordingStrategyAtDefault(resourceType, schemaPath, value, live) ||
+      // A CloudFront ContinuousDeploymentPolicy's undeclared mirror representation of its own
+      // DECLARED traffic config (TrafficConfig ↔ flattened Type/SingleWeightPolicyConfig
+      // synonyms; helper above, cloudfront-cd-hunt 2026-07-20).
+      cloudFrontCdPolicySynonymAtDefault(resourceType, schemaPath, value, declared) ||
+      // A STAGING CloudFront distribution's undeclared `ContinuousDeploymentPolicyId` is the
+      // service-materialized REVERSE pointer to the in-stack ContinuousDeploymentPolicy that
+      // lists this distribution's DNS name (the sibling-attachment echo class; cloudfront-cd-hunt
+      // 2026-07-20). Tier-2 derived: fold only when it equals the sibling policy's physical id
+      // (gather.ts buildCloudFrontStagingDistCdPolicyIds; `null` = policy present but not
+      // linkable → fail open). No map entry = no declared policy targets this distribution →
+      // a live pointer is an out-of-band link and surfaces.
+      (resourceType === 'AWS::CloudFront::Distribution' &&
+        schemaPath === 'DistributionConfig.ContinuousDeploymentPolicyId' &&
+        typeof value === 'string' &&
+        (() => {
+          const m = opts.siblingCloudFrontCdPolicyIds;
+          const derived =
+            m === undefined
+              ? undefined
+              : logicalId in m
+                ? m[logicalId]
+                : physicalId !== undefined && physicalId in m
+                  ? m[physicalId]
+                  : undefined;
+          return derived !== undefined && (derived === null || derived === value);
+        })()) ||
       // #1624: a Glue Iceberg table's service-managed TableInput.Parameters pair
       // (table_type + moving metadata_location), shape-gated on the declared
       // OpenTableFormatInput.IcebergInput (helper above).
