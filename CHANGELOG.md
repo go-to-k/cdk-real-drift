@@ -1,3 +1,10 @@
+## [0.22.7](https://github.com/go-to-k/cdk-real-drift/compare/v0.22.6...v0.22.7) (2026-07-19)
+
+
+### Bug Fixes
+
+* **diff:** Budgets CostTypes all-false off-flip FN and CloudFront continuous-deployment first-run FPs ([#1673](https://github.com/go-to-k/cdk-real-drift/issues/1673)) ([edff075](https://github.com/go-to-k/cdk-real-drift/commit/edff075d67a8d029d68e46b461626c5899027fe0))
+
 ## [0.22.6](https://github.com/go-to-k/cdk-real-drift/compare/v0.22.5...v0.22.6) (2026-07-16)
 
 
