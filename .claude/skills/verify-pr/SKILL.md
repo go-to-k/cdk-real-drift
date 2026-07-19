@@ -22,7 +22,7 @@ Run each check and report pass/fail:
    ```
 
    A fresh `git worktree add` does NOT copy `node_modules`, so the quality
-   checks below would fail with `tsgo: command not found` / `Cannot find package
+   checks below would fail with `tsc: command not found` / `Cannot find package
 'vitest'`. Do not start step 1 until this passes.
 
 1. **Code quality** (the `/check` logic)

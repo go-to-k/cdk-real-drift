@@ -111,7 +111,7 @@ node dist/cli.js revert [<stack>...] [--all]   # write the desired value back to
 
 ## Build and Test Commands
 
-Toolchain = **Vite+ (`vp`) + pnpm + tsgo + oxc** (NOT eslint/prettier/biome) —
+Toolchain = **Vite+ (`vp`) + pnpm + tsc (TypeScript native) + oxc** (NOT eslint/prettier/biome) —
 same as `cdk-local`. `vp` and `markgate` are pinned by `.mise.toml` (run
 `mise install` once).
 
@@ -119,7 +119,7 @@ same as `cdk-local`. `vp` and `markgate` are pinned by `.mise.toml` (run
 vp run build       # vp pack — tsdown ESM bundle to dist/ (bin: cdkrd)
 vp run dev         # vp pack --watch
 vp run test        # vp test run — Vitest unit tests (tests/integration/** excluded)
-vp run typecheck   # tsgo --project tsconfig.json --noEmit
+vp run typecheck   # tsc --project tsconfig.json --noEmit
 vp check --fix     # lint + format (oxc), with auto-fix
 vp run check       # lint + format check (what CI runs)
 ```

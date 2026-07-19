@@ -16,7 +16,7 @@ build / unit tests on every push.
 
 Run these sequentially and report results:
 
-1. `vp run typecheck` — `tsgo --project tsconfig.json --noEmit`.
+1. `vp run typecheck` — `tsc --project tsconfig.json --noEmit`.
 2. `vp check --fix` — lint + Prettier formatting, with auto-fix. **Use this, not
    `vp run lint:fix`**: CI runs `vp check` (which includes formatting), and
    `lint:fix` does NOT touch formatting — so a `lint:fix`-only run can pass
@@ -51,7 +51,7 @@ If any fail, show the error output and STOP — do not write the commit-gate mar
 
 **Before treating a failure in a file you did NOT touch as a real (or peer-introduced)
 `main` regression, rule out a stale worktree cache.** A long-lived worktree's
-tsgo/oxc cache can REPLAY phantom errors from an earlier dependency/lockfile state
+tsc/oxc cache can REPLAY phantom errors from an earlier dependency/lockfile state
 (the inverse of the cache MASKING real ones). If CI on `main` is green and the
 failure is in code outside your diff, REPRODUCE it in a throwaway fresh worktree
 (`git worktree add … main` → `pnpm install` → `vp check`) before reporting "main is
