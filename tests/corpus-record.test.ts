@@ -193,4 +193,43 @@ describe('corpus recording (R63)', () => {
     );
     expect(plain.opts.bucketNotificationManaged).toBeUndefined();
   });
+
+  it('buildCorpusCase persists ONLY this distribution siblingCloudFrontCdPolicyIds entry', () => {
+    const dist: DesiredResource = {
+      logicalId: 'StagingDist',
+      resourceType: 'AWS::CloudFront::Distribution',
+      physicalId: 'E2ABCDEF123456',
+      declared: {},
+    };
+    const base = {
+      accountId: '',
+      region: 'us-east-1',
+      kmsAliasTargets: {},
+      oaiCanonicalIds: {},
+    };
+    const linked = buildCorpusCase(
+      dist,
+      {},
+      baseSchema,
+      {
+        ...base,
+        siblingCloudFrontCdPolicyIds: {
+          StagingDist: 'policy-1',
+          OtherDist: 'policy-2',
+        },
+      },
+      []
+    );
+    // Carries only THIS distribution's own entry (probe order: logicalId first).
+    expect(linked.opts.siblingCloudFrontCdPolicyIds).toEqual({ StagingDist: 'policy-1' });
+    // A distribution with no entry gets no key.
+    const plain = buildCorpusCase(
+      dist,
+      {},
+      baseSchema,
+      { ...base, siblingCloudFrontCdPolicyIds: { OtherDist: 'policy-2' } },
+      []
+    );
+    expect(plain.opts.siblingCloudFrontCdPolicyIds).toBeUndefined();
+  });
 });

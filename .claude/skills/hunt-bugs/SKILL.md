@@ -830,6 +830,23 @@ grep ': true'` and pair every new truthy pin with its off-state gate. A SINGLE
   `ContinuousDeploymentPolicyId`, then attach it via a second `-c attach=1` UPDATE
   deploy (which doubles as a post-update echo probe; cloudfront-cd-hunt,
   2026-07-20).
+- **Bake `CDKRD_CORPUS_DIR` into a new fixture's verify.sh FIRST check from the
+  start** — a verify.sh without it that PASSES leaves nothing behind, and the
+  harvest then costs a full redeploy (the 2026-07-20 hunt re-deployed lambda-pc and
+  route53-policy solely to harvest what their passing first runs had already read).
+  Scope it to the first (clean) check line only, per the existing recording gotcha.
+- **A sibling-map fold fix is THREE-legged: gather builder + classify gate + corpus
+  recorder carry — and the builder must handle the RE-RESOLVED declared shape.**
+  Two live-hit sub-lessons from the staging reverse-pointer fold (cloudfront-cd-hunt
+  2026-07-20): (a) at classify time `Fn::GetAtt` refs in a sibling's declared props
+  have already collapsed to LITERAL strings (the resolver fills them from live
+  attributes), so a builder that only walks Ref/GetAtt finds nothing — match the
+  literal against the target's LIVE attribute (thread `liveModelMap(reads)` in) like
+  buildCloudFrontStagingDistCdPolicyIds does; (b) a fresh-harvested corpus case
+  replays WITHOUT the new classifyOpts key until `buildCorpusCase` carries the
+  per-resource entry (the corpus-replay failure is the tell), so add the recorder
+  carry in the same diff — and a case harvested BEFORE the carry existed needs its
+  opts hand-patched (self-consistently, from the expected finding's own value).
 - **Not every type is revertable — the FN half may stop at detection.** Route53
   RecordSet, for instance, has no SDK writer (`revert` says "type not revertable
   yet"), so a detect→revert→clean cycle can't complete. Prove the FN by mutating the
