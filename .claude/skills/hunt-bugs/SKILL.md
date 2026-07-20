@@ -244,6 +244,35 @@ short of a fix the user wanted.
 
 ## Workflow
 
+### 0. Opening offline audits (free — run these BEFORE picking deploy targets)
+
+Every hunt opens with the zero-cost sweeps; they regularly dissolve whole rounds
+(2026-07-20: the entire "unproven variant rows" round proved out via corpus grep —
+zero deploys) or hand you a confirmed bug before the first deploy:
+
+- **New-pin off-flip audit over the diff window since the last hunt** — the step
+  that found the Budgets CostTypes FN (#1675). New truthy boolean pins arrive not
+  only from hunts but from READER-projection fixes (#1658 shipped a 9-leaf all-true
+  family with no off-state gate), so scan what LANDED, not just the historical
+  tables:
+  ```bash
+  git log --since=<last-hunt-date> --oneline -- src/normalize/noise.ts src/diff/classify.ts
+  git diff <last-hunt-commit>..HEAD -- src/normalize/noise.ts | grep -E "^\+.*: true"
+  ```
+  For every new `true` pin (standalone bool OR all-boolean object/leaf family),
+  check it is paired with a `MEANINGFUL_WHEN_OFF` / `MEANINGFUL_WHEN_OFF_NESTED`
+  gate; if not, prove the FN offline first (synthesize the current reader's
+  projection into a harvested corpus case's liveRaw, flip to the ALL-off shape,
+  assert findings) — see the all-boolean-object gotchas below for the mechanics
+  and the exclusion tests (OOB-mutability, off-state read shape).
+- **Corpus-first for any "unproven" table row**: before deploying to prove a
+  variant-table row or a suspect default, grep `tests/corpus/*.json` for a case
+  whose liveRaw already exhibits the value with a clean `expected` — harvested
+  corpus IS live evidence, and agents' "unexercised" claims are often wrong
+  (grep-verify; fixtures/corpus have existed for most "gaps" every recent hunt).
+- `bash scripts/measure-noise.sh` (§5.5) over the current corpus for fold
+  candidates.
+
 ### 1. Worktree + build
 
 Per CLAUDE.md, never work in the main checkout:
@@ -847,12 +876,21 @@ grep ': true'` and pair every new truthy pin with its off-state gate. A SINGLE
   per-resource entry (the corpus-replay failure is the tell), so add the recorder
   carry in the same diff — and a case harvested BEFORE the carry existed needs its
   opts hand-patched (self-consistently, from the expected finding's own value).
-- **Not every type is revertable — the FN half may stop at detection.** Route53
-  RecordSet, for instance, has no SDK writer (`revert` says "type not revertable
-  yet"), so a detect→revert→clean cycle can't complete. Prove the FN by mutating the
-  declared value out of band (e.g. `aws route53 change-resource-record-sets`) and
-  asserting `check --fail` exits 1, then restore it manually; note the revert gap as a
-  future `SDK_WRITERS` candidate rather than treating it as a regression.
+- **Not every type is revertable — the FN half may stop at detection.** Budgets
+  Budget, for instance, is deliberately not-revertable (`revert` says "type not
+  revertable yet"; the rationale list at the top of `src/revert/writers.ts`), so a
+  detect→revert→clean cycle can't complete. Prove the FN by mutating the declared
+  value out of band and asserting `check --fail` exits 1, then restore it manually;
+  note the revert gap as a future `SDK_WRITERS` candidate rather than treating it as
+  a regression. TWO STALENESS TRAPS in this determination (both hit 2026-07-20): (a)
+  the gap may have been CLOSED since the note you're reading was written — Route53
+  RecordSet was this gotcha's original example and has been fully revertable since
+  #1312/#1431 — so grep `SDK_WRITERS[type]` before planning around "not revertable";
+  (b) the not-revertable RATIONALE can go stale in the other direction: writers.ts
+  justified Budgets by "the reader returns only the scalar identity subset", but
+  #1647/#1658 later grew the reader to the full NewBudget surface, making a writer
+  feasible (#1676) — when a reader gains projection, re-read the not-revertable list
+  for entries whose justification was that reader's thinness.
 - **Read the revert's convergence REPORT text, not just the live value — the report
   layer has its own bug class.** A revert whose target converges perfectly can still
   print a false `NOT reverted: …MasterUserPassword — the default-value write was a
