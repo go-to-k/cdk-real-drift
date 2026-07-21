@@ -70,6 +70,7 @@ import {
   GENERATED_TOPLEVEL_PATHS,
   isLogicalIdPrefixedGeneratedName,
   EPOCH_HOUR_PATHS,
+  NUMERIC_STRING_EQUAL_PATHS,
   IDENTITY_KEYED_DEFAULT_ELEMENTS,
   isEpochHourEqual,
   KNOWN_DEFAULT_ONE_OF,
@@ -4864,6 +4865,15 @@ export function classifyResource(
       // Per-type epoch-seconds paths AWS rounds DOWN to the hour (AppSync ApiKey
       // Expires): the same hour is not drift; a change to a different hour still differs.
       if (EPOCH_HOUR_PATHS[resourceType]?.has(d.path) && isEpochHourEqual(d.stateValue, d.awsValue))
+        continue;
+      // Per-type numeric-STRING paths (Budgets Budget amounts): both sides may be a
+      // numeric string ("100" template vs "100.0" AWS), which isStringlyEqualScalar's
+      // number-vs-string arm cannot fold — fold when both denote the same number. A
+      // genuine amount change still differs.
+      if (
+        NUMERIC_STRING_EQUAL_PATHS[resourceType]?.some((re) => re.test(d.path)) &&
+        isNumericStringEqualScalar(d.stateValue, d.awsValue)
+      )
         continue;
       // Per-type DNS-FQDN paths whose trailing `.` is optional (Route53 HostedZone Name:
       // declared `example.com`, CC returns `example.com.`) — equal once stripped.
