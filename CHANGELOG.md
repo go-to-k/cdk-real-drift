@@ -1,3 +1,10 @@
+# [0.23.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.22.7...v0.23.0) (2026-07-21)
+
+
+### Features
+
+* **revert:** Budgets::Budget SDK writer — the not-revertable rationale is stale (reader now projects the full NewBudget surface) ([#1678](https://github.com/go-to-k/cdk-real-drift/issues/1678)) ([b35098a](https://github.com/go-to-k/cdk-real-drift/commit/b35098a4f249c379d0c079ec92c035c1502fa06c))
+
 ## [0.22.7](https://github.com/go-to-k/cdk-real-drift/compare/v0.22.6...v0.22.7) (2026-07-19)
 
 
