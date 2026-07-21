@@ -1,3 +1,10 @@
+## [0.23.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.23.1...v0.23.2) (2026-07-21)
+
+
+### Bug Fixes
+
+* **diff:** UDP-family ip-target preserve_client_ip FP, CapacityReservation first-run FPs + revert no-ops (hunt 2026-07-21) ([#1680](https://github.com/go-to-k/cdk-real-drift/issues/1680)) ([1e1c2fb](https://github.com/go-to-k/cdk-real-drift/commit/1e1c2fb6baf123234686566b7becd38c1c286882))
+
 ## [0.23.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.23.0...v0.23.1) (2026-07-21)
 
 
