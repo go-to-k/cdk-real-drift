@@ -123,6 +123,7 @@ import {
   SetQueueAttributesCommand,
   SQSClient,
 } from '@aws-sdk/client-sqs';
+import { BudgetsClient, DescribeBudgetCommand, UpdateBudgetCommand } from '@aws-sdk/client-budgets';
 import {
   ConfigServiceClient,
   DescribeConfigRulesCommand,
@@ -213,6 +214,7 @@ const iam = mockClient(IAMClient);
 const elb = mockClient(ElasticLoadBalancingV2Client);
 const sns = mockClient(SNSClient);
 const sqs = mockClient(SQSClient);
+const budgets = mockClient(BudgetsClient);
 const serviceDiscovery = mockClient(ServiceDiscoveryClient);
 const docdb = mockClient(DocDBClient);
 const eb = mockClient(ElasticBeanstalkClient);
@@ -273,6 +275,7 @@ beforeEach(() => {
   elb.reset();
   sns.reset();
   sqs.reset();
+  budgets.reset();
   serviceDiscovery.reset();
   elasticache.reset();
   memorydb.reset();
@@ -4465,5 +4468,125 @@ describe('MediaConvert Queue writer (UpdateQueue, #1623)', () => {
         { op: 'add', path: '/Tags', value: { a: 'b' }, human: 'Tags -> value' },
       ])
     ).rejects.toThrow(/Tags/);
+  });
+});
+
+describe('Budgets Budget writer (UpdateBudget full-object reconstruction, #1676)', () => {
+  // The documented CostTypes defaults (9 true, UseBlended/UseAmortized false) — the whole
+  // KNOWN_DEFAULT_PATHS `Budget.CostTypes` pin that plan.ts's nestedDefault branch writes back
+  // as an explicit `add` when reverting an undeclared all-false OOB gutting (#1675).
+  const DEFAULT_COST_TYPES = {
+    IncludeTax: true,
+    IncludeSubscription: true,
+    UseBlended: false,
+    IncludeRefund: true,
+    IncludeCredit: true,
+    IncludeUpfront: true,
+    IncludeRecurring: true,
+    IncludeOtherSubscription: true,
+    IncludeSupport: true,
+    IncludeDiscount: true,
+    UseAmortized: false,
+  };
+  const budgetCtx = (physicalId = 'my-budget') => ctx({ physicalId });
+
+  it('reconstructs the full NewBudget and restores the default CostTypes on the #1675 all-false revert', async () => {
+    // Live budget whose CostTypes was gutted to all-false out of band (the #1675 scenario) —
+    // BudgetLimit + CostFilters are undeclared surface the reader now projects and the writer
+    // must NOT wipe (UpdateBudget overwrites wholesale).
+    budgets.on(DescribeBudgetCommand).resolves({
+      Budget: {
+        BudgetName: 'my-budget',
+        BudgetType: 'COST',
+        TimeUnit: 'MONTHLY',
+        BudgetLimit: { Amount: '100.0', Unit: 'USD' },
+        CostFilters: { Service: ['Amazon Elastic Compute Cloud - Compute'] },
+        CostTypes: {
+          IncludeTax: false,
+          IncludeSubscription: false,
+          UseBlended: false,
+          IncludeRefund: false,
+          IncludeCredit: false,
+          IncludeUpfront: false,
+          IncludeRecurring: false,
+          IncludeOtherSubscription: false,
+          IncludeSupport: false,
+          IncludeDiscount: false,
+          UseAmortized: false,
+        },
+      },
+    } as never);
+    budgets.on(UpdateBudgetCommand).resolves({});
+    // The op plan.ts emits for the undeclared all-false CostTypes: an explicit set-default
+    // `add` of the whole default object (nestedDefault branch — Budget.CostTypes is pinned).
+    await SDK_WRITERS['AWS::Budgets::Budget'](budgetCtx(), [
+      {
+        op: 'add',
+        path: '/Budget/CostTypes',
+        value: DEFAULT_COST_TYPES,
+        human: 'Budget.CostTypes -> AWS default (undeclared, not in baseline)',
+      },
+    ]);
+    const calls = budgets.commandCalls(UpdateBudgetCommand);
+    expect(calls).toHaveLength(1);
+    const input = calls[0]!.args[0].input as {
+      AccountId?: string;
+      NewBudget?: Record<string, unknown>;
+    };
+    expect(input.AccountId).toBe('123456789012');
+    const nb = input.NewBudget!;
+    // the gutted CostTypes is restored to the full default...
+    expect(nb.CostTypes).toEqual(DEFAULT_COST_TYPES);
+    // ...and nothing the reader projects is wiped by the wholesale overwrite.
+    expect(nb.BudgetName).toBe('my-budget');
+    expect(nb.BudgetType).toBe('COST');
+    expect(nb.TimeUnit).toBe('MONTHLY');
+    expect(nb.BudgetLimit).toEqual({ Amount: '100.0', Unit: 'USD' });
+    expect(nb.CostFilters).toEqual({ Service: ['Amazon Elastic Compute Cloud - Compute'] });
+  });
+
+  it('drops the computed BudgetLimit for an auto-adjusting budget so revert keeps it auto-adjusting', async () => {
+    budgets.on(DescribeBudgetCommand).resolves({
+      Budget: {
+        BudgetName: 'auto-budget',
+        BudgetType: 'COST',
+        TimeUnit: 'MONTHLY',
+        BudgetLimit: { Amount: '250.0', Unit: 'USD' }, // AWS-computed for an auto-adjust budget
+        AutoAdjustData: {
+          AutoAdjustType: 'HISTORICAL',
+          HistoricalOptions: { BudgetAdjustmentPeriod: 3 }, // drifted out of band from 2
+        },
+      },
+    } as never);
+    budgets.on(UpdateBudgetCommand).resolves({});
+    await SDK_WRITERS['AWS::Budgets::Budget'](budgetCtx('auto-budget'), [
+      {
+        op: 'add',
+        path: '/Budget/AutoAdjustData/HistoricalOptions/BudgetAdjustmentPeriod',
+        value: 2,
+        human: 'Budget.AutoAdjustData.HistoricalOptions.BudgetAdjustmentPeriod -> deployed value',
+      },
+    ]);
+    const nb = budgets.commandCalls(UpdateBudgetCommand)[0]!.args[0].input.NewBudget!;
+    // BudgetLimit is dropped (writing it back as a manual limit would convert the budget to fixed)
+    expect(nb.BudgetLimit).toBeUndefined();
+    expect(nb.AutoAdjustData).toEqual({
+      AutoAdjustType: 'HISTORICAL',
+      HistoricalOptions: { BudgetAdjustmentPeriod: 2 },
+    });
+  });
+
+  it('throws an honest failure when the budget identity cannot be resolved', async () => {
+    // A projection missing TimeUnit (an unreadable / degraded budget) — reconstructing a
+    // NewBudget from it would omit a required field, so fail rather than write a partial object.
+    budgets.on(DescribeBudgetCommand).resolves({
+      Budget: { BudgetName: 'x', BudgetType: 'COST' },
+    } as never);
+    await expect(
+      SDK_WRITERS['AWS::Budgets::Budget'](budgetCtx('x'), [
+        { op: 'add', path: '/Budget/CostTypes', value: DEFAULT_COST_TYPES, human: 'x' },
+      ])
+    ).rejects.toThrow(/identity/);
+    expect(budgets.commandCalls(UpdateBudgetCommand)).toHaveLength(0);
   });
 });

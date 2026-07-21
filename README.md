@@ -1193,6 +1193,10 @@ place, since Cloud Control has no handler for the type),
 `AWS::Config::ConfigurationRecorder` — a whole-recorder upsert re-supplying the
 declared RecordingGroup / RecordingMode / RoleARN, since Cloud Control cannot
 write the type),
+`budgets:UpdateBudget` (reverts an `AWS::Budgets::Budget` — a whole-`NewBudget`
+overwrite reconstructed from the desired values plus the live projection, since
+Cloud Control cannot write the type; a computed `BudgetLimit` is dropped for an
+auto-adjusting budget so revert keeps it auto-adjusting),
 `ecs:UpdateService` (reverts an `AWS::ECS::Service` `ServiceConnectConfiguration` /
 `VolumeConfigurations` drift — the whole writeOnly prop is re-supplied, since Cloud
 Control cannot sub-path patch it),
