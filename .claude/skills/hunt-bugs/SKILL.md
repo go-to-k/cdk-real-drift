@@ -966,6 +966,50 @@ tests/integration/sweep-orphans.sh` to restore main to HEAD — the committed
   default is `'true'` → first-run FP, #1664). A barest deploy of each mirrored-row
   variant is cheap (a TargetGroup needs no LB); grep the split tables for rows whose
   comment cites a DIFFERENT variant's deploy as evidence.
+- **Two split tables proven per-axis are still unproven per-COMBINATION — and the
+  merge ORDER between them is itself a fold decision.** Every row of BY_PROTOCOL and
+  BY_TARGET_TYPE had live evidence, yet a barest UDP/ip TargetGroup still first-ran a
+  `preserve_client_ip.enabled` FP (hunt 2026-07-21): the ip row's `'false'` is a
+  TCP/TLS-only default, but the cross combination UDP×ip had never been deployed
+  (variants5's UDP group omitted TargetType → took the `instance` row), and the merge
+  spread BY_TARGET_TYPE last so its default beat the protocol's FORCED value (AWS
+  forbids disabling client-IP preservation for UDP/TCP_UDP). Fix shape: a value the
+  protocol FORCES belongs in the protocol row and the protocol overrides merge LAST
+  (forced beats default). When a type has two variant axes, enumerate the cheap cross
+  products (a TG needs no LB) — per-axis green proves nothing about the intersection.
+- **Determination (2026-07-21): the non-default-region axis came back CLEAN.** The
+  first hunt ever run outside us-east-1 (region-hunt: a 15-type barest pack with the
+  widest KNOWN_DEFAULTS/bag surfaces — ALB/NLB/TGs, Lambda, DDB, Kinesis, SQS/SNS,
+  S3, Logs, ECR, Events, Athena WorkGroup, EFS — in ap-northeast-1) folded all 125
+  atDefault values correctly, and the SQS FN detect→revert leg converged, so the
+  constant tables are not us-east-1-baked for the common types. A future
+  region-sensitive default remains possible (rollout-lagged attribute families in
+  late-rollout regions like ap-northeast-3) but the broad axis is mined — don't
+  re-burn a wide region pack; reserve region probes for a specific suspected
+  rollout-lag value.
+- **Determination (2026-07-21): the #904 Processed-template path is live-proven.** A
+  raw-CFn `Transform: AWS::LanguageExtensions` stack (Fn::ForEach-expanded log groups
+  - an Fn::ToJsonString SSM parameter) checked CLEAN end-to-end via a hand-built
+    cdk.out pointing at the ORIGINAL unexpanded template (langext-hunt) — the deployed
+    Processed fallback resolved the expansion. No SAM/LanguageExtensions live gap
+    remains for the check path.
+- **An EC2-style `TagSpecifications` INPUT wrapper can be echoed back on read with
+  the CFN-propagated STACK tags inside — the #683 FP class one level down.** A barest
+  CapacityReservation echoed `TagSpecifications[{ResourceType, Tags:[cdkrd:ephemeral…]}]`
+  as undeclared Potential Drift (every hunt fixture stack-tags itself, so this FPs on
+  EVERY deploy of such a type; the `aws:*` members were already deep-stripped —
+  the propagated USER tag was the survivor). Fix shape: subtractPropagatedStackTags
+  now walks the wrapper generically (drop emptied specs / the emptied wrapper, keep
+  non-stack tags). The corpus had ZERO other liveRaw `TagSpecifications` echoes, so
+  the class is closed until a new type echoes the wrapper — if a first-run FP shows
+  a `TagSpecifications` husk, check this mechanism before adding a per-type fold.
+  Same hunt: the reservation's `EndDate` echoes the literal STRING "null" (pinned
+  as-is in KNOWN_DEFAULTS — display shows `="null"` quoted, which is the tell it is
+  a string, not a JSON null the trivial-empty drop would have eaten), and its
+  ModifyCapacityReservation is omit-ignored (InstanceMatchCriteria/EndDateType RSDP
+  entries; `EndDateType: unlimited` alone is REJECTED while the model still carries
+  EndDate — the set-default add must ride the same patch as the EndDate `remove`,
+  which the plan produces naturally).
 - **An FN detect-probe needs its resource at readGap=0 — a reader-projection readGap
   silently disables appeared-since-record for the WHOLE resource, and the report
   masks it as "No baseline yet".** The R62 mechanism only fires on snapshot-COMPLETE

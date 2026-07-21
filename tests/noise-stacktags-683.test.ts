@@ -134,3 +134,80 @@ describe('#683 classifyResource end-to-end (zero tag FP on a --tags deploy)', ()
     expect(tier(f, 'undeclared')).toContain('Tags');
   });
 });
+
+// Hunt 2026-07-21 (zerocorpus-hunt): some EC2 registry handlers (CapacityReservation) echo the
+// create-time TagSpecifications INPUT wrapper back on read with the propagated stack tags
+// inside each spec — the same FP class one level down. The subtraction now reaches inside the
+// wrapper (dropping emptied specs and the emptied wrapper), and declaredTagKeys collects keys
+// from a DECLARED TagSpecifications so declared intent is still protected.
+describe('TagSpecifications wrapper subtraction (hunt 2026-07-21)', () => {
+  it('drops the wrapper when every spec holds only propagated stack tags', () => {
+    const out = subtractPropagatedStackTags(
+      {
+        TagSpecifications: [
+          { ResourceType: 'capacity-reservation', Tags: [{ Key: 'team', Value: 'platform' }] },
+        ],
+      },
+      stackTags,
+      new Set()
+    );
+    expect(out.TagSpecifications).toBeUndefined();
+  });
+
+  it('keeps a non-stack tag (and its spec) while subtracting the propagated ones', () => {
+    const out = subtractPropagatedStackTags(
+      {
+        TagSpecifications: [
+          {
+            ResourceType: 'capacity-reservation',
+            Tags: [
+              { Key: 'team', Value: 'platform' },
+              { Key: 'rogue', Value: 'evil' },
+            ],
+          },
+        ],
+      },
+      stackTags,
+      new Set()
+    );
+    expect(out.TagSpecifications).toEqual([
+      { ResourceType: 'capacity-reservation', Tags: [{ Key: 'rogue', Value: 'evil' }] },
+    ]);
+  });
+
+  it('a declared TagSpecifications key is protected from the subtraction', () => {
+    const keys = declaredTagKeys({
+      TagSpecifications: [
+        { ResourceType: 'capacity-reservation', Tags: [{ Key: 'team', Value: 'mine' }] },
+      ],
+    });
+    expect([...keys]).toEqual(['team']);
+    const out = subtractPropagatedStackTags(
+      {
+        TagSpecifications: [
+          { ResourceType: 'capacity-reservation', Tags: [{ Key: 'team', Value: 'platform' }] },
+        ],
+      },
+      stackTags,
+      keys
+    );
+    expect(out.TagSpecifications).toEqual([
+      { ResourceType: 'capacity-reservation', Tags: [{ Key: 'team', Value: 'platform' }] },
+    ]);
+  });
+
+  it('a value that differs from the stack tag is preserved (exact-match subtraction only)', () => {
+    const out = subtractPropagatedStackTags(
+      {
+        TagSpecifications: [
+          { ResourceType: 'capacity-reservation', Tags: [{ Key: 'team', Value: 'other' }] },
+        ],
+      },
+      stackTags,
+      new Set()
+    );
+    expect(out.TagSpecifications).toEqual([
+      { ResourceType: 'capacity-reservation', Tags: [{ Key: 'team', Value: 'other' }] },
+    ]);
+  });
+});

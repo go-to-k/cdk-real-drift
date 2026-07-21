@@ -1,0 +1,28 @@
+{
+  "Transform": "AWS::LanguageExtensions",
+  "Resources": {
+    "Fn::ForEach::LogGroups": [
+      "Name",
+      ["Alpha", "Beta", "Gamma"],
+      {
+        "Lg${Name}": {
+          "Type": "AWS::Logs::LogGroup",
+          "Properties": {
+            "LogGroupName": { "Fn::Sub": "cdkrd-hunt0721-langext-${Name}" },
+            "RetentionInDays": 7,
+            "Tags": [{ "Key": "cdkrd:ephemeral", "Value": "1" }]
+          }
+        }
+      }
+    ],
+    "JsonParam": {
+      "Type": "AWS::SSM::Parameter",
+      "Properties": {
+        "Name": "cdkrd-hunt0721-langext-json",
+        "Type": "String",
+        "Value": { "Fn::ToJsonString": { "alpha": 1, "beta": ["a", "b"] } },
+        "Tags": { "cdkrd:ephemeral": "1" }
+      }
+    }
+  }
+}

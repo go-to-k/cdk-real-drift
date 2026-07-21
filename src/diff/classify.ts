@@ -134,13 +134,18 @@ function elbAttributeDefaultsFor(
   if (resourceType === 'AWS::ElasticLoadBalancingV2::TargetGroup') {
     const protocol = declared.Protocol ?? live.Protocol;
     const targetType = declared.TargetType ?? live.TargetType;
+    // Merge order: target-type defaults first, protocol overrides LAST — a value the
+    // PROTOCOL forces (UDP/TCP_UDP preserve_client_ip is always-on, not disableable)
+    // must beat a target-type DEFAULT (the ip row's TCP/TLS-only 'false', #1626); a
+    // barest UDP/ip group first-run-FP'd under the old order (echo4-hunt, 2026-07-21).
+    // Keys present in only one table are unaffected.
     return {
       ...shared,
-      ...(typeof protocol === 'string'
-        ? (ELB_TG_ATTRIBUTE_DEFAULTS_BY_PROTOCOL[protocol] ?? {})
-        : {}),
       ...(typeof targetType === 'string'
         ? (ELB_TG_ATTRIBUTE_DEFAULTS_BY_TARGET_TYPE[targetType] ?? {})
+        : {}),
+      ...(typeof protocol === 'string'
+        ? (ELB_TG_ATTRIBUTE_DEFAULTS_BY_PROTOCOL[protocol] ?? {})
         : {}),
     };
   }

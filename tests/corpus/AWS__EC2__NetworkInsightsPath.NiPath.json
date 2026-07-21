@@ -1,0 +1,98 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "NiPath",
+    "resourceType": "AWS::EC2::NetworkInsightsPath",
+    "physicalId": "nip-096dc07024d12e049",
+    "constructPath": "CdkrdHunt0721Zc/NiPath",
+    "declared": {
+      "Destination": "eni-0e8d58891d972f68f",
+      "Protocol": "tcp",
+      "Source": "eni-0c25b2612d35c6bfe",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Destination": "eni-0e8d58891d972f68f",
+    "SourceArn": "arn:aws:ec2:us-east-1:111111111111:network-interface/eni-0c25b2612d35c6bfe",
+    "NetworkInsightsPathId": "nip-096dc07024d12e049",
+    "CreatedDate": "2026-07-21T14:57:58.870Z",
+    "NetworkInsightsPathArn": "arn:aws:ec2:us-east-1:111111111111:network-insights-path/nip-096dc07024d12e049",
+    "Protocol": "tcp",
+    "Source": "eni-0c25b2612d35c6bfe",
+    "DestinationArn": "arn:aws:ec2:us-east-1:111111111111:network-interface/eni-0e8d58891d972f68f",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0721Zc",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "NiPath",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0721Zc/766a3cb0-8514-11f1-8015-0affe8e65b2b",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [
+      "CreatedDate",
+      "DestinationArn",
+      "NetworkInsightsPathArn",
+      "NetworkInsightsPathId",
+      "SourceArn"
+    ],
+    "writeOnly": [],
+    "createOnly": [
+      "Destination",
+      "DestinationIp",
+      "DestinationPort",
+      "FilterAtDestination",
+      "FilterAtSource",
+      "Protocol",
+      "Source",
+      "SourceIp"
+    ],
+    "readOnlyPaths": [
+      "CreatedDate",
+      "DestinationArn",
+      "NetworkInsightsPathArn",
+      "NetworkInsightsPathId",
+      "SourceArn"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "Destination",
+      "DestinationIp",
+      "DestinationPort",
+      "FilterAtDestination",
+      "FilterAtSource",
+      "Protocol",
+      "Source",
+      "SourceIp"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

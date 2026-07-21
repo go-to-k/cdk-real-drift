@@ -1,0 +1,179 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Cr",
+    "resourceType": "AWS::EC2::CapacityReservation",
+    "physicalId": "cr-014fdc895b8abeedc",
+    "constructPath": "CdkrdHunt0721Zc/Cr",
+    "declared": {
+      "AvailabilityZone": "us-east-1a",
+      "InstanceCount": 1,
+      "InstancePlatform": "Linux/UNIX",
+      "InstanceType": "t3.nano"
+    }
+  },
+  "liveRaw": {
+    "Tenancy": "default",
+    "EndDateType": "unlimited",
+    "TagSpecifications": [
+      {
+        "ResourceType": "capacity-reservation",
+        "Tags": [
+          {
+            "Value": "CdkrdHunt0721Zc",
+            "Key": "aws:cloudformation:stack-name"
+          },
+          {
+            "Value": "Cr",
+            "Key": "aws:cloudformation:logical-id"
+          },
+          {
+            "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0721Zc/766a3cb0-8514-11f1-8015-0affe8e65b2b",
+            "Key": "aws:cloudformation:stack-id"
+          },
+          {
+            "Value": "1",
+            "Key": "cdkrd:ephemeral"
+          }
+        ]
+      }
+    ],
+    "AvailabilityZoneId": "use1-az1",
+    "AvailabilityZone": "us-east-1a",
+    "TotalInstanceCount": 1,
+    "EndDate": "null",
+    "CreateDate": "2026-07-21T14:57:27Z",
+    "EbsOptimized": false,
+    "StartDate": "2026-07-21T14:57:27Z",
+    "InstanceCount": 1,
+    "CapacityReservationArn": "arn:aws:ec2:us-east-1:111111111111:capacity-reservation/cr-014fdc895b8abeedc",
+    "OwnerId": "111111111111",
+    "State": "active",
+    "AvailableInstanceCount": 1,
+    "InstancePlatform": "Linux/UNIX",
+    "Id": "cr-014fdc895b8abeedc",
+    "CapacityAllocationSet": [],
+    "InstanceType": "t3.nano",
+    "EphemeralStorage": false,
+    "InstanceMatchCriteria": "open"
+  },
+  "schema": {
+    "readOnly": [
+      "AvailableInstanceCount",
+      "CapacityAllocationSet",
+      "CapacityReservationArn",
+      "CapacityReservationFleetId",
+      "CommitmentInfo",
+      "CreateDate",
+      "DeliveryPreference",
+      "Id",
+      "OwnerId",
+      "ReservationType",
+      "StartDate",
+      "State",
+      "TotalInstanceCount"
+    ],
+    "writeOnly": ["UnusedReservationBillingOwnerId"],
+    "createOnly": [
+      "AvailabilityZone",
+      "AvailabilityZoneId",
+      "EbsOptimized",
+      "EphemeralStorage",
+      "InstancePlatform",
+      "InstanceType",
+      "OutPostArn",
+      "PlacementGroupArn",
+      "TagSpecifications",
+      "Tenancy"
+    ],
+    "readOnlyPaths": [
+      "AvailableInstanceCount",
+      "CapacityAllocationSet",
+      "CapacityReservationArn",
+      "CapacityReservationFleetId",
+      "CommitmentInfo",
+      "CreateDate",
+      "DeliveryPreference",
+      "Id",
+      "OwnerId",
+      "ReservationType",
+      "StartDate",
+      "State",
+      "TotalInstanceCount"
+    ],
+    "writeOnlyPaths": ["UnusedReservationBillingOwnerId"],
+    "createOnlyPaths": [
+      "AvailabilityZone",
+      "AvailabilityZoneId",
+      "EbsOptimized",
+      "EphemeralStorage",
+      "InstancePlatform",
+      "InstanceType",
+      "OutPostArn",
+      "PlacementGroupArn",
+      "TagSpecifications",
+      "Tenancy"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["CapacityAllocationSet", "TagSpecifications"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Cr",
+      "resourceType": "AWS::EC2::CapacityReservation",
+      "path": "Tenancy",
+      "actual": "default",
+      "physicalId": "cr-014fdc895b8abeedc",
+      "constructPath": "CdkrdHunt0721Zc/Cr"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Cr",
+      "resourceType": "AWS::EC2::CapacityReservation",
+      "path": "EndDateType",
+      "actual": "unlimited",
+      "physicalId": "cr-014fdc895b8abeedc",
+      "constructPath": "CdkrdHunt0721Zc/Cr"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Cr",
+      "resourceType": "AWS::EC2::CapacityReservation",
+      "path": "AvailabilityZoneId",
+      "actual": "use1-az1",
+      "physicalId": "cr-014fdc895b8abeedc",
+      "constructPath": "CdkrdHunt0721Zc/Cr"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Cr",
+      "resourceType": "AWS::EC2::CapacityReservation",
+      "path": "EndDate",
+      "actual": "null",
+      "physicalId": "cr-014fdc895b8abeedc",
+      "constructPath": "CdkrdHunt0721Zc/Cr"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Cr",
+      "resourceType": "AWS::EC2::CapacityReservation",
+      "path": "InstanceMatchCriteria",
+      "actual": "open",
+      "physicalId": "cr-014fdc895b8abeedc",
+      "constructPath": "CdkrdHunt0721Zc/Cr"
+    }
+  ]
+}

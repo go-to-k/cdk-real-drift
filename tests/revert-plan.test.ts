@@ -4406,3 +4406,52 @@ describe('#748: toPointer splits dots only at bracket depth 0', () => {
     expect(toPointer('a/b')).toBe('/a~1b');
   });
 });
+
+// Hunt 2026-07-21: EC2 ModifyCapacityReservation leaves an OMITTED property unchanged —
+// bare `remove` reverts of InstanceMatchCriteria / EndDateType silently no-oped (proven
+// via explicit Cloud Control patches on a CLI-created reservation). The RSDP entries
+// write the KNOWN_DEFAULTS defaults explicitly; EndDate stays a plain `remove` (its pin
+// is the literal read-echo string "null", not a writable value) and rides the same
+// resource patch as the EndDateType set-default, which is the combination the live probe
+// proved to converge.
+describe('CapacityReservation revert set-defaults (hunt 2026-07-21)', () => {
+  it('InstanceMatchCriteria (SET-DEFAULT) -> add op writing "open", not a no-op remove', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::EC2::CapacityReservation',
+      path: 'InstanceMatchCriteria',
+      actual: 'targeted',
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/InstanceMatchCriteria',
+      value: 'open',
+      prior: 'targeted',
+    });
+  });
+
+  it('an out-of-band end date reverts as EndDateType set-default + EndDate remove in ONE patch', () => {
+    const fs = [
+      F({
+        tier: 'undeclared',
+        resourceType: 'AWS::EC2::CapacityReservation',
+        path: 'EndDateType',
+        actual: 'limited',
+      }),
+      F({
+        tier: 'undeclared',
+        resourceType: 'AWS::EC2::CapacityReservation',
+        path: 'EndDate',
+        actual: '2026-08-01T00:00:00Z',
+      }),
+    ];
+    const plan = buildRevertPlan(fs, baseline([]));
+    expect(plan.items).toHaveLength(1);
+    const ops = plan.items[0]!.ops;
+    expect(ops).toContainEqual(
+      expect.objectContaining({ op: 'add', path: '/EndDateType', value: 'unlimited' })
+    );
+    expect(ops).toContainEqual(expect.objectContaining({ op: 'remove', path: '/EndDate' }));
+  });
+});

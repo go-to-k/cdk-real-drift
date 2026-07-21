@@ -118,6 +118,18 @@ const CC_REVERTABLE_DESPITE_READ_OVERRIDE = new Set<string>([
 // entry here (#702): UpdateUserPool ignores an omitted property, so a fold WITHOUT an RSDP
 // entry silently reverts as a no-op `remove`. Keyed `${resourceType}\0${path}`.
 export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
+  // EC2 ModifyCapacityReservation leaves an OMITTED property unchanged — a bare `remove`
+  // of an out-of-band InstanceMatchCriteria=targeted or EndDateType=limited reports
+  // SUCCESS yet the live value persists (silent no-op, proven via explicit Cloud Control
+  // patches on a CLI-created reservation, hunt 2026-07-21). Writing the KNOWN_DEFAULTS
+  // defaults explicitly converges: `add /InstanceMatchCriteria open` restores open
+  // matching, and `add /EndDateType unlimited` combined with the sibling EndDate `remove`
+  // (the same resource patch) clears an out-of-band end date — unlimited ALONE is
+  // rejected while the model still carries EndDate, so the pair matters. (EndDate itself
+  // stays a plain `remove`: its KNOWN_DEFAULTS pin is the literal read-echo string
+  // "null", not a writable value.)
+  'AWS::EC2::CapacityReservation\0InstanceMatchCriteria',
+  'AWS::EC2::CapacityReservation\0EndDateType',
   // #1666: writeDlmLifecyclePolicy builds the Update payload from the desired model, so a
   // bare `remove` of the default-policy shorthand RetainInterval never reaches the call —
   // UpdateLifecyclePolicy keeps the live value (silent no-op, live-proven: an out-of-band

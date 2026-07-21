@@ -211,6 +211,26 @@ resource_gone() {
           printf '%s' "$err" | grep -q 'InvalidVpcEndpointId.NotFound' && return 0
           return 1
           ;;
+        *:capacity-reservation/cr-*)
+          # arn:aws:ec2:<region>:<acct>:capacity-reservation/cr-<id> — a CANCELLED
+          # capacity reservation is terminal (billing stopped, nothing deletable
+          # remains) yet stays in both DescribeCapacityReservations and the tag index
+          # for a retention period (observed 2026-07-21 hunt: a CC-probe reservation
+          # cancelled minutes earlier kept the sweep RED). cancelled/expired counts as
+          # gone, as does a definitive NotFound; any other state (active, pending,
+          # payment-pending) keeps the ORPHAN RED (fail-safe).
+          id="${arn##*/}"
+          local crstate
+          if ! crstate="$(aws ec2 describe-capacity-reservations --capacity-reservation-ids "$id" --region "$REGION" \
+            --query 'CapacityReservations[0].State' --output text 2>&1)"; then
+            printf '%s' "$crstate" | grep -q 'NotFound' && return 0
+            return 1
+          fi
+          case "$(printf '%s' "$crstate" | tr -d '[:space:]')" in
+            cancelled | expired) return 0 ;;
+          esac
+          return 1
+          ;;
         *:instance/i-*)
           # arn:aws:ec2:<region>:<acct>:instance/i-<id> — the third RGT-lag subtype
           # (2026-07-11): a terminated instance stays in the tag index after EC2 has
