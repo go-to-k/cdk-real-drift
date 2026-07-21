@@ -4589,4 +4589,37 @@ describe('Budgets Budget writer (UpdateBudget full-object reconstruction, #1676)
     ).rejects.toThrow(/identity/);
     expect(budgets.commandCalls(UpdateBudgetCommand)).toHaveLength(0);
   });
+
+  it('reverts ONE time-phased period, keeping the other PlannedBudgetLimits intact (#1676 follow-up)', async () => {
+    // A time-phased budget whose 2026-08 period was changed out of band 200 -> 500. The
+    // reader omits the AWS-computed BudgetLimit for a planned budget, so NewBudget carries
+    // ONLY the corrected PlannedBudgetLimits (a wholesale UpdateBudget must not wipe the
+    // untouched periods).
+    budgets.on(DescribeBudgetCommand).resolves({
+      Budget: {
+        BudgetName: 'planned-budget',
+        BudgetType: 'COST',
+        TimeUnit: 'MONTHLY',
+        PlannedBudgetLimits: {
+          '1782864000': { Amount: '100.0', Unit: 'USD' }, // 2026-07 (untouched)
+          '1785542400': { Amount: '500.0', Unit: 'USD' }, // 2026-08 (drifted, being reverted)
+        },
+      },
+    } as never);
+    budgets.on(UpdateBudgetCommand).resolves({});
+    await SDK_WRITERS['AWS::Budgets::Budget'](budgetCtx('planned-budget'), [
+      {
+        op: 'add',
+        path: '/Budget/PlannedBudgetLimits/1785542400/Amount',
+        value: '200',
+        human: 'Budget.PlannedBudgetLimits.1785542400.Amount -> deployed-template value',
+      },
+    ]);
+    const nb = budgets.commandCalls(UpdateBudgetCommand)[0]!.args[0].input.NewBudget!;
+    expect(nb.BudgetLimit).toBeUndefined(); // computed member omitted for a planned budget
+    expect(nb.PlannedBudgetLimits).toEqual({
+      '1782864000': { Amount: '100.0', Unit: 'USD' }, // untouched period preserved
+      '1785542400': { Amount: '200', Unit: 'USD' }, // reverted to the declared value
+    });
+  });
 });

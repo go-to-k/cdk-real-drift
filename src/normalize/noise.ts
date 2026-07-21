@@ -5614,6 +5614,25 @@ export function isEpochHourEqual(a: unknown, b: unknown): boolean {
   return ha !== undefined && hb !== undefined && ha === hb;
 }
 
+// Per-type property paths whose value is a NUMBER that BOTH the template and AWS may
+// carry as a numeric STRING — so isStringlyEqualScalar's number-vs-string arm never
+// reaches them (it deliberately does NOT fold string-vs-string, #731). AWS::Budgets::Budget
+// amounts are the case: CDK stringifies a Spend `Amount` to "100" even from a numeric
+// input, and DescribeBudget returns "100.0", so a clean time-phased budget false-flagged
+// ALL 12 PlannedBudgetLimits periods as declared drift (live-observed on Cdkrd1676Planned).
+// The top-level BudgetLimit.Amount escapes it only because CDK keeps THAT one a number
+// (folded by the existing number-vs-string arm) — listed here too so a raw-CFn string
+// declaration folds as well. Fold when both operands denote the SAME number
+// (isNumericStringEqualScalar); a genuine amount change still differs. Regex-matched
+// because PlannedBudgetLimits carries a dynamic epoch map-key segment. The optional
+// leading `Budget.` tolerates the reader's `{ Budget: {...} }` model wrapper.
+export const NUMERIC_STRING_EQUAL_PATHS: Record<string, readonly RegExp[]> = {
+  'AWS::Budgets::Budget': [
+    /(?:^|\.)BudgetLimit\.Amount$/,
+    /(?:^|\.)PlannedBudgetLimits\.[^.]+\.Amount$/,
+  ],
+};
+
 // Per-type property paths where a value is a DNS FQDN whose trailing `.` is
 // OPTIONAL and semantically meaningless: AWS::Route53::HostedZone `Name` is declared
 // `example.com` in the template but Cloud Control returns it `example.com.` (the

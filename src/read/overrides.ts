@@ -618,7 +618,20 @@ const readBudget: OverrideReader = async ({ physicalId, declared, accountId, reg
       BudgetName: b.BudgetName,
       BudgetType: b.BudgetType,
       TimeUnit: b.TimeUnit,
-      ...(b.BudgetLimit !== undefined && { BudgetLimit: b.BudgetLimit }),
+      // BudgetLimit is COMPUTED by AWS whenever the budget uses AutoAdjustData (from the
+      // look-back window, e.g. Amount "0.01") OR PlannedBudgetLimits (it echoes the current
+      // period's planned amount, e.g. "100.0"). In BOTH cases a user CANNOT declare a
+      // top-level BudgetLimit — CreateBudget accepts exactly ONE of BudgetLimit /
+      // PlannedBudgetLimits / AutoAdjustData — so the projected BudgetLimit is always
+      // undeclared + AWS-assigned + moving, and projecting it surfaced a first-run
+      // `[Potential Drift]` FP (live-observed on Cdkrd1676AutoAdj + Cdkrd1676Planned) with no
+      // stable default to fold it to. Omit it in those cases exactly as CalculatedSpend/
+      // TimePeriod are omitted — a computed member, not intent. Only a plain FIXED budget
+      // (neither sibling present) declares BudgetLimit, where it IS compared. The writer
+      // drops it symmetrically for the AutoAdjustData case.
+      ...(b.BudgetLimit !== undefined &&
+        !aad &&
+        b.PlannedBudgetLimits === undefined && { BudgetLimit: b.BudgetLimit }),
       ...(b.PlannedBudgetLimits !== undefined && { PlannedBudgetLimits: b.PlannedBudgetLimits }),
       ...(b.CostFilters !== undefined && { CostFilters: b.CostFilters }),
       ...(b.CostTypes !== undefined && { CostTypes: b.CostTypes }),
