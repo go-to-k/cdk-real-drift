@@ -1,3 +1,10 @@
+## [0.23.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.23.0...v0.23.1) (2026-07-21)
+
+
+### Bug Fixes
+
+* **read:** AWS::Budgets::Budget first-run FPs for auto-adjusting + time-phased budgets ([#1679](https://github.com/go-to-k/cdk-real-drift/issues/1679)) ([3683087](https://github.com/go-to-k/cdk-real-drift/commit/36830876ba4c44cb223ee5e23adf695d62e85cd9))
+
 # [0.23.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.22.7...v0.23.0) (2026-07-21)
 
 
