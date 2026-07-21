@@ -125,6 +125,46 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  it('Budgets Budget CostTypes gutting -> SDK writer (no longer "type not revertable yet", #1676)', () => {
+    // #1675 made the all-false CostTypes gutting DETECTABLE; #1676 makes it revertable. The
+    // reader/writer now cover Budgets, so an undeclared Budget.CostTypes finding must route to
+    // the SDK writer (writeBudget) instead of the old "type not revertable yet" bar — and the
+    // nestedDefault branch writes the whole default CostTypes object back explicitly (UpdateBudget
+    // overwrites wholesale, so a bare `remove` would not re-default it).
+    const gutted = {
+      IncludeTax: false,
+      IncludeSubscription: false,
+      UseBlended: false,
+      IncludeRefund: false,
+      IncludeCredit: false,
+      IncludeUpfront: false,
+      IncludeRecurring: false,
+      IncludeOtherSubscription: false,
+      IncludeSupport: false,
+      IncludeDiscount: false,
+      UseAmortized: false,
+    };
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::Budgets::Budget',
+      physicalId: 'my-budget',
+      path: 'Budget.CostTypes',
+      nested: true,
+      unrecorded: true,
+      actual: gutted,
+    });
+    const plan = buildRevertPlan([f], undefined, { removeUnrecorded: true });
+    expect(plan.notRevertable).toHaveLength(0); // was: reason 'type not revertable yet'
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0]!.kind).toBe('sdk');
+    expect(plan.items[0]!.resourceType).toBe('AWS::Budgets::Budget');
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/Budget/CostTypes',
+      value: { IncludeTax: true, UseBlended: false, IncludeDiscount: true, UseAmortized: false },
+    });
+  });
+
   it('declared drift carries the live value as `prior` (per-entry SDK writers need it)', () => {
     // A declared /Policies drift on an IAM Role (a rogue inline policy added out of
     // band → whole-array drift) must carry the live array as `prior` so
@@ -2554,7 +2594,7 @@ describe('buildRevertPlan', () => {
       [
         F({ tier: 'readGap' }),
         F({ tier: 'unresolved' }),
-        F({ tier: 'declared', resourceType: 'AWS::Budgets::Budget', desired: {} }), // CC-gap, no SDK writer
+        F({ tier: 'declared', resourceType: 'AWS::Lambda::Permission', desired: {} }), // CC-gap, no SDK writer
         F({ tier: 'declared', physicalId: undefined, desired: 'x' }),
       ],
       undefined
@@ -2680,17 +2720,30 @@ describe('buildRevertPlan', () => {
     ]);
   });
 
-  it('Lambda Permission + Budgets Budget stay not-revertable (no SDK writer)', () => {
+  it('Lambda Permission stays not-revertable, but Budgets Budget now routes to its SDK writer (#1676)', () => {
+    // Budgets Budget graduated out of the not-revertable set (it has writeBudget now); Lambda
+    // Permission stays barred (still no SDK writer — its ADD/REMOVE statement model is not
+    // reconstructable from the thin override reader).
     const plan = buildRevertPlan(
       [
         F({ tier: 'declared', resourceType: 'AWS::Lambda::Permission', desired: {} }),
-        F({ tier: 'declared', resourceType: 'AWS::Budgets::Budget', desired: {} }),
+        F({
+          tier: 'declared',
+          resourceType: 'AWS::Budgets::Budget',
+          physicalId: 'my-budget',
+          path: 'Budget.BudgetLimit.Amount',
+          desired: '200',
+          actual: '100',
+        }),
       ],
       undefined
     );
-    expect(plan.items).toHaveLength(0);
-    expect(plan.notRevertable).toHaveLength(2);
-    for (const n of plan.notRevertable) expect(n.reason).toContain('not revertable');
+    expect(plan.items).toHaveLength(1);
+    expect(plan.items[0]!.resourceType).toBe('AWS::Budgets::Budget');
+    expect(plan.items[0]!.kind).toBe('sdk');
+    expect(plan.notRevertable).toHaveLength(1);
+    expect(plan.notRevertable[0]!.resourceType).toBe('AWS::Lambda::Permission');
+    expect(plan.notRevertable[0]!.reason).toContain('not revertable');
   });
 
   it('R35: UNRECORDED create-only value -> reason is unrecorded (record is the route)', () => {

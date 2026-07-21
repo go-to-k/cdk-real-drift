@@ -13,14 +13,12 @@
 //     / SourceAccount / EventSourceToken), so we cannot reconstruct the exact
 //     statement to re-add nor safely identify the one to remove. Reverting it
 //     blindly risks dropping or duplicating unrelated grants -> left not-revertable.
-//   - AWS::Budgets::Budget: UpdateBudget requires a FULL NewBudget object
-//     (BudgetLimit/PlannedBudgetLimits + BudgetName + TimeUnit + BudgetType, and it
-//     overwrites CostFilters / CostTypes / notifications wholesale). The override
-//     READER returns only the scalar identity subset (BudgetName / BudgetType /
-//     TimeUnit) — no BudgetLimit / CostFilters / CostTypes — so a desiredModel
-//     reconstruction would be missing the required limit and would wipe the cost
-//     filters/types on write. Too divergent from the reader to revert safely ->
-//     left not-revertable.
+// (AWS::Budgets::Budget WAS on this list — "the reader returns only the scalar identity
+// subset, so a NewBudget reconstruction would be missing the required limit and would wipe
+// the cost filters/types". That rationale is now STALE: the reader projection caught up
+// (#1647/#1658 + the R67 CostFilters work) and now projects BudgetLimit / PlannedBudgetLimits
+// / CostFilters / CostTypes / a thin AutoAdjustData, so a full NewBudget CAN be reconstructed
+// from desired + live without wiping anything. Reverted via writeBudget below — #1676.)
 import {
   APIGatewayClient,
   type PatchOperation,
@@ -233,6 +231,7 @@ import {
 } from '@aws-sdk/client-servicediscovery';
 import { SetTopicAttributesCommand, SNSClient } from '@aws-sdk/client-sns';
 import { SetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
+import { type Budget, BudgetsClient, UpdateBudgetCommand } from '@aws-sdk/client-budgets';
 import { partitionForRegion } from '../desired/template-adapter.js';
 import { NESTED_ARRAY_IDENTITY } from '../diff/classify.js';
 import { deepEqual } from '../diff/drift-calculator.js';
@@ -3175,7 +3174,37 @@ const writeApiGatewayRestApiPolicy: SdkWriter = async (ctx) => {
   );
 };
 
+// AWS::Budgets::Budget — UpdateBudget takes a FULL NewBudget object (it overwrites
+// BudgetLimit / PlannedBudgetLimits / CostFilters / CostTypes / AutoAdjustData wholesale;
+// notifications+subscribers are a SEPARATE object it never touches). The override READER now
+// projects that whole write surface (#1647/#1658/R67: BudgetName, BudgetType, TimeUnit +
+// BudgetLimit / PlannedBudgetLimits / CostFilters / CostTypes / a thin AutoAdjustData), so the
+// full-object write is the safe primitive #913 calls for: `desiredModel` overlays the revert
+// ops onto the CURRENT live projection, and the writer sends that whole object as NewBudget.
+// A `remove` op reverting an undeclared CostTypes back to its default never reaches here as a
+// bare removal — plan.ts's nestedDefault branch emits an explicit `add /Budget/CostTypes
+// {full default}` (Budget.CostTypes is a KNOWN_DEFAULT_PATHS pin), so the wholesale overwrite
+// carries the restored default rather than dropping the object (which UpdateBudget would NOT
+// re-default). Computed members (CalculatedSpend / TimePeriod) are omitted exactly as the
+// reader does — AWS re-derives them. AccountId comes from the revert context (same as reader).
+const writeBudget: SdkWriter = async (ctx, ops) => {
+  const desired = await desiredModel('AWS::Budgets::Budget', ctx, ops);
+  const budget = desired.Budget as (Budget & Record<string, unknown>) | undefined;
+  if (!budget || !str(budget.BudgetName) || !str(budget.BudgetType) || !str(budget.TimeUnit))
+    throw new Error('cannot resolve Budget identity (BudgetName/BudgetType/TimeUnit) for revert');
+  if (!str(ctx.accountId)) throw new Error('cannot resolve AccountId for Budget revert');
+  // An auto-adjusting budget computes its own limit — DescribeBudget returns BOTH a computed
+  // BudgetLimit AND AutoAdjustData, but writing the read-time BudgetLimit back as a MANUAL
+  // limit would convert the budget to a fixed one (a wrong write). Drop BudgetLimit when
+  // AutoAdjustData is present so the budget stays auto-adjusting.
+  const newBudget: Budget = budget.AutoAdjustData ? { ...budget, BudgetLimit: undefined } : budget;
+  await new BudgetsClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
+    new UpdateBudgetCommand({ AccountId: ctx.accountId, NewBudget: newBudget })
+  );
+};
+
 export const SDK_WRITERS: Record<string, SdkWriter> = {
+  'AWS::Budgets::Budget': writeBudget,
   'AWS::ApiGatewayV2::Stage': writeApiGatewayV2Stage,
   'AWS::ElasticBeanstalk::Application': writeElasticBeanstalkApplication,
   'AWS::ElasticBeanstalk::Environment': writeElasticBeanstalkEnvironment,
