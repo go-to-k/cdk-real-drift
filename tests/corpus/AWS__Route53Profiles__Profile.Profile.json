@@ -1,0 +1,63 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Profile",
+    "resourceType": "AWS::Route53Profiles::Profile",
+    "physicalId": "rp-7c80988957664377",
+    "constructPath": "CdkrdHunt0721Zc/Profile",
+    "declared": {
+      "Name": "cdkrd-hunt0721-profile",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "ShareStatus": "NOT_SHARED",
+    "Id": "rp-7c80988957664377",
+    "ClientToken": "89c08943-f4a0-37cf-b360-513641b7837c",
+    "Arn": "arn:aws:route53profiles:us-east-1:111111111111:profile/rp-7c80988957664377",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0721Zc",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Profile",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0721Zc/766a3cb0-8514-11f1-8015-0affe8e65b2b",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "Name": "cdkrd-hunt0721-profile"
+  },
+  "schema": {
+    "readOnly": ["Arn", "ClientToken", "Id", "ShareStatus"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn", "ClientToken", "Id", "ShareStatus"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

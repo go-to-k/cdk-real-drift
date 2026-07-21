@@ -1,0 +1,64 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ProfileAssoc",
+    "resourceType": "AWS::Route53Profiles::ProfileAssociation",
+    "physicalId": "rpassoc-b2fa64b43a9140bf",
+    "constructPath": "CdkrdHunt0721Zc/ProfileAssoc",
+    "declared": {
+      "Name": "cdkrd-hunt0721-assoc",
+      "ProfileId": "rp-7c80988957664377",
+      "ResourceId": "vpc-0b753fe61f403d35d",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "ProfileId": "rp-7c80988957664377",
+    "ResourceId": "vpc-0b753fe61f403d35d",
+    "Id": "rpassoc-b2fa64b43a9140bf",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0721Zc",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "ProfileAssoc",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0721Zc/766a3cb0-8514-11f1-8015-0affe8e65b2b",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "Name": "cdkrd-hunt0721-assoc"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": ["Arn"],
+    "createOnly": ["Name", "ProfileId", "ResourceId"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": ["Arn"],
+    "createOnlyPaths": ["Name", "ProfileId", "ResourceId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

@@ -1331,6 +1331,20 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     TransportProtocol: 'udp',
     SessionTimeoutHours: 24,
   },
+  // A barest capacity reservation (only AZ/count/platform/type declared) reads back the
+  // constant service defaults: shared tenancy, no end date ("unlimited" + the literal
+  // STRING "null" the handler echoes for the absent EndDate), and open instance
+  // matching. Observed live on a fresh reservation (us-east-1, zerocorpus-hunt,
+  // 2026-07-21). Equality-gated: an out-of-band change (`modify-capacity-reservation
+  // --instance-match-criteria targeted`, or setting an end date) no longer matches and
+  // surfaces as real undeclared drift. (Tenancy is createOnly — its pin only folds the
+  // first-run echo.)
+  'AWS::EC2::CapacityReservation': {
+    Tenancy: 'default',
+    EndDateType: 'unlimited',
+    EndDate: 'null',
+    InstanceMatchCriteria: 'open',
+  },
   // A DAX cluster that declares no ClusterEndpointEncryptionType reads back "NONE" (the
   // constant service default; the only other value, "TLS", is an explicit opt-in).
   // Observed live on a fresh DAX deploy (us-east-1, 2026-07-03; #554). Equality-gated.
@@ -4128,6 +4142,14 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   AllocationId/NetworkInterfaceId, compared in the declared loop). Observed live
   //   first-run (vpc-attach-min, 2026-07-12).
   'AWS::EC2::EIPAssociation': new Set(['PrivateIpAddress', 'EIP']),
+  //   AWS::EC2::CapacityReservation.AvailabilityZoneId — a reservation that declares
+  //   AvailabilityZone reads back the zone's per-ACCOUNT zone ID (use1-az1, ...): an
+  //   AWS-assigned identifier from the account's own AZ-name→AZ-id mapping, not
+  //   expressible as a constant and not derivable offline. createOnly (can never drift
+  //   out of band), and a user who cares pins AvailabilityZoneId INSTEAD of
+  //   AvailabilityZone — then it is declared and compared in the declared loop. Live
+  //   first-run (zerocorpus-hunt, 2026-07-21).
+  'AWS::EC2::CapacityReservation': new Set(['AvailabilityZoneId']),
   //   Core VPC-networking types whose undeclared, AWS-ASSIGNED, CREATE-ONLY placement identifiers
   //   read back on every first run. Each is a per-resource value AWS picks at creation from the
   //   surrounding VPC/subnet/region — never a constant we can pin, and never user intent when
@@ -4852,6 +4874,13 @@ export const ELB_TG_ATTRIBUTE_DEFAULTS_BY_PROTOCOL: Record<string, Record<string
     'proxy_protocol_v2.enabled': 'false',
     'target_health_state.unhealthy.connection_termination.enabled': 'true',
     'target_health_state.unhealthy.draining_interval_seconds': '0',
+    // Client IP preservation is FORCED ON for the UDP family (AWS forbids disabling
+    // it), so the BY_TARGET_TYPE ip row's 'false' — a TCP/TLS-only default, #1626 —
+    // must not win: the protocol row carries the forced value and classify merges the
+    // protocol overrides LAST. First-run-FP'd live on a barest UDP/ip group
+    // (echo4-hunt, 2026-07-21). A forced value cannot change out of band, so the
+    // constant can never hide a real change.
+    'preserve_client_ip.enabled': 'true',
   },
   TCP_UDP: {
     'stickiness.type': 'source_ip',
@@ -4859,6 +4888,9 @@ export const ELB_TG_ATTRIBUTE_DEFAULTS_BY_PROTOCOL: Record<string, Record<string
     'proxy_protocol_v2.enabled': 'false',
     'target_health_state.unhealthy.connection_termination.enabled': 'true',
     'target_health_state.unhealthy.draining_interval_seconds': '0',
+    // Same forced-on client IP preservation as the UDP row above (echo4-hunt,
+    // 2026-07-21).
+    'preserve_client_ip.enabled': 'true',
   },
 };
 

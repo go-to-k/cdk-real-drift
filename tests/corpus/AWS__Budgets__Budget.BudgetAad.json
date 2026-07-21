@@ -1,0 +1,91 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "BudgetAad",
+    "resourceType": "AWS::Budgets::Budget",
+    "physicalId": "cdkrd-hunt0721-aad",
+    "constructPath": "CdkrdHunt0721Echo4/BudgetAad",
+    "declared": {
+      "Budget": {
+        "AutoAdjustData": {
+          "AutoAdjustType": "HISTORICAL",
+          "HistoricalOptions": {
+            "BudgetAdjustmentPeriod": 6
+          }
+        },
+        "BudgetName": "cdkrd-hunt0721-aad",
+        "BudgetType": "COST",
+        "TimeUnit": "MONTHLY"
+      }
+    }
+  },
+  "liveRaw": {
+    "Budget": {
+      "BudgetName": "cdkrd-hunt0721-aad",
+      "BudgetType": "COST",
+      "TimeUnit": "MONTHLY",
+      "CostTypes": {
+        "IncludeTax": true,
+        "IncludeSubscription": true,
+        "UseBlended": false,
+        "IncludeRefund": true,
+        "IncludeCredit": true,
+        "IncludeUpfront": true,
+        "IncludeRecurring": true,
+        "IncludeOtherSubscription": true,
+        "IncludeSupport": true,
+        "IncludeDiscount": true,
+        "UseAmortized": false
+      },
+      "AutoAdjustData": {
+        "AutoAdjustType": "HISTORICAL",
+        "HistoricalOptions": {
+          "BudgetAdjustmentPeriod": 6
+        }
+      }
+    }
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["NotificationsWithSubscribers"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["NotificationsWithSubscribers"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "BudgetAad",
+      "resourceType": "AWS::Budgets::Budget",
+      "path": "Budget.CostTypes",
+      "actual": {
+        "IncludeTax": true,
+        "IncludeSubscription": true,
+        "UseBlended": false,
+        "IncludeRefund": true,
+        "IncludeCredit": true,
+        "IncludeUpfront": true,
+        "IncludeRecurring": true,
+        "IncludeOtherSubscription": true,
+        "IncludeSupport": true,
+        "IncludeDiscount": true,
+        "UseAmortized": false
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0721-aad",
+      "constructPath": "CdkrdHunt0721Echo4/BudgetAad"
+    }
+  ]
+}

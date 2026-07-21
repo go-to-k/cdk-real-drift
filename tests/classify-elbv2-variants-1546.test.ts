@@ -383,3 +383,82 @@ describe('#1664 UDP/TCP_UDP deregistration connection-termination default', () =
     ]);
   });
 });
+
+// UDP/ip cross-axis (hunt 2026-07-21, echo4-hunt): client IP preservation is FORCED ON
+// for the UDP family (AWS forbids disabling it), but the BY_TARGET_TYPE ip row's
+// 'false' (a TCP/TLS-only default, #1626) was merged AFTER the protocol overrides and
+// won — so a barest UDP/ip (and TCP_UDP/ip) group first-ran a
+// preserve_client_ip.enabled="true" FP. The merge now spreads target-type first and
+// protocol LAST, and the UDP/TCP_UDP rows pin the forced 'true'.
+describe('UDP-family ip-target preserve_client_ip (protocol-forced beats target-type default)', () => {
+  const mk = (protocol: string, targetType?: string): DesiredResource => ({
+    logicalId: `Hunt${protocol}IpTg`,
+    resourceType: 'AWS::ElasticLoadBalancingV2::TargetGroup',
+    physicalId: `arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/${protocol}/abc`,
+    declared: {
+      Protocol: protocol,
+      Port: 53,
+      VpcId: 'vpc-0123456789abcdef0',
+      ...(targetType ? { TargetType: targetType } : {}),
+      HealthCheckProtocol: 'TCP',
+    },
+  });
+  // connection-termination default is 'true' for the UDP family but 'false' for TCP (#1664).
+  const bag = (preserve: string, connTerm = 'true') =>
+    attrs({
+      'stickiness.type': 'source_ip',
+      'deregistration_delay.connection_termination.enabled': connTerm,
+      'proxy_protocol_v2.enabled': 'false',
+      'target_health_state.unhealthy.connection_termination.enabled': 'true',
+      'target_health_state.unhealthy.draining_interval_seconds': '0',
+      'preserve_client_ip.enabled': preserve,
+    });
+
+  it('folds the forced "true" on a barest UDP/ip group (ZERO first-run drift)', () => {
+    const r = mk('UDP', 'ip');
+    const f = classifyResource(
+      r,
+      { ...r.declared, TargetGroupAttributes: bag('true') },
+      emptySchema
+    );
+    expect(pathsByTier(f, 'undeclared')).toEqual([]);
+  });
+
+  it('folds the forced "true" on a barest TCP_UDP/ip group too', () => {
+    const r = mk('TCP_UDP', 'ip');
+    const f = classifyResource(
+      r,
+      { ...r.declared, TargetGroupAttributes: bag('true') },
+      emptySchema
+    );
+    expect(pathsByTier(f, 'undeclared')).toEqual([]);
+  });
+
+  it('a TCP/ip group keeps the ip row "false" default — "true" there still surfaces (#1626 unchanged)', () => {
+    const r = mk('TCP', 'ip');
+    const clean = classifyResource(
+      r,
+      { ...r.declared, TargetGroupAttributes: bag('false', 'false') },
+      emptySchema
+    );
+    expect(pathsByTier(clean, 'undeclared')).toEqual([]);
+    const drifted = classifyResource(
+      r,
+      { ...r.declared, TargetGroupAttributes: bag('true', 'false') },
+      emptySchema
+    );
+    expect(pathsByTier(drifted, 'undeclared')).toEqual([
+      'TargetGroupAttributes[preserve_client_ip.enabled]',
+    ]);
+  });
+
+  it('a UDP/instance group still folds "true" (protocol row and instance row agree)', () => {
+    const r = mk('UDP');
+    const f = classifyResource(
+      r,
+      { ...r.declared, TargetType: 'instance', TargetGroupAttributes: bag('true') },
+      emptySchema
+    );
+    expect(pathsByTier(f, 'undeclared')).toEqual([]);
+  });
+});

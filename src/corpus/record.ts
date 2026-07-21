@@ -73,6 +73,11 @@ export interface CorpusCase {
     region: string;
     kmsAliasTargets: Record<string, string>;
     oaiCanonicalIds: Record<string, string>;
+    // CFn STACK-level tags (#683), present only when non-empty AND this resource's live model
+    // carries a Tags/TagSpecifications array they could have been propagated into, so replay
+    // reproduces the stack-tag subtraction (the CapacityReservation TagSpecifications wrapper
+    // echo, hunt 2026-07-21). Optional for back-compat (older cases lack it).
+    stackTags?: Record<string, string>;
     // Sibling SecurityGroupIngress/Egress rules reflected into an SG's live arrays, keyed by
     // the SG's physical id. Only present (and only its own entry) on an AWS::EC2::SecurityGroup
     // case, so replay reproduces the sibling-rule subtraction; optional for back-compat.
@@ -155,6 +160,7 @@ export function buildCorpusCase(
     region: string;
     kmsAliasTargets: Record<string, string>;
     oaiCanonicalIds: Record<string, string>;
+    stackTags?: Record<string, string>;
     siblingSgRules?: Record<string, { ingress: unknown[]; egress: unknown[] }>;
     bucketNotificationManaged?: Set<string>;
     siblingEipAssociations?: Set<string>;
@@ -298,6 +304,13 @@ export function buildCorpusCase(
       region: opts.region,
       kmsAliasTargets: opts.kmsAliasTargets,
       oaiCanonicalIds: opts.oaiCanonicalIds,
+      // Carry the stack tags only when this resource's live model has an array they could have
+      // been propagated into — replay then reproduces the #683 subtraction without bloating
+      // every case (the TagSpecifications wrapper echo, hunt 2026-07-21).
+      ...(Object.keys(opts.stackTags ?? {}).length > 0 &&
+      (Array.isArray(liveRaw.Tags) || Array.isArray(liveRaw.TagSpecifications))
+        ? { stackTags: opts.stackTags }
+        : {}),
       ...(sgSibling && resource.physicalId
         ? { siblingSgRules: { [resource.physicalId]: sgSibling } }
         : {}),
