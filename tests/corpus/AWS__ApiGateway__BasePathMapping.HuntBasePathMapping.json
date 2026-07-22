@@ -1,0 +1,40 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntBasePathMapping",
+    "resourceType": "AWS::ApiGateway::BasePathMapping",
+    "physicalId": "hunt0722-v1.cdkrd-hunt.example.com|(none)",
+    "constructPath": "CdkrdHunt0722ApiMap/HuntBasePathMapping",
+    "declared": {
+      "DomainName": "hunt0722-v1.cdkrd-hunt.example.com",
+      "RestApiId": "ww46dbetaj",
+      "Stage": "prod"
+    }
+  },
+  "liveRaw": {
+    "DomainName": "hunt0722-v1.cdkrd-hunt.example.com",
+    "RestApiId": "ww46dbetaj",
+    "Stage": "prod",
+    "BasePath": ""
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["BasePath", "DomainName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["BasePath", "DomainName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

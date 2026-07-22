@@ -1,0 +1,89 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntTrustedEntitySet",
+    "resourceType": "AWS::GuardDuty::TrustedEntitySet",
+    "physicalId": "4102c48b34674672b9a82f865cd93c38|7d64c86ad0974c0ba56a1f12290589c0",
+    "constructPath": "CdkrdHunt0722Gd2/HuntTrustedEntitySet",
+    "declared": {
+      "DetectorId": "7d64c86ad0974c0ba56a1f12290589c0",
+      "Name": "cdkrd-hunt0722-trusted-entity-set",
+      "Format": "TXT",
+      "Location": "https://s3.amazonaws.com/cdkrd-hunt0722-gd-111111111111/trustedlist.txt",
+      "Activate": true
+    }
+  },
+  "liveRaw": {
+    "Status": "ACTIVE",
+    "Format": "TXT",
+    "CreatedAt": "2026-07-22T07:58:37Z",
+    "DetectorId": "7d64c86ad0974c0ba56a1f12290589c0",
+    "Id": "4102c48b34674672b9a82f865cd93c38",
+    "ErrorDetails": "",
+    "UpdatedAt": "2026-07-22T07:58:37Z",
+    "ExpectedBucketOwner": "111111111111",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0722Gd2",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntTrustedEntitySet",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0722Gd2/17c5f9d0-85a3-11f1-9f36-0e40ba705f19",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "Name": "cdkrd-hunt0722-trusted-entity-set",
+    "Location": "https://s3.amazonaws.com/cdkrd-hunt0722-gd-111111111111/trustedlist.txt"
+  },
+  "schema": {
+    "readOnly": ["CreatedAt", "ErrorDetails", "Id", "Status", "UpdatedAt"],
+    "writeOnly": ["Activate"],
+    "createOnly": ["DetectorId", "Format"],
+    "readOnlyPaths": ["CreatedAt", "ErrorDetails", "Id", "Status", "UpdatedAt"],
+    "writeOnlyPaths": ["Activate"],
+    "createOnlyPaths": ["DetectorId", "Format"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "HuntTrustedEntitySet",
+      "resourceType": "AWS::GuardDuty::TrustedEntitySet",
+      "path": "Activate",
+      "note": "write-only — cannot be read back",
+      "writeOnly": true,
+      "physicalId": "4102c48b34674672b9a82f865cd93c38|7d64c86ad0974c0ba56a1f12290589c0",
+      "constructPath": "CdkrdHunt0722Gd2/HuntTrustedEntitySet"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntTrustedEntitySet",
+      "resourceType": "AWS::GuardDuty::TrustedEntitySet",
+      "path": "ExpectedBucketOwner",
+      "actual": "111111111111",
+      "physicalId": "4102c48b34674672b9a82f865cd93c38|7d64c86ad0974c0ba56a1f12290589c0",
+      "constructPath": "CdkrdHunt0722Gd2/HuntTrustedEntitySet"
+    }
+  ]
+}

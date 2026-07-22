@@ -1,0 +1,76 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntV2Domain",
+    "resourceType": "AWS::ApiGatewayV2::DomainName",
+    "physicalId": "hunt0722-v2.cdkrd-hunt.example.com",
+    "constructPath": "CdkrdHunt0722ApiMap/HuntV2Domain",
+    "declared": {
+      "DomainName": "hunt0722-v2.cdkrd-hunt.example.com",
+      "DomainNameConfigurations": [
+        {
+          "CertificateArn": "arn:aws:acm:us-east-1:111111111111:certificate/05157b27-63b7-4403-8184-b3e8b5efdd32",
+          "EndpointType": "REGIONAL"
+        }
+      ],
+      "Tags": {
+        "cdkrd:ephemeral": "1"
+      }
+    }
+  },
+  "liveRaw": {
+    "RoutingMode": "API_MAPPING_ONLY",
+    "RegionalHostedZoneId": "Z1UJRXOUMOOFQ8",
+    "RegionalDomainName": "d-qqk9esqm0f.execute-api.us-east-1.amazonaws.com",
+    "DomainName": "hunt0722-v2.cdkrd-hunt.example.com",
+    "DomainNameArn": "arn:aws:apigateway:us-east-1::/domainnames/hunt0722-v2.cdkrd-hunt.example.com",
+    "DomainNameConfigurations": [
+      {
+        "IpAddressType": "ipv4",
+        "SecurityPolicy": "TLS_1_2",
+        "EndpointType": "REGIONAL",
+        "CertificateArn": "arn:aws:acm:us-east-1:111111111111:certificate/05157b27-63b7-4403-8184-b3e8b5efdd32"
+      }
+    ],
+    "Tags": {
+      "aws:cloudformation:stack-name": "CdkrdHunt0722ApiMap",
+      "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0722ApiMap/db1f9af0-859c-11f1-918a-0e840500951f",
+      "cdkrd:ephemeral": "1",
+      "aws:cloudformation:logical-id": "HuntV2Domain"
+    }
+  },
+  "schema": {
+    "readOnly": ["DomainNameArn", "RegionalDomainName", "RegionalHostedZoneId"],
+    "writeOnly": [],
+    "createOnly": ["DomainName"],
+    "readOnlyPaths": ["DomainNameArn", "RegionalDomainName", "RegionalHostedZoneId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["DomainName"],
+    "defaults": {
+      "RoutingMode": "API_MAPPING_ONLY"
+    },
+    "defaultPaths": {
+      "RoutingMode": "API_MAPPING_ONLY"
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntV2Domain",
+      "resourceType": "AWS::ApiGatewayV2::DomainName",
+      "path": "RoutingMode",
+      "actual": "API_MAPPING_ONLY",
+      "physicalId": "hunt0722-v2.cdkrd-hunt.example.com",
+      "constructPath": "CdkrdHunt0722ApiMap/HuntV2Domain"
+    }
+  ]
+}

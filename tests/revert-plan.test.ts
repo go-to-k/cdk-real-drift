@@ -755,6 +755,54 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  // revconv6 hunt (live-proven 2026-07-22, #1684): the sibling whole-object
+  // AppMonitorConfiguration no-ops the bare remove on the same selective
+  // UpdateAppMonitor call; an explicit CC add of the KNOWN_DEFAULTS object converges.
+  it('RUM AppMonitor AppMonitorConfiguration (SET-DEFAULT) -> add op writing the default object, not a no-op remove', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::RUM::AppMonitor',
+      path: 'AppMonitorConfiguration',
+      actual: {
+        IncludedPages: [],
+        ExcludedPages: [],
+        FavoritePages: [],
+        SessionSampleRate: 0.5,
+        Telemetries: [],
+      },
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/AppMonitorConfiguration',
+      value: {
+        IncludedPages: [],
+        ExcludedPages: [],
+        FavoritePages: [],
+        SessionSampleRate: 0.1,
+        Telemetries: [],
+      },
+    });
+  });
+
+  // gdsets2 hunt (live-proven 2026-07-22, #1687): GuardDuty UpdateFilter keeps an omitted
+  // Action; the explicit CC add of the KNOWN_DEFAULTS 'NOOP' converges.
+  it('GuardDuty Filter Action (SET-DEFAULT) -> add op writing the NOOP default, not a no-op remove', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::GuardDuty::Filter',
+      path: 'Action',
+      actual: 'ARCHIVE',
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/Action',
+      value: 'NOOP',
+      prior: 'ARCHIVE',
+    });
+  });
+
   it('ServiceCatalog TagOption Active (SET-DEFAULT) -> add op writing the true default, not a rejected remove', () => {
     const f = F({
       tier: 'undeclared',

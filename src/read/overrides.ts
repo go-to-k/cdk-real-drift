@@ -3561,6 +3561,11 @@ const readElbv2ListenerCertificate: OverrideReader = async ({ declared, region }
 
 export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::ElasticLoadBalancingV2::ListenerCertificate': readElbv2ListenerCertificate,
+  // NOTE (hunt 2026-07-22): still ZERO live coverage and cheaply unexercisable — a
+  // CFn-declared cert blocks CREATE on domain validation (needs real ownership), and a
+  // resource-IMPORT changeset of a CLI-imported cert is rejected ("ResourceTypes
+  // [AWS::CertificateManager::Certificate] are not supported for Import"). First live
+  // proof will have to come from a real-domain integ.
   'AWS::CertificateManager::Certificate': readAcmCertificate,
   'AWS::SES::ReceiptRuleSet': readSesReceiptRuleSet,
   'AWS::SES::ReceiptRule': readSesReceiptRule,

@@ -1,0 +1,44 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntEbAppVersion",
+    "resourceType": "AWS::ElasticBeanstalk::ApplicationVersion",
+    "physicalId": "cdkrdhunt0722ebav-huntebappversion-d82hufheyxde",
+    "constructPath": "CdkrdHunt0722EbAv/HuntEbAppVersion",
+    "declared": {
+      "ApplicationName": "cdkrd-hunt0722-ebav",
+      "SourceBundle": {
+        "S3Bucket": "cdk-hnb659fds-assets-111111111111-us-east-1",
+        "S3Key": "dd3a0653a686247dfc940943303dc75a054d0a41a64ab1ef037be0c3794e038a.zip"
+      }
+    }
+  },
+  "liveRaw": {
+    "ApplicationName": "cdkrd-hunt0722-ebav",
+    "SourceBundle": {
+      "S3Bucket": "cdk-hnb659fds-assets-111111111111-us-east-1",
+      "S3Key": "dd3a0653a686247dfc940943303dc75a054d0a41a64ab1ef037be0c3794e038a.zip"
+    },
+    "Id": "cdkrdhunt0722ebav-huntebappversion-d82hufheyxde"
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["ApplicationName", "SourceBundle"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ApplicationName", "SourceBundle"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

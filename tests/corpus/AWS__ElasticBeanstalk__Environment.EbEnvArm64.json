@@ -1,0 +1,1630 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "EbEnv",
+    "resourceType": "AWS::ElasticBeanstalk::Environment",
+    "physicalId": "cdkrd-hunt0722-ebarm-env",
+    "constructPath": "CdkrdHunt0722EbArm/EbEnv",
+    "declared": {
+      "ApplicationName": "cdkrd-hunt0722-ebarm-app",
+      "EnvironmentName": "cdkrd-hunt0722-ebarm-env",
+      "OptionSettings": [
+        {
+          "Namespace": "aws:elasticbeanstalk:environment",
+          "OptionName": "EnvironmentType",
+          "Value": "SingleInstance"
+        },
+        {
+          "Namespace": "aws:autoscaling:launchconfiguration",
+          "OptionName": "IamInstanceProfile",
+          "Value": "CdkrdHunt0722EbArm-EbInstanceProfile-WLWaFXpgtDHu"
+        },
+        {
+          "Namespace": "aws:ec2:instances",
+          "OptionName": "SupportedArchitectures",
+          "Value": "arm64"
+        }
+      ],
+      "SolutionStackName": "64bit Amazon Linux 2023 v4.13.4 running Docker",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "PlatformArn": "arn:aws:elasticbeanstalk:us-east-1::platform/Docker running on 64bit Amazon Linux 2023/4.13.4",
+    "ApplicationName": "cdkrd-hunt0722-ebarm-app",
+    "EnvironmentName": "cdkrd-hunt0722-ebarm-env",
+    "Tier": {
+      "Type": "Standard",
+      "Version": "1.0",
+      "Name": "WebServer"
+    },
+    "SolutionStackName": "64bit Amazon Linux 2023 v4.13.4 running Docker",
+    "EndpointURL": "34.206.26.109",
+    "CNAMEPrefix": "cdkrd-hunt0722-ebarm-env",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "OptionSettings": [
+      {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Namespace": "aws:autoscaling:asg",
+        "OptionName": "Availability Zones",
+        "Value": "Any"
+      },
+      {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Namespace": "aws:autoscaling:asg",
+        "OptionName": "Cooldown",
+        "Value": "360"
+      },
+      {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Namespace": "aws:autoscaling:asg",
+        "OptionName": "Custom Availability Zones",
+        "Value": ""
+      },
+      {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Namespace": "aws:autoscaling:asg",
+        "OptionName": "EnableCapacityRebalancing",
+        "Value": "false"
+      },
+      {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Namespace": "aws:autoscaling:asg",
+        "OptionName": "MaxSize",
+        "Value": "1"
+      },
+      {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Namespace": "aws:autoscaling:asg",
+        "OptionName": "MinSize",
+        "Value": "1"
+      },
+      {
+        "ResourceName": "AWSEBEC2LaunchTemplate",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "BlockDeviceMappings"
+      },
+      {
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "DisableDefaultEC2SecurityGroup",
+        "Value": "false"
+      },
+      {
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "DisableIMDSv1",
+        "Value": "true"
+      },
+      {
+        "ResourceName": "AWSEBEC2LaunchTemplate",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "EC2KeyName"
+      },
+      {
+        "ResourceName": "AWSEBEC2LaunchTemplate",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "IamInstanceProfile",
+        "Value": "CdkrdHunt0722EbArm-EbInstanceProfile-WLWaFXpgtDHu"
+      },
+      {
+        "ResourceName": "AWSEBEC2LaunchTemplate",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "ImageId",
+        "Value": "ami-0f071adbd317ec356"
+      },
+      {
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "InstanceType",
+        "Value": "t4g.micro"
+      },
+      {
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "LaunchTemplateTagPropagationEnabled"
+      },
+      {
+        "ResourceName": "AWSEBEC2LaunchTemplate",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "MonitoringInterval",
+        "Value": "5 minute"
+      },
+      {
+        "ResourceName": "AWSEBEC2LaunchTemplate",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "RootVolumeIOPS"
+      },
+      {
+        "ResourceName": "AWSEBEC2LaunchTemplate",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "RootVolumeSize"
+      },
+      {
+        "ResourceName": "AWSEBEC2LaunchTemplate",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "RootVolumeThroughput"
+      },
+      {
+        "ResourceName": "AWSEBEC2LaunchTemplate",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "RootVolumeType"
+      },
+      {
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "SSHSourceRestriction",
+        "Value": "tcp,22,22,0.0.0.0/0"
+      },
+      {
+        "ResourceName": "AWSEBEC2LaunchTemplate",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "SecurityGroups",
+        "Value": "awseb-e-tewurzz2rd-stack-AWSEBSecurityGroup-9jFKZBns37vb"
+      },
+      {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Namespace": "aws:autoscaling:updatepolicy:rollingupdate",
+        "OptionName": "MaxBatchSize"
+      },
+      {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Namespace": "aws:autoscaling:updatepolicy:rollingupdate",
+        "OptionName": "MinInstancesInService"
+      },
+      {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Namespace": "aws:autoscaling:updatepolicy:rollingupdate",
+        "OptionName": "PauseTime"
+      },
+      {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Namespace": "aws:autoscaling:updatepolicy:rollingupdate",
+        "OptionName": "RollingUpdateEnabled",
+        "Value": "false"
+      },
+      {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Namespace": "aws:autoscaling:updatepolicy:rollingupdate",
+        "OptionName": "RollingUpdateType",
+        "Value": "Time"
+      },
+      {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Namespace": "aws:autoscaling:updatepolicy:rollingupdate",
+        "OptionName": "Timeout",
+        "Value": "PT30M"
+      },
+      {
+        "Namespace": "aws:cloudformation:template:parameter",
+        "OptionName": "AppSource",
+        "Value": "https://elasticbeanstalk-platform-assets-us-east-1.s3.amazonaws.com/stalks/eb_docker_amazon_linux_2023_1.0.2974.0_20260710233326/sampleapp/EBSampleApp-Docker.zip"
+      },
+      {
+        "Namespace": "aws:cloudformation:template:parameter",
+        "OptionName": "EnvironmentVariables"
+      },
+      {
+        "Namespace": "aws:cloudformation:template:parameter",
+        "OptionName": "HooksPkgUrl",
+        "Value": "https://elasticbeanstalk-platform-assets-us-east-1.s3.amazonaws.com/stalks/eb_docker_amazon_linux_2023_1.0.2974.0_20260710233326/lib/hooks.tar.gz"
+      },
+      {
+        "Namespace": "aws:cloudformation:template:parameter",
+        "OptionName": "InstancePort",
+        "Value": "80"
+      },
+      {
+        "Namespace": "aws:cloudformation:template:parameter",
+        "OptionName": "InstanceTypeFamily",
+        "Value": "t4g"
+      },
+      {
+        "Namespace": "aws:ec2:instances",
+        "OptionName": "EnableSpot",
+        "Value": "false"
+      },
+      {
+        "Namespace": "aws:ec2:instances",
+        "OptionName": "InstanceTypes",
+        "Value": "t4g.micro, t4g.large"
+      },
+      {
+        "Namespace": "aws:ec2:instances",
+        "OptionName": "SpotAllocationStrategy",
+        "Value": "capacity-optimized"
+      },
+      {
+        "Namespace": "aws:ec2:instances",
+        "OptionName": "SpotFleetOnDemandAboveBasePercentage",
+        "Value": "0"
+      },
+      {
+        "Namespace": "aws:ec2:instances",
+        "OptionName": "SpotFleetOnDemandBase",
+        "Value": "0"
+      },
+      {
+        "Namespace": "aws:ec2:instances",
+        "OptionName": "SpotMaxPrice"
+      },
+      {
+        "Namespace": "aws:ec2:instances",
+        "OptionName": "SupportedArchitectures",
+        "Value": "arm64"
+      },
+      {
+        "ResourceName": "AWSEBEC2LaunchTemplate",
+        "Namespace": "aws:ec2:vpc",
+        "OptionName": "AssociatePublicIpAddress"
+      },
+      {
+        "Namespace": "aws:ec2:vpc",
+        "OptionName": "ELBScheme",
+        "Value": "public"
+      },
+      {
+        "Namespace": "aws:ec2:vpc",
+        "OptionName": "ELBSubnets"
+      },
+      {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Namespace": "aws:ec2:vpc",
+        "OptionName": "Subnets"
+      },
+      {
+        "ResourceName": "AWSEBSecurityGroup",
+        "Namespace": "aws:ec2:vpc",
+        "OptionName": "VPCId"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:application",
+        "OptionName": "Application Healthcheck URL",
+        "Value": ""
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:cloudwatch:logs",
+        "OptionName": "DeleteOnTerminate",
+        "Value": "false"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:cloudwatch:logs",
+        "OptionName": "RetentionInDays",
+        "Value": "7"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:cloudwatch:logs",
+        "OptionName": "StreamLogs",
+        "Value": "false"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:cloudwatch:logs:health",
+        "OptionName": "DeleteOnTerminate",
+        "Value": "false"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:cloudwatch:logs:health",
+        "OptionName": "HealthStreamingEnabled",
+        "Value": "false"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:cloudwatch:logs:health",
+        "OptionName": "RetentionInDays",
+        "Value": "7"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:command",
+        "OptionName": "BatchSize",
+        "Value": "100"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:command",
+        "OptionName": "BatchSizeType",
+        "Value": "Percentage"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:command",
+        "OptionName": "DeploymentPolicy",
+        "Value": "AllAtOnce"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:command",
+        "OptionName": "IgnoreHealthCheck",
+        "Value": "false"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:command",
+        "OptionName": "Timeout",
+        "Value": "600"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:control",
+        "OptionName": "DefaultSSHPort",
+        "Value": "22"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:control",
+        "OptionName": "LaunchTimeout",
+        "Value": "0"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:control",
+        "OptionName": "LaunchType",
+        "Value": "Migration"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:control",
+        "OptionName": "RollbackLaunchOnFailure",
+        "Value": "false"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:environment",
+        "OptionName": "EnvironmentType",
+        "Value": "SingleInstance"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:environment",
+        "OptionName": "ExternalExtensionsS3Bucket"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:environment",
+        "OptionName": "ExternalExtensionsS3Key"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:environment",
+        "OptionName": "ServiceRole",
+        "Value": "AWSServiceRoleForElasticBeanstalk"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:environment:proxy",
+        "OptionName": "ProxyServer",
+        "Value": "nginx"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:healthreporting:system",
+        "OptionName": "ConfigDocument",
+        "Value": "{\"Version\":1,\"CloudWatchMetrics\":{\"Instance\":{\"CPUIrq\":null,\"LoadAverage5min\":null,\"ApplicationRequests5xx\":null,\"ApplicationRequests4xx\":null,\"CPUUser\":null,\"LoadAverage1min\":null,\"ApplicationLatencyP50\":null,\"CPUIdle\":null,\"InstanceHealth\":null,\"ApplicationLatencyP95\":null,\"ApplicationLatencyP85\":null,\"RootFilesystemUtil\":null,\"ApplicationLatencyP90\":null,\"CPUSystem\":null,\"ApplicationLatencyP75\":null,\"CPUSoftirq\":null,\"ApplicationLatencyP10\":null,\"ApplicationLatencyP99\":null,\"ApplicationRequestsTotal\":null,\"ApplicationLatencyP99.9\":null,\"ApplicationRequests3xx\":null,\"ApplicationRequests2xx\":null,\"CPUIowait\":null,\"CPUNice\":null},\"Environment\":{\"InstancesSevere\":null,\"InstancesDegraded\":null,\"ApplicationRequests5xx\":null,\"ApplicationRequests4xx\":null,\"ApplicationLatencyP50\":null,\"ApplicationLatencyP95\":null,\"ApplicationLatencyP85\":null,\"InstancesUnknown\":null,\"ApplicationLatencyP90\":null,\"InstancesInfo\":null,\"InstancesPending\":null,\"ApplicationLatencyP75\":null,\"ApplicationLatencyP10\":null,\"ApplicationLatencyP99\":null,\"ApplicationRequestsTotal\":null,\"InstancesNoData\":null,\"ApplicationLatencyP99.9\":null,\"ApplicationRequests3xx\":null,\"ApplicationRequests2xx\":null,\"InstancesOk\":null,\"InstancesWarning\":null}}}"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:healthreporting:system",
+        "OptionName": "EnhancedHealthAuthEnabled",
+        "Value": "true"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:healthreporting:system",
+        "OptionName": "HealthCheckSuccessThreshold",
+        "Value": "Ok"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:healthreporting:system",
+        "OptionName": "SystemType",
+        "Value": "enhanced"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:hostmanager",
+        "OptionName": "LogPublicationControl",
+        "Value": "false"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:managedactions",
+        "OptionName": "ManagedActionsEnabled",
+        "Value": "false"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:managedactions",
+        "OptionName": "PreferredStartTime"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:managedactions",
+        "OptionName": "ServiceRoleForManagedUpdates",
+        "Value": ""
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:managedactions:platformupdate",
+        "OptionName": "InstanceRefreshEnabled",
+        "Value": "false"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:managedactions:platformupdate",
+        "OptionName": "UpdateLevel"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:monitoring",
+        "OptionName": "Automatically Terminate Unhealthy Instances",
+        "Value": "true"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:sns:topics",
+        "OptionName": "Notification Endpoint"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:sns:topics",
+        "OptionName": "Notification Protocol",
+        "Value": "email"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:sns:topics",
+        "OptionName": "Notification Topic ARN"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:sns:topics",
+        "OptionName": "Notification Topic Name"
+      },
+      {
+        "Namespace": "aws:elasticbeanstalk:xray",
+        "OptionName": "XRayEnabled",
+        "Value": "false"
+      },
+      {
+        "Namespace": "aws:rds:dbinstance",
+        "OptionName": "HasCoupledDatabase",
+        "Value": "false"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["EndpointURL"],
+    "writeOnly": ["TemplateName"],
+    "createOnly": ["ApplicationName", "CNAMEPrefix", "EnvironmentName", "SolutionStackName"],
+    "readOnlyPaths": ["EndpointURL"],
+    "writeOnlyPaths": ["TemplateName"],
+    "createOnlyPaths": [
+      "ApplicationName",
+      "CNAMEPrefix",
+      "EnvironmentName",
+      "SolutionStackName",
+      "Tier.Name",
+      "Tier.Type"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["OptionSettings"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:autoscaling:asg|Availability Zones]",
+      "actual": {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Namespace": "aws:autoscaling:asg",
+        "OptionName": "Availability Zones",
+        "Value": "Any"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:autoscaling:asg|Cooldown]",
+      "actual": {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Namespace": "aws:autoscaling:asg",
+        "OptionName": "Cooldown",
+        "Value": "360"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:autoscaling:asg|Custom Availability Zones]",
+      "actual": {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Namespace": "aws:autoscaling:asg",
+        "OptionName": "Custom Availability Zones",
+        "Value": ""
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:autoscaling:asg|EnableCapacityRebalancing]",
+      "actual": {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Namespace": "aws:autoscaling:asg",
+        "OptionName": "EnableCapacityRebalancing",
+        "Value": "false"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:autoscaling:asg|MaxSize]",
+      "actual": {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Namespace": "aws:autoscaling:asg",
+        "OptionName": "MaxSize",
+        "Value": "1"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:autoscaling:asg|MinSize]",
+      "actual": {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Namespace": "aws:autoscaling:asg",
+        "OptionName": "MinSize",
+        "Value": "1"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:autoscaling:launchconfiguration|BlockDeviceMappings]",
+      "actual": {
+        "ResourceName": "AWSEBEC2LaunchTemplate",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "BlockDeviceMappings"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:autoscaling:launchconfiguration|DisableDefaultEC2SecurityGroup]",
+      "actual": {
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "DisableDefaultEC2SecurityGroup",
+        "Value": "false"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:autoscaling:launchconfiguration|DisableIMDSv1]",
+      "actual": {
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "DisableIMDSv1",
+        "Value": "true"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:autoscaling:launchconfiguration|EC2KeyName]",
+      "actual": {
+        "ResourceName": "AWSEBEC2LaunchTemplate",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "EC2KeyName"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:autoscaling:launchconfiguration|ImageId]",
+      "actual": {
+        "ResourceName": "AWSEBEC2LaunchTemplate",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "ImageId",
+        "Value": "ami-0f071adbd317ec356"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:autoscaling:launchconfiguration|InstanceType]",
+      "actual": {
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "InstanceType",
+        "Value": "t4g.micro"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:autoscaling:launchconfiguration|LaunchTemplateTagPropagationEnabled]",
+      "actual": {
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "LaunchTemplateTagPropagationEnabled"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:autoscaling:launchconfiguration|MonitoringInterval]",
+      "actual": {
+        "ResourceName": "AWSEBEC2LaunchTemplate",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "MonitoringInterval",
+        "Value": "5 minute"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:autoscaling:launchconfiguration|RootVolumeIOPS]",
+      "actual": {
+        "ResourceName": "AWSEBEC2LaunchTemplate",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "RootVolumeIOPS"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:autoscaling:launchconfiguration|RootVolumeSize]",
+      "actual": {
+        "ResourceName": "AWSEBEC2LaunchTemplate",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "RootVolumeSize"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:autoscaling:launchconfiguration|RootVolumeThroughput]",
+      "actual": {
+        "ResourceName": "AWSEBEC2LaunchTemplate",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "RootVolumeThroughput"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:autoscaling:launchconfiguration|RootVolumeType]",
+      "actual": {
+        "ResourceName": "AWSEBEC2LaunchTemplate",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "RootVolumeType"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:autoscaling:launchconfiguration|SSHSourceRestriction]",
+      "actual": {
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "SSHSourceRestriction",
+        "Value": "tcp,22,22,0.0.0.0/0"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:autoscaling:launchconfiguration|SecurityGroups]",
+      "actual": {
+        "ResourceName": "AWSEBEC2LaunchTemplate",
+        "Namespace": "aws:autoscaling:launchconfiguration",
+        "OptionName": "SecurityGroups",
+        "Value": "awseb-e-tewurzz2rd-stack-AWSEBSecurityGroup-9jFKZBns37vb"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:autoscaling:updatepolicy:rollingupdate|MaxBatchSize]",
+      "actual": {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Namespace": "aws:autoscaling:updatepolicy:rollingupdate",
+        "OptionName": "MaxBatchSize"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:autoscaling:updatepolicy:rollingupdate|MinInstancesInService]",
+      "actual": {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Namespace": "aws:autoscaling:updatepolicy:rollingupdate",
+        "OptionName": "MinInstancesInService"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:autoscaling:updatepolicy:rollingupdate|PauseTime]",
+      "actual": {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Namespace": "aws:autoscaling:updatepolicy:rollingupdate",
+        "OptionName": "PauseTime"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:autoscaling:updatepolicy:rollingupdate|RollingUpdateEnabled]",
+      "actual": {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Namespace": "aws:autoscaling:updatepolicy:rollingupdate",
+        "OptionName": "RollingUpdateEnabled",
+        "Value": "false"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:autoscaling:updatepolicy:rollingupdate|RollingUpdateType]",
+      "actual": {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Namespace": "aws:autoscaling:updatepolicy:rollingupdate",
+        "OptionName": "RollingUpdateType",
+        "Value": "Time"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:autoscaling:updatepolicy:rollingupdate|Timeout]",
+      "actual": {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Namespace": "aws:autoscaling:updatepolicy:rollingupdate",
+        "OptionName": "Timeout",
+        "Value": "PT30M"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:cloudformation:template:parameter|AppSource]",
+      "actual": {
+        "Namespace": "aws:cloudformation:template:parameter",
+        "OptionName": "AppSource",
+        "Value": "https://elasticbeanstalk-platform-assets-us-east-1.s3.amazonaws.com/stalks/eb_docker_amazon_linux_2023_1.0.2974.0_20260710233326/sampleapp/EBSampleApp-Docker.zip"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:cloudformation:template:parameter|EnvironmentVariables]",
+      "actual": {
+        "Namespace": "aws:cloudformation:template:parameter",
+        "OptionName": "EnvironmentVariables"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:cloudformation:template:parameter|HooksPkgUrl]",
+      "actual": {
+        "Namespace": "aws:cloudformation:template:parameter",
+        "OptionName": "HooksPkgUrl",
+        "Value": "https://elasticbeanstalk-platform-assets-us-east-1.s3.amazonaws.com/stalks/eb_docker_amazon_linux_2023_1.0.2974.0_20260710233326/lib/hooks.tar.gz"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:cloudformation:template:parameter|InstancePort]",
+      "actual": {
+        "Namespace": "aws:cloudformation:template:parameter",
+        "OptionName": "InstancePort",
+        "Value": "80"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:cloudformation:template:parameter|InstanceTypeFamily]",
+      "actual": {
+        "Namespace": "aws:cloudformation:template:parameter",
+        "OptionName": "InstanceTypeFamily",
+        "Value": "t4g"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:ec2:instances|EnableSpot]",
+      "actual": {
+        "Namespace": "aws:ec2:instances",
+        "OptionName": "EnableSpot",
+        "Value": "false"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:ec2:instances|InstanceTypes]",
+      "actual": {
+        "Namespace": "aws:ec2:instances",
+        "OptionName": "InstanceTypes",
+        "Value": "t4g.micro, t4g.large"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:ec2:instances|SpotAllocationStrategy]",
+      "actual": {
+        "Namespace": "aws:ec2:instances",
+        "OptionName": "SpotAllocationStrategy",
+        "Value": "capacity-optimized"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:ec2:instances|SpotFleetOnDemandAboveBasePercentage]",
+      "actual": {
+        "Namespace": "aws:ec2:instances",
+        "OptionName": "SpotFleetOnDemandAboveBasePercentage",
+        "Value": "0"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:ec2:instances|SpotFleetOnDemandBase]",
+      "actual": {
+        "Namespace": "aws:ec2:instances",
+        "OptionName": "SpotFleetOnDemandBase",
+        "Value": "0"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:ec2:instances|SpotMaxPrice]",
+      "actual": {
+        "Namespace": "aws:ec2:instances",
+        "OptionName": "SpotMaxPrice"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:ec2:vpc|AssociatePublicIpAddress]",
+      "actual": {
+        "ResourceName": "AWSEBEC2LaunchTemplate",
+        "Namespace": "aws:ec2:vpc",
+        "OptionName": "AssociatePublicIpAddress"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:ec2:vpc|ELBScheme]",
+      "actual": {
+        "Namespace": "aws:ec2:vpc",
+        "OptionName": "ELBScheme",
+        "Value": "public"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:ec2:vpc|ELBSubnets]",
+      "actual": {
+        "Namespace": "aws:ec2:vpc",
+        "OptionName": "ELBSubnets"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:ec2:vpc|Subnets]",
+      "actual": {
+        "ResourceName": "AWSEBAutoScalingGroup",
+        "Namespace": "aws:ec2:vpc",
+        "OptionName": "Subnets"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:ec2:vpc|VPCId]",
+      "actual": {
+        "ResourceName": "AWSEBSecurityGroup",
+        "Namespace": "aws:ec2:vpc",
+        "OptionName": "VPCId"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:application|Application Healthcheck URL]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:application",
+        "OptionName": "Application Healthcheck URL",
+        "Value": ""
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:cloudwatch:logs|DeleteOnTerminate]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:cloudwatch:logs",
+        "OptionName": "DeleteOnTerminate",
+        "Value": "false"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:cloudwatch:logs|RetentionInDays]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:cloudwatch:logs",
+        "OptionName": "RetentionInDays",
+        "Value": "7"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:cloudwatch:logs|StreamLogs]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:cloudwatch:logs",
+        "OptionName": "StreamLogs",
+        "Value": "false"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:cloudwatch:logs:health|DeleteOnTerminate]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:cloudwatch:logs:health",
+        "OptionName": "DeleteOnTerminate",
+        "Value": "false"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:cloudwatch:logs:health|HealthStreamingEnabled]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:cloudwatch:logs:health",
+        "OptionName": "HealthStreamingEnabled",
+        "Value": "false"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:cloudwatch:logs:health|RetentionInDays]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:cloudwatch:logs:health",
+        "OptionName": "RetentionInDays",
+        "Value": "7"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:command|BatchSize]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:command",
+        "OptionName": "BatchSize",
+        "Value": "100"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:command|BatchSizeType]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:command",
+        "OptionName": "BatchSizeType",
+        "Value": "Percentage"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:command|DeploymentPolicy]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:command",
+        "OptionName": "DeploymentPolicy",
+        "Value": "AllAtOnce"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:command|IgnoreHealthCheck]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:command",
+        "OptionName": "IgnoreHealthCheck",
+        "Value": "false"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:command|Timeout]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:command",
+        "OptionName": "Timeout",
+        "Value": "600"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:control|DefaultSSHPort]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:control",
+        "OptionName": "DefaultSSHPort",
+        "Value": "22"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:control|LaunchTimeout]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:control",
+        "OptionName": "LaunchTimeout",
+        "Value": "0"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:control|LaunchType]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:control",
+        "OptionName": "LaunchType",
+        "Value": "Migration"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:control|RollbackLaunchOnFailure]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:control",
+        "OptionName": "RollbackLaunchOnFailure",
+        "Value": "false"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:environment|ExternalExtensionsS3Bucket]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:environment",
+        "OptionName": "ExternalExtensionsS3Bucket"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:environment|ExternalExtensionsS3Key]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:environment",
+        "OptionName": "ExternalExtensionsS3Key"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:environment|ServiceRole]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:environment",
+        "OptionName": "ServiceRole",
+        "Value": "AWSServiceRoleForElasticBeanstalk"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:environment:proxy|ProxyServer]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:environment:proxy",
+        "OptionName": "ProxyServer",
+        "Value": "nginx"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:healthreporting:system|ConfigDocument]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:healthreporting:system",
+        "OptionName": "ConfigDocument",
+        "Value": "{\"CloudWatchMetrics\":{\"Environment\":{\"ApplicationLatencyP10\":null,\"ApplicationLatencyP50\":null,\"ApplicationLatencyP75\":null,\"ApplicationLatencyP85\":null,\"ApplicationLatencyP90\":null,\"ApplicationLatencyP95\":null,\"ApplicationLatencyP99\":null,\"ApplicationLatencyP99.9\":null,\"ApplicationRequests2xx\":null,\"ApplicationRequests3xx\":null,\"ApplicationRequests4xx\":null,\"ApplicationRequests5xx\":null,\"ApplicationRequestsTotal\":null,\"InstancesDegraded\":null,\"InstancesInfo\":null,\"InstancesNoData\":null,\"InstancesOk\":null,\"InstancesPending\":null,\"InstancesSevere\":null,\"InstancesUnknown\":null,\"InstancesWarning\":null},\"Instance\":{\"ApplicationLatencyP10\":null,\"ApplicationLatencyP50\":null,\"ApplicationLatencyP75\":null,\"ApplicationLatencyP85\":null,\"ApplicationLatencyP90\":null,\"ApplicationLatencyP95\":null,\"ApplicationLatencyP99\":null,\"ApplicationLatencyP99.9\":null,\"ApplicationRequests2xx\":null,\"ApplicationRequests3xx\":null,\"ApplicationRequests4xx\":null,\"ApplicationRequests5xx\":null,\"ApplicationRequestsTotal\":null,\"CPUIdle\":null,\"CPUIowait\":null,\"CPUIrq\":null,\"CPUNice\":null,\"CPUSoftirq\":null,\"CPUSystem\":null,\"CPUUser\":null,\"InstanceHealth\":null,\"LoadAverage1min\":null,\"LoadAverage5min\":null,\"RootFilesystemUtil\":null}},\"Version\":1}"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:healthreporting:system|EnhancedHealthAuthEnabled]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:healthreporting:system",
+        "OptionName": "EnhancedHealthAuthEnabled",
+        "Value": "true"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:healthreporting:system|HealthCheckSuccessThreshold]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:healthreporting:system",
+        "OptionName": "HealthCheckSuccessThreshold",
+        "Value": "Ok"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:healthreporting:system|SystemType]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:healthreporting:system",
+        "OptionName": "SystemType",
+        "Value": "enhanced"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:hostmanager|LogPublicationControl]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:hostmanager",
+        "OptionName": "LogPublicationControl",
+        "Value": "false"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:managedactions|ManagedActionsEnabled]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:managedactions",
+        "OptionName": "ManagedActionsEnabled",
+        "Value": "false"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:managedactions|PreferredStartTime]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:managedactions",
+        "OptionName": "PreferredStartTime"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:managedactions|ServiceRoleForManagedUpdates]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:managedactions",
+        "OptionName": "ServiceRoleForManagedUpdates",
+        "Value": ""
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:managedactions:platformupdate|InstanceRefreshEnabled]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:managedactions:platformupdate",
+        "OptionName": "InstanceRefreshEnabled",
+        "Value": "false"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:managedactions:platformupdate|UpdateLevel]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:managedactions:platformupdate",
+        "OptionName": "UpdateLevel"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:monitoring|Automatically Terminate Unhealthy Instances]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:monitoring",
+        "OptionName": "Automatically Terminate Unhealthy Instances",
+        "Value": "true"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:sns:topics|Notification Endpoint]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:sns:topics",
+        "OptionName": "Notification Endpoint"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:sns:topics|Notification Protocol]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:sns:topics",
+        "OptionName": "Notification Protocol",
+        "Value": "email"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:sns:topics|Notification Topic ARN]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:sns:topics",
+        "OptionName": "Notification Topic ARN"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:sns:topics|Notification Topic Name]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:sns:topics",
+        "OptionName": "Notification Topic Name"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:elasticbeanstalk:xray|XRayEnabled]",
+      "actual": {
+        "Namespace": "aws:elasticbeanstalk:xray",
+        "OptionName": "XRayEnabled",
+        "Value": "false"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "OptionSettings[aws:rds:dbinstance|HasCoupledDatabase]",
+      "actual": {
+        "Namespace": "aws:rds:dbinstance",
+        "OptionName": "HasCoupledDatabase",
+        "Value": "false"
+      },
+      "nested": true,
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "PlatformArn",
+      "actual": "arn:aws:elasticbeanstalk:us-east-1::platform/Docker running on 64bit Amazon Linux 2023/4.13.4",
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "EbEnv",
+      "resourceType": "AWS::ElasticBeanstalk::Environment",
+      "path": "Tier",
+      "actual": {
+        "Type": "Standard",
+        "Version": "1.0",
+        "Name": "WebServer"
+      },
+      "physicalId": "cdkrd-hunt0722-ebarm-env",
+      "constructPath": "CdkrdHunt0722EbArm/EbEnv"
+    }
+  ]
+}

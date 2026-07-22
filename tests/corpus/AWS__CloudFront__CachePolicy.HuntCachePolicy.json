@@ -1,0 +1,79 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntCachePolicy",
+    "resourceType": "AWS::CloudFront::CachePolicy",
+    "physicalId": "4d463def-046d-40ab-97dc-055de5006eb4",
+    "constructPath": "CdkrdHunt0722CfPol/HuntCachePolicy",
+    "declared": {
+      "CachePolicyConfig": {
+        "DefaultTTL": 3600,
+        "MaxTTL": 86400,
+        "MinTTL": 0,
+        "Name": "cdkrd-hunt0722-cache-policy",
+        "ParametersInCacheKeyAndForwardedToOrigin": {
+          "CookiesConfig": {
+            "CookieBehavior": "whitelist",
+            "Cookies": ["zz-cookie", "aa-cookie", "mm-cookie"]
+          },
+          "EnableAcceptEncodingBrotli": false,
+          "EnableAcceptEncodingGzip": true,
+          "HeadersConfig": {
+            "HeaderBehavior": "whitelist",
+            "Headers": ["x-cdkrd-zz", "x-cdkrd-aa", "x-cdkrd-mm"]
+          },
+          "QueryStringsConfig": {
+            "QueryStringBehavior": "whitelist",
+            "QueryStrings": ["zz", "aa", "mm"]
+          }
+        }
+      }
+    }
+  },
+  "liveRaw": {
+    "CachePolicyConfig": {
+      "MinTTL": 0,
+      "MaxTTL": 86400,
+      "ParametersInCacheKeyAndForwardedToOrigin": {
+        "EnableAcceptEncodingBrotli": false,
+        "HeadersConfig": {
+          "Headers": ["x-cdkrd-zz", "x-cdkrd-aa", "x-cdkrd-mm"],
+          "HeaderBehavior": "whitelist"
+        },
+        "CookiesConfig": {
+          "Cookies": ["zz-cookie", "aa-cookie", "mm-cookie"],
+          "CookieBehavior": "whitelist"
+        },
+        "EnableAcceptEncodingGzip": true,
+        "QueryStringsConfig": {
+          "QueryStrings": ["zz", "aa", "mm"],
+          "QueryStringBehavior": "whitelist"
+        }
+      },
+      "DefaultTTL": 3600,
+      "Name": "cdkrd-hunt0722-cache-policy"
+    },
+    "LastModifiedTime": "2026-07-22T07:01:15.994Z",
+    "Id": "4d463def-046d-40ab-97dc-055de5006eb4"
+  },
+  "schema": {
+    "readOnly": ["Id", "LastModifiedTime"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Id", "LastModifiedTime"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

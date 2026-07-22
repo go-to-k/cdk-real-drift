@@ -1,0 +1,75 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntPubDest",
+    "resourceType": "AWS::GuardDuty::PublishingDestination",
+    "physicalId": "5ccfc46ac74a4feddabf49854ccfbe0f",
+    "constructPath": "CdkrdHunt0722Gd2/HuntPubDest",
+    "declared": {
+      "DestinationProperties": {
+        "DestinationArn": "arn:aws:s3:::cdkrdhunt0722gd2-huntexportbucket6692dde4-cx0m39nlzoyu",
+        "KmsKeyArn": "arn:aws:kms:us-east-1:111111111111:key/f2be657f-924d-47d0-93f1-53144095f118"
+      },
+      "DestinationType": "S3",
+      "DetectorId": "7d64c86ad0974c0ba56a1f12290589c0",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Status": "PUBLISHING",
+    "PublishingFailureStartTimestamp": "-",
+    "DestinationProperties": {
+      "KmsKeyArn": "arn:aws:kms:us-east-1:111111111111:key/f2be657f-924d-47d0-93f1-53144095f118",
+      "DestinationArn": "arn:aws:s3:::cdkrdhunt0722gd2-huntexportbucket6692dde4-cx0m39nlzoyu"
+    },
+    "DetectorId": "7d64c86ad0974c0ba56a1f12290589c0",
+    "Id": "5ccfc46ac74a4feddabf49854ccfbe0f",
+    "DestinationType": "S3",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0722Gd2",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntPubDest",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0722Gd2/17c5f9d0-85a3-11f1-9f36-0e40ba705f19",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Id", "PublishingFailureStartTimestamp", "Status"],
+    "writeOnly": [],
+    "createOnly": ["DetectorId"],
+    "readOnlyPaths": ["Id", "PublishingFailureStartTimestamp", "Status"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["DetectorId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": []
+}

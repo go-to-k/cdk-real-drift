@@ -58,6 +58,18 @@ describe('#1278 EB InstanceTypes folds against the architecture-derived default 
     expect(tier('t4g.micro, t4g.small', 'arm64')).toBe('atDefault');
   });
 
+  // #1685 (ebarm-hunt 2026-07-22): the docs pair above was never what a live arm64 env
+  // gets — AWS assigned "t4g.micro, t4g.large", which first-run-FP'd against the
+  // docs-only set. The arm64 row is now the union of observed + documented pairs.
+  it('folds the LIVE arm64 default pair t4g.micro,t4g.large (#1685)', () => {
+    expect(tier('t4g.micro, t4g.large', 'arm64')).toBe('atDefault');
+  });
+
+  it('still SURFACES an arm64 family bump away from t4g burstables (#1685)', () => {
+    expect(tier('m7g.large', 'arm64')).toBe('undeclared');
+    expect(tier('t4g.micro, c7g.xlarge', 'arm64')).toBe('undeclared');
+  });
+
   it('SURFACES an arm64 cost bomb (p4d) resize', () => {
     expect(tier('p4d.24xlarge', 'arm64')).toBe('undeclared');
   });

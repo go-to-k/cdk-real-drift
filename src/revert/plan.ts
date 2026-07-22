@@ -298,6 +298,17 @@ export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // reported "reverted" yet convergence re-read ENABLED). Write the {Status:"DISABLED"}
   // default (from KNOWN_DEFAULTS) back explicitly.
   'AWS::RUM::AppMonitor\0CustomEvents',
+  // revconv6 hunt (live-proven 2026-07-22, #1684): the sibling whole-object
+  // AppMonitorConfiguration rides the same selective UpdateAppMonitor call and no-ops the
+  // bare `remove` identically (an out-of-band SessionSampleRate=0.5 persisted through a
+  // revert that reported "reverted"). An explicit CC `add` of the KNOWN_DEFAULTS object
+  // converges (CC-probed live), so write the default back explicitly.
+  'AWS::RUM::AppMonitor\0AppMonitorConfiguration',
+  // gdsets2 hunt (live-proven 2026-07-22, #1687): GuardDuty UpdateFilter keeps an omitted
+  // Action (an out-of-band ARCHIVE persisted through a `remove` revert that reported
+  // "reverted"). An explicit CC `add /Action "NOOP"` converges (CC-probed live against a
+  // CLI-created filter), so write the KNOWN_DEFAULTS 'NOOP' back explicitly.
+  'AWS::GuardDuty::Filter\0Action',
   // barest4/ccpi hunt (live-proven 2026-07-14): ServiceCatalog UpdateTagOption REJECTS the
   // `remove` patch outright ("Active and new value cannot both be null") — the hard-reject
   // flavor of the class (not a silent no-op, a hard error). Write the `true` default (from

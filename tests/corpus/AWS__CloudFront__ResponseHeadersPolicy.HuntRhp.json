@@ -1,0 +1,106 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntRhp",
+    "resourceType": "AWS::CloudFront::ResponseHeadersPolicy",
+    "physicalId": "24dff1d8-14b9-4c62-a92f-2eec789ec2e9",
+    "constructPath": "CdkrdHunt0722CfPol/HuntRhp",
+    "declared": {
+      "ResponseHeadersPolicyConfig": {
+        "CorsConfig": {
+          "AccessControlAllowCredentials": false,
+          "AccessControlAllowHeaders": {
+            "Items": ["X-Cdkrd-Zz", "X-Cdkrd-Aa", "X-Cdkrd-Mm"]
+          },
+          "AccessControlAllowMethods": {
+            "Items": ["POST", "GET", "DELETE"]
+          },
+          "AccessControlAllowOrigins": {
+            "Items": ["https://zz.example.com", "https://aa.example.com"]
+          },
+          "OriginOverride": true
+        },
+        "CustomHeadersConfig": {
+          "Items": [
+            {
+              "Header": "x-cdkrd-custom-zz",
+              "Override": true,
+              "Value": "zz"
+            },
+            {
+              "Header": "x-cdkrd-custom-aa",
+              "Override": false,
+              "Value": "aa"
+            }
+          ]
+        },
+        "Name": "cdkrd-hunt0722-rhp"
+      }
+    }
+  },
+  "liveRaw": {
+    "LastModifiedTime": "2026-07-22T07:01:16.224Z",
+    "Id": "24dff1d8-14b9-4c62-a92f-2eec789ec2e9",
+    "ResponseHeadersPolicyConfig": {
+      "CorsConfig": {
+        "AccessControlAllowCredentials": false,
+        "AccessControlAllowHeaders": {
+          "Items": ["X-Cdkrd-Zz", "X-Cdkrd-Aa", "X-Cdkrd-Mm"]
+        },
+        "OriginOverride": true,
+        "AccessControlAllowMethods": {
+          "Items": ["POST", "GET", "DELETE"]
+        },
+        "AccessControlExposeHeaders": {
+          "Items": []
+        },
+        "AccessControlAllowOrigins": {
+          "Items": ["https://zz.example.com", "https://aa.example.com"]
+        }
+      },
+      "CustomHeadersConfig": {
+        "Items": [
+          {
+            "Header": "x-cdkrd-custom-zz",
+            "Value": "zz",
+            "Override": true
+          },
+          {
+            "Header": "x-cdkrd-custom-aa",
+            "Value": "aa",
+            "Override": false
+          }
+        ]
+      },
+      "Name": "cdkrd-hunt0722-rhp"
+    }
+  },
+  "schema": {
+    "readOnly": ["Id", "LastModifiedTime"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Id", "LastModifiedTime"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [
+      "ResponseHeadersPolicyConfig.CorsConfig.AccessControlAllowHeaders.Items",
+      "ResponseHeadersPolicyConfig.CorsConfig.AccessControlAllowMethods.Items",
+      "ResponseHeadersPolicyConfig.CorsConfig.AccessControlAllowOrigins.Items",
+      "ResponseHeadersPolicyConfig.CorsConfig.AccessControlExposeHeaders.Items"
+    ],
+    "unorderedObjectArrayPaths": [
+      "ResponseHeadersPolicyConfig.CustomHeadersConfig.Items",
+      "ResponseHeadersPolicyConfig.RemoveHeadersConfig.Items"
+    ],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
