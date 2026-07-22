@@ -1,3 +1,10 @@
+## [0.23.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.23.2...v0.23.3) (2026-07-22)
+
+
+### Bug Fixes
+
+* **hunt:** 2026-07-22 sweep — RUM/GuardDuty revert no-ops, arm64 EB + GuardDuty entity-set first-run FPs ([#1688](https://github.com/go-to-k/cdk-real-drift/issues/1688)) ([6b08be9](https://github.com/go-to-k/cdk-real-drift/commit/6b08be92519e15fe54c9aa55bdd3a442f1e43e62))
+
 ## [0.23.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.23.1...v0.23.2) (2026-07-21)
 
 
