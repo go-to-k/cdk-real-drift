@@ -289,10 +289,14 @@ export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   'AWS::ApiGateway::RestApi\0DisableExecuteApiEndpoint',
   // #1613: Cognito UpdateUserPoolClient is a full-replace API that nevertheless kept an
   // omitted RefreshTokenValidity (an out-of-band 60-day validity persisted through a
-  // `remove` revert). Write the 30 default back explicitly. Its siblings
-  // (EnableTokenRevocation, AuthSessionValidity) ride the same call and are LIKELY the
-  // same class but stay unlisted until individually live-proven (the per-property rule).
+  // `remove` revert). Write the 30 default back explicitly.
   'AWS::Cognito::UserPoolClient\0RefreshTokenValidity',
+  // #1689 (2026-07-22): its siblings are the same class — individually live-proven by a
+  // stackless CC probe (create pool+client via Cloud Control, OOB-flip both, bare `remove`
+  // no-ops each, the explicit `add` of the KNOWN_DEFAULTS values converges both). Write
+  // the `true` / `3` defaults back explicitly.
+  'AWS::Cognito::UserPoolClient\0EnableTokenRevocation',
+  'AWS::Cognito::UserPoolClient\0AuthSessionValidity',
   // barest4 hunt (live-proven 2026-07-14): RUM UpdateAppMonitor keeps an omitted
   // CustomEvents (an out-of-band ENABLED persisted through a `remove` revert — the revert
   // reported "reverted" yet convergence re-read ENABLED). Write the {Status:"DISABLED"}

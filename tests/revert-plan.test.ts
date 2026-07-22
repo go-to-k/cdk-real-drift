@@ -683,6 +683,41 @@ describe('buildRevertPlan', () => {
     });
   });
 
+  // #1689 (CC-probed live 2026-07-22): the RefreshTokenValidity siblings on the same
+  // UpdateUserPoolClient call — bare `remove` no-ops each; the explicit add of the
+  // KNOWN_DEFAULTS values converges both.
+  it('#1689: Cognito UserPoolClient EnableTokenRevocation (SET-DEFAULT) -> add op writing the true default', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::Cognito::UserPoolClient',
+      path: 'EnableTokenRevocation',
+      actual: false,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/EnableTokenRevocation',
+      value: true,
+      prior: false,
+    });
+  });
+
+  it('#1689: Cognito UserPoolClient AuthSessionValidity (SET-DEFAULT) -> add op writing the 3 default', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::Cognito::UserPoolClient',
+      path: 'AuthSessionValidity',
+      actual: 5,
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/AuthSessionValidity',
+      value: 3,
+      prior: 5,
+    });
+  });
+
   // #1619 (revconv4 batch-5, live-proven 2026-07-14): four more omit-keeps-value handlers —
   // each mutated out of band, reverted via a bare `remove` that reported success, and the
   // convergence re-read caught the live value persisting. Each is now in

@@ -404,10 +404,32 @@ hunt's NEW folds rather than a dedicated fixture): **VpcLattice ResourceConfigur
 individually), and **EC2 TransitGatewayAttachment `Options`** ALL no-oped — 4-in-4
 for this batch's new folds (streaks run hot too); every one converged via an explicit
 CC `add` patch → plain RSDP entries (#1639/#1640/#1642).
+Batch 9 (2026-07-22 hunt): **RUM `AppMonitorConfiguration`** (#1684, sibling of
+CustomEvents), **GuardDuty Filter `Action`** (#1687), and **Cognito UserPoolClient
+`EnableTokenRevocation` + `AuthSessionValidity`** (#1689 — the RefreshTokenValidity
+siblings, both proven by a STACKLESS CC probe: `cloudcontrol create-resource`
+pool+client, OOB-flip, bare `remove` no-ops, explicit `add` converges — the whole
+per-property proof for ~$0 and no fixture) all no-oped → RSDP entries; Backup RTP
+`RecoveryPointSelection.SelectionWindowDays`, Lambda ESM `ParallelizationFactor`, and
+ECS Service `AssignPublicIp` converged (no entries needed). **Remaining KNOWN
+UNPROBED RSDP candidates from that hunt's audit** (deliberately deferred — pick these
+up before re-auditing): OpenSearch `ClusterConfig.DedicatedMasterCount` (HIGH cost:
+dedicated-master domain, but the OS writer is documented-selective — strongest
+remaining candidate), EC2 VPCEndpointService `SupportedIpAddressTypes` (needs an
+NLB), SES DedicatedIpPool `ScalingMode` (SKIPPED ON PURPOSE: probing requires
+entering MANAGED, which bills per-IP-hour and has a cooldown back to STANDARD — a
+stuck-state risk; get cost sign-off first), Synthetics Canary
+`Schedule.DurationInSeconds`, Firehose `HttpEndpointDestinationConfiguration.*`
+(7 nested paths, complex), Lambda ESM `TumblingWindowInSeconds` (PF converged, TWIS
+probably does too — cheap confirm), VpcLattice ALS `ServiceNetworkLogType` (verify
+OOB mutability FIRST — likely create-only → skip-list, not RSDP).
 Piggyback the convergence
 probe on every NEW KNOWN_DEFAULTS fold a hunt ships (mutate → revert → re-read) —
 it is ~1-in-3 to need an RSDP entry, and the probe is nearly free while the stack
-is still up.
+is still up. When the resource is CC-creatable, the batch-9 stackless form (create
+via `cloudcontrol create-resource`, OOB-mutate, bare-`remove` probe, explicit-`add`
+probe, delete) proves a candidate with NO stack and NO fixture — prefer it for
+per-property proofs of already-folded defaults.
 
 ### 5. Harvest the live read into the golden corpus (EVERY round — bug or not)
 
