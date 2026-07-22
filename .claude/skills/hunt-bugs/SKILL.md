@@ -719,6 +719,23 @@ Drift"` the output — trusting the exit code let a real FP print INTEG OK.**
   is the exact inverse: ON_DEMAND materializes ShardCount). When a type has a mode
   axis, deploy the barest form of EACH mode and check which sibling props the OTHER
   mode's fold assumed declared.
+- **A mirrored variant row can be DEAD — the variant may be CFn-UNREACHABLE; a handler
+  400 naming another API is itself the determination.** The 2026-07-22 probe of the
+  ENGINE_DEFAULTS CacheCluster valkey arm (mirrored off the redis regex) failed create
+  with "This API doesn't support Valkey engine. Please use CreateReplicationGroup" —
+  standalone valkey CacheClusters cannot exist via CFn, so the mirrored row can never FP
+  (recorded as a noise.ts comment, fixture deleted). Two cheap-deploy lessons ride along:
+  (a) budget ONE extra failed create per exotic variant — the valkey run ALSO surfaced
+  that CreateCacheCluster demands `VpcSecurityGroupIds` for valkey before the engine
+  check (an engine-axis validation difference worth the fixture comment); (b) prove
+  UNREACHABLE before writing a live-proof fixture for a mirrored row — the docs listing
+  an engine/version for a service does not mean the CFn type accepts it.
+- **A zero-skip assert fixture must not use `autoDeleteObjects`** — its
+  CustomS3AutoDeleteObjects custom resource is ALWAYS `skipped=1` (custom resources are
+  never read), so a `grep skipped=` assert false-fails on an otherwise clean stack (hit
+  on gdsets2-hunt 2026-07-22). Use a plain DESTROY bucket — `delstack` force-deletes a
+  non-empty bucket at teardown anyway (the auto-delete Lambda's log group also lands in
+  the sweep's younger-than-2h protection window; delete it explicitly before verify).
 - **The variant axis extends to UNION-TYPED config blocks and to defaults the variant
   FLIPS on a sibling.** Two live instances (variants2-hunt, 2026-07-14): (a) Firehose's
   destination union — every fixture was ExtendedS3, so a barest
