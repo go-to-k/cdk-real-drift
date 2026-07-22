@@ -65,7 +65,13 @@ const corpusDir = join(dirname(fileURLToPath(import.meta.url)), 'corpus');
 
 function mineUndeclared(): Bucket[] {
   const byKey = new Map<string, Bucket>();
-  for (const file of readdirSync(corpusDir).filter((f) => f.endsWith('.json'))) {
+  // `.drifted.json` cases pin DETECTION of a deliberately mutated / user-set value —
+  // their undeclared findings are the expected output, not first-run noise, and they
+  // polluted every sweep as bogus CANDIDATEs (RefreshTokenValidity=60 et al.) until
+  // excluded here. corpus-replay still replays them (its filter is plain `.json`).
+  for (const file of readdirSync(corpusDir).filter(
+    (f) => f.endsWith('.json') && !f.endsWith('.drifted.json')
+  )) {
     const c = JSON.parse(readFileSync(join(corpusDir, file), 'utf8')) as CorpusCase;
     if (c.corpusVersion !== 1) continue;
     const resource = {
