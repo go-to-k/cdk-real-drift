@@ -1,3 +1,10 @@
+## [0.23.4](https://github.com/go-to-k/cdk-real-drift/compare/v0.23.3...v0.23.4) (2026-07-22)
+
+
+### Bug Fixes
+
+* **revert:** Cognito UserPoolClient token-revocation/auth-session RSDP entries; exclude .drifted.json pins from measure-noise ([#1690](https://github.com/go-to-k/cdk-real-drift/issues/1690)) ([6e6b49f](https://github.com/go-to-k/cdk-real-drift/commit/6e6b49f18b2db59d4324aefc2fa0ad0839488e4a))
+
 ## [0.23.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.23.2...v0.23.3) (2026-07-22)
 
 
