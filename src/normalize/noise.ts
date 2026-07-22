@@ -2895,6 +2895,13 @@ export const CONTEXT_ARN_DEFAULTS: Record<string, Record<string, string | string
   // whole-account default scope. createOnly (never drifts), but derived rather than value-
   // independent per the fold-strategy order. Live, hunt 2026-07-08 round F (#626).
   'AWS::ResourceExplorer2::View': { Scope: 'arn:{partition}:iam::{accountId}:root' },
+  // A GuardDuty entity set that declares no ExpectedBucketOwner reads back the resource's OWN
+  // account id — GuardDuty materializes the caller account as the default expected owner of
+  // the list bucket (gdsets2-hunt 2026-07-22, #1686; not an ARN, but the same deploy-context
+  // placeholder substitution). Equality-gated: an out-of-band switch to a DIFFERENT owner
+  // account (a real cross-account exposure change) still surfaces.
+  'AWS::GuardDuty::ThreatEntitySet': { ExpectedBucketOwner: '{accountId}' },
+  'AWS::GuardDuty::TrustedEntitySet': { ExpectedBucketOwner: '{accountId}' },
   // A Kinesis Video stream that declares no KMS key reads back the AWS-managed
   // `alias/aws/kinesisvideo` key ARN — f(partition, region, account). Equality-gated, so a
   // stream switched to a customer CMK (a real, mutable change) still surfaces. Live, hunt
@@ -3041,6 +3048,10 @@ export const ENGINE_DEFAULTS: Record<string, Record<string, (engine: string) => 
   // A cache cluster that declares no Port reads back the engine's default listener port —
   // 6379 for redis/valkey, 11211 for memcached. Derived from the live Engine and
   // equality-gated; an out-of-band port change still surfaces.
+  // The valkey arm is UNREACHABLE via CloudFormation (live-determined 2026-07-22): the
+  // CacheCluster handler rejects engine=valkey outright ("This API doesn't support Valkey
+  // engine. Please use CreateReplicationGroup"), so standalone valkey CacheClusters cannot
+  // exist — the regex arm stays only for defensive parity with the RG fold.
   'AWS::ElastiCache::CacheCluster': {
     Port: (e) => (/memcached/i.test(e) ? 11211 : /redis|valkey/i.test(e) ? 6379 : undefined),
   },
@@ -3623,13 +3634,16 @@ function isAllEbGeneratedGroups(value: unknown): boolean {
 // the platform's smallest burstable pair for the environment's processor architecture — a
 // DETERMINISTIC function of the sibling `aws:ec2:instances|SupportedArchitectures` option
 // (x86_64 when unset, EB's own default). Pinned from `describe-configuration-options` +
-// the harvested EB corpus (x86_64 → t3.micro/t3.small) and the EB arm64 docs
-// (arm64 → t4g.micro/t4g.small). Folding InstanceTypes against this set keeps a clean deploy
-// at zero drift while surfacing any first element AWS did not assign as a default — an OOB
-// instance-family bump (the silent p4d.24xlarge cost bomb).
+// the harvested EB corpus (x86_64 → t3.micro/t3.small). The arm64 row was originally the EB
+// docs pair (t4g.micro/t4g.small), but a live arm64 environment (ebarm-hunt 2026-07-22,
+// #1685) is assigned "t4g.micro, t4g.large" — the choice moves within t4g burstables by
+// era/platform, so the set is the UNION of the observed + documented pairs. Folding
+// InstanceTypes against this set keeps a clean deploy at zero drift while surfacing any
+// element AWS did not assign as a default — an OOB instance-family bump (the silent
+// p4d.24xlarge cost bomb).
 const EB_INSTANCE_TYPES_DEFAULT_BY_ARCH: Record<string, ReadonlySet<string>> = {
   x86_64: new Set(['t3.micro', 't3.small']),
-  arm64: new Set(['t4g.micro', 't4g.small']),
+  arm64: new Set(['t4g.micro', 't4g.small', 't4g.large']),
 };
 function ebInstanceTypesDefaultSet(
   supportedArchitectures: unknown

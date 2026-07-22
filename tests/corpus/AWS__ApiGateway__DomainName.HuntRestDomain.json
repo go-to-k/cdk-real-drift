@@ -1,0 +1,109 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntRestDomain",
+    "resourceType": "AWS::ApiGateway::DomainName",
+    "physicalId": "hunt0722-v1.cdkrd-hunt.example.com",
+    "constructPath": "CdkrdHunt0722ApiMap/HuntRestDomain",
+    "declared": {
+      "DomainName": "hunt0722-v1.cdkrd-hunt.example.com",
+      "EndpointConfiguration": {
+        "Types": ["REGIONAL"]
+      },
+      "RegionalCertificateArn": "arn:aws:acm:us-east-1:111111111111:certificate/05157b27-63b7-4403-8184-b3e8b5efdd32",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "RoutingMode": "BASE_PATH_MAPPING_ONLY",
+    "RegionalHostedZoneId": "Z1UJRXOUMOOFQ8",
+    "RegionalDomainName": "d-3twyic8gk2.execute-api.us-east-1.amazonaws.com",
+    "DomainName": "hunt0722-v1.cdkrd-hunt.example.com",
+    "SecurityPolicy": "TLS_1_2",
+    "DomainNameArn": "arn:aws:apigateway:us-east-1::/domainnames/hunt0722-v1.cdkrd-hunt.example.com",
+    "EndpointConfiguration": {
+      "IpAddressType": "ipv4",
+      "Types": ["REGIONAL"]
+    },
+    "RegionalCertificateArn": "arn:aws:acm:us-east-1:111111111111:certificate/05157b27-63b7-4403-8184-b3e8b5efdd32",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [
+      "DistributionDomainName",
+      "DistributionHostedZoneId",
+      "DomainNameArn",
+      "RegionalDomainName",
+      "RegionalHostedZoneId"
+    ],
+    "writeOnly": [],
+    "createOnly": ["DomainName"],
+    "readOnlyPaths": [
+      "DistributionDomainName",
+      "DistributionHostedZoneId",
+      "DomainNameArn",
+      "RegionalDomainName",
+      "RegionalHostedZoneId"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["DomainName"],
+    "defaults": {
+      "RoutingMode": "BASE_PATH_MAPPING_ONLY"
+    },
+    "defaultPaths": {
+      "RoutingMode": "BASE_PATH_MAPPING_ONLY"
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntRestDomain",
+      "resourceType": "AWS::ApiGateway::DomainName",
+      "path": "RoutingMode",
+      "actual": "BASE_PATH_MAPPING_ONLY",
+      "physicalId": "hunt0722-v1.cdkrd-hunt.example.com",
+      "constructPath": "CdkrdHunt0722ApiMap/HuntRestDomain"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntRestDomain",
+      "resourceType": "AWS::ApiGateway::DomainName",
+      "path": "SecurityPolicy",
+      "actual": "TLS_1_2",
+      "physicalId": "hunt0722-v1.cdkrd-hunt.example.com",
+      "constructPath": "CdkrdHunt0722ApiMap/HuntRestDomain"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntRestDomain",
+      "resourceType": "AWS::ApiGateway::DomainName",
+      "path": "EndpointConfiguration.IpAddressType",
+      "actual": "ipv4",
+      "nested": true,
+      "physicalId": "hunt0722-v1.cdkrd-hunt.example.com",
+      "constructPath": "CdkrdHunt0722ApiMap/HuntRestDomain"
+    }
+  ]
+}

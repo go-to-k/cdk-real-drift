@@ -1,0 +1,41 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntApiMapping",
+    "resourceType": "AWS::ApiGatewayV2::ApiMapping",
+    "physicalId": "zqeejp",
+    "constructPath": "CdkrdHunt0722ApiMap/HuntApiMapping",
+    "declared": {
+      "ApiId": "17pl3et5bf",
+      "DomainName": "hunt0722-v2.cdkrd-hunt.example.com",
+      "Stage": "$default"
+    }
+  },
+  "liveRaw": {
+    "DomainName": "hunt0722-v2.cdkrd-hunt.example.com",
+    "Stage": "$default",
+    "ApiMappingId": "zqeejp",
+    "ApiMappingKey": "",
+    "ApiId": "17pl3et5bf"
+  },
+  "schema": {
+    "readOnly": ["ApiMappingId"],
+    "writeOnly": [],
+    "createOnly": ["DomainName"],
+    "readOnlyPaths": ["ApiMappingId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["DomainName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

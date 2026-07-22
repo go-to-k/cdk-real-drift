@@ -1,0 +1,89 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntThreatEntitySet",
+    "resourceType": "AWS::GuardDuty::ThreatEntitySet",
+    "physicalId": "63a1ad38de01493082f89ca2eb119cc4|7d64c86ad0974c0ba56a1f12290589c0",
+    "constructPath": "CdkrdHunt0722Gd2/HuntThreatEntitySet",
+    "declared": {
+      "DetectorId": "7d64c86ad0974c0ba56a1f12290589c0",
+      "Name": "cdkrd-hunt0722-threat-entity-set",
+      "Format": "TXT",
+      "Location": "https://s3.amazonaws.com/cdkrd-hunt0722-gd-111111111111/threatlist.txt",
+      "Activate": true
+    }
+  },
+  "liveRaw": {
+    "Status": "ACTIVE",
+    "Format": "TXT",
+    "CreatedAt": "2026-07-22T07:58:30Z",
+    "DetectorId": "7d64c86ad0974c0ba56a1f12290589c0",
+    "Id": "63a1ad38de01493082f89ca2eb119cc4",
+    "ErrorDetails": "",
+    "UpdatedAt": "2026-07-22T07:58:30Z",
+    "ExpectedBucketOwner": "111111111111",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0722Gd2",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntThreatEntitySet",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0722Gd2/17c5f9d0-85a3-11f1-9f36-0e40ba705f19",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "Name": "cdkrd-hunt0722-threat-entity-set",
+    "Location": "https://s3.amazonaws.com/cdkrd-hunt0722-gd-111111111111/threatlist.txt"
+  },
+  "schema": {
+    "readOnly": ["CreatedAt", "ErrorDetails", "Id", "Status", "UpdatedAt"],
+    "writeOnly": ["Activate"],
+    "createOnly": ["DetectorId", "Format"],
+    "readOnlyPaths": ["CreatedAt", "ErrorDetails", "Id", "Status", "UpdatedAt"],
+    "writeOnlyPaths": ["Activate"],
+    "createOnlyPaths": ["DetectorId", "Format"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "HuntThreatEntitySet",
+      "resourceType": "AWS::GuardDuty::ThreatEntitySet",
+      "path": "Activate",
+      "note": "write-only — cannot be read back",
+      "writeOnly": true,
+      "physicalId": "63a1ad38de01493082f89ca2eb119cc4|7d64c86ad0974c0ba56a1f12290589c0",
+      "constructPath": "CdkrdHunt0722Gd2/HuntThreatEntitySet"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntThreatEntitySet",
+      "resourceType": "AWS::GuardDuty::ThreatEntitySet",
+      "path": "ExpectedBucketOwner",
+      "actual": "111111111111",
+      "physicalId": "63a1ad38de01493082f89ca2eb119cc4|7d64c86ad0974c0ba56a1f12290589c0",
+      "constructPath": "CdkrdHunt0722Gd2/HuntThreatEntitySet"
+    }
+  ]
+}

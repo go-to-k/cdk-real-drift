@@ -1,0 +1,65 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntOrp",
+    "resourceType": "AWS::CloudFront::OriginRequestPolicy",
+    "physicalId": "03e00355-f506-473d-a4c2-8dc0d2cae055",
+    "constructPath": "CdkrdHunt0722CfPol/HuntOrp",
+    "declared": {
+      "OriginRequestPolicyConfig": {
+        "CookiesConfig": {
+          "CookieBehavior": "whitelist",
+          "Cookies": ["zz-cookie", "aa-cookie", "mm-cookie"]
+        },
+        "HeadersConfig": {
+          "HeaderBehavior": "whitelist",
+          "Headers": ["x-cdkrd-zz", "x-cdkrd-aa", "x-cdkrd-mm"]
+        },
+        "Name": "cdkrd-hunt0722-orp",
+        "QueryStringsConfig": {
+          "QueryStringBehavior": "whitelist",
+          "QueryStrings": ["zz", "aa", "mm"]
+        }
+      }
+    }
+  },
+  "liveRaw": {
+    "LastModifiedTime": "2026-07-22T07:01:16.202Z",
+    "Id": "03e00355-f506-473d-a4c2-8dc0d2cae055",
+    "OriginRequestPolicyConfig": {
+      "HeadersConfig": {
+        "Headers": ["x-cdkrd-zz", "x-cdkrd-aa", "x-cdkrd-mm"],
+        "HeaderBehavior": "whitelist"
+      },
+      "CookiesConfig": {
+        "Cookies": ["zz-cookie", "aa-cookie", "mm-cookie"],
+        "CookieBehavior": "whitelist"
+      },
+      "QueryStringsConfig": {
+        "QueryStrings": ["zz", "aa", "mm"],
+        "QueryStringBehavior": "whitelist"
+      },
+      "Name": "cdkrd-hunt0722-orp"
+    }
+  },
+  "schema": {
+    "readOnly": ["Id", "LastModifiedTime"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["Id", "LastModifiedTime"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}
