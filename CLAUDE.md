@@ -277,6 +277,21 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   its real-AWS live-test) is not demanded. pr-review and integ-\* stay UNPORTED on purpose:
   pr-review is multi-agent (cdkrd is solo); integ-\* depends on cdkd's
   providers/state/destroy paths cdkrd lacks (see `.markgate.yml`).
+- **Every session-wrap / task-complete report MUST end with a "Remaining work"
+  section AND a "Session close" verdict — unprompted** (mirrors go-to-k/cdkd#1257;
+  the user should never have to ask "any follow-up tasks?" or "can I close this
+  session?"). **Remaining work** — exactly one of: **TODO (issue #N)** (work that
+  still needs doing later; the ONLY bucket that means follow-up tasks exist —
+  every entry MUST have a GitHub issue number, filed BEFORE reporting);
+  **Won't-do (decided + recorded)** (things consciously decided AGAINST doing,
+  with a one-line reason and where the decision is recorded — PR body, in-code
+  comment, issue comment; no action needed); **Nothing remaining** (an explicit
+  statement after actually auditing for deferred polish and reviewer nits).
+  **Session close** — a one-line verdict: **CLOSEABLE** or **NOT CLOSEABLE
+  (waiting on: ...)** naming the blocker. CLOSEABLE requires ALL of: working
+  tree clean; no open PRs owned by this session; no running background tasks /
+  hunts / subagents; no AWS resources pending cleanup (bughunt sentinel clear);
+  every TODO filed as an issue.
 - **Claim a filed issue before working it — post a `gh issue comment` the moment
   you START (or commit to start) work, so parallel agents and sessions don't
   collide.** Multiple agents pick up open issues concurrently; two of them fixing
