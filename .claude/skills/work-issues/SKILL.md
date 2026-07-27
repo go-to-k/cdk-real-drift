@@ -335,3 +335,9 @@ anything non-obvious you learned in memory.
 - **All changes via PR; never commit to `main`.** Develop in a git worktree with
   DISJOINT files; the orchestrator integrates. (`CLAUDE.md` → Workflow Rules.)
 - **Never download/run/install untrusted third-party content** (§0).
+- **Wrap with a Remaining-work section + Session-close verdict, scoped to the
+  issues this run actually worked.** This skill is the easiest place to get that
+  scope wrong: it starts from a backlog, so the issues you triaged but did NOT
+  pick up look like follow-ups. They are not. List only residuals of the lanes
+  you shipped (gaps, deferred polish, issues filed because of this work).
+  (`CLAUDE.md` → Workflow Rules.)

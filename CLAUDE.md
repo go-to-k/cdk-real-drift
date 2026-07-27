@@ -280,9 +280,17 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
 - **Every session-wrap / task-complete report MUST end with a "Remaining work"
   section AND a "Session close" verdict — unprompted** (mirrors go-to-k/cdkd#1257;
   the user should never have to ask "any follow-up tasks?" or "can I close this
-  session?"). **Remaining work** — exactly one of: **TODO (issue #N)** (work that
-  still needs doing later; the ONLY bucket that means follow-up tasks exist —
-  every entry MUST have a GitHub issue number, filed BEFORE reporting);
+  session?"). **Scope: only work THIS session created or touched.** The section
+  reports residuals of the task just finished: gaps in what was shipped, polish
+  deferred while doing it, and issues filed BECAUSE of this work. It is NOT a
+  backlog dump. Do not list pre-existing open issues that merely happen to be
+  unresolved, and once the session moves on to an unrelated task, stop carrying
+  forward items from the earlier unrelated work. If the current work leaves
+  nothing behind, the answer is "Nothing remaining" even when the repo has open
+  issues elsewhere. **Remaining work** — exactly one of: **TODO (issue #N)**
+  (work that still needs doing later; the ONLY bucket meaning follow-ups
+  exist — every entry MUST have a GitHub issue number, filed BEFORE
+  reporting);
   **Won't-do (decided + recorded)** (things consciously decided AGAINST doing,
   with a one-line reason and where the decision is recorded — PR body, in-code
   comment, issue comment; no action needed); **Nothing remaining** (an explicit
