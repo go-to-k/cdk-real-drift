@@ -1,0 +1,71 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "BasicConn",
+    "resourceType": "AWS::Events::Connection",
+    "physicalId": "BasicConn-vkW9Uwe5xc6U",
+    "constructPath": "CdkrdHunt0801FreeB/BasicConn",
+    "declared": {
+      "AuthParameters": {
+        "BasicAuthParameters": {
+          "Password": "Cdkrd-hunt-0801-probe!",
+          "Username": "cdkrd-hunt"
+        }
+      },
+      "AuthorizationType": "BASIC"
+    }
+  },
+  "liveRaw": {
+    "SecretArn": "arn:aws:secretsmanager:us-east-1:111111111111:secret:events!connection/BasicConn-vkW9Uwe5xc6U/aa46c18f-d2ee-41ae-ae24-164ac67ddf50-Me4SFb",
+    "AuthParameters": {
+      "BasicAuthParameters": {
+        "Username": "cdkrd-hunt"
+      }
+    },
+    "Arn": "arn:aws:events:us-east-1:111111111111:connection/BasicConn-vkW9Uwe5xc6U/a0f0ffbb-846d-496f-97e6-44b845de40a0",
+    "ArnForPolicy": "arn:aws:events:us-east-1:111111111111:connection/BasicConn-vkW9Uwe5xc6U",
+    "AuthorizationType": "BASIC",
+    "Name": "BasicConn-vkW9Uwe5xc6U"
+  },
+  "schema": {
+    "readOnly": ["Arn", "ArnForPolicy", "SecretArn"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": [
+      "Arn",
+      "ArnForPolicy",
+      "AuthParameters.ConnectivityParameters.ResourceParameters.ResourceAssociationArn",
+      "InvocationConnectivityParameters.ResourceParameters.ResourceAssociationArn",
+      "SecretArn"
+    ],
+    "writeOnlyPaths": [
+      "AuthParameters.ApiKeyAuthParameters.ApiKeyValue",
+      "AuthParameters.BasicAuthParameters.Password",
+      "AuthParameters.InvocationHttpParameters",
+      "AuthParameters.OAuthParameters.ClientParameters.ClientSecret",
+      "AuthParameters.OAuthParameters.OAuthHttpParameters.BodyParameters",
+      "AuthParameters.OAuthParameters.OAuthHttpParameters.HeaderParameters",
+      "AuthParameters.OAuthParameters.OAuthHttpParameters.QueryStringParameters"
+    ],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {
+      "AuthParameters.OAuthParameters.OAuthHttpParameters.HeaderParameters.*.IsValueSecret": true,
+      "AuthParameters.OAuthParameters.OAuthHttpParameters.QueryStringParameters.*.IsValueSecret": true,
+      "AuthParameters.OAuthParameters.OAuthHttpParameters.BodyParameters.*.IsValueSecret": true,
+      "AuthParameters.InvocationHttpParameters.HeaderParameters.*.IsValueSecret": true,
+      "AuthParameters.InvocationHttpParameters.QueryStringParameters.*.IsValueSecret": true,
+      "AuthParameters.InvocationHttpParameters.BodyParameters.*.IsValueSecret": true
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

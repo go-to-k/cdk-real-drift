@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-integ-statepack-hunt",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Stateful-pack first-run FP probe (2026-08-01): RDS 400GiB gp3-default arm + read replica creation mode, ElastiCache memcached barest (Port 11211 mirrored arm), Keyspaces barest + PROVISIONED tables (WarmThroughput constant probe). Run via verify.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module"
+}

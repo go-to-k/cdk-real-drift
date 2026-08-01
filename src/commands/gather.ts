@@ -123,6 +123,11 @@ export const DEFAULT_SG_LIST_TYPES: ReadonlySet<string> = new Set([
   // DEFAULT_SG_LIST_PATHS, so the prefetch must fire when a resource gateway is present or
   // the OOB-swap gate loses its default-SG ids.
   'AWS::VpcLattice::ResourceGateway',
+  // #1699: a barest Interface VPC endpoint that declares no SecurityGroupIds is placed into
+  // the VPC's default SG (live, elbpack-hunt 2026-08-01) — registered in classify
+  // DEFAULT_SG_LIST_PATHS, so the prefetch must fire when a VPC endpoint is present or the
+  // OOB-swap gate loses its default-SG ids.
+  'AWS::EC2::VPCEndpoint',
 ]);
 
 // #1269: types whose undeclared SubnetIds default to ALL of the account's DEFAULT-VPC subnets —
@@ -1335,6 +1340,27 @@ export function buildClientVpnEndpointSiblingVpcs(desired: Desired): Record<stri
 // registry-readOnly and stripped from the classify surface, so the raw live model is the only
 // place it exists). Unmatched literals map nothing (the pointer keeps surfacing — conservative);
 // conflicting links degrade to `null` (fail open) like the ClientVPN sibling map.
+// #1704: per SOURCE DBInstance physical id, that source's LIVE model — a read replica
+// (declared SourceDBInstanceIdentifier, which the resolver has already collapsed to the
+// source's physical id for an in-stack Ref) equality-gates its inherited
+// Engine/AllocatedStorage/MasterUsername echoes against the source's live values in
+// classify. Only in-stack DBInstances appear here; an out-of-stack source finds no entry
+// and the inherited values stay unfolded (fail-safe).
+export function buildRdsReplicaSourceModels(
+  desired: Desired,
+  liveByLogical?: Map<string, Record<string, unknown>>
+): Record<string, Record<string, unknown>> {
+  const out: Record<string, Record<string, unknown>> = {};
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::RDS::DBInstance') continue;
+    const live = liveByLogical?.get(r.logicalId);
+    if (!live) continue;
+    const id = live['DBInstanceIdentifier'] ?? r.physicalId;
+    if (typeof id === 'string' && id !== '') out[id] = live;
+  }
+  return out;
+}
+
 export function buildCloudFrontStagingDistCdPolicyIds(
   desired: Desired,
   liveByLogical?: Map<string, Record<string, unknown>>
@@ -2134,6 +2160,7 @@ export async function gatherFindings(
       desired,
       liveModelMap(reads)
     ),
+    siblingRdsSourceModels: buildRdsReplicaSourceModels(desired, liveModelMap(reads)),
     rdsOptionSettingDefaults: await buildRdsOptionSettingDefaults(desired, region),
   };
 
@@ -2252,6 +2279,7 @@ export async function regatherTouched(
       desired,
       liveModelMap(reads)
     ),
+    siblingRdsSourceModels: buildRdsReplicaSourceModels(desired, liveModelMap(reads)),
     rdsOptionSettingDefaults: await buildRdsOptionSettingDefaults(desired, region),
   };
 

@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-integ-freepack-hunt",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Barest-variant first-run FP probe (2026-08-01): ASG MixedInstancesPolicy, TG protocol x target-type crosses (GENEVE x instance, TLS x ip, HTTPS), EC2 Volume barest/gp3, Route53 HealthCheck undeclared interval/threshold + TCP, Events Connection BASIC, SNS lambda subscription. Plus an ASG MaxSize FN detect->revert leg. Run via verify.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module"
+}

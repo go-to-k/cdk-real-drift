@@ -11,11 +11,13 @@
 // CC-gap types (revert for those is a follow-up).
 import type { BaselineFile } from '../baseline/baseline-file.js';
 import { withinStackPath } from '../construct-path.js';
+import { partitionForRegion } from '../desired/template-adapter.js';
 import { GETTEMPLATE_MASK_NOTE } from '../diff/classify.js';
 import { TAG_PROPERTY_NAMES } from '../normalize/cc-api-strip.js';
 import { hasUnresolved, UNRESOLVED } from '../normalize/intrinsic-resolver.js';
 import {
   awsManagedTags,
+  CONTEXT_ARN_DEFAULTS,
   isCfnTemplateNonAsciiMask,
   JSON_STRING_PROPS,
   KNOWN_DEFAULT_PATHS,
@@ -313,6 +315,14 @@ export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // "reverted"). An explicit CC `add /Action "NOOP"` converges (CC-probed live against a
   // CLI-created filter), so write the KNOWN_DEFAULTS 'NOOP' back explicitly.
   'AWS::GuardDuty::Filter\0Action',
+  // hunt 2026-08-01 (#1694, stackless CC probes, BOTH types proven individually): the
+  // GuardDuty Update{Threat,Trusted}EntitySet handlers keep an omitted ExpectedBucketOwner
+  // (an out-of-band foreign owner id — accepted unvalidated by the OOB API — persisted
+  // through a bare `remove` that reported SUCCESS); an explicit CC `add` of the caller
+  // account id converges. The default is the CONTEXT_ARN_DEFAULTS '{accountId}' placeholder,
+  // resolved from opts.identity at plan time (see revertOp).
+  'AWS::GuardDuty::ThreatEntitySet\0ExpectedBucketOwner',
+  'AWS::GuardDuty::TrustedEntitySet\0ExpectedBucketOwner',
   // barest4/ccpi hunt (live-proven 2026-07-14): ServiceCatalog UpdateTagOption REJECTS the
   // `remove` patch outright ("Active and new value cannot both be null") — the hard-reject
   // flavor of the class (not a silent no-op, a hard error). Write the `true` default (from
@@ -972,6 +982,12 @@ export interface RevertOptions {
   // server-side model, so a CC UpdateResource of ANY property on the same resource fails
   // model validation ("expected type JSONObject, found Null") unless the patch also drops it.
   liveByLogical?: Map<string, Record<string, unknown>>;
+  // The stack's deploy identity, so a REVERT_SET_DEFAULT_PATHS entry whose default lives in
+  // CONTEXT_ARN_DEFAULTS (a {partition}/{region}/{accountId}-templated value, e.g. GuardDuty
+  // entity-set ExpectedBucketOwner, #1694) can resolve the placeholder at plan time. Absent
+  // (unit calls without it) the resolution is skipped and the op falls back to the bare
+  // `remove` — fail-safe, same as before.
+  identity?: { accountId?: string; region?: string };
 }
 
 // True when a finding path is AT or UNDER any create-only schema path. The schema's
@@ -1478,7 +1494,7 @@ export function buildRevertPlan(
       const sib = opts.siblingSgRules?.[f.physicalId]?.[sgSide] ?? [];
       if (sib.length > 0) toRevert = { ...f, desired: [...(f.desired as unknown[]), ...sib] };
     }
-    const op = revertOp(toRevert, recorded);
+    const op = revertOp(toRevert, recorded, opts.identity);
     const key = `${f.logicalId} ${kind}${propScoped ? ` ${f.path}` : ''}`;
     const item =
       itemsByLogical.get(key) ??
@@ -1567,7 +1583,35 @@ function coerceDeclaredScalar(desired: unknown, live: unknown): unknown {
   return desired;
 }
 
-function revertOp(f: Finding, recorded: BaselineFile['recorded']): PatchOp {
+// Resolve a CONTEXT_ARN_DEFAULTS template for the set-default revert path: the same
+// {partition}/{region}/{accountId} substitution classify uses for the fold side (#1694).
+// Undefined when the type/path has no template or the identity is unresolved — the caller
+// then falls through to the bare `remove` (fail-safe).
+function contextArnDefaultFor(
+  resourceType: string,
+  path: string,
+  identity: RevertOptions['identity']
+): unknown {
+  const template = CONTEXT_ARN_DEFAULTS[resourceType]?.[path];
+  if (template === undefined) return undefined;
+  const { accountId, region } = identity ?? {};
+  if (accountId === undefined || accountId === '' || region === undefined || region === '') {
+    return undefined;
+  }
+  const partition = partitionForRegion(region).partition;
+  const substitute = (t: string): string =>
+    t
+      .replace('{partition}', partition)
+      .replace('{region}', region)
+      .replace('{accountId}', accountId);
+  return Array.isArray(template) ? template.map(substitute) : substitute(template);
+}
+
+function revertOp(
+  f: Finding,
+  recorded: BaselineFile['recorded'],
+  identity?: RevertOptions['identity']
+): PatchOp {
   const pointer = toPointer(f.path);
   if (f.tier === 'declared') {
     return {
@@ -1619,7 +1663,9 @@ function revertOp(f: Finding, recorded: BaselineFile['recorded']): PatchOp {
   // at-default first sighting; if it is somehow absent we fall through to `remove`.
   const setDefaultKey = `${f.resourceType}\0${f.path}`;
   const knownDefault =
-    KNOWN_DEFAULTS[f.resourceType]?.[f.path] ?? REVERT_SET_DEFAULT_VALUES[setDefaultKey];
+    KNOWN_DEFAULTS[f.resourceType]?.[f.path] ??
+    REVERT_SET_DEFAULT_VALUES[setDefaultKey] ??
+    contextArnDefaultFor(f.resourceType, f.path, identity);
   if (knownDefault !== undefined && REVERT_SET_DEFAULT_PATHS.has(setDefaultKey)) {
     return {
       op: 'add',

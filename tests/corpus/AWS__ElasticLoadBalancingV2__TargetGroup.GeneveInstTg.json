@@ -1,0 +1,247 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "GeneveInstTg",
+    "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+    "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-Genev-SPNMIQPXOGBG/007194e55a0487c2ba",
+    "constructPath": "CdkrdHunt0801FreeA/GeneveInstTg",
+    "declared": {
+      "Port": 6081,
+      "Protocol": "GENEVE",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "TargetType": "instance",
+      "VpcId": "vpc-0940ba5e394c1054e"
+    }
+  },
+  "liveRaw": {
+    "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-Genev-SPNMIQPXOGBG/007194e55a0487c2ba",
+    "HealthCheckIntervalSeconds": 10,
+    "LoadBalancerArns": [],
+    "Port": 6081,
+    "Targets": [],
+    "HealthCheckEnabled": true,
+    "UnhealthyThresholdCount": 2,
+    "HealthCheckTimeoutSeconds": 5,
+    "Name": "CdkrdH-Genev-SPNMIQPXOGBG",
+    "VpcId": "vpc-0940ba5e394c1054e",
+    "TargetGroupFullName": "targetgroup/CdkrdH-Genev-SPNMIQPXOGBG/007194e55a0487c2ba",
+    "HealthyThresholdCount": 5,
+    "HealthCheckProtocol": "TCP",
+    "TargetGroupAttributes": [
+      {
+        "Value": "false",
+        "Key": "stickiness.enabled"
+      },
+      {
+        "Value": "300",
+        "Key": "deregistration_delay.timeout_seconds"
+      },
+      {
+        "Value": "source_ip_dest_ip_proto",
+        "Key": "stickiness.type"
+      },
+      {
+        "Value": "no_rebalance",
+        "Key": "target_failover.on_deregistration"
+      },
+      {
+        "Value": "no_rebalance",
+        "Key": "target_failover.on_unhealthy"
+      }
+    ],
+    "TargetType": "instance",
+    "HealthCheckPort": "80",
+    "Protocol": "GENEVE",
+    "TargetGroupName": "CdkrdH-Genev-SPNMIQPXOGBG",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0801FreeA",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "GeneveInstTg",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0801FreeA/d1173eb0-8d8e-11f1-90a7-0affd9b7fb2d",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["LoadBalancerArns", "TargetGroupArn", "TargetGroupFullName", "TargetGroupName"],
+    "writeOnly": [],
+    "createOnly": [
+      "IpAddressType",
+      "Name",
+      "Port",
+      "Protocol",
+      "ProtocolVersion",
+      "TargetType",
+      "VpcId"
+    ],
+    "readOnlyPaths": [
+      "LoadBalancerArns",
+      "TargetGroupArn",
+      "TargetGroupFullName",
+      "TargetGroupName"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "IpAddressType",
+      "Name",
+      "Port",
+      "Protocol",
+      "ProtocolVersion",
+      "TargetType",
+      "VpcId"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["LoadBalancerArns"],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "GeneveInstTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthCheckIntervalSeconds",
+      "actual": 10,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-Genev-SPNMIQPXOGBG/007194e55a0487c2ba",
+      "constructPath": "CdkrdHunt0801FreeA/GeneveInstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "GeneveInstTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthCheckEnabled",
+      "actual": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-Genev-SPNMIQPXOGBG/007194e55a0487c2ba",
+      "constructPath": "CdkrdHunt0801FreeA/GeneveInstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "GeneveInstTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "UnhealthyThresholdCount",
+      "actual": 2,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-Genev-SPNMIQPXOGBG/007194e55a0487c2ba",
+      "constructPath": "CdkrdHunt0801FreeA/GeneveInstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "GeneveInstTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthCheckTimeoutSeconds",
+      "actual": 5,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-Genev-SPNMIQPXOGBG/007194e55a0487c2ba",
+      "constructPath": "CdkrdHunt0801FreeA/GeneveInstTg"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "GeneveInstTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "Name",
+      "actual": "CdkrdH-Genev-SPNMIQPXOGBG",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-Genev-SPNMIQPXOGBG/007194e55a0487c2ba",
+      "constructPath": "CdkrdHunt0801FreeA/GeneveInstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "GeneveInstTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthyThresholdCount",
+      "actual": 5,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-Genev-SPNMIQPXOGBG/007194e55a0487c2ba",
+      "constructPath": "CdkrdHunt0801FreeA/GeneveInstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "GeneveInstTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthCheckProtocol",
+      "actual": "TCP",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-Genev-SPNMIQPXOGBG/007194e55a0487c2ba",
+      "constructPath": "CdkrdHunt0801FreeA/GeneveInstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "GeneveInstTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[deregistration_delay.timeout_seconds]",
+      "actual": "300",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-Genev-SPNMIQPXOGBG/007194e55a0487c2ba",
+      "constructPath": "CdkrdHunt0801FreeA/GeneveInstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "GeneveInstTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[stickiness.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-Genev-SPNMIQPXOGBG/007194e55a0487c2ba",
+      "constructPath": "CdkrdHunt0801FreeA/GeneveInstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "GeneveInstTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[stickiness.type]",
+      "actual": "source_ip_dest_ip_proto",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-Genev-SPNMIQPXOGBG/007194e55a0487c2ba",
+      "constructPath": "CdkrdHunt0801FreeA/GeneveInstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "GeneveInstTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[target_failover.on_deregistration]",
+      "actual": "no_rebalance",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-Genev-SPNMIQPXOGBG/007194e55a0487c2ba",
+      "constructPath": "CdkrdHunt0801FreeA/GeneveInstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "GeneveInstTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "TargetGroupAttributes[target_failover.on_unhealthy]",
+      "actual": "no_rebalance",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-Genev-SPNMIQPXOGBG/007194e55a0487c2ba",
+      "constructPath": "CdkrdHunt0801FreeA/GeneveInstTg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "GeneveInstTg",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "path": "HealthCheckPort",
+      "actual": "80",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-Genev-SPNMIQPXOGBG/007194e55a0487c2ba",
+      "constructPath": "CdkrdHunt0801FreeA/GeneveInstTg"
+    }
+  ]
+}

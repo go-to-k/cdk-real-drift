@@ -861,6 +861,60 @@ describe('buildRevertPlan', () => {
   // three persisted an out-of-band value through a `remove` revert that reported
   // "reverted", while an explicit CC `add` patch converged. Each writes the
   // KNOWN_DEFAULTS default back explicitly.
+  // #1694 (hunt 2026-08-01, stackless CC probes, both types proven individually): the
+  // GuardDuty Update{Threat,Trusted}EntitySet handlers keep an omitted ExpectedBucketOwner,
+  // and the default is a CONTEXT_ARN_DEFAULTS '{accountId}' placeholder — resolved from
+  // opts.identity at plan time. Without identity the plan falls back to the bare remove
+  // (fail-safe; the real CLI path always threads it).
+  it('GuardDuty ThreatEntitySet ExpectedBucketOwner (SET-DEFAULT) -> add op writing the resolved caller account id', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::GuardDuty::ThreatEntitySet',
+      path: 'ExpectedBucketOwner',
+      actual: '999988887777',
+    });
+    const plan = buildRevertPlan([f], baseline([]), {
+      identity: { accountId: '111122224444', region: 'us-east-1' },
+    });
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/ExpectedBucketOwner',
+      value: '111122224444',
+      prior: '999988887777',
+    });
+  });
+
+  it('GuardDuty TrustedEntitySet ExpectedBucketOwner (SET-DEFAULT) -> add op writing the resolved caller account id', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::GuardDuty::TrustedEntitySet',
+      path: 'ExpectedBucketOwner',
+      actual: '999988887777',
+    });
+    const plan = buildRevertPlan([f], baseline([]), {
+      identity: { accountId: '111122224444', region: 'us-east-1' },
+    });
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'add',
+      path: '/ExpectedBucketOwner',
+      value: '111122224444',
+    });
+  });
+
+  it('GuardDuty entity-set ExpectedBucketOwner WITHOUT identity -> fail-safe bare remove (no fabricated value)', () => {
+    const f = F({
+      tier: 'undeclared',
+      resourceType: 'AWS::GuardDuty::ThreatEntitySet',
+      path: 'ExpectedBucketOwner',
+      actual: '999988887777',
+    });
+    const plan = buildRevertPlan([f], baseline([]));
+    expect(plan.items[0]!.ops[0]).toMatchObject({
+      op: 'remove',
+      path: '/ExpectedBucketOwner',
+    });
+  });
+
   it('VpcLattice ResourceConfiguration AllowAssociationToSharableServiceNetwork (SET-DEFAULT) -> add op writing the true default', () => {
     const f = F({
       tier: 'undeclared',

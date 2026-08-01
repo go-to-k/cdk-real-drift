@@ -411,18 +411,33 @@ siblings, both proven by a STACKLESS CC probe: `cloudcontrol create-resource`
 pool+client, OOB-flip, bare `remove` no-ops, explicit `add` converges — the whole
 per-property proof for ~$0 and no fixture) all no-oped → RSDP entries; Backup RTP
 `RecoveryPointSelection.SelectionWindowDays`, Lambda ESM `ParallelizationFactor`, and
-ECS Service `AssignPublicIp` converged (no entries needed). **Remaining KNOWN
-UNPROBED RSDP candidates from that hunt's audit** (deliberately deferred — pick these
-up before re-auditing): OpenSearch `ClusterConfig.DedicatedMasterCount` (HIGH cost:
-dedicated-master domain, but the OS writer is documented-selective — strongest
-remaining candidate), EC2 VPCEndpointService `SupportedIpAddressTypes` (needs an
-NLB), SES DedicatedIpPool `ScalingMode` (SKIPPED ON PURPOSE: probing requires
-entering MANAGED, which bills per-IP-hour and has a cooldown back to STANDARD — a
-stuck-state risk; get cost sign-off first), Synthetics Canary
-`Schedule.DurationInSeconds`, Firehose `HttpEndpointDestinationConfiguration.*`
-(7 nested paths, complex), Lambda ESM `TumblingWindowInSeconds` (PF converged, TWIS
-probably does too — cheap confirm), VpcLattice ALS `ServiceNetworkLogType` (verify
-OOB mutability FIRST — likely create-only → skip-list, not RSDP).
+ECS Service `AssignPublicIp` converged (no entries needed).
+Batch 10 (2026-08-01 hunt) settled most of batch 9's deferred list for ~$0: **GuardDuty
+`ThreatEntitySet` + `TrustedEntitySet` `ExpectedBucketOwner` BOTH no-oped** (proven
+individually via stackless CC probes; the OOB API accepts a FOREIGN account id on an
+INACTIVE set — an ACTIVE set validates against the real bucket owner and rejects it
+with AccessDeniedException, so an E2E fixture leg must target an Activate:false set —
+the drift is real and security-typed) — and exposed a STRUCTURAL gap:
+the pin lives in `CONTEXT_ARN_DEFAULTS` (`{accountId}` placeholder), which
+plan.ts did not consult at all, so no plain RSDP entry could express the fix. #1694
+adds RSDP entries + an `opts.identity`-resolved `contextArnDefaultFor` fallback in
+`revertOp` — any future CONTEXT_ARN_DEFAULTS pin gets revert convergence by adding
+the RSDP key alone. **Lambda ESM `TumblingWindowInSeconds` CONVERGED** via the bare
+`remove` (like PF) — but ONLY when the probe patch rides the
+`/DestinationConfig/OnFailure` husk removal (`CC_UPDATE_REJECTED_EMPTY_PATHS`,
+#1611): a raw stackless probe WITHOUT the husk op fails with "The Destination field
+is required" and proves nothing — when a stackless CC probe errors, check the type's
+husk table entry before concluding anything. **VpcLattice ALS
+`ServiceNetworkLogType` closed offline** (update API takes only destination-arn —
+not OOB-mutable, in-code note). **SES `ScalingMode` closed from docs**
+(MANAGED→STANDARD is unsupported by the service — detect-only forever, no probe can
+help; in-code note). **Remaining deferred candidates**: OpenSearch
+`ClusterConfig.DedicatedMasterCount` (HIGH cost, and NOTE: it is a NESTED
+KNOWN_DEFAULT_PATHS pin, so plan.ts already emits an explicit `add` — the residual
+risk is only the #763 explicit-write-ignored class, low), EC2 VPCEndpointService
+`SupportedIpAddressTypes` (needs a dualstack NLB in IPv6 subnets), Synthetics Canary
+`Schedule.DurationInSeconds` + Firehose `HttpEndpointDestinationConfiguration.*`
+(nested pins — same auto-`add` note as OpenSearch, low residual).
 Piggyback the convergence
 probe on every NEW KNOWN_DEFAULTS fold a hunt ships (mutate → revert → re-read) —
 it is ~1-in-3 to need an RSDP entry, and the probe is nearly free while the stack
@@ -876,6 +891,24 @@ create-parameter-group` both ACCEPT a mixed-case identifier (storing it lowercas
   `HealthCheckConfig.IPAddress` with a bare `InvalidRequest` — point the check at a
   resolvable FQDN (`FullyQualifiedDomainName: example.com` IS fine here) instead
   (route53-policy-hunt, 2026-07-20).
+- **A PARTIALLY-declared block's service fill can DIFFER from the wholly-undeclared
+  default — live-probe the PARTIAL shape before adding nested true pins + off-flip
+  gates.** Cognito fills an UpdateUserPool/CreateUserPool partial PasswordPolicy with
+  `Require*: FALSE` (the all-true defaults apply only when Policies is wholly
+  undeclared), so the audited "Require\* off-flip FN" did not exist and the attempted
+  true-pins + MEANINGFUL_WHEN_OFF_NESTED gates CREATED a first-run FP — caught by
+  corpus-replay on a REAL partial-declared case (Users0A0EEA89), exactly the guard the
+  corpus exists to be (#1701 determination). GuardDuty's DataSources fills the SAME
+  all-true in both shapes (CC-probed 2026-08-01), so its partial-dimension pins+gates
+  are correct (#1700). The cheap discriminator: `cloudcontrol create-resource` with
+  the partial shape, read back the fill, delete — one minute, no stack. And BEFORE
+  filing a nested off-flip FN, grep the corpus for a partial-declared case of that
+  block: a false-filled sibling in a CLEAN case is the disproof.
+- **`grep -c "Potential Drift"` counts the summary HEADER line — a verify.sh that
+  allows one by-design entry (the TrustStore sha256) must count the indented ENTRY
+  lines inside the block** (`sed -n '/\[Potential Drift/,/^──/p' | grep -E '^\s+\S+ \(AWS::'`),
+  or a fully-clean-but-for-the-allowed-entry run false-fails on the header (hit on
+  elbpack-hunt 2026-08-01).
 - **A NEW all-boolean pin family can arrive via a READER-projection fix — re-run the
   off-flip audit over the diff window, not just the historical tables.** The #1658
   Budgets reader fix (projecting the full 11-boolean `CostTypes`) necessarily added a

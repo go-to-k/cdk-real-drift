@@ -389,7 +389,11 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     // tumbling window (the documented defaults). SQS sources never carry either prop, so
     // the entries can't mis-fold there. Equality-gated — raise the parallelization or set
     // a real window out of band and it no longer matches, so it re-surfaces. Observed live
-    // on barest DDB + Kinesis mappings (esm-hunt, 2026-07-14, #1608).
+    // on barest DDB + Kinesis mappings (esm-hunt, 2026-07-14, #1608). Revert-convergence
+    // determination (stackless CC probe 2026-08-01): TumblingWindowInSeconds CONVERGES via
+    // the bare `remove` (like ParallelizationFactor, batch 9) — no RSDP entry needed. The
+    // probe patch must ride the /DestinationConfig/OnFailure husk removal (the
+    // CC_UPDATE_REJECTED_EMPTY_PATHS mechanism, #1611) or the whole update is rejected.
     ParallelizationFactor: 1,
     TumblingWindowInSeconds: 0,
   },
@@ -467,9 +471,11 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   'AWS::VpcLattice::ServiceNetwork': { SharingConfig: { enabled: true } },
   // A VPC Lattice access log subscription attached without a ServiceNetworkLogType reads
   // back the service default SERVICE (log service-network service traffic; the other enum
-  // value is RESOURCE for resource-configuration traffic). Equality-gated; a subscription
-  // switched to RESOURCE out of band still surfaces. Observed live on a fresh
-  // lattice2-hunt deploy (2026-07-15).
+  // value is RESOURCE for resource-configuration traffic). Observed live on a fresh
+  // lattice2-hunt deploy (2026-07-15). Revert-convergence determination (2026-08-01 hunt):
+  // NOT OOB-mutable — `update-access-log-subscription` accepts only the identifier +
+  // --destination-arn, so the value can never drift out of band and no RSDP probe /
+  // entry is needed (the ResourceGateway class below); purely a first-run fold.
   'AWS::VpcLattice::AccessLogSubscription': { ServiceNetworkLogType: 'SERVICE' },
   // A barest VPC Lattice resource gateway (name/vpc/subnets only) reads back three service
   // defaults the template never declared (observed live, lattice2-hunt 2026-07-15):
@@ -496,7 +502,12 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // A dedicated IP pool created with only a PoolName reads back the service default
   // STANDARD scaling mode (the other enum value is MANAGED, which auto-leases billable
   // IPs). Equality-gated; a pool converted to MANAGED out of band still surfaces.
-  // Observed live on a fresh misspack-hunt deploy (2026-07-15).
+  // Observed live on a fresh misspack-hunt deploy (2026-07-15). Revert-convergence
+  // determination (2026-08-01, from the API docs — no paid probe): the service supports
+  // ONLY STANDARD->MANAGED; a MANAGED pool cannot be converted back
+  // (PutDedicatedIpPoolScalingAttributes rejects it), so a revert of that drift can never
+  // converge — DETECT-ONLY by service design, no RSDP entry can fix it, and the revert
+  // failure the user sees is the service's own rejection (honest). Do not re-probe.
   'AWS::SES::DedicatedIpPool': { ScalingMode: 'STANDARD' },
   // A CodeDeploy application created without a ComputePlatform reads back the service
   // default Server (the EC2/on-premises platform; the others are Lambda / ECS).
@@ -1462,6 +1473,14 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     InstanceLifecyclePolicy: { RetentionTriggers: { TerminateHookAbandon: 'terminate' } },
     CapacityReservationSpecification: { CapacityReservationPreference: 'default' },
   },
+  // A Size+AZ-only volume reads back the era default type gp2 (#1697, live 2026-08-01
+  // freepack-hunt; the gp2 Iops:100 / gp3 Iops:3000+Throughput:125 echoes already fold via
+  // the schema defaults). Equality-gated — an out-of-band type change still surfaces; if AWS
+  // ever moves the era default to gp3, the pin re-surfaces on fresh deploys and graduates to
+  // KNOWN_DEFAULT_ONE_OF per the era-dependent rule.
+  'AWS::EC2::Volume': {
+    VolumeType: 'gp2',
+  },
   // A warm pool that declares no MinSize reads back MinSize:0 — the documented
   // constant default ("minimum 0 warmed instances"). Observed undeclared on a fresh
   // ecs-capacityprovider-rich deploy. Equality-gated: raise it out of band and it
@@ -1896,9 +1915,16 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     ReplicationSpecification: { ReplicationStrategy: 'SINGLE_REGION' },
   },
   'AWS::Cassandra::Table': {
+    // (#1705: this 12000/4000 constant is the ON_DEMAND shape only — a PROVISIONED table
+    // echoes ITS OWN provisioned capacity, derived in classify.ts from the declared
+    // BillingMode.ProvisionedThroughput; this constant stays the fall-through.)
     WarmThroughput: { ReadUnitsPerSecond: 12000, WriteUnitsPerSecond: 4000 },
     EncryptionSpecification: { EncryptionType: 'AWS_OWNED_KMS_KEY' },
     CdcSpecification: { Status: 'DISABLED' },
+    // A table with no TTL configured echoes the numeric 0 "no default TTL" sentinel
+    // (#1705, live 2026-08-01 statepack-hunt — the prior sole corpus case DECLARED it).
+    // Equality-gated: an out-of-band TTL still surfaces.
+    DefaultTimeToLive: 0,
   },
   // EMR Serverless application service defaults (observed live on the
   // misc-0cov-rich fixture): x86_64 architecture and managed-persistence
@@ -2098,6 +2124,44 @@ export const KNOWN_DEFAULT_ONE_OF_PATHS: Record<string, Record<string, readonly 
 // constant first-run default (12000/4000) and folds via KNOWN_DEFAULTS above —
 // equality-gated, so a warmed-up table still surfaces.
 export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
+  // A barest MixedInstancesPolicy ASG (only LaunchTemplateSpecification + Overrides
+  // declared) reads back the whole InstancesDistribution object holding the five documented
+  // constant defaults (#1695, live 2026-08-01 freepack-hunt — the MIP union branch was never
+  // deployed before; every prior fixture used the flat LaunchTemplate branch). The declared
+  // parent MixedInstancesPolicy descends (it carries LaunchTemplate), so the wholly-undeclared
+  // sub-object is emitted whole and equality-gated: any out-of-band distribution change (a
+  // spot percentage, a different allocation strategy) breaks the match and surfaces.
+  'AWS::AutoScaling::AutoScalingGroup': {
+    'MixedInstancesPolicy.InstancesDistribution': {
+      OnDemandAllocationStrategy: 'prioritized',
+      OnDemandBaseCapacity: 0,
+      OnDemandPercentageAboveBaseCapacity: 100,
+      SpotAllocationStrategy: 'lowest-price',
+      SpotInstancePools: 2,
+    },
+  },
+  // An mTLS listener (MutualAuthentication {Mode:'verify', TrustStoreArn} declared — the
+  // ATTACHED shape, vs the whole-object {Mode:'off'} pin observed on a plain HTTPS listener)
+  // descends per leaf and materializes the undeclared AdvertiseTrustStoreCaNames 'off'
+  // default (#1698, live 2026-08-01 elbpack-hunt — the #1574 attachment-echo class).
+  // Equality-gated: an out-of-band flip to 'on' still surfaces. (The sibling
+  // IgnoreClientCertificateExpiry false leaf is trivially-empty-dropped; its ON flip reads
+  // back `true`, which is non-trivial and surfaces normally.)
+  'AWS::ElasticLoadBalancingV2::Listener': {
+    'MutualAuthentication.AdvertiseTrustStoreCaNames': 'off',
+  },
+  // #1700: the PARTIAL-declaration dimension of the whole-object DataSources pin (the common
+  // CDK shape declares only one protection, e.g. s3Logs) — the undeclared siblings emit at
+  // these nested paths. All-true sub-objects fold here (equality-gated), and each path is
+  // paired with a MEANINGFUL_WHEN_OFF_NESTED gate in classify.ts so an out-of-band disable
+  // (an all-false, trivially-empty read — the #1092 shape one level down) still surfaces.
+  'AWS::GuardDuty::Detector': {
+    'DataSources.S3Logs': { Enable: true },
+    'DataSources.Kubernetes': { AuditLogs: { Enable: true } },
+    'DataSources.Kubernetes.AuditLogs': { Enable: true },
+    'DataSources.MalwareProtection': { ScanEc2InstanceWithFindings: { EbsVolumes: true } },
+    'DataSources.MalwareProtection.ScanEc2InstanceWithFindings': { EbsVolumes: true },
+  },
   // A restore testing plan's RecoveryPointSelection declares only the required
   // Algorithm/IncludeVaults/RecoveryPointTypes, so the block is partially declared and
   // descends per-leaf: the service fills the documented 30-day selection window default.
@@ -2361,6 +2425,19 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     // reads back the 7-day default (observed live); a pool that sets a different value
     // no longer matches and surfaces (equality-gated).
     'Policies.PasswordPolicy.TemporaryPasswordValidityDays': 7,
+    // #1701 determination (2026-08-01): a PARTIALLY-declared PasswordPolicy is filled with
+    // Require*=FALSE by the service (real corpus proof: Users0A0EEA89 declares
+    // RequireNumbers/RequireSymbols true and reads back RequireLowercase/RequireUppercase
+    // FALSE on a clean deploy) — the all-true defaults apply ONLY to a wholly-undeclared
+    // Policies (the whole-object pin above). So the audited Require* off-flip FN does NOT
+    // exist here: an undeclared-false leaf IS the creation state (nothing to detect), an
+    // OOB weakening of a declared-true leaf is DECLARED drift, and an OOB strengthening
+    // reads a non-trivial `true` that surfaces normally. Do NOT add true pins or
+    // MEANINGFUL_WHEN_OFF_NESTED gates for them (tried; the corpus replay caught the FP).
+    // MinimumLength is different: the service fills the documented 8 when a partial
+    // policy omits it (probed live 2026-08-01), so the equality-gated pin folds the echo
+    // and an out-of-band 6 still surfaces as a non-trivial number.
+    'Policies.PasswordPolicy.MinimumLength': 8,
     // A DECLARED standard schema attribute (email/name, keyed by Name via
     // NESTED_ARRAY_IDENTITY) that omits its data type / string constraints reads back
     // Cognito's constant defaults: a String attribute with a 0..2048 length range. The
@@ -3431,7 +3508,12 @@ export const GENERATED_NESTED_PATHS: Record<string, ReadonlySet<string>> = {
   // top-level GENERATED_LOGICALID gate can't derive it from THIS resource) — a per-resource
   // AWS-assigned identifier, never user intent when undeclared. Fold value-independent. Live,
   // hunt 2026-07-08 #639.
-  'AWS::AutoScaling::AutoScalingGroup': new Set(['LaunchTemplate.LaunchTemplateName']),
+  // (#1695 adds the MixedInstancesPolicy branch: the SAME minted-name echo one level deeper,
+  // beside the declared LaunchTemplateSpecification.LaunchTemplateId.)
+  'AWS::AutoScaling::AutoScalingGroup': new Set([
+    'LaunchTemplate.LaunchTemplateName',
+    'MixedInstancesPolicy.LaunchTemplate.LaunchTemplateSpecification.LaunchTemplateName',
+  ]),
   // An MSK cluster that declares no EncryptionInfo reads back EncryptionAtRest holding the
   // account's AWS-managed `alias/aws/kafka` key ARN (a per-account AWS-assigned key id embedding
   // a GUID — never a constant, never user intent when undeclared, the RDS/DynamoDB KmsKeyId echo
@@ -4082,10 +4164,16 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   //   AZ placement reads back the AZ(s) AWS picked from its subnet group (["us-east-1a"]) —
   //   subnet-group-derived, not user intent when undeclared; a user who pins placement
   //   DECLARES it and is then compared in the declared loop.
+  //   AWS::ElastiCache::CacheCluster.EngineVersion — a barest memcached cluster that
+  //   declares no version reads back the GA track AWS assigned ("1.6" today, #1706 live
+  //   2026-08-01) — the same moving-GA-version class as the ReplicationGroup twin below;
+  //   a user who cares declares it (then compared in the declared loop, with the
+  //   VERSION_PREFIX_PATHS track normalization).
   'AWS::ElastiCache::CacheCluster': new Set([
     'PreferredMaintenanceWindow',
     'SnapshotWindow',
     'PreferredAvailabilityZones',
+    'EngineVersion',
   ]),
   //   AWS::ElastiCache::ReplicationGroup.EngineVersion — a RG that declares no EngineVersion
   //   reads back the current GA patch AWS assigned (valkey "9.1.0" today), which AWS moves

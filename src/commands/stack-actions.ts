@@ -1294,6 +1294,9 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     // which never includes the (unpickable) GetTemplate-masked readGaps the whole-array
     // mask guard correlates against.
     maskReadGapKeys: maskReadGapKeysOf(reconciled),
+    // so a CONTEXT_ARN_DEFAULTS-pinned set-default (GuardDuty entity-set
+    // ExpectedBucketOwner, #1694) resolves its {accountId}/{region} placeholder.
+    identity: { accountId: gathered.desired.accountId, region },
   });
 
   if (plan.items.length === 0 && plan.notRevertable.length === 0) {

@@ -1219,6 +1219,8 @@ describe('noise suppressors', () => {
       WarmThroughput: { ReadUnitsPerSecond: 12000, WriteUnitsPerSecond: 4000 },
       EncryptionSpecification: { EncryptionType: 'AWS_OWNED_KMS_KEY' },
       CdcSpecification: { Status: 'DISABLED' },
+      // #1705: the numeric "no default TTL" echo on a barest table (statepack-hunt 2026-08-01).
+      DefaultTimeToLive: 0,
     });
     expect(KNOWN_DEFAULTS['AWS::EMRServerless::Application']).toEqual({
       Architecture: 'X86_64',

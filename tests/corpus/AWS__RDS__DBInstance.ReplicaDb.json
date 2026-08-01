@@ -1,0 +1,596 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ReplicaDb",
+    "resourceType": "AWS::RDS::DBInstance",
+    "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+    "constructPath": "CdkrdHunt0801State/ReplicaDb",
+    "declared": {
+      "DBInstanceClass": "db.t4g.micro",
+      "SourceDBInstanceIdentifier": "cdkrdhunt0801state-srcdb-vmkqexdy4u6v",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "DatabaseInsightsMode": "standard",
+    "StorageEncrypted": false,
+    "StatusInfos": [],
+    "CertificateDetails": {
+      "ValidTill": "2027-08-01T10:56:03Z",
+      "CAIdentifier": "rds-ca-rsa2048-g1"
+    },
+    "Port": "5432",
+    "AdditionalStorageVolumes": [],
+    "StorageThroughput": 0,
+    "DbiResourceId": "db-ASEWXM2C4KEGZ3FC3BFYLWWWZY",
+    "ReadReplicaDBClusterIdentifiers": [],
+    "MonitoringInterval": 0,
+    "DBParameterGroupName": "default.postgres18",
+    "DBInstanceArn": "arn:aws:rds:us-east-1:111111111111:db:cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+    "Endpoint": {
+      "Address": "cdkrdhunt0801state-replicadb-03v6lphwcbbf.caxxotukouxo.us-east-1.rds.amazonaws.com",
+      "Port": "5432",
+      "HostedZoneId": "Z2R2ITUGPM61AM"
+    },
+    "MultiAZ": false,
+    "Engine": "postgres",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0801State",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "ReplicaDb",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0801State/965b37c0-8d95-11f1-b02c-123fc70247a7",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "IsStorageConfigUpgradeAvailable": false,
+    "EngineVersion": "18.3",
+    "StorageType": "gp2",
+    "DBInstanceStatus": "available",
+    "DBInstanceClass": "db.t4g.micro",
+    "AvailabilityZone": "us-east-1b",
+    "OptionGroupName": "default:postgres-18",
+    "EnablePerformanceInsights": false,
+    "ReadReplicaDBInstanceIdentifiers": [],
+    "AutoMinorVersionUpgrade": true,
+    "DBSubnetGroupName": "default",
+    "DeletionProtection": false,
+    "DBInstanceIdentifier": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+    "AllocatedStorage": "400",
+    "MasterUserSecret": {},
+    "DBSecurityGroups": [],
+    "MasterUsername": "cdkrdhunt",
+    "PubliclyAccessible": true,
+    "AssociatedRoles": [],
+    "InstanceCreateTime": "2026-08-01T10:57:16.012Z",
+    "ProcessorFeatures": [],
+    "PreferredBackupWindow": "06:32-07:02",
+    "NetworkType": "IPV4",
+    "DedicatedLogVolume": false,
+    "CopyTagsToSnapshot": false,
+    "EngineLifecycleSupport": "open-source-rds-extended-support",
+    "LicenseModel": "postgresql-license",
+    "PreferredMaintenanceWindow": "fri:07:57-fri:08:27",
+    "BackupTarget": "region",
+    "CACertificateIdentifier": "rds-ca-rsa2048-g1",
+    "ManageMasterUserPassword": false,
+    "VPCSecurityGroups": ["sg-0a26e23e2310ee0c9"],
+    "EnableIAMDatabaseAuthentication": false,
+    "BackupRetentionPeriod": 0,
+    "EnableCloudwatchLogsExports": []
+  },
+  "schema": {
+    "readOnly": [
+      "AutomaticRestartTime",
+      "CertificateDetails",
+      "DBInstanceArn",
+      "DBInstanceStatus",
+      "DbiResourceId",
+      "Endpoint",
+      "InstanceCreateTime",
+      "IsStorageConfigUpgradeAvailable",
+      "LatestRestorableTime",
+      "ListenerEndpoint",
+      "PercentProgress",
+      "ReadReplicaDBClusterIdentifiers",
+      "ReadReplicaDBInstanceIdentifiers",
+      "ResumeFullAutomationModeTime",
+      "SecondaryAvailabilityZone",
+      "StatusInfos"
+    ],
+    "writeOnly": [
+      "AllowMajorVersionUpgrade",
+      "ApplyImmediately",
+      "AutomaticBackupReplicationKmsKeyId",
+      "CertificateRotationRestart",
+      "DBSnapshotIdentifier",
+      "DeleteAutomatedBackups",
+      "MasterUserAuthenticationType",
+      "MasterUserPassword",
+      "RestoreTime",
+      "SourceDBInstanceAutomatedBackupsArn",
+      "SourceDBInstanceIdentifier",
+      "SourceDbiResourceId",
+      "SourceRegion",
+      "TdeCredentialPassword",
+      "UseDefaultProcessorFeatures",
+      "UseLatestRestorableTime"
+    ],
+    "createOnly": [
+      "BackupTarget",
+      "CharacterSetName",
+      "CustomIAMInstanceProfile",
+      "DBClusterIdentifier",
+      "DBInstanceIdentifier",
+      "DBName",
+      "DBSubnetGroupName",
+      "DBSystemId",
+      "KmsKeyId",
+      "MasterUsername",
+      "NcharCharacterSetName",
+      "SourceRegion",
+      "StorageEncrypted",
+      "Timezone"
+    ],
+    "readOnlyPaths": [
+      "AutomaticRestartTime",
+      "CertificateDetails",
+      "CertificateDetails.CAIdentifier",
+      "CertificateDetails.ValidTill",
+      "DBInstanceArn",
+      "DBInstanceStatus",
+      "DbiResourceId",
+      "Endpoint",
+      "Endpoint.Address",
+      "Endpoint.HostedZoneId",
+      "Endpoint.Port",
+      "InstanceCreateTime",
+      "IsStorageConfigUpgradeAvailable",
+      "LatestRestorableTime",
+      "ListenerEndpoint",
+      "ListenerEndpoint.Address",
+      "ListenerEndpoint.HostedZoneId",
+      "ListenerEndpoint.Port",
+      "MasterUserSecret.SecretArn",
+      "PercentProgress",
+      "ReadReplicaDBClusterIdentifiers",
+      "ReadReplicaDBInstanceIdentifiers",
+      "ResumeFullAutomationModeTime",
+      "SecondaryAvailabilityZone",
+      "StatusInfos"
+    ],
+    "writeOnlyPaths": [
+      "AllowMajorVersionUpgrade",
+      "ApplyImmediately",
+      "AutomaticBackupReplicationKmsKeyId",
+      "CertificateRotationRestart",
+      "DBSnapshotIdentifier",
+      "DeleteAutomatedBackups",
+      "MasterUserAuthenticationType",
+      "MasterUserPassword",
+      "RestoreTime",
+      "SourceDBInstanceAutomatedBackupsArn",
+      "SourceDBInstanceIdentifier",
+      "SourceDbiResourceId",
+      "SourceRegion",
+      "TdeCredentialPassword",
+      "UseDefaultProcessorFeatures",
+      "UseLatestRestorableTime"
+    ],
+    "createOnlyPaths": [
+      "BackupTarget",
+      "CharacterSetName",
+      "CustomIAMInstanceProfile",
+      "DBClusterIdentifier",
+      "DBInstanceIdentifier",
+      "DBName",
+      "DBSubnetGroupName",
+      "DBSystemId",
+      "KmsKeyId",
+      "MasterUsername",
+      "NcharCharacterSetName",
+      "SourceRegion",
+      "StorageEncrypted",
+      "Timezone"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    },
+    "siblingRdsSourceModels": {
+      "cdkrdhunt0801state-srcdb-vmkqexdy4u6v": {
+        "DatabaseInsightsMode": "standard",
+        "StorageEncrypted": false,
+        "StatusInfos": [],
+        "CertificateDetails": {
+          "ValidTill": "2027-08-01T10:44:19Z",
+          "CAIdentifier": "rds-ca-rsa2048-g1"
+        },
+        "Port": "5432",
+        "AdditionalStorageVolumes": [],
+        "StorageThroughput": 0,
+        "DbiResourceId": "db-VGJ73G47CECNBND5H43I6OOZME",
+        "ReadReplicaDBClusterIdentifiers": [],
+        "MonitoringInterval": 0,
+        "DBParameterGroupName": "default.postgres18",
+        "DBInstanceArn": "arn:aws:rds:us-east-1:111111111111:db:cdkrdhunt0801state-srcdb-vmkqexdy4u6v",
+        "Endpoint": {
+          "Address": "cdkrdhunt0801state-srcdb-vmkqexdy4u6v.caxxotukouxo.us-east-1.rds.amazonaws.com",
+          "Port": "5432",
+          "HostedZoneId": "Z2R2ITUGPM61AM"
+        },
+        "LatestRestorableTime": "2026-08-01T10:54:48Z",
+        "MultiAZ": false,
+        "Engine": "postgres",
+        "Tags": [
+          {
+            "Value": "CdkrdHunt0801State",
+            "Key": "aws:cloudformation:stack-name"
+          },
+          {
+            "Value": "SrcDb",
+            "Key": "aws:cloudformation:logical-id"
+          },
+          {
+            "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0801State/965b37c0-8d95-11f1-b02c-123fc70247a7",
+            "Key": "aws:cloudformation:stack-id"
+          },
+          {
+            "Value": "1",
+            "Key": "cdkrd:ephemeral"
+          }
+        ],
+        "IsStorageConfigUpgradeAvailable": false,
+        "EngineVersion": "18.3",
+        "StorageType": "gp2",
+        "DBInstanceStatus": "available",
+        "DBInstanceClass": "db.t4g.micro",
+        "AvailabilityZone": "us-east-1d",
+        "OptionGroupName": "default:postgres-18",
+        "EnablePerformanceInsights": false,
+        "ReadReplicaDBInstanceIdentifiers": ["cdkrdhunt0801state-replicadb-03v6lphwcbbf"],
+        "AutoMinorVersionUpgrade": true,
+        "DBSubnetGroupName": "default",
+        "DeletionProtection": false,
+        "DBInstanceIdentifier": "cdkrdhunt0801state-srcdb-vmkqexdy4u6v",
+        "AllocatedStorage": "400",
+        "MasterUserSecret": {},
+        "DBSecurityGroups": [],
+        "MasterUsername": "cdkrdhunt",
+        "PubliclyAccessible": true,
+        "AssociatedRoles": [],
+        "InstanceCreateTime": "2026-08-01T10:45:38.498Z",
+        "ProcessorFeatures": [],
+        "PreferredBackupWindow": "06:32-07:02",
+        "NetworkType": "IPV4",
+        "DedicatedLogVolume": false,
+        "CopyTagsToSnapshot": false,
+        "EngineLifecycleSupport": "open-source-rds-extended-support",
+        "LicenseModel": "postgresql-license",
+        "PreferredMaintenanceWindow": "fri:07:57-fri:08:27",
+        "BackupTarget": "region",
+        "CACertificateIdentifier": "rds-ca-rsa2048-g1",
+        "ManageMasterUserPassword": false,
+        "VPCSecurityGroups": ["sg-0a26e23e2310ee0c9"],
+        "EnableIAMDatabaseAuthentication": false,
+        "BackupRetentionPeriod": 1,
+        "EnableCloudwatchLogsExports": []
+      }
+    }
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "SourceDBInstanceIdentifier",
+      "note": "write-only — cannot be read back",
+      "writeOnly": true,
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "DatabaseInsightsMode",
+      "actual": "standard",
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "StorageEncrypted",
+      "actual": false,
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "Port",
+      "actual": "5432",
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "StorageThroughput",
+      "actual": 0,
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "MonitoringInterval",
+      "actual": 0,
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "DBParameterGroupName",
+      "actual": "default.postgres18",
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "MultiAZ",
+      "actual": false,
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "Engine",
+      "actual": "postgres",
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "EngineVersion",
+      "actual": "18.3",
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "StorageType",
+      "actual": "gp2",
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "AvailabilityZone",
+      "actual": "us-east-1b",
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "OptionGroupName",
+      "actual": "default:postgres-18",
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "EnablePerformanceInsights",
+      "actual": false,
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "AutoMinorVersionUpgrade",
+      "actual": true,
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "DBSubnetGroupName",
+      "actual": "default",
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "AllocatedStorage",
+      "actual": "400",
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "MasterUsername",
+      "actual": "cdkrdhunt",
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "PubliclyAccessible",
+      "actual": true,
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "PreferredBackupWindow",
+      "actual": "06:32-07:02",
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "NetworkType",
+      "actual": "IPV4",
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "DedicatedLogVolume",
+      "actual": false,
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "CopyTagsToSnapshot",
+      "actual": false,
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "EngineLifecycleSupport",
+      "actual": "open-source-rds-extended-support",
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "LicenseModel",
+      "actual": "postgresql-license",
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "PreferredMaintenanceWindow",
+      "actual": "fri:07:57-fri:08:27",
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "BackupTarget",
+      "actual": "region",
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "CACertificateIdentifier",
+      "actual": "rds-ca-rsa2048-g1",
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "ManageMasterUserPassword",
+      "actual": false,
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "VPCSecurityGroups",
+      "actual": ["sg-0a26e23e2310ee0c9"],
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "EnableIAMDatabaseAuthentication",
+      "actual": false,
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaDb",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "BackupRetentionPeriod",
+      "actual": 0,
+      "physicalId": "cdkrdhunt0801state-replicadb-03v6lphwcbbf",
+      "constructPath": "CdkrdHunt0801State/ReplicaDb"
+    }
+  ]
+}
