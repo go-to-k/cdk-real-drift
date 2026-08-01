@@ -1,0 +1,298 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "MipAsg",
+    "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+    "physicalId": "CdkrdHunt0801FreeA-MipAsg-mcl9mO3va2iH",
+    "constructPath": "CdkrdHunt0801FreeA/MipAsg",
+    "declared": {
+      "DesiredCapacity": "0",
+      "MaxSize": "0",
+      "MinSize": "0",
+      "MixedInstancesPolicy": {
+        "LaunchTemplate": {
+          "LaunchTemplateSpecification": {
+            "LaunchTemplateId": "lt-05c5b28b02e10a163",
+            "Version": "__cdkrd_corpus_unresolved__"
+          },
+          "Overrides": [
+            {
+              "InstanceType": "t3.micro"
+            }
+          ]
+        }
+      },
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "PropagateAtLaunch": true,
+          "Value": "1"
+        }
+      ],
+      "VPCZoneIdentifier": ["subnet-06feffef2d46455c6"]
+    }
+  },
+  "liveRaw": {
+    "LoadBalancerNames": [],
+    "ServiceLinkedRoleARN": "arn:aws:iam::111111111111:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling",
+    "TargetGroupARNs": [],
+    "AvailabilityZoneIds": ["use1-az1"],
+    "AutoScalingGroupARN": "arn:aws:autoscaling:us-east-1:111111111111:autoScalingGroup:83900e04-e44b-4668-b1da-c50a3ccfda6c:autoScalingGroupName/CdkrdHunt0801FreeA-MipAsg-mcl9mO3va2iH",
+    "Cooldown": "300",
+    "AvailabilityZones": ["us-east-1a"],
+    "AvailabilityZoneDistribution": {
+      "CapacityDistributionStrategy": "balanced-best-effort"
+    },
+    "DesiredCapacity": "0",
+    "HealthCheckGracePeriod": 0,
+    "MetricsCollection": [],
+    "InstanceLifecyclePolicy": {
+      "RetentionTriggers": {
+        "TerminateHookAbandon": "terminate"
+      }
+    },
+    "MaxSize": "0",
+    "NewInstancesProtectedFromScaleIn": false,
+    "MinSize": "0",
+    "TerminationPolicies": ["Default"],
+    "AutoScalingGroupName": "CdkrdHunt0801FreeA-MipAsg-mcl9mO3va2iH",
+    "MixedInstancesPolicy": {
+      "InstancesDistribution": {
+        "OnDemandAllocationStrategy": "prioritized",
+        "OnDemandBaseCapacity": 0,
+        "OnDemandPercentageAboveBaseCapacity": 100,
+        "SpotInstancePools": 2,
+        "SpotAllocationStrategy": "lowest-price"
+      },
+      "LaunchTemplate": {
+        "LaunchTemplateSpecification": {
+          "LaunchTemplateName": "Lt_kXZD0Ed2XvHu",
+          "Version": "1",
+          "LaunchTemplateId": "lt-05c5b28b02e10a163"
+        },
+        "Overrides": [
+          {
+            "InstanceType": "t3.micro"
+          }
+        ]
+      }
+    },
+    "VPCZoneIdentifier": ["subnet-06feffef2d46455c6"],
+    "CapacityReservationSpecification": {
+      "CapacityReservationPreference": "default"
+    },
+    "Tags": [
+      {
+        "ResourceId": "CdkrdHunt0801FreeA-MipAsg-mcl9mO3va2iH",
+        "Value": "MipAsg",
+        "ResourceType": "auto-scaling-group",
+        "Key": "aws:cloudformation:logical-id",
+        "PropagateAtLaunch": true
+      },
+      {
+        "ResourceId": "CdkrdHunt0801FreeA-MipAsg-mcl9mO3va2iH",
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0801FreeA/d1173eb0-8d8e-11f1-90a7-0affd9b7fb2d",
+        "ResourceType": "auto-scaling-group",
+        "Key": "aws:cloudformation:stack-id",
+        "PropagateAtLaunch": true
+      },
+      {
+        "ResourceId": "CdkrdHunt0801FreeA-MipAsg-mcl9mO3va2iH",
+        "Value": "CdkrdHunt0801FreeA",
+        "ResourceType": "auto-scaling-group",
+        "Key": "aws:cloudformation:stack-name",
+        "PropagateAtLaunch": true
+      },
+      {
+        "ResourceId": "CdkrdHunt0801FreeA-MipAsg-mcl9mO3va2iH",
+        "Value": "1",
+        "ResourceType": "auto-scaling-group",
+        "Key": "cdkrd:ephemeral",
+        "PropagateAtLaunch": true
+      }
+    ],
+    "HealthCheckType": "EC2"
+  },
+  "schema": {
+    "readOnly": ["AutoScalingGroupARN"],
+    "writeOnly": ["InstanceId", "SkipZonalShiftValidation"],
+    "createOnly": ["AutoScalingGroupName", "InstanceId"],
+    "readOnlyPaths": ["AutoScalingGroupARN"],
+    "writeOnlyPaths": ["InstanceId", "SkipZonalShiftValidation"],
+    "createOnlyPaths": ["AutoScalingGroupName", "InstanceId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [
+      "AvailabilityZoneIds",
+      "AvailabilityZones",
+      "NotificationConfiguration.NotificationTypes",
+      "TargetGroupARNs",
+      "VPCZoneIdentifier"
+    ],
+    "unorderedObjectArrayPaths": ["LifecycleHookSpecificationList", "TrafficSources"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": [
+    {
+      "tier": "unresolved",
+      "logicalId": "MipAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "MixedInstancesPolicy",
+      "physicalId": "CdkrdHunt0801FreeA-MipAsg-mcl9mO3va2iH",
+      "constructPath": "CdkrdHunt0801FreeA/MipAsg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MipAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "ServiceLinkedRoleARN",
+      "actual": "arn:aws:iam::111111111111:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling",
+      "physicalId": "CdkrdHunt0801FreeA-MipAsg-mcl9mO3va2iH",
+      "constructPath": "CdkrdHunt0801FreeA/MipAsg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MipAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "AvailabilityZoneIds",
+      "actual": ["use1-az1"],
+      "physicalId": "CdkrdHunt0801FreeA-MipAsg-mcl9mO3va2iH",
+      "constructPath": "CdkrdHunt0801FreeA/MipAsg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MipAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "Cooldown",
+      "actual": "300",
+      "physicalId": "CdkrdHunt0801FreeA-MipAsg-mcl9mO3va2iH",
+      "constructPath": "CdkrdHunt0801FreeA/MipAsg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MipAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "AvailabilityZones",
+      "actual": ["us-east-1a"],
+      "physicalId": "CdkrdHunt0801FreeA-MipAsg-mcl9mO3va2iH",
+      "constructPath": "CdkrdHunt0801FreeA/MipAsg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MipAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "AvailabilityZoneDistribution",
+      "actual": {
+        "CapacityDistributionStrategy": "balanced-best-effort"
+      },
+      "physicalId": "CdkrdHunt0801FreeA-MipAsg-mcl9mO3va2iH",
+      "constructPath": "CdkrdHunt0801FreeA/MipAsg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MipAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "HealthCheckGracePeriod",
+      "actual": 0,
+      "physicalId": "CdkrdHunt0801FreeA-MipAsg-mcl9mO3va2iH",
+      "constructPath": "CdkrdHunt0801FreeA/MipAsg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MipAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "InstanceLifecyclePolicy",
+      "actual": {
+        "RetentionTriggers": {
+          "TerminateHookAbandon": "terminate"
+        }
+      },
+      "physicalId": "CdkrdHunt0801FreeA-MipAsg-mcl9mO3va2iH",
+      "constructPath": "CdkrdHunt0801FreeA/MipAsg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MipAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "TerminationPolicies",
+      "actual": ["Default"],
+      "physicalId": "CdkrdHunt0801FreeA-MipAsg-mcl9mO3va2iH",
+      "constructPath": "CdkrdHunt0801FreeA/MipAsg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MipAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "CapacityReservationSpecification",
+      "actual": {
+        "CapacityReservationPreference": "default"
+      },
+      "physicalId": "CdkrdHunt0801FreeA-MipAsg-mcl9mO3va2iH",
+      "constructPath": "CdkrdHunt0801FreeA/MipAsg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MipAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "HealthCheckType",
+      "actual": "EC2",
+      "physicalId": "CdkrdHunt0801FreeA-MipAsg-mcl9mO3va2iH",
+      "constructPath": "CdkrdHunt0801FreeA/MipAsg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MipAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "MixedInstancesPolicy.InstancesDistribution",
+      "actual": {
+        "OnDemandAllocationStrategy": "prioritized",
+        "OnDemandBaseCapacity": 0,
+        "OnDemandPercentageAboveBaseCapacity": 100,
+        "SpotInstancePools": 2,
+        "SpotAllocationStrategy": "lowest-price"
+      },
+      "nested": true,
+      "physicalId": "CdkrdHunt0801FreeA-MipAsg-mcl9mO3va2iH",
+      "constructPath": "CdkrdHunt0801FreeA/MipAsg"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "MipAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "MixedInstancesPolicy.LaunchTemplate.LaunchTemplateSpecification.LaunchTemplateName",
+      "actual": "Lt_kXZD0Ed2XvHu",
+      "nested": true,
+      "physicalId": "CdkrdHunt0801FreeA-MipAsg-mcl9mO3va2iH",
+      "constructPath": "CdkrdHunt0801FreeA/MipAsg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MipAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "Tags[cdkrd:ephemeral].ResourceId",
+      "actual": "CdkrdHunt0801FreeA-MipAsg-mcl9mO3va2iH",
+      "nested": true,
+      "physicalId": "CdkrdHunt0801FreeA-MipAsg-mcl9mO3va2iH",
+      "constructPath": "CdkrdHunt0801FreeA/MipAsg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MipAsg",
+      "resourceType": "AWS::AutoScaling::AutoScalingGroup",
+      "path": "Tags[cdkrd:ephemeral].ResourceType",
+      "actual": "auto-scaling-group",
+      "nested": true,
+      "physicalId": "CdkrdHunt0801FreeA-MipAsg-mcl9mO3va2iH",
+      "constructPath": "CdkrdHunt0801FreeA/MipAsg"
+    }
+  ]
+}

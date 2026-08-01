@@ -1,0 +1,180 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SqsIfEp",
+    "resourceType": "AWS::EC2::VPCEndpoint",
+    "physicalId": "vpce-039d4ef9c1c3675ef",
+    "constructPath": "CdkrdHunt0801Elb/SqsIfEp",
+    "declared": {
+      "ServiceName": "com.amazonaws.us-east-1.sqs",
+      "SubnetIds": ["subnet-079da9827dc19df2b"],
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "VpcEndpointType": "Interface",
+      "VpcId": "vpc-0c41e4b2249864c89"
+    }
+  },
+  "liveRaw": {
+    "PrivateDnsEnabled": false,
+    "IpAddressType": "ipv4",
+    "ServiceRegion": "us-east-1",
+    "CreationTimestamp": "Sat 8 1 9:55:58 UTC 2026",
+    "DnsOptions": {
+      "PrivateDnsOnlyForInboundResolverEndpoint": "NotSpecified",
+      "PrivateDnsSpecifiedDomains": ["*"],
+      "DnsRecordIpType": "ipv4",
+      "PrivateDnsPreference": "VERIFIED_DOMAINS_ONLY"
+    },
+    "NetworkInterfaceIds": ["eni-0a844e08478a0d21c"],
+    "DnsEntries": [
+      "Z7HUB22UULQXV:vpce-039d4ef9c1c3675ef-5godbqhm.sqs.us-east-1.vpce.amazonaws.com",
+      "Z7HUB22UULQXV:vpce-039d4ef9c1c3675ef-5godbqhm-us-east-1a.sqs.us-east-1.vpce.amazonaws.com"
+    ],
+    "ResourceConfigurationArn": "",
+    "SecurityGroupIds": ["sg-04a605bef1837e493"],
+    "SubnetIds": ["subnet-079da9827dc19df2b"],
+    "ServiceNetworkArn": "",
+    "VpcId": "vpc-0c41e4b2249864c89",
+    "RouteTableIds": [],
+    "ServiceName": "com.amazonaws.us-east-1.sqs",
+    "PolicyDocument": {
+      "Statement": [
+        {
+          "Action": "*",
+          "Resource": "*",
+          "Effect": "Allow",
+          "Principal": "*"
+        }
+      ]
+    },
+    "VpcEndpointType": "Interface",
+    "Id": "vpce-039d4ef9c1c3675ef",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0801Elb",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "SqsIfEp",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0801Elb/147afc00-8d8f-11f1-a64b-126cee05623d",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["CreationTimestamp", "DnsEntries", "Id", "NetworkInterfaceIds"],
+    "writeOnly": [],
+    "createOnly": [
+      "ResourceConfigurationArn",
+      "ServiceName",
+      "ServiceNetworkArn",
+      "ServiceRegion",
+      "VpcEndpointType",
+      "VpcId"
+    ],
+    "readOnlyPaths": ["CreationTimestamp", "DnsEntries", "Id", "NetworkInterfaceIds"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "DnsOptions.PrivateDnsPreference",
+      "DnsOptions.PrivateDnsSpecifiedDomains",
+      "ResourceConfigurationArn",
+      "ServiceName",
+      "ServiceNetworkArn",
+      "ServiceRegion",
+      "VpcEndpointType",
+      "VpcId"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [
+      "DnsEntries",
+      "NetworkInterfaceIds",
+      "RouteTableIds",
+      "SecurityGroupIds",
+      "SubnetIds"
+    ],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "SqsIfEp",
+      "resourceType": "AWS::EC2::VPCEndpoint",
+      "path": "IpAddressType",
+      "actual": "ipv4",
+      "physicalId": "vpce-039d4ef9c1c3675ef",
+      "constructPath": "CdkrdHunt0801Elb/SqsIfEp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "SqsIfEp",
+      "resourceType": "AWS::EC2::VPCEndpoint",
+      "path": "ServiceRegion",
+      "actual": "us-east-1",
+      "physicalId": "vpce-039d4ef9c1c3675ef",
+      "constructPath": "CdkrdHunt0801Elb/SqsIfEp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "SqsIfEp",
+      "resourceType": "AWS::EC2::VPCEndpoint",
+      "path": "DnsOptions",
+      "actual": {
+        "PrivateDnsOnlyForInboundResolverEndpoint": "NotSpecified",
+        "PrivateDnsSpecifiedDomains": ["*"],
+        "DnsRecordIpType": "ipv4",
+        "PrivateDnsPreference": "VERIFIED_DOMAINS_ONLY"
+      },
+      "physicalId": "vpce-039d4ef9c1c3675ef",
+      "constructPath": "CdkrdHunt0801Elb/SqsIfEp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "SqsIfEp",
+      "resourceType": "AWS::EC2::VPCEndpoint",
+      "path": "SecurityGroupIds",
+      "actual": ["sg-04a605bef1837e493"],
+      "physicalId": "vpce-039d4ef9c1c3675ef",
+      "constructPath": "CdkrdHunt0801Elb/SqsIfEp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "SqsIfEp",
+      "resourceType": "AWS::EC2::VPCEndpoint",
+      "path": "PolicyDocument",
+      "actual": {
+        "Statement": [
+          {
+            "Action": ["*"],
+            "Effect": "Allow",
+            "Principal": "*",
+            "Resource": ["*"]
+          }
+        ]
+      },
+      "physicalId": "vpce-039d4ef9c1c3675ef",
+      "constructPath": "CdkrdHunt0801Elb/SqsIfEp"
+    }
+  ]
+}

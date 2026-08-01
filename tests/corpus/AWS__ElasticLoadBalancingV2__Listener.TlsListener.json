@@ -1,0 +1,107 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "TlsListener",
+    "resourceType": "AWS::ElasticLoadBalancingV2::Listener",
+    "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/net/CdkrdH-DsNlb-KHO9JpXWBV8y/27597fee657a80a5/73fc138fa678ce83",
+    "constructPath": "CdkrdHunt0801Elb/TlsListener",
+    "declared": {
+      "Certificates": [
+        {
+          "CertificateArn": "arn:aws:acm:us-east-1:111111111111:certificate/7a56ea31-baec-47b3-bfc7-4345eebe9990"
+        }
+      ],
+      "DefaultActions": [
+        {
+          "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-NlbTl-TOAJN2VSDUTO/7abfb2b566916e7a",
+          "Type": "forward"
+        }
+      ],
+      "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkrdH-DsNlb-KHO9JpXWBV8y/27597fee657a80a5",
+      "Port": 443,
+      "Protocol": "TLS"
+    }
+  },
+  "liveRaw": {
+    "ListenerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/net/CdkrdH-DsNlb-KHO9JpXWBV8y/27597fee657a80a5/73fc138fa678ce83",
+    "SslPolicy": "ELBSecurityPolicy-2016-08",
+    "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkrdH-DsNlb-KHO9JpXWBV8y/27597fee657a80a5",
+    "DefaultActions": [
+      {
+        "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-NlbTl-TOAJN2VSDUTO/7abfb2b566916e7a",
+        "Type": "forward",
+        "ForwardConfig": {
+          "TargetGroupStickinessConfig": {
+            "Enabled": false
+          },
+          "TargetGroups": [
+            {
+              "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/CdkrdH-NlbTl-TOAJN2VSDUTO/7abfb2b566916e7a"
+            }
+          ]
+        }
+      }
+    ],
+    "Port": 443,
+    "Certificates": [
+      {
+        "CertificateArn": "arn:aws:acm:us-east-1:111111111111:certificate/7a56ea31-baec-47b3-bfc7-4345eebe9990"
+      }
+    ],
+    "Protocol": "TLS",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0801Elb",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "TlsListener",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0801Elb/147afc00-8d8f-11f1-a64b-126cee05623d",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["ListenerArn"],
+    "writeOnly": [],
+    "createOnly": ["LoadBalancerArn"],
+    "readOnlyPaths": ["ListenerArn"],
+    "writeOnlyPaths": ["DefaultActions.*.AuthenticateOidcConfig.ClientSecret"],
+    "createOnlyPaths": ["LoadBalancerArn"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": [
+      "DefaultActions.*.AuthenticateCognitoConfig.AuthenticationRequestExtraParams",
+      "DefaultActions.*.AuthenticateOidcConfig.AuthenticationRequestExtraParams"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "TlsListener",
+      "resourceType": "AWS::ElasticLoadBalancingV2::Listener",
+      "path": "SslPolicy",
+      "actual": "ELBSecurityPolicy-2016-08",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/net/CdkrdH-DsNlb-KHO9JpXWBV8y/27597fee657a80a5/73fc138fa678ce83",
+      "constructPath": "CdkrdHunt0801Elb/TlsListener"
+    }
+  ]
+}

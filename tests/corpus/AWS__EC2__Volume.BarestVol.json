@@ -1,0 +1,111 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "BarestVol",
+    "resourceType": "AWS::EC2::Volume",
+    "physicalId": "vol-0da2dec764f017447",
+    "constructPath": "CdkrdHunt0801FreeA/BarestVol",
+    "declared": {
+      "AvailabilityZone": "us-east-1a",
+      "Size": 10,
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "MultiAttachEnabled": false,
+    "VolumeId": "vol-0da2dec764f017447",
+    "VolumeType": "gp2",
+    "Encrypted": false,
+    "Size": 10,
+    "AutoEnableIO": false,
+    "AvailabilityZoneId": "use1-az1",
+    "AvailabilityZone": "us-east-1a",
+    "Iops": 100,
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0801FreeA/d1173eb0-8d8e-11f1-90a7-0affd9b7fb2d",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      },
+      {
+        "Value": "BarestVol",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "CdkrdHunt0801FreeA",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["VolumeId"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["VolumeId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    },
+    "accountDefaults": {
+      "ebsEncryptionByDefault": false
+    }
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "BarestVol",
+      "resourceType": "AWS::EC2::Volume",
+      "path": "VolumeType",
+      "actual": "gp2",
+      "physicalId": "vol-0da2dec764f017447",
+      "constructPath": "CdkrdHunt0801FreeA/BarestVol"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "BarestVol",
+      "resourceType": "AWS::EC2::Volume",
+      "path": "Encrypted",
+      "actual": false,
+      "physicalId": "vol-0da2dec764f017447",
+      "constructPath": "CdkrdHunt0801FreeA/BarestVol"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "BarestVol",
+      "resourceType": "AWS::EC2::Volume",
+      "path": "AvailabilityZoneId",
+      "actual": "use1-az1",
+      "physicalId": "vol-0da2dec764f017447",
+      "constructPath": "CdkrdHunt0801FreeA/BarestVol"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "BarestVol",
+      "resourceType": "AWS::EC2::Volume",
+      "path": "Iops",
+      "actual": 100,
+      "physicalId": "vol-0da2dec764f017447",
+      "constructPath": "CdkrdHunt0801FreeA/BarestVol"
+    }
+  ]
+}

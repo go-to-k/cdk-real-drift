@@ -1,0 +1,51 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Eigw",
+    "resourceType": "AWS::EC2::EgressOnlyInternetGateway",
+    "physicalId": "eigw-03e5fa14823112e27",
+    "constructPath": "CdkrdHunt0801Elb/Eigw",
+    "declared": {
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "VpcId": "vpc-0c41e4b2249864c89"
+    }
+  },
+  "liveRaw": {
+    "VpcId": "vpc-0c41e4b2249864c89",
+    "Id": "eigw-03e5fa14823112e27",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["VpcId"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["VpcId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": []
+}

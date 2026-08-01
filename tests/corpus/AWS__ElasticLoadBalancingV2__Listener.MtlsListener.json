@@ -1,0 +1,211 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "MtlsListener",
+    "resourceType": "AWS::ElasticLoadBalancingV2::Listener",
+    "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/app/CdkrdH-DsAlb-HesW4mhrjLmx/ad792ca18e21d9e6/b1bf2f121a76a2d8",
+    "constructPath": "CdkrdHunt0801Elb/MtlsListener",
+    "declared": {
+      "Certificates": [
+        {
+          "CertificateArn": "arn:aws:acm:us-east-1:111111111111:certificate/7a56ea31-baec-47b3-bfc7-4345eebe9990"
+        }
+      ],
+      "DefaultActions": [
+        {
+          "FixedResponseConfig": {
+            "ContentType": "text/plain",
+            "StatusCode": "200"
+          },
+          "Type": "fixed-response"
+        }
+      ],
+      "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/CdkrdH-DsAlb-HesW4mhrjLmx/ad792ca18e21d9e6",
+      "MutualAuthentication": {
+        "Mode": "verify",
+        "TrustStoreArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:truststore/cdkrd-hunt0801-mtls-ts/b7b3f5fb556ce0cb"
+      },
+      "Port": 443,
+      "Protocol": "HTTPS"
+    }
+  },
+  "liveRaw": {
+    "ListenerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/app/CdkrdH-DsAlb-HesW4mhrjLmx/ad792ca18e21d9e6/b1bf2f121a76a2d8",
+    "MutualAuthentication": {
+      "IgnoreClientCertificateExpiry": false,
+      "Mode": "verify",
+      "TrustStoreArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:truststore/cdkrd-hunt0801-mtls-ts/b7b3f5fb556ce0cb",
+      "AdvertiseTrustStoreCaNames": "off"
+    },
+    "ListenerAttributes": [
+      {
+        "Value": "",
+        "Key": "routing.http.request.x_amzn_tls_cipher_suite.header_name"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.request.x_amzn_mtls_clientcert_serial_number.header_name"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.access_control_allow_origin.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.content_security_policy.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.request.x_amzn_mtls_clientcert_leaf.header_name"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.request.x_amzn_tls_version.header_name"
+      },
+      {
+        "Value": "true",
+        "Key": "routing.http.response.server.enabled"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.access_control_allow_headers.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.x_frame_options.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.access_control_allow_methods.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.request.x_amzn_mtls_clientcert_issuer.header_name"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.request.x_amzn_mtls_clientcert.header_name"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.request.x_amzn_mtls_clientcert_validity.header_name"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.access_control_allow_credentials.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.request.x_amzn_mtls_clientcert_subject.header_name"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.x_content_type_options.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.access_control_expose_headers.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.strict_transport_security.header_value"
+      },
+      {
+        "Value": "",
+        "Key": "routing.http.response.access_control_max_age.header_value"
+      }
+    ],
+    "SslPolicy": "ELBSecurityPolicy-2016-08",
+    "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/CdkrdH-DsAlb-HesW4mhrjLmx/ad792ca18e21d9e6",
+    "DefaultActions": [
+      {
+        "FixedResponseConfig": {
+          "ContentType": "text/plain",
+          "StatusCode": "200"
+        },
+        "Type": "fixed-response"
+      }
+    ],
+    "Port": 443,
+    "Certificates": [
+      {
+        "CertificateArn": "arn:aws:acm:us-east-1:111111111111:certificate/7a56ea31-baec-47b3-bfc7-4345eebe9990"
+      }
+    ],
+    "Protocol": "HTTPS",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0801Elb",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "MtlsListener",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0801Elb/147afc00-8d8f-11f1-a64b-126cee05623d",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["ListenerArn"],
+    "writeOnly": [],
+    "createOnly": ["LoadBalancerArn"],
+    "readOnlyPaths": ["ListenerArn"],
+    "writeOnlyPaths": ["DefaultActions.*.AuthenticateOidcConfig.ClientSecret"],
+    "createOnlyPaths": ["LoadBalancerArn"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": [
+      "DefaultActions.*.AuthenticateCognitoConfig.AuthenticationRequestExtraParams",
+      "DefaultActions.*.AuthenticateOidcConfig.AuthenticationRequestExtraParams"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "MtlsListener",
+      "resourceType": "AWS::ElasticLoadBalancingV2::Listener",
+      "path": "ListenerAttributes[routing.http.response.server.enabled]",
+      "actual": "true",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/app/CdkrdH-DsAlb-HesW4mhrjLmx/ad792ca18e21d9e6/b1bf2f121a76a2d8",
+      "constructPath": "CdkrdHunt0801Elb/MtlsListener"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MtlsListener",
+      "resourceType": "AWS::ElasticLoadBalancingV2::Listener",
+      "path": "SslPolicy",
+      "actual": "ELBSecurityPolicy-2016-08",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/app/CdkrdH-DsAlb-HesW4mhrjLmx/ad792ca18e21d9e6/b1bf2f121a76a2d8",
+      "constructPath": "CdkrdHunt0801Elb/MtlsListener"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MtlsListener",
+      "resourceType": "AWS::ElasticLoadBalancingV2::Listener",
+      "path": "MutualAuthentication.AdvertiseTrustStoreCaNames",
+      "actual": "off",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/app/CdkrdH-DsAlb-HesW4mhrjLmx/ad792ca18e21d9e6/b1bf2f121a76a2d8",
+      "constructPath": "CdkrdHunt0801Elb/MtlsListener"
+    }
+  ]
+}

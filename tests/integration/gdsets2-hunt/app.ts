@@ -34,6 +34,22 @@ new CfnResource(stack, "HuntThreatEntitySet", {
   },
 });
 
+// INACTIVE set for the #1694 ExpectedBucketOwner revert leg: GuardDuty validates
+// the expected owner against the REAL bucket owner only for ACTIVE sets
+// (update-threat-entity-set on an active set rejects a foreign owner with
+// AccessDeniedException — live-determined 2026-08-01), so the reachable
+// OOB-divergence shape is an inactive set.
+new CfnResource(stack, "HuntThreatEntitySetInactive", {
+  type: "AWS::GuardDuty::ThreatEntitySet",
+  properties: {
+    DetectorId: detector.ref,
+    Name: "cdkrd-hunt0722-threat-entity-set-inactive",
+    Format: "TXT",
+    Location: `https://s3.amazonaws.com/${listBucket}/threatlist.txt`,
+    Activate: false,
+  },
+});
+
 new CfnResource(stack, "HuntTrustedEntitySet", {
   type: "AWS::GuardDuty::TrustedEntitySet",
   properties: {

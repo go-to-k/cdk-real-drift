@@ -1,0 +1,227 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "DsNlb",
+    "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+    "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkrdH-DsNlb-KHO9JpXWBV8y/27597fee657a80a5",
+    "constructPath": "CdkrdHunt0801Elb/DsNlb",
+    "declared": {
+      "IpAddressType": "dualstack",
+      "Scheme": "internet-facing",
+      "Subnets": ["subnet-079da9827dc19df2b", "subnet-0446fe2c6aba19d9d"],
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "Type": "network"
+    }
+  },
+  "liveRaw": {
+    "IpAddressType": "dualstack",
+    "SecurityGroups": [],
+    "LoadBalancerAttributes": [
+      {
+        "Value": "",
+        "Key": "access_logs.s3.prefix"
+      },
+      {
+        "Value": "false",
+        "Key": "load_balancing.cross_zone.enabled"
+      },
+      {
+        "Value": "false",
+        "Key": "access_logs.s3.enabled"
+      },
+      {
+        "Value": "false",
+        "Key": "zonal_shift.config.enabled"
+      },
+      {
+        "Value": "",
+        "Key": "access_logs.s3.bucket"
+      },
+      {
+        "Value": "false",
+        "Key": "deletion_protection.enabled"
+      },
+      {
+        "Value": "0",
+        "Key": "secondary_ips.auto_assigned.per_subnet"
+      },
+      {
+        "Value": "any_availability_zone",
+        "Key": "dns_record.client_routing_policy"
+      },
+      {
+        "Value": "false",
+        "Key": "ipv6.deny_all_igw_traffic"
+      }
+    ],
+    "Scheme": "internet-facing",
+    "DNSName": "CdkrdH-DsNlb-KHO9JpXWBV8y-27597fee657a80a5.elb.us-east-1.amazonaws.com",
+    "Name": "CdkrdH-DsNlb-KHO9JpXWBV8y",
+    "LoadBalancerName": "CdkrdH-DsNlb-KHO9JpXWBV8y",
+    "Subnets": ["subnet-079da9827dc19df2b", "subnet-0446fe2c6aba19d9d"],
+    "Type": "network",
+    "CanonicalHostedZoneID": "Z26RNL4JYFTOTI",
+    "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkrdH-DsNlb-KHO9JpXWBV8y/27597fee657a80a5",
+    "EnablePrefixForIpv6SourceNat": "off",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0801Elb",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "DsNlb",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0801Elb/147afc00-8d8f-11f1-a64b-126cee05623d",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "LoadBalancerFullName": "net/CdkrdH-DsNlb-KHO9JpXWBV8y/27597fee657a80a5",
+    "SubnetMappings": [
+      {
+        "SubnetId": "subnet-0446fe2c6aba19d9d"
+      },
+      {
+        "SubnetId": "subnet-079da9827dc19df2b"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [
+      "CanonicalHostedZoneID",
+      "DNSName",
+      "LoadBalancerArn",
+      "LoadBalancerFullName",
+      "LoadBalancerName"
+    ],
+    "writeOnly": ["EnableCapacityReservationProvisionStabilize"],
+    "createOnly": ["Name", "Scheme", "Type"],
+    "readOnlyPaths": [
+      "CanonicalHostedZoneID",
+      "DNSName",
+      "LoadBalancerArn",
+      "LoadBalancerFullName",
+      "LoadBalancerName"
+    ],
+    "writeOnlyPaths": ["EnableCapacityReservationProvisionStabilize"],
+    "createOnlyPaths": ["Name", "Scheme", "Type"],
+    "defaults": {
+      "EnableCapacityReservationProvisionStabilize": false
+    },
+    "defaultPaths": {
+      "EnableCapacityReservationProvisionStabilize": false
+    },
+    "unorderedScalarPaths": ["SecurityGroups", "Subnets"],
+    "unorderedObjectArrayPaths": ["SubnetMappings"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "DsNlb",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[access_logs.s3.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkrdH-DsNlb-KHO9JpXWBV8y/27597fee657a80a5",
+      "constructPath": "CdkrdHunt0801Elb/DsNlb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DsNlb",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[deletion_protection.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkrdH-DsNlb-KHO9JpXWBV8y/27597fee657a80a5",
+      "constructPath": "CdkrdHunt0801Elb/DsNlb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DsNlb",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[dns_record.client_routing_policy]",
+      "actual": "any_availability_zone",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkrdH-DsNlb-KHO9JpXWBV8y/27597fee657a80a5",
+      "constructPath": "CdkrdHunt0801Elb/DsNlb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DsNlb",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[ipv6.deny_all_igw_traffic]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkrdH-DsNlb-KHO9JpXWBV8y/27597fee657a80a5",
+      "constructPath": "CdkrdHunt0801Elb/DsNlb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DsNlb",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[load_balancing.cross_zone.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkrdH-DsNlb-KHO9JpXWBV8y/27597fee657a80a5",
+      "constructPath": "CdkrdHunt0801Elb/DsNlb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DsNlb",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[secondary_ips.auto_assigned.per_subnet]",
+      "actual": "0",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkrdH-DsNlb-KHO9JpXWBV8y/27597fee657a80a5",
+      "constructPath": "CdkrdHunt0801Elb/DsNlb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DsNlb",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[zonal_shift.config.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkrdH-DsNlb-KHO9JpXWBV8y/27597fee657a80a5",
+      "constructPath": "CdkrdHunt0801Elb/DsNlb"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "DsNlb",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "Name",
+      "actual": "CdkrdH-DsNlb-KHO9JpXWBV8y",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkrdH-DsNlb-KHO9JpXWBV8y/27597fee657a80a5",
+      "constructPath": "CdkrdHunt0801Elb/DsNlb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DsNlb",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "EnablePrefixForIpv6SourceNat",
+      "actual": "off",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/CdkrdH-DsNlb-KHO9JpXWBV8y/27597fee657a80a5",
+      "constructPath": "CdkrdHunt0801Elb/DsNlb"
+    }
+  ]
+}

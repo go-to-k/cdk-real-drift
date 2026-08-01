@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-integ-elbpack-hunt",
+  "private": true,
+  "version": "0.0.0",
+  "description": "ELBv2 pack first-run FP probe (2026-08-01): dualstack ALB+NLB, NLB TLS listener (mirrored SslPolicy row), mTLS verify listener with attached TrustStore (attachment-echo shape), barest Interface VPC endpoint. Run via verify.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module"
+}

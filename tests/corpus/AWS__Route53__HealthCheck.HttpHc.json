@@ -1,0 +1,95 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HttpHc",
+    "resourceType": "AWS::Route53::HealthCheck",
+    "physicalId": "21d082bf-8731-4e83-afce-cf9633b0e3c8",
+    "constructPath": "CdkrdHunt0801FreeB/HttpHc",
+    "declared": {
+      "HealthCheckConfig": {
+        "FullyQualifiedDomainName": "example.com",
+        "Type": "HTTP"
+      },
+      "HealthCheckTags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "HealthCheckId": "21d082bf-8731-4e83-afce-cf9633b0e3c8",
+    "HealthCheckConfig": {
+      "EnableSNI": false,
+      "Type": "HTTP",
+      "FullyQualifiedDomainName": "example.com",
+      "MeasureLatency": false,
+      "Inverted": false,
+      "Port": 80,
+      "RequestInterval": 30,
+      "FailureThreshold": 3
+    },
+    "HealthCheckTags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["HealthCheckId"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["HealthCheckId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "HealthCheckConfig.MeasureLatency",
+      "HealthCheckConfig.RequestInterval",
+      "HealthCheckConfig.Type"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["HealthCheckConfig.ChildHealthChecks", "HealthCheckConfig.Regions"],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HttpHc",
+      "resourceType": "AWS::Route53::HealthCheck",
+      "path": "HealthCheckConfig.Port",
+      "actual": 80,
+      "nested": true,
+      "physicalId": "21d082bf-8731-4e83-afce-cf9633b0e3c8",
+      "constructPath": "CdkrdHunt0801FreeB/HttpHc"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HttpHc",
+      "resourceType": "AWS::Route53::HealthCheck",
+      "path": "HealthCheckConfig.RequestInterval",
+      "actual": 30,
+      "nested": true,
+      "physicalId": "21d082bf-8731-4e83-afce-cf9633b0e3c8",
+      "constructPath": "CdkrdHunt0801FreeB/HttpHc"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HttpHc",
+      "resourceType": "AWS::Route53::HealthCheck",
+      "path": "HealthCheckConfig.FailureThreshold",
+      "actual": 3,
+      "nested": true,
+      "physicalId": "21d082bf-8731-4e83-afce-cf9633b0e3c8",
+      "constructPath": "CdkrdHunt0801FreeB/HttpHc"
+    }
+  ]
+}

@@ -120,7 +120,14 @@ export interface CorpusCase {
     // present only on an AWS::DMS::ReplicationInstance case and carrying ONLY the declared class's
     // entry, so replay reproduces the derived AllocatedStorage fold. Without it a fresh-harvested RI
     // replays the undeclared default storage as false drift. Optional for back-compat.
-    accountDefaults?: { dmsAllocatedStorageDefaults?: Record<string, number> };
+    // #1697 extends the carry to ebsEncryptionByDefault, present only on an AWS::EC2::Volume
+    // case (the account-level EBS default-encryption flag folds the undeclared Encrypted echo
+    // at record time; without the carry a fresh-harvested volume replays without the fold and
+    // the recorded atDefault finding mismatches).
+    accountDefaults?: {
+      dmsAllocatedStorageDefaults?: Record<string, number>;
+      ebsEncryptionByDefault?: boolean;
+    };
     // This ClientVpnEndpoint's own sibling-derived VPC entry (keyed by logicalId, else physicalId —
     // classify's probe order), present only when a declared sibling target-network association
     // derives it, so replay reproduces the association-echoed `VpcId` fold. Optional for back-compat.
@@ -130,6 +137,11 @@ export interface CorpusCase {
     // in-stack declared policy links to it, so replay reproduces the reverse-pointer
     // `DistributionConfig.ContinuousDeploymentPolicyId` fold. Optional for back-compat.
     siblingCloudFrontCdPolicyIds?: Record<string, string | null>;
+    // #1704: the SOURCE DBInstance's live model, keyed by its DBInstanceIdentifier — present
+    // only on a read-replica case (declared SourceDBInstanceIdentifier resolving to an
+    // in-stack sibling), so replay reproduces the inherited-echo folds. Optional for
+    // back-compat.
+    siblingRdsSourceModels?: Record<string, Record<string, unknown>>;
   };
   expected: Finding[]; // what classifyResource produced at record time (reviewed at commit)
 }
@@ -169,9 +181,13 @@ export function buildCorpusCase(
     clusterEchoModel?: Record<string, Record<string, unknown>>;
     rdsOptionSettingDefaults?: Record<string, Record<string, Record<string, string | null>>>;
     siblingListenerPorts?: Record<string, number>;
-    accountDefaults?: { dmsAllocatedStorageDefaults?: Record<string, number> };
+    accountDefaults?: {
+      dmsAllocatedStorageDefaults?: Record<string, number>;
+      ebsEncryptionByDefault?: boolean;
+    };
     siblingClientVpnEndpointVpcs?: Record<string, string | null>;
     siblingCloudFrontCdPolicyIds?: Record<string, string | null>;
+    siblingRdsSourceModels?: Record<string, Record<string, unknown>>;
   },
   findings: Finding[]
 ): CorpusCase {
@@ -248,6 +264,13 @@ export function buildCorpusCase(
           },
         }
       : undefined;
+  // #1697: carry the account EBS default-encryption flag on a Volume case, so replay
+  // reproduces the accountDefaults-derived Encrypted fold.
+  const ebsEncDefault =
+    resource.resourceType === 'AWS::EC2::Volume' &&
+    opts.accountDefaults?.ebsEncryptionByDefault !== undefined
+      ? { ebsEncryptionByDefault: opts.accountDefaults.ebsEncryptionByDefault }
+      : undefined;
   // Carry ONLY this ClientVpnEndpoint's own sibling-derived VPC entry. classify probes the map by
   // logicalId first, then physicalId — carry the key that is present (`null` is meaningful: an
   // in-stack association whose VPC was not derivable → fail-open fold), so replay folds the
@@ -273,6 +296,19 @@ export function buildCorpusCase(
         : resource.physicalId !== undefined && resource.physicalId in cfCdMap
           ? resource.physicalId
           : undefined;
+  // Carry ONLY the source model a read-replica case actually derives from (keyed by the
+  // replica's declared SourceDBInstanceIdentifier), so replay folds the inherited echoes
+  // the same way the live check did.
+  const rdsSrcMap = opts.siblingRdsSourceModels;
+  const rdsSrcKey =
+    resource.resourceType === 'AWS::RDS::DBInstance' && rdsSrcMap !== undefined
+      ? (() => {
+          const srcId = (resource.declared as Record<string, unknown> | undefined)?.[
+            'SourceDBInstanceIdentifier'
+          ];
+          return typeof srcId === 'string' && srcId in rdsSrcMap ? srcId : undefined;
+        })()
+      : undefined;
   const c: CorpusCase = {
     corpusVersion: 1,
     resource: {
@@ -325,12 +361,17 @@ export function buildCorpusCase(
         ? { rdsOptionSettingDefaults: { [resource.physicalId]: rdsOptCatalog } }
         : {}),
       ...(gaListenerPort ? { siblingListenerPorts: gaListenerPort } : {}),
-      ...(dmsStorageDefault ? { accountDefaults: dmsStorageDefault } : {}),
+      ...(dmsStorageDefault || ebsEncDefault
+        ? { accountDefaults: { ...(dmsStorageDefault ?? {}), ...(ebsEncDefault ?? {}) } }
+        : {}),
       ...(cvpnVpcKey !== undefined && cvpnVpcMap !== undefined
         ? { siblingClientVpnEndpointVpcs: { [cvpnVpcKey]: cvpnVpcMap[cvpnVpcKey] ?? null } }
         : {}),
       ...(cfCdKey !== undefined && cfCdMap !== undefined
         ? { siblingCloudFrontCdPolicyIds: { [cfCdKey]: cfCdMap[cfCdKey] ?? null } }
+        : {}),
+      ...(rdsSrcKey !== undefined && rdsSrcMap !== undefined && rdsSrcMap[rdsSrcKey]
+        ? { siblingRdsSourceModels: { [rdsSrcKey]: rdsSrcMap[rdsSrcKey] } }
         : {}),
     },
     expected: findings,

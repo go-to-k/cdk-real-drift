@@ -447,6 +447,24 @@ const MEANINGFUL_WHEN_OFF_NESTED: Record<
   'AWS::Budgets::Budget': {
     'Budget.CostTypes': () => true,
   },
+  // #1700: the PARTIAL-declaration dimension of the #1092 GuardDuty DataSources gate — the
+  // common CDK shape declares one protection (s3Logs), so the undeclared siblings emit at
+  // these nested paths, and an out-of-band `update-detector` disable reads back an
+  // all-boolean all-false sub-object that isTrivialEmpty swallows before the nested pin
+  // gate (EKS audit logs / EBS malware scan / S3 protection silently off). Unconditionally
+  // meaningful when off: a user who wants a protection off DECLARES it (compared in the
+  // declared loop); a detector has no snapshot/restore lineage yielding an untouched
+  // all-false. Paired with the KNOWN_DEFAULT_PATHS all-true pins (the clean-deploy fold).
+  'AWS::GuardDuty::Detector': {
+    'DataSources.S3Logs': () => true,
+    'DataSources.Kubernetes': () => true,
+    'DataSources.Kubernetes.AuditLogs': () => true,
+    'DataSources.MalwareProtection': () => true,
+    'DataSources.MalwareProtection.ScanEc2InstanceWithFindings': () => true,
+  },
+  // (#1701 determination: Cognito PasswordPolicy Require* leaves do NOT belong here — a
+  // partially-declared policy is filled with FALSE by the service, so an undeclared false
+  // is the creation state, not an out-of-band disable. See the noise.ts MinimumLength note.)
   // #1530: an ECS service that ENABLES the deployment circuit breaker reads back the AWS-filled
   // sub-default ResetOnHealthyTask=true (the KNOWN_DEFAULT_PATHS pin, live-observed on a fresh
   // Fargate service). An out-of-band UpdateService flipping it false is swallowed by
@@ -614,6 +632,12 @@ export const DEFAULT_SG_LIST_PATHS: Record<string, string> = {
   // folds the single default and surfaces an append/swap. Keep in sync with gather.ts
   // DEFAULT_SG_LIST_TYPES.
   'AWS::VpcLattice::ResourceGateway': 'SecurityGroupIds',
+  // #1699 (live 2026-08-01 elbpack-hunt): a barest Interface VPC endpoint that declares no
+  // SecurityGroupIds is placed into the VPC's default SG — the same single-SG first-run
+  // default. OOB-mutable (`ec2 modify-vpc-endpoint --add/--remove-security-group-ids`), so
+  // the derived gate folds the single default and surfaces an append/swap. Keep in sync
+  // with gather.ts DEFAULT_SG_LIST_TYPES.
+  'AWS::EC2::VPCEndpoint': 'SecurityGroupIds',
 };
 /** #1269 fold decision for an UNDECLARED default-SUBNET list (RedshiftServerless Workgroup
  *  SubnetIds). Unlike the SG gate (which folds only a SINGLE default SG), a workgroup placed into
@@ -3093,6 +3117,12 @@ export function classifyResource(
     // `null` = a policy is declared but not linkable to a specific distribution (literal DNS
     // names) → fail open. NO entry = out-of-band link → surfaces.
     siblingCloudFrontCdPolicyIds?: Record<string, string | null>;
+    // #1704: per SOURCE DBInstance identifier (physical id), that source's LIVE model — so a
+    // read replica (declared SourceDBInstanceIdentifier) can equality-gate the properties RDS
+    // copies from the source at creation (Engine/AllocatedStorage/MasterUsername; built in
+    // gather.ts buildRdsReplicaSourceModels from in-stack DBInstance reads). NO entry (an
+    // out-of-stack source) leaves the inherited values unfolded — fail-safe, recordable.
+    siblingRdsSourceModels?: Record<string, Record<string, unknown>>;
   } = {}
 ): Finding[] {
   const { logicalId, resourceType, physicalId, declared: declaredIn } = resource;
@@ -3379,6 +3409,16 @@ export function classifyResource(
           Engine: declared['Engine'],
         }
       : undefined;
+  // #1704: SourceDBInstanceIdentifier is writeOnly, so the strip below removes it from
+  // `declared` before the read-replica derived overlay can key on it (the #1500 trap —
+  // the live side reads it back only as a readGap, so it cannot be recovered there
+  // either). Snapshot it here, pre-strip.
+  const rdsReplicaSourceId =
+    resourceType === 'AWS::RDS::DBInstance' &&
+    typeof declared['SourceDBInstanceIdentifier'] === 'string' &&
+    declared['SourceDBInstanceIdentifier'] !== ''
+      ? (declared['SourceDBInstanceIdentifier'] as string)
+      : undefined;
   // writeOnly cannot be read back: strip it from the DECLARED side too so it is never
   // compared (the LIVE side was already stripped by normalizeLiveModel above).
   deepStripPaths(declared, schema.writeOnlyPaths);
@@ -3503,6 +3543,12 @@ export function classifyResource(
       ...(targetType === 'alb'
         ? { HealthCheckTimeoutSeconds: 6, Matcher: { HttpCode: '200-399' } }
         : {}),
+      // #1696 (hunt 2026-08-01, GENEVE x instance + HTTPS barest groups): a GWLB (GENEVE)
+      // group's HC defaults are TCP on the FIXED port 80 (not traffic-port — the earlier
+      // GENEVE x ip case DECLARED both, hiding this), and an HTTPS group's HC protocol
+      // default FOLLOWS the group protocol (HTTPS, not the base HTTP pin).
+      ...(protocol === 'GENEVE' ? { HealthCheckProtocol: 'TCP', HealthCheckPort: '80' } : {}),
+      ...(protocol === 'HTTPS' ? { HealthCheckProtocol: 'HTTPS' } : {}),
       ...(protocolVersion === 'GRPC' ? { Matcher: { GrpcCode: '12' } } : {}),
     };
   }
@@ -3785,6 +3831,62 @@ export function classifyResource(
   // Derive the expected default from the declared endpoint type and equality-gate it (fold
   // tier 2): an out-of-band flip of either value away from the PRIVATE default still
   // surfaces. The base EDGE/REGIONAL constants stay for the other endpoint types.
+  // #1705: a PROVISIONED Keyspaces table's WarmThroughput echoes ITS OWN provisioned
+  // capacity (live 2026-08-01: RCU/WCU 1/1 echoed {1, 1}) — the 12000/4000 KNOWN_DEFAULTS
+  // constant is the ON_DEMAND shape and stays the fall-through. Derive from the declared
+  // ProvisionedThroughput and equality-gate (fold tier 2): an out-of-band capacity change
+  // still surfaces (the echo tracks the CURRENT capacity, which the declared dimension
+  // also compares).
+  if (resourceType === 'AWS::Cassandra::Table') {
+    const pt = (declared['BillingMode'] as Record<string, unknown> | undefined)?.[
+      'ProvisionedThroughput'
+    ] as Record<string, unknown> | undefined;
+    const rcu = pt?.['ReadCapacityUnits'];
+    const wcu = pt?.['WriteCapacityUnits'];
+    if (typeof rcu === 'number' && typeof wcu === 'number') {
+      knownDef = {
+        ...knownDef,
+        WarmThroughput: { ReadUnitsPerSecond: rcu, WriteUnitsPerSecond: wcu },
+      };
+    }
+  }
+  // #1704: an RDS read replica (SourceDBInstanceIdentifier declared) INHERITS properties
+  // the template never declares. BackupRetentionPeriod defaults to 0 on a replica (unlike
+  // the source's 1); Engine/AllocatedStorage/MasterUsername are copied from the source at
+  // creation — derived from the in-stack source sibling's LIVE model
+  // (opts.siblingRdsSourceModels, keyed by the source's DBInstanceIdentifier, built in
+  // gather.ts). Equality-gated (fold tier 2): a replica whose value diverges from the
+  // source still surfaces; an OUT-of-stack source leaves the values unfolded (fail-safe).
+  // (SourceDBInstanceIdentifier is writeOnly — read from the pre-strip snapshot
+  // `rdsReplicaSourceId`, never from the stripped `declared`; the #1500 trap.)
+  if (resourceType === 'AWS::RDS::DBInstance' && rdsReplicaSourceId !== undefined) {
+    knownDef = { ...knownDef, BackupRetentionPeriod: 0 };
+    const src = opts.siblingRdsSourceModels?.[rdsReplicaSourceId];
+    if (src) {
+      const inherit: Record<string, unknown> = {};
+      for (const k of ['Engine', 'AllocatedStorage', 'MasterUsername']) {
+        if (src[k] !== undefined) inherit[k] = src[k];
+      }
+      knownDef = { ...knownDef, ...inherit };
+    }
+  }
+  // #1703: a health check that omits HealthCheckConfig.Port reads back the type-derived
+  // default — 80 for the HTTP pair, 443 for the HTTPS pair (TCP requires an explicit Port,
+  // so no arm exists there). Derive from the declared Type and equality-gate (fold tier 2):
+  // an out-of-band port change still surfaces, and a declared Port is compared in the
+  // declared dimension. Live-found on a barest HTTP check (freepack-hunt 2026-08-01).
+  if (resourceType === 'AWS::Route53::HealthCheck') {
+    const hcType = (declared['HealthCheckConfig'] as Record<string, unknown> | undefined)?.['Type'];
+    const defaultPort =
+      hcType === 'HTTP' || hcType === 'HTTP_STR_MATCH'
+        ? 80
+        : hcType === 'HTTPS' || hcType === 'HTTPS_STR_MATCH'
+          ? 443
+          : undefined;
+    if (defaultPort !== undefined) {
+      knownDefPaths = { ...knownDefPaths, 'HealthCheckConfig.Port': defaultPort };
+    }
+  }
   if (resourceType === 'AWS::ApiGateway::RestApi') {
     const types = (declared['EndpointConfiguration'] as Record<string, unknown> | undefined)?.[
       'Types'

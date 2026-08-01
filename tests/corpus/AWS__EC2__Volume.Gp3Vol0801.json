@@ -1,0 +1,113 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Gp3Vol0801",
+    "resourceType": "AWS::EC2::Volume",
+    "physicalId": "vol-07ef350059b589e96",
+    "constructPath": "CdkrdHunt0801FreeA/Gp3Vol0801",
+    "declared": {
+      "AvailabilityZone": "us-east-1a",
+      "Size": 10,
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "VolumeType": "gp3"
+    }
+  },
+  "liveRaw": {
+    "MultiAttachEnabled": false,
+    "VolumeId": "vol-07ef350059b589e96",
+    "VolumeType": "gp3",
+    "Encrypted": false,
+    "Size": 10,
+    "AutoEnableIO": false,
+    "AvailabilityZoneId": "use1-az1",
+    "AvailabilityZone": "us-east-1a",
+    "Throughput": 125,
+    "Iops": 3000,
+    "Tags": [
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0801FreeA/d1173eb0-8d8e-11f1-90a7-0affd9b7fb2d",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      },
+      {
+        "Value": "Gp3Vol0801",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "CdkrdHunt0801FreeA",
+        "Key": "aws:cloudformation:stack-name"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["VolumeId"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["VolumeId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    },
+    "accountDefaults": {
+      "ebsEncryptionByDefault": false
+    }
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Gp3Vol0801",
+      "resourceType": "AWS::EC2::Volume",
+      "path": "Encrypted",
+      "actual": false,
+      "physicalId": "vol-07ef350059b589e96",
+      "constructPath": "CdkrdHunt0801FreeA/Gp3Vol0801"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Gp3Vol0801",
+      "resourceType": "AWS::EC2::Volume",
+      "path": "AvailabilityZoneId",
+      "actual": "use1-az1",
+      "physicalId": "vol-07ef350059b589e96",
+      "constructPath": "CdkrdHunt0801FreeA/Gp3Vol0801"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Gp3Vol0801",
+      "resourceType": "AWS::EC2::Volume",
+      "path": "Throughput",
+      "actual": 125,
+      "physicalId": "vol-07ef350059b589e96",
+      "constructPath": "CdkrdHunt0801FreeA/Gp3Vol0801"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Gp3Vol0801",
+      "resourceType": "AWS::EC2::Volume",
+      "path": "Iops",
+      "actual": 3000,
+      "physicalId": "vol-07ef350059b589e96",
+      "constructPath": "CdkrdHunt0801FreeA/Gp3Vol0801"
+    }
+  ]
+}

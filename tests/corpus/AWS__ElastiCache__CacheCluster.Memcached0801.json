@@ -1,0 +1,198 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Memcached0801",
+    "resourceType": "AWS::ElastiCache::CacheCluster",
+    "physicalId": "cdk-me-nvdv4tcz9mnt",
+    "constructPath": "CdkrdHunt0801State/Memcached0801",
+    "declared": {
+      "CacheNodeType": "cache.t3.micro",
+      "CacheSubnetGroupName": "cdkrdhunt0801state-cachesubnets-y26nl80igfqn",
+      "Engine": "memcached",
+      "NumCacheNodes": 2,
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "VpcSecurityGroupIds": ["sg-090ed3cd866568e74"]
+    }
+  },
+  "liveRaw": {
+    "EngineVersion": "1.6",
+    "CacheSubnetGroupName": "cdkrdhunt0801state-cachesubnets-y26nl80igfqn",
+    "Port": 11211,
+    "CacheParameterGroupName": "default.memcached1.6",
+    "PreferredMaintenanceWindow": "sun:03:30-sun:04:30",
+    "AutoMinorVersionUpgrade": true,
+    "NumCacheNodes": 2,
+    "ConfigurationEndpoint": {
+      "Address": "cdk-me-nvdv4tcz9mnt.jzgy0l.cfg.use1.cache.amazonaws.com",
+      "Port": "11211"
+    },
+    "CacheNodeType": "cache.t3.micro",
+    "RedisEndpoint": {
+      "Address": "",
+      "Port": ""
+    },
+    "TransitEncryptionEnabled": false,
+    "PreferredAvailabilityZones": ["us-east-1b", "us-east-1b"],
+    "VpcSecurityGroupIds": ["sg-090ed3cd866568e74"],
+    "NetworkType": "ipv4",
+    "IpDiscovery": "ipv4",
+    "ClusterName": "cdk-me-nvdv4tcz9mnt",
+    "LogDeliveryConfigurations": [],
+    "Engine": "memcached",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "AZMode": "single-az"
+  },
+  "schema": {
+    "readOnly": ["ConfigurationEndpoint", "RedisEndpoint"],
+    "writeOnly": [
+      "CacheSecurityGroupNames",
+      "PreferredAvailabilityZone",
+      "SnapshotArns",
+      "SnapshotName"
+    ],
+    "createOnly": [
+      "CacheSubnetGroupName",
+      "ClusterName",
+      "Engine",
+      "NetworkType",
+      "Port",
+      "SnapshotArns",
+      "SnapshotName"
+    ],
+    "readOnlyPaths": [
+      "ConfigurationEndpoint",
+      "ConfigurationEndpoint.Address",
+      "ConfigurationEndpoint.Port",
+      "RedisEndpoint",
+      "RedisEndpoint.Address",
+      "RedisEndpoint.Port"
+    ],
+    "writeOnlyPaths": [
+      "CacheSecurityGroupNames",
+      "PreferredAvailabilityZone",
+      "SnapshotArns",
+      "SnapshotName"
+    ],
+    "createOnlyPaths": [
+      "CacheSubnetGroupName",
+      "ClusterName",
+      "Engine",
+      "NetworkType",
+      "Port",
+      "SnapshotArns",
+      "SnapshotName"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [
+      "CacheSecurityGroupNames",
+      "PreferredAvailabilityZones",
+      "SnapshotArns",
+      "VpcSecurityGroupIds"
+    ],
+    "unorderedObjectArrayPaths": ["LogDeliveryConfigurations"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Memcached0801",
+      "resourceType": "AWS::ElastiCache::CacheCluster",
+      "path": "EngineVersion",
+      "actual": "1.6",
+      "physicalId": "cdk-me-nvdv4tcz9mnt",
+      "constructPath": "CdkrdHunt0801State/Memcached0801"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Memcached0801",
+      "resourceType": "AWS::ElastiCache::CacheCluster",
+      "path": "Port",
+      "actual": 11211,
+      "physicalId": "cdk-me-nvdv4tcz9mnt",
+      "constructPath": "CdkrdHunt0801State/Memcached0801"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Memcached0801",
+      "resourceType": "AWS::ElastiCache::CacheCluster",
+      "path": "CacheParameterGroupName",
+      "actual": "default.memcached1.6",
+      "physicalId": "cdk-me-nvdv4tcz9mnt",
+      "constructPath": "CdkrdHunt0801State/Memcached0801"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Memcached0801",
+      "resourceType": "AWS::ElastiCache::CacheCluster",
+      "path": "PreferredMaintenanceWindow",
+      "actual": "sun:03:30-sun:04:30",
+      "physicalId": "cdk-me-nvdv4tcz9mnt",
+      "constructPath": "CdkrdHunt0801State/Memcached0801"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Memcached0801",
+      "resourceType": "AWS::ElastiCache::CacheCluster",
+      "path": "AutoMinorVersionUpgrade",
+      "actual": true,
+      "physicalId": "cdk-me-nvdv4tcz9mnt",
+      "constructPath": "CdkrdHunt0801State/Memcached0801"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Memcached0801",
+      "resourceType": "AWS::ElastiCache::CacheCluster",
+      "path": "PreferredAvailabilityZones",
+      "actual": ["us-east-1b", "us-east-1b"],
+      "physicalId": "cdk-me-nvdv4tcz9mnt",
+      "constructPath": "CdkrdHunt0801State/Memcached0801"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Memcached0801",
+      "resourceType": "AWS::ElastiCache::CacheCluster",
+      "path": "NetworkType",
+      "actual": "ipv4",
+      "physicalId": "cdk-me-nvdv4tcz9mnt",
+      "constructPath": "CdkrdHunt0801State/Memcached0801"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Memcached0801",
+      "resourceType": "AWS::ElastiCache::CacheCluster",
+      "path": "IpDiscovery",
+      "actual": "ipv4",
+      "physicalId": "cdk-me-nvdv4tcz9mnt",
+      "constructPath": "CdkrdHunt0801State/Memcached0801"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Memcached0801",
+      "resourceType": "AWS::ElastiCache::CacheCluster",
+      "path": "AZMode",
+      "actual": "single-az",
+      "physicalId": "cdk-me-nvdv4tcz9mnt",
+      "constructPath": "CdkrdHunt0801State/Memcached0801"
+    }
+  ]
+}

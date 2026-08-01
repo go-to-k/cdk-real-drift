@@ -68,4 +68,30 @@ LIVE_ACTION="$(aws guardduty get-filter --detector-id "$DETECTOR_ID" --filter-na
 [ "$LIVE_ACTION" = "NOOP" ] || fail "REVERT NO-OP: live filter Action=$LIVE_ACTION (expected NOOP) — RSDP candidate"
 $CLI check "$STACK" --region "$REGION" --fail || fail "post-revert check not clean"
 
+echo "=== [$STACK] #1694 ExpectedBucketOwner probe: OOB own-account -> foreign ==="
+# Target the INACTIVE set: GuardDuty validates the expected owner against the real
+# bucket owner for ACTIVE sets (foreign value rejected with AccessDeniedException,
+# live-determined 2026-08-01), so only the inactive set can carry the divergence.
+TES_ID=""
+for id in $(aws guardduty list-threat-entity-sets --detector-id "$DETECTOR_ID" --region "$REGION" --query 'ThreatEntitySetIds[]' --output text); do
+  NAME="$(aws guardduty get-threat-entity-set --detector-id "$DETECTOR_ID" --threat-entity-set-id "$id" --region "$REGION" --query 'Name' --output text)"
+  [ "$NAME" = "cdkrd-hunt0722-threat-entity-set-inactive" ] && TES_ID="$id" && break
+done
+[ -n "$TES_ID" ] || fail "no inactive threat entity set id"
+aws guardduty update-threat-entity-set --detector-id "$DETECTOR_ID" --threat-entity-set-id "$TES_ID" \
+  --expected-bucket-owner 111122223333 --region "$REGION" || fail "OOB update-threat-entity-set"
+sleep 10
+
+$CLI check "$STACK" --region "$REGION" --fail | tee "/tmp/cdkrd-$STACK.ebo.out"
+rc=${PIPESTATUS[0]}
+[ "$rc" -eq 1 ] || fail "MISSED DETECTION: expected exit 1 after OOB ExpectedBucketOwner change (got $rc)"
+
+echo "=== [$STACK] #1694 revert: EBO MUST converge back to the caller account (explicit set-default) ==="
+$CLI revert "$STACK" --region "$REGION" --yes | tee "/tmp/cdkrd-$STACK.eborev.out" || fail "EBO revert errored"
+grep -q "NOT reverted" "/tmp/cdkrd-$STACK.eborev.out" && fail "EBO revert reported NOT reverted"
+sleep 10
+LIVE_EBO="$(aws guardduty get-threat-entity-set --detector-id "$DETECTOR_ID" --threat-entity-set-id "$TES_ID" --region "$REGION" --query 'ExpectedBucketOwner' --output text)"
+[ "$LIVE_EBO" = "$ACCOUNT" ] || fail "EBO REVERT NO-OP: live ExpectedBucketOwner=$LIVE_EBO (expected $ACCOUNT) — the #1694 bare-remove class"
+$CLI check "$STACK" --region "$REGION" --fail || fail "post-EBO-revert check not clean"
+
 echo "INTEG PASS ($STACK)"

@@ -1,0 +1,88 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "V6",
+    "resourceType": "AWS::EC2::VPCCidrBlock",
+    "physicalId": "vpc-cidr-assoc-024f102d8ac39c945",
+    "constructPath": "CdkrdHunt0801Elb/V6",
+    "declared": {
+      "AmazonProvidedIpv6CidrBlock": true,
+      "VpcId": "vpc-0c41e4b2249864c89"
+    }
+  },
+  "liveRaw": {
+    "VpcId": "vpc-0c41e4b2249864c89",
+    "Ipv6AddressAttribute": "public",
+    "IpSource": "amazon",
+    "Ipv6CidrBlockNetworkBorderGroup": "us-east-1",
+    "Id": "vpc-cidr-assoc-024f102d8ac39c945",
+    "Ipv6CidrBlock": "2600:1f10:4294:8000::/56",
+    "AmazonProvidedIpv6CidrBlock": true
+  },
+  "schema": {
+    "readOnly": ["Id", "IpSource", "Ipv6AddressAttribute"],
+    "writeOnly": ["Ipv4IpamPoolId", "Ipv4NetmaskLength", "Ipv6IpamPoolId", "Ipv6NetmaskLength"],
+    "createOnly": [
+      "AmazonProvidedIpv6CidrBlock",
+      "CidrBlock",
+      "Ipv4IpamPoolId",
+      "Ipv4NetmaskLength",
+      "Ipv6CidrBlock",
+      "Ipv6CidrBlockNetworkBorderGroup",
+      "Ipv6IpamPoolId",
+      "Ipv6NetmaskLength",
+      "Ipv6Pool",
+      "VpcId"
+    ],
+    "readOnlyPaths": ["Id", "IpSource", "Ipv6AddressAttribute"],
+    "writeOnlyPaths": [
+      "Ipv4IpamPoolId",
+      "Ipv4NetmaskLength",
+      "Ipv6IpamPoolId",
+      "Ipv6NetmaskLength"
+    ],
+    "createOnlyPaths": [
+      "AmazonProvidedIpv6CidrBlock",
+      "CidrBlock",
+      "Ipv4IpamPoolId",
+      "Ipv4NetmaskLength",
+      "Ipv6CidrBlock",
+      "Ipv6CidrBlockNetworkBorderGroup",
+      "Ipv6IpamPoolId",
+      "Ipv6NetmaskLength",
+      "Ipv6Pool",
+      "VpcId"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "V6",
+      "resourceType": "AWS::EC2::VPCCidrBlock",
+      "path": "Ipv6CidrBlockNetworkBorderGroup",
+      "actual": "us-east-1",
+      "physicalId": "vpc-cidr-assoc-024f102d8ac39c945",
+      "constructPath": "CdkrdHunt0801Elb/V6"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "V6",
+      "resourceType": "AWS::EC2::VPCCidrBlock",
+      "path": "Ipv6CidrBlock",
+      "actual": "2600:1f10:4294:8000::/56",
+      "physicalId": "vpc-cidr-assoc-024f102d8ac39c945",
+      "constructPath": "CdkrdHunt0801Elb/V6"
+    }
+  ]
+}
