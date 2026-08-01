@@ -1,3 +1,10 @@
+## [0.23.5](https://github.com/go-to-k/cdk-real-drift/compare/v0.23.4...v0.23.5) (2026-08-01)
+
+
+### Bug Fixes
+
+* **hunt:** 2026-08-01 sweep — GD entity-set ExpectedBucketOwner revert no-op (CONTEXT_ARN_DEFAULTS identity resolution), 11 first-run FP folds, GD DataSources off-flip gates ([#1707](https://github.com/go-to-k/cdk-real-drift/issues/1707)) ([c51eae0](https://github.com/go-to-k/cdk-real-drift/commit/c51eae00a86d5b27a50b3eadcb2d3ccd758038ae))
+
 ## [0.23.4](https://github.com/go-to-k/cdk-real-drift/compare/v0.23.3...v0.23.4) (2026-07-22)
 
 
