@@ -875,9 +875,12 @@ only when non-zero — unrecorded values are named as such, never folded into
     `Policies.*` declared drift still patches via CC. A resource with both kinds
     of findings splits into one `cc` item and one `sdk` item.
 - **Not revertable (reported honestly, never silently skipped)**:
-  `AWS::Lambda::Permission` (add/remove statement model keyed by StatementId, not a
-  settable document), `AWS::Budgets::Budget` (`UpdateBudget` needs a full NewBudget
-  the reader can't reconstruct), a `deleted` resource (`deleted — recreate via cdk
+  (`AWS::Lambda::Permission` and `AWS::Budgets::Budget` USED to head this list; both
+  graduated to SDK writers once their readers grew full projections — Budgets via
+  `budgets:UpdateBudget` #1676, Lambda Permission via a RemovePermission+AddPermission
+  single-statement rebuild #1714, which still REFUSES — honestly, per-resource — a
+  statement carrying a condition key the reader does not project, e.g.
+  `lambda:EventSourceToken`, rather than silently dropping it), a `deleted` resource (`deleted — recreate via cdk
 deploy`: a patch can't recreate a resource), a **create-only** property (drift on a
   HARD `createOnlyProperties` field needs a resource replacement, which an in-place
   `UpdateResource` can't do — caught from the schema at plan time, not at apply

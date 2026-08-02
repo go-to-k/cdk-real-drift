@@ -142,6 +142,12 @@ import {
 } from '@aws-sdk/client-cloudcontrol';
 import { KafkaClient, UpdateConfigurationCommand } from '@aws-sdk/client-kafka';
 import {
+  AddPermissionCommand,
+  GetPolicyCommand as LambdaGetPolicyCommand,
+  LambdaClient,
+  RemovePermissionCommand,
+} from '@aws-sdk/client-lambda';
+import {
   BatchGetProjectsCommand,
   BatchGetReportGroupsCommand,
   CodeBuildClient,
@@ -242,6 +248,7 @@ const elasticache = mockClient(ElastiCacheClient);
 const memorydb = mockClient(MemoryDBClient);
 const ec2 = mockClient(EC2Client);
 const lex = mockClient(LexModelsV2Client);
+const lambda = mockClient(LambdaClient);
 
 const ARN = 'arn:aws:iam::123456789012:policy/p';
 const ctx = (over: Partial<OverrideCtx> = {}): OverrideCtx => ({
@@ -303,6 +310,7 @@ beforeEach(() => {
   dax.reset();
   ec2.reset();
   lex.reset();
+  lambda.reset();
 });
 
 describe('CloudWatch AnomalyDetector writer (PutAnomalyDetector upsert, issue #461)', () => {
@@ -4621,5 +4629,104 @@ describe('Budgets Budget writer (UpdateBudget full-object reconstruction, #1676)
       '1782864000': { Amount: '100.0', Unit: 'USD' }, // untouched period preserved
       '1785542400': { Amount: '200', Unit: 'USD' }, // reverted to the declared value
     });
+  });
+});
+
+describe('AWS::Lambda::Permission writer (#1714 — RemovePermission+AddPermission rebuild)', () => {
+  const FN_ARN = 'arn:aws:lambda:us-east-1:123456789012:function:my-fn';
+  const permCtx = () =>
+    ctx({
+      physicalId: 'perm-sid-1',
+      declared: {
+        FunctionName: 'my-fn',
+        Action: 'lambda:InvokeFunction',
+        Principal: 'apigateway.amazonaws.com',
+        SourceArn: 'arn:aws:execute-api:us-east-1:123456789012:api1/*/GET/x',
+      },
+    });
+  const livePolicy = (stmt: Record<string, unknown>) => ({
+    Policy: JSON.stringify({ Version: '2012-10-17', Statement: [stmt] }),
+  });
+  const baseStmt = (over: Record<string, unknown> = {}) => ({
+    Sid: 'perm-sid-1',
+    Effect: 'Allow',
+    Action: 'lambda:InvokeFunction',
+    Resource: FN_ARN,
+    Principal: { Service: 'apigateway.amazonaws.com' },
+    Condition: {
+      ArnLike: { 'AWS:SourceArn': 'arn:aws:execute-api:us-east-1:123456789012:ROGUE/*' },
+    },
+    ...over,
+  });
+
+  it('rebuilds the statement with the declared SourceArn (remove then add, same Sid)', async () => {
+    lambda.on(LambdaGetPolicyCommand).resolves(livePolicy(baseStmt()));
+    lambda.on(RemovePermissionCommand).resolves({});
+    lambda.on(AddPermissionCommand).resolves({});
+    await SDK_WRITERS['AWS::Lambda::Permission'](permCtx(), [
+      {
+        op: 'add',
+        path: '/SourceArn',
+        value: 'arn:aws:execute-api:us-east-1:123456789012:api1/*/GET/x',
+        human: 'SourceArn -> deployed-template value',
+      },
+    ]);
+    const rm = lambda.commandCalls(RemovePermissionCommand);
+    expect(rm).toHaveLength(1);
+    expect(rm[0]!.args[0].input).toMatchObject({
+      FunctionName: 'my-fn',
+      StatementId: 'perm-sid-1',
+    });
+    const add = lambda.commandCalls(AddPermissionCommand);
+    expect(add).toHaveLength(1);
+    expect(add[0]!.args[0].input).toMatchObject({
+      FunctionName: 'my-fn',
+      StatementId: 'perm-sid-1',
+      Action: 'lambda:InvokeFunction',
+      Principal: 'apigateway.amazonaws.com',
+      SourceArn: 'arn:aws:execute-api:us-east-1:123456789012:api1/*/GET/x',
+    });
+    expect(add[0]!.args[0].input.PrincipalOrgID).toBeUndefined();
+  });
+
+  it('drops an out-of-band-added PrincipalOrgID on an undeclared remove op', async () => {
+    lambda.on(LambdaGetPolicyCommand).resolves(
+      livePolicy(
+        baseStmt({
+          Condition: {
+            ArnLike: { 'AWS:SourceArn': 'arn:aws:execute-api:us-east-1:123456789012:api1/*/GET/x' },
+            StringEquals: { 'aws:PrincipalOrgID': 'o-rogue' },
+          },
+        })
+      )
+    );
+    lambda.on(RemovePermissionCommand).resolves({});
+    lambda.on(AddPermissionCommand).resolves({});
+    await SDK_WRITERS['AWS::Lambda::Permission'](permCtx(), [
+      { op: 'remove', path: '/PrincipalOrgID', human: 'PrincipalOrgID -> remove' },
+    ]);
+    const add = lambda.commandCalls(AddPermissionCommand);
+    expect(add).toHaveLength(1);
+    expect(add[0]!.args[0].input.PrincipalOrgID).toBeUndefined();
+    expect(add[0]!.args[0].input.SourceArn).toBe(
+      'arn:aws:execute-api:us-east-1:123456789012:api1/*/GET/x'
+    );
+  });
+
+  it('REFUSES a statement carrying a condition the reader does not project (EventSourceToken)', async () => {
+    lambda.on(LambdaGetPolicyCommand).resolves(
+      livePolicy(
+        baseStmt({
+          Condition: { StringEquals: { 'lambda:EventSourceToken': 'tok-123' } },
+        })
+      )
+    );
+    await expect(
+      SDK_WRITERS['AWS::Lambda::Permission'](permCtx(), [
+        { op: 'add', path: '/SourceArn', value: 'x', human: 'SourceArn -> declared' },
+      ])
+    ).rejects.toThrow(/condition the reader does not project.*EventSourceToken/s);
+    expect(lambda.commandCalls(RemovePermissionCommand)).toHaveLength(0);
+    expect(lambda.commandCalls(AddPermissionCommand)).toHaveLength(0);
   });
 });

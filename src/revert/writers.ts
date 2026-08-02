@@ -4,15 +4,14 @@
 // SDK. Covers the policy-document types (the common revert) plus IAM ManagedPolicy
 // (revert the default version's document).
 //
-// Still not-revertable by design (no SDK writer here):
-//   - AWS::Lambda::Permission: an ADD/REMOVE statement model keyed by StatementId
-//     (AddPermission/RemovePermission), NOT a settable whole-document property. A
-//     generic ops-based revert would have to diff the resource policy statements
-//     and add/remove each individually; the override READER only returns a thin
-//     best-effort match (FunctionName/Action/Principal, no StatementId / SourceArn
-//     / SourceAccount / EventSourceToken), so we cannot reconstruct the exact
-//     statement to re-add nor safely identify the one to remove. Reverting it
-//     blindly risks dropping or duplicating unrelated grants -> left not-revertable.
+// (AWS::Lambda::Permission WAS on the "still not-revertable" list — "the override READER
+// only returns a thin best-effort match (FunctionName/Action/Principal, no StatementId /
+// SourceArn / SourceAccount), so we cannot reconstruct the exact statement to re-add nor
+// safely identify the one to remove". That rationale went STALE (#1714, the #1676 Budgets
+// pattern): the reader now resolves statement identity EXACTLY (the CFn physical id IS the
+// statement Sid) and projects SourceArn / SourceAccount / PrincipalOrgID /
+// FunctionUrlAuthType, so a RemovePermission+AddPermission rebuild is safe — guarded by
+// writeLambdaPermission's refuse-on-unprojected-condition check below.)
 // (AWS::Budgets::Budget WAS on this list — "the reader returns only the scalar identity
 // subset, so a NewBudget reconstruction would be missing the required limit and would wipe
 // the cost filters/types". That rationale is now STALE: the reader projection caught up
@@ -142,6 +141,12 @@ import {
   type ResourceType,
 } from '@aws-sdk/client-config-service';
 import { KafkaClient, UpdateConfigurationCommand } from '@aws-sdk/client-kafka';
+import {
+  AddPermissionCommand,
+  GetPolicyCommand as LambdaGetPolicyCommand,
+  LambdaClient,
+  RemovePermissionCommand,
+} from '@aws-sdk/client-lambda';
 import {
   CodeBuildClient,
   type ReportExportConfig,
@@ -3203,7 +3208,84 @@ const writeBudget: SdkWriter = async (ctx, ops) => {
   );
 };
 
+// AWS::Lambda::Permission (#1714) — an ADD/REMOVE statement model keyed by StatementId
+// (AddPermission/RemovePermission), not a settable whole-document property, so revert
+// REBUILDS the one statement: RemovePermission(Sid) + AddPermission(desired fields). The
+// CFn physical id IS the statement Sid (the reader matches on it), and desiredModel()
+// applies the revert ops to the reader projection (FunctionName / Action / Principal /
+// SourceArn / SourceAccount / PrincipalOrgID / FunctionUrlAuthType), so the re-added
+// statement carries the declared intent and drops an out-of-band-added scoping key.
+// GUARD (the residual truth of the old not-revertable rationale): the LIVE statement may
+// carry condition keys the reader does NOT project (lambda:EventSourceToken, an arbitrary
+// aws:* condition) — a blind rebuild would silently DROP them, so the writer refuses and
+// reports honestly instead. (A template-declared EventSourceToken always puts the
+// condition on the live statement too, so such permissions are always refused — never
+// half-rebuilt.)
+const LAMBDA_PERMISSION_PROJECTED_CONDITIONS: Record<string, ReadonlySet<string>> = {
+  ArnLike: new Set(['AWS:SourceArn']),
+  StringEquals: new Set(['AWS:SourceAccount', 'aws:PrincipalOrgID', 'lambda:FunctionUrlAuthType']),
+};
+const writeLambdaPermission: SdkWriter = async (ctx, ops) => {
+  const fn = str(ctx.declared['FunctionName']);
+  if (!fn) throw new Error('cannot resolve FunctionName for Lambda Permission revert');
+  const sid = str(ctx.physicalId);
+  if (!sid) throw new Error('cannot resolve the Lambda Permission StatementId for revert');
+  const c = new LambdaClient({ region: ctx.region, ...CLIENT_TIMEOUTS });
+  // Read the LIVE statement RAW (not the reader projection) — the guard must see every
+  // condition key AWS stores, including the ones the projection drops.
+  let liveStmt: Record<string, unknown> | undefined;
+  try {
+    const raw = (await c.send(new LambdaGetPolicyCommand({ FunctionName: fn }))).Policy;
+    const stmts =
+      (JSON.parse(raw ?? '{}') as { Statement?: Array<Record<string, unknown>> }).Statement ?? [];
+    liveStmt = stmts.find((s) => s['Sid'] === sid);
+  } catch (e) {
+    // No resource policy at all = nothing to remove; the AddPermission below re-creates.
+    if ((e as Error).name !== 'ResourceNotFoundException') throw e;
+  }
+  const liveCond = liveStmt?.['Condition'];
+  if (liveCond !== undefined && liveCond !== null && typeof liveCond === 'object') {
+    for (const [condOp, kv] of Object.entries(liveCond as Record<string, unknown>)) {
+      const projected = LAMBDA_PERMISSION_PROJECTED_CONDITIONS[condOp];
+      const keys = kv !== null && typeof kv === 'object' ? Object.keys(kv) : [];
+      const unprojected = projected ? keys.filter((k) => !projected.has(k)) : keys;
+      if (unprojected.length > 0)
+        throw new Error(
+          `Lambda Permission ${sid} carries a condition the reader does not project ` +
+            `(${condOp}: ${unprojected.join(', ')}) — a rebuild would silently drop it; ` +
+            `update the permission manually`
+        );
+    }
+  }
+  const desired = await desiredModel('AWS::Lambda::Permission', ctx, ops);
+  const action = str(desired['Action']);
+  const principal = str(desired['Principal']);
+  if (!action || !principal)
+    throw new Error('cannot resolve Action/Principal for Lambda Permission revert');
+  if (liveStmt) await c.send(new RemovePermissionCommand({ FunctionName: fn, StatementId: sid }));
+  await c.send(
+    new AddPermissionCommand({
+      FunctionName: fn,
+      StatementId: sid,
+      Action: action,
+      Principal: principal,
+      SourceArn: str(desired['SourceArn']),
+      SourceAccount: str(desired['SourceAccount']),
+      PrincipalOrgID: str(desired['PrincipalOrgID']),
+      FunctionUrlAuthType: str(desired['FunctionUrlAuthType']) as 'AWS_IAM' | 'NONE' | undefined,
+    })
+  );
+};
+
+// Types whose SDK writer REBUILDS the resource (remove + re-create with the same
+// identity) rather than patching it in place — so the plan's create-only bar must NOT
+// bar their findings (#1714): a rebuild applies create-only changes by construction.
+// Keep this in lockstep with the writer implementations; a type listed here without a
+// genuinely rebuilding writer would let a doomed in-place patch through.
+export const SDK_REBUILD_WRITER_TYPES: ReadonlySet<string> = new Set(['AWS::Lambda::Permission']);
+
 export const SDK_WRITERS: Record<string, SdkWriter> = {
+  'AWS::Lambda::Permission': writeLambdaPermission,
   'AWS::Budgets::Budget': writeBudget,
   'AWS::ApiGatewayV2::Stage': writeApiGatewayV2Stage,
   'AWS::ElasticBeanstalk::Application': writeElasticBeanstalkApplication,
