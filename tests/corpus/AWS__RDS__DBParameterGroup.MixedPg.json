@@ -1,0 +1,67 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "MixedPg",
+    "resourceType": "AWS::RDS::DBParameterGroup",
+    "physicalId": "cdkrdhunt-mixed-dpg",
+    "constructPath": "CdkRealDriftIntegRdsReplicaHunt/MixedPg",
+    "declared": {
+      "DBParameterGroupName": "CdkrdHunt-Mixed-DPG",
+      "Description": "cdkrd hunt mixed-case parameter group",
+      "Family": "mysql8.4",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "DBParameterGroupName": "cdkrdhunt-mixed-dpg",
+    "Description": "cdkrd hunt mixed-case parameter group",
+    "Parameters": {},
+    "Family": "mysql8.4",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegRdsReplicaHunt",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "MixedPg",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegRdsReplicaHunt/4d849b20-8e50-11f1-b1b5-12d34d5ffe2f",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["DBParameterGroupName", "Description", "Family"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["DBParameterGroupName", "Description", "Family"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": []
+}

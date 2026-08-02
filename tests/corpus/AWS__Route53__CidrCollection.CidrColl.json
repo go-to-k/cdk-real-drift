@@ -8,7 +8,7 @@
     "declared": {
       "Locations": [
         {
-          "CidrList": ["10.0.0.0/24"],
+          "CidrList": ["10.0.3.0/24", "10.0.0.0/24"],
           "LocationName": "loc1"
         }
       ],
@@ -18,7 +18,7 @@
   "liveRaw": {
     "Locations": [
       {
-        "CidrList": ["10.0.0.0/24"],
+        "CidrList": ["10.0.0.0/24", "10.0.3.0/24"],
         "LocationName": "loc1"
       }
     ],

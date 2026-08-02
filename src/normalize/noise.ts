@@ -1478,6 +1478,13 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   // the schema defaults). Equality-gated — an out-of-band type change still surfaces; if AWS
   // ever moves the era default to gp3, the pin re-surfaces on fresh deploys and graduates to
   // KNOWN_DEFAULT_ONE_OF per the era-dependent rule.
+  // Revert-convergence determination (#1710, stackless CC probes 2026-08-02): after an OOB
+  // modify-volume to gp3, the bare `remove /VolumeType` reports SUCCESS but the live value
+  // stays gp3 (silent no-op — not even a cooldown rejection), and the naive explicit
+  // `add gp2` is REJECTED while the gp3 Iops/Throughput echoes remain in the model ("The
+  // parameter iops is not supported for gp2 volumes"). The RSDP entry in revert/plan.ts
+  // pairs the explicit add with companion Iops/Throughput removes — that combined patch
+  // live-converged (gp2 restored, Iops auto-reset to 100).
   'AWS::EC2::Volume': {
     VolumeType: 'gp2',
   },
@@ -1923,7 +1930,10 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     CdcSpecification: { Status: 'DISABLED' },
     // A table with no TTL configured echoes the numeric 0 "no default TTL" sentinel
     // (#1705, live 2026-08-01 statepack-hunt — the prior sole corpus case DECLARED it).
-    // Equality-gated: an out-of-band TTL still surfaces.
+    // Equality-gated: an out-of-band TTL still surfaces. Revert-convergence determination
+    // (stackless CC probe 2026-08-02): an OOB `keyspaces update-table
+    // --default-time-to-live 3600` CONVERGES back to 0 via the bare `remove` — the CC
+    // handler reconciles the omitted property — so no RSDP entry is needed.
     DefaultTimeToLive: 0,
   },
   // EMR Serverless application service defaults (observed live on the
@@ -3069,7 +3079,10 @@ export const CONTEXT_ARN_DEFAULTS: Record<string, Record<string, string | string
   // A LakeFormation Tag that declares no CatalogId reads back the deploying account id — the
   // default (own-account) Data Catalog. The bare `{accountId}` placeholder substitutes to the
   // account id; equality-gated, so a Tag pointed at another account's catalog still surfaces.
-  // Live-confirmed (#914).
+  // Live-confirmed (#914). NOTE: a fresh live re-proof is NOT deployable from a hunt — CFn
+  // CreateLFTag requires the deploying principal to be a Lake Formation data-lake admin
+  // ("Insufficient Lake Formation permission(s): Required Create LF Tag on Catalog", probed
+  // 2026-08-02), and making it one is an account-level settings change a hunt must not make.
   'AWS::LakeFormation::Tag': { CatalogId: '{accountId}' },
   // A LakeFormation PrincipalPermissions that declares no `Catalog` reads back the deploying
   // account id — the same own-account Data Catalog default as the Tag echo above (its optional
@@ -3078,7 +3091,9 @@ export const CONTEXT_ARN_DEFAULTS: Record<string, Record<string, string | string
   // cannot drift out of band; equality-gated `{accountId}`, so a grant pointed at another
   // account's catalog still surfaces. #930 (part 1 — the Tag-sibling family; DataCellsFilter's
   // TableCatalogId is REQUIRED so always declared, and TagAssociation carries CatalogId only in
-  // nested sub-refs — both out of scope here).
+  // nested sub-refs — both out of scope here). The mirrored row is now LIVE-PROVEN: a barest
+  // grant (Catalog undeclared, DESCRIBE on a throwaway Glue database) first-checked CLEAN with
+  // the echo folded atDefault (lakeformation-hunt + corpus HuntLfPerms, 2026-08-02).
   'AWS::LakeFormation::PrincipalPermissions': { Catalog: '{accountId}' },
   // An S3 Access Point that declares no BucketAccountId reads back the deploying account id —
   // the default bucket-owner account. The bare `{accountId}` placeholder substitutes to the
@@ -4987,6 +5002,9 @@ export const ELB_TG_ATTRIBUTE_DEFAULTS_BY_PROTOCOL: Record<string, Record<string
     'target_health_state.unhealthy.connection_termination.enabled': 'true',
     'target_health_state.unhealthy.draining_interval_seconds': '0',
   },
+  // The TLS row is no longer merely TCP-mirrored: corpus TlsTg (TLS x instance) and
+  // TlsIpTg (TLS x ip) both carry all five values live (variants5-hunt / elbpack-hunt) —
+  // citation corrected by the 2026-08-02 mirrored-row audit.
   TLS: {
     'stickiness.type': 'source_ip',
     'deregistration_delay.connection_termination.enabled': 'false',
@@ -5214,8 +5232,26 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
   // can never actually have an uppercase identifier live — so case-insensitive
   // equality hides no revertable drift; a genuine rename still differs beyond case.
   // Observed live on fresh (non-imported) Aurora stacks in ap-northeast-1.
-  'AWS::RDS::DBInstance': new Set(['DBInstanceIdentifier']),
-  'AWS::RDS::DBCluster': new Set(['DBClusterIdentifier']),
+  // #1712: each entry here also lists the REFERENCING properties that echo ANOTHER
+  // resource's stored-lowercased name/identifier (the owning props are folded further
+  // down in this same table, each with its own store-lowercases evidence): a raw-CFn /
+  // imported template referencing a mixed-case name reads back the lowercase stored form
+  // on the CONSUMER — a permanent declared FP (classify-proven offline; the RDS
+  // DBParameterGroupName/DBSubnetGroupName pair additionally live-proven E2E on
+  // rds-replica-hunt, 2026-08-02). A reference differing only by case can never be real
+  // drift — these names are case-insensitively unique in their services.
+  'AWS::RDS::DBInstance': new Set([
+    'DBInstanceIdentifier',
+    'DBParameterGroupName',
+    'DBSubnetGroupName',
+    'OptionGroupName',
+    'DBClusterIdentifier',
+  ]),
+  'AWS::RDS::DBCluster': new Set([
+    'DBClusterIdentifier',
+    'DBClusterParameterGroupName',
+    'DBSubnetGroupName',
+  ]),
   // The "stored as a lowercase string" identifier family — ElastiCache, DocumentDB,
   // Neptune, and DMS all lowercase their resource identifier on creation (AWS CLI help:
   // "This parameter is stored as a lowercase string"), so a template that declares a
@@ -5234,13 +5270,30 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
   // --db-subnet-group-name CdkrdHunt-Mixed-SNG` stores and reads back
   // `cdkrdhunt-mixed-sng` — it IS lowercased, so it is now in the family below.)
   'AWS::ElastiCache::SubnetGroup': new Set(['CacheSubnetGroupName']),
-  'AWS::ElastiCache::ReplicationGroup': new Set(['ReplicationGroupId']),
-  'AWS::ElastiCache::CacheCluster': new Set(['ClusterName']),
-  'AWS::DocDB::DBCluster': new Set(['DBClusterIdentifier']),
-  'AWS::DocDB::DBInstance': new Set(['DBInstanceIdentifier']),
+  // CacheSubnetGroupName on the cluster/RG = the #1712 referencing-prop of the
+  // SubnetGroup entry above.
+  'AWS::ElastiCache::ReplicationGroup': new Set(['ReplicationGroupId', 'CacheSubnetGroupName']),
+  'AWS::ElastiCache::CacheCluster': new Set(['ClusterName', 'CacheSubnetGroupName']),
+  'AWS::DocDB::DBCluster': new Set([
+    'DBClusterIdentifier',
+    // #1712 referencing props (owning entries: DocDB DBSubnetGroup / DBClusterParameterGroup).
+    'DBSubnetGroupName',
+    'DBClusterParameterGroupName',
+  ]),
+  'AWS::DocDB::DBInstance': new Set(['DBInstanceIdentifier', 'DBClusterIdentifier']),
   'AWS::DocDB::DBSubnetGroup': new Set(['DBSubnetGroupName']),
-  'AWS::Neptune::DBCluster': new Set(['DBClusterIdentifier']),
-  'AWS::Neptune::DBInstance': new Set(['DBInstanceIdentifier']),
+  'AWS::Neptune::DBCluster': new Set([
+    'DBClusterIdentifier',
+    // #1712 referencing props (owning entries: Neptune DBSubnetGroup / DBClusterParameterGroup).
+    'DBSubnetGroupName',
+    'DBClusterParameterGroupName',
+  ]),
+  'AWS::Neptune::DBInstance': new Set([
+    'DBInstanceIdentifier',
+    'DBClusterIdentifier',
+    'DBParameterGroupName',
+    'DBSubnetGroupName',
+  ]),
   'AWS::Neptune::DBSubnetGroup': new Set(['DBSubnetGroupName']),
   // #1531: the parameter-group / option-group / subnet-group NAME twins of the identifier
   // family above — RDS stores each "as a lowercase string" (CLI help for the RDS/Neptune/
@@ -5270,13 +5323,28 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
   // "must contain only lowercase", unreachable, no entries needed). A template declaring
   // "CdkrdHunt-Mixed-RsCluster" reads back "cdkrdhunt-mixed-rscluster" — declared-tier FP on
   // every check. Observed live (case-idents3-min, 2026-07-14; #1589).
-  'AWS::Redshift::Cluster': new Set(['ClusterIdentifier']),
+  // ClusterParameterGroupName / ClusterSubnetGroupName = #1712 referencing props: the PG
+  // owning entry is above; the subnet-group store was probed 2026-08-02
+  // (`create-cluster-subnet-group --cluster-subnet-group-name CdkrdHunt-Mixed-RSG` reads
+  // back `cdkrdhunt-mixed-rsg` — CFn's ClusterSubnetGroup has no declarable name, but a
+  // CLI-created group can be referenced mixed-case from a template).
+  'AWS::Redshift::Cluster': new Set([
+    'ClusterIdentifier',
+    'ClusterParameterGroupName',
+    'ClusterSubnetGroupName',
+  ]),
   // Glue Database/Table names are stored lowercased by the raw Glue API, but BOTH CFn
   // handlers reject mixed-case input client-side ("must not contain uppercase characters"
   // — Database probed via Cloud Control create-resource, Table via a raw CFn stack, both
   // 2026-07-14), so the divergence is unreachable via CloudFormation: no entries needed
   // (the MemoryDB-family determination).
-  'AWS::DMS::ReplicationInstance': new Set(['ReplicationInstanceIdentifier']),
+  // ReplicationSubnetGroupIdentifier on the instance = the #1712 referencing prop of the
+  // SubnetGroup entry below. (ReplicationTask.ReplicationTaskIdentifier stays UNLISTED —
+  // its lowercase storage is unprobed; probing needs a paid replication instance.)
+  'AWS::DMS::ReplicationInstance': new Set([
+    'ReplicationInstanceIdentifier',
+    'ReplicationSubnetGroupIdentifier',
+  ]),
   'AWS::DMS::ReplicationSubnetGroup': new Set(['ReplicationSubnetGroupIdentifier']),
   // DAX stores parameter-group / subnet-group names lowercased (live-probed 2026-07-14:
   // `create-parameter-group --parameter-group-name CdkrdHunt-Mixed-DaxPG` reads back
@@ -6349,6 +6417,14 @@ export function alignNameValueSubset(
 }
 
 export const UNORDERED_ARRAY_PROPS: Record<string, ReadonlySet<string>> = {
+  // #1711 (hunt 2026-08-02): Route53 stores a CIDR location's CidrList as a SET and echoes
+  // it SORTED — a CC create declaring ["10.0.3.0/24","10.0.1.0/24"] read back ascending —
+  // so a declared non-sorted list is a permanent declared-tier FP. The OUTER Locations
+  // array order IS preserved (same live probe: locations echoed in declared order), so only
+  // the inner CidrList is set-semantic. Equality-gated as a multiset: a genuine CIDR
+  // add/remove still surfaces. (The sole prior corpus case had a single-element CidrList —
+  // the n=1 reorder blind spot.)
+  'AWS::Route53::CidrCollection': new Set(['Locations.*.CidrList']),
   // Live-observed on a fresh cloudfront-georestriction deploy: a Distribution's
   // GeoRestriction.Locations (ISO-3166 country codes for a geo allow/deny list) is
   // semantically a SET — CloudFront renders it as a country set and does not guarantee

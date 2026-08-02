@@ -1297,6 +1297,10 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     // so a CONTEXT_ARN_DEFAULTS-pinned set-default (GuardDuty entity-set
     // ExpectedBucketOwner, #1694) resolves its {accountId}/{region} placeholder.
     identity: { accountId: gathered.desired.accountId, region },
+    // so a DERIVED default (#1709 — Route53 HC Port, TargetGroup health-check pair, RDS
+    // replica BackupRetentionPeriod) reverts to the value classify derived, and the
+    // #1710 companion-removes guard can see declared intent.
+    declaredForLogical,
   });
 
   if (plan.items.length === 0 && plan.notRevertable.length === 0) {

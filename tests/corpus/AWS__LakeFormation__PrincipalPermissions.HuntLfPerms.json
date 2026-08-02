@@ -1,0 +1,69 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntLfPerms",
+    "resourceType": "AWS::LakeFormation::PrincipalPermissions",
+    "physicalId": "{\"DataLakePrincipalIdentifier\":\"arn:aws:iam::111111111111:role/CdkRealDriftIntegLakeFormationHu-HuntLfRole609F7652-YTlvWUVMXjVb\"}|{\"Catalog\":null,\"Database\":{\"CatalogId\":\"111111111111\",\"Name\":\"cdkrd_hunt_lf_db\"},\"Table\":null,\"TableWithColumns\":null,\"DataLocation\":null,\"DataCellsFilter\":null,\"LFTag\":null,\"LFTagPolicy\":null}",
+    "constructPath": "CdkRealDriftIntegLakeFormationHunt/HuntLfPerms",
+    "declared": {
+      "Permissions": ["DESCRIBE"],
+      "PermissionsWithGrantOption": [],
+      "Principal": {
+        "DataLakePrincipalIdentifier": "arn:aws:iam::111111111111:role/CdkRealDriftIntegLakeFormationHu-HuntLfRole609F7652-YTlvWUVMXjVb"
+      },
+      "Resource": {
+        "Database": {
+          "CatalogId": "111111111111",
+          "Name": "cdkrd_hunt_lf_db"
+        }
+      }
+    }
+  },
+  "liveRaw": {
+    "ResourceIdentifier": "{\"Catalog\":null,\"Database\":{\"CatalogId\":\"111111111111\",\"Name\":\"cdkrd_hunt_lf_db\"},\"Table\":null,\"TableWithColumns\":null,\"DataLocation\":null,\"DataCellsFilter\":null,\"LFTag\":null,\"LFTagPolicy\":null}",
+    "Resource": {
+      "Database": {
+        "CatalogId": "111111111111",
+        "Name": "cdkrd_hunt_lf_db"
+      }
+    },
+    "Permissions": ["DESCRIBE"],
+    "Principal": {
+      "DataLakePrincipalIdentifier": "arn:aws:iam::111111111111:role/CdkRealDriftIntegLakeFormationHu-HuntLfRole609F7652-YTlvWUVMXjVb"
+    },
+    "PermissionsWithGrantOption": [],
+    "PrincipalIdentifier": "{\"DataLakePrincipalIdentifier\":\"arn:aws:iam::111111111111:role/CdkRealDriftIntegLakeFormationHu-HuntLfRole609F7652-YTlvWUVMXjVb\"}"
+  },
+  "schema": {
+    "readOnly": ["PrincipalIdentifier", "ResourceIdentifier"],
+    "writeOnly": [],
+    "createOnly": ["Catalog", "Permissions", "PermissionsWithGrantOption", "Principal", "Resource"],
+    "readOnlyPaths": ["PrincipalIdentifier", "ResourceIdentifier"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "Catalog",
+      "Permissions",
+      "PermissionsWithGrantOption",
+      "Principal",
+      "Resource"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [
+      "Permissions",
+      "PermissionsWithGrantOption",
+      "Resource.LFTag.TagValues",
+      "Resource.TableWithColumns.ColumnNames",
+      "Resource.TableWithColumns.ColumnWildcard.ExcludedColumnNames"
+    ],
+    "unorderedObjectArrayPaths": ["Resource.LFTagPolicy.Expression"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

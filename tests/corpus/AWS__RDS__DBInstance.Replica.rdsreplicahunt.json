@@ -1,0 +1,597 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Replica",
+    "resourceType": "AWS::RDS::DBInstance",
+    "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+    "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica",
+    "declared": {
+      "DBInstanceClass": "db.t4g.micro",
+      "DeletionProtection": false,
+      "PubliclyAccessible": false,
+      "SourceDBInstanceIdentifier": "cdkrealdriftintegrdsreplicahunt-source-mhpizssmxojm",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "DatabaseInsightsMode": "standard",
+    "StorageEncrypted": false,
+    "StatusInfos": [
+      {
+        "Status": "replicating",
+        "StatusType": "read replication",
+        "Normal": true
+      }
+    ],
+    "CertificateDetails": {
+      "ValidTill": "2027-08-02T09:12:06Z",
+      "CAIdentifier": "rds-ca-rsa2048-g1"
+    },
+    "Port": "3306",
+    "AdditionalStorageVolumes": [],
+    "StorageThroughput": 0,
+    "DbiResourceId": "db-Q277FYJDXM4OSSQGTVDMPUWTMQ",
+    "ReadReplicaDBClusterIdentifiers": [],
+    "MonitoringInterval": 0,
+    "DBParameterGroupName": "cdkrdhunt-mixed-dpg",
+    "DBInstanceArn": "arn:aws:rds:us-east-1:111111111111:db:cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+    "Endpoint": {
+      "Address": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h.caxxotukouxo.us-east-1.rds.amazonaws.com",
+      "Port": "3306",
+      "HostedZoneId": "Z2R2ITUGPM61AM"
+    },
+    "MultiAZ": false,
+    "Engine": "mysql",
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegRdsReplicaHunt",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Replica",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegRdsReplicaHunt/4d849b20-8e50-11f1-b1b5-12d34d5ffe2f",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "IsStorageConfigUpgradeAvailable": false,
+    "EngineVersion": "8.4.9",
+    "StorageType": "gp2",
+    "DBInstanceStatus": "available",
+    "DBInstanceClass": "db.t4g.micro",
+    "AvailabilityZone": "us-east-1a",
+    "OptionGroupName": "default:mysql-8-4",
+    "EnablePerformanceInsights": false,
+    "ReadReplicaDBInstanceIdentifiers": [],
+    "AutoMinorVersionUpgrade": true,
+    "DBSubnetGroupName": "cdkrdhunt-mixed-sng",
+    "DeletionProtection": false,
+    "DBInstanceIdentifier": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+    "AllocatedStorage": "20",
+    "MasterUserSecret": {},
+    "DBSecurityGroups": [],
+    "MasterUsername": "huntadmin",
+    "PubliclyAccessible": false,
+    "AssociatedRoles": [],
+    "InstanceCreateTime": "2026-08-02T09:14:08.704Z",
+    "ProcessorFeatures": [],
+    "PreferredBackupWindow": "08:42-09:12",
+    "NetworkType": "IPV4",
+    "DedicatedLogVolume": false,
+    "CopyTagsToSnapshot": false,
+    "EngineLifecycleSupport": "open-source-rds-extended-support",
+    "LicenseModel": "general-public-license",
+    "PreferredMaintenanceWindow": "fri:05:17-fri:05:47",
+    "BackupTarget": "region",
+    "CACertificateIdentifier": "rds-ca-rsa2048-g1",
+    "ManageMasterUserPassword": false,
+    "VPCSecurityGroups": ["sg-07188a1fc61c7608a"],
+    "EnableIAMDatabaseAuthentication": false,
+    "BackupRetentionPeriod": 0,
+    "EnableCloudwatchLogsExports": []
+  },
+  "schema": {
+    "readOnly": [
+      "AutomaticRestartTime",
+      "CertificateDetails",
+      "DBInstanceArn",
+      "DBInstanceStatus",
+      "DbiResourceId",
+      "Endpoint",
+      "InstanceCreateTime",
+      "IsStorageConfigUpgradeAvailable",
+      "LatestRestorableTime",
+      "ListenerEndpoint",
+      "PercentProgress",
+      "ReadReplicaDBClusterIdentifiers",
+      "ReadReplicaDBInstanceIdentifiers",
+      "ResumeFullAutomationModeTime",
+      "SecondaryAvailabilityZone",
+      "StatusInfos"
+    ],
+    "writeOnly": [
+      "AllowMajorVersionUpgrade",
+      "ApplyImmediately",
+      "AutomaticBackupReplicationKmsKeyId",
+      "CertificateRotationRestart",
+      "DBSnapshotIdentifier",
+      "DeleteAutomatedBackups",
+      "MasterUserAuthenticationType",
+      "MasterUserPassword",
+      "RestoreTime",
+      "SourceDBInstanceAutomatedBackupsArn",
+      "SourceDBInstanceIdentifier",
+      "SourceDbiResourceId",
+      "SourceRegion",
+      "TdeCredentialPassword",
+      "UseDefaultProcessorFeatures",
+      "UseLatestRestorableTime"
+    ],
+    "createOnly": [
+      "BackupTarget",
+      "CharacterSetName",
+      "CustomIAMInstanceProfile",
+      "DBClusterIdentifier",
+      "DBInstanceIdentifier",
+      "DBName",
+      "DBSubnetGroupName",
+      "DBSystemId",
+      "KmsKeyId",
+      "MasterUsername",
+      "NcharCharacterSetName",
+      "SourceRegion",
+      "StorageEncrypted",
+      "Timezone"
+    ],
+    "readOnlyPaths": [
+      "AutomaticRestartTime",
+      "CertificateDetails",
+      "CertificateDetails.CAIdentifier",
+      "CertificateDetails.ValidTill",
+      "DBInstanceArn",
+      "DBInstanceStatus",
+      "DbiResourceId",
+      "Endpoint",
+      "Endpoint.Address",
+      "Endpoint.HostedZoneId",
+      "Endpoint.Port",
+      "InstanceCreateTime",
+      "IsStorageConfigUpgradeAvailable",
+      "LatestRestorableTime",
+      "ListenerEndpoint",
+      "ListenerEndpoint.Address",
+      "ListenerEndpoint.HostedZoneId",
+      "ListenerEndpoint.Port",
+      "MasterUserSecret.SecretArn",
+      "PercentProgress",
+      "ReadReplicaDBClusterIdentifiers",
+      "ReadReplicaDBInstanceIdentifiers",
+      "ResumeFullAutomationModeTime",
+      "SecondaryAvailabilityZone",
+      "StatusInfos"
+    ],
+    "writeOnlyPaths": [
+      "AllowMajorVersionUpgrade",
+      "ApplyImmediately",
+      "AutomaticBackupReplicationKmsKeyId",
+      "CertificateRotationRestart",
+      "DBSnapshotIdentifier",
+      "DeleteAutomatedBackups",
+      "MasterUserAuthenticationType",
+      "MasterUserPassword",
+      "RestoreTime",
+      "SourceDBInstanceAutomatedBackupsArn",
+      "SourceDBInstanceIdentifier",
+      "SourceDbiResourceId",
+      "SourceRegion",
+      "TdeCredentialPassword",
+      "UseDefaultProcessorFeatures",
+      "UseLatestRestorableTime"
+    ],
+    "createOnlyPaths": [
+      "BackupTarget",
+      "CharacterSetName",
+      "CustomIAMInstanceProfile",
+      "DBClusterIdentifier",
+      "DBInstanceIdentifier",
+      "DBName",
+      "DBSubnetGroupName",
+      "DBSystemId",
+      "KmsKeyId",
+      "MasterUsername",
+      "NcharCharacterSetName",
+      "SourceRegion",
+      "StorageEncrypted",
+      "Timezone"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    },
+    "siblingRdsSourceModels": {
+      "cdkrealdriftintegrdsreplicahunt-source-mhpizssmxojm": {
+        "DatabaseInsightsMode": "standard",
+        "StorageEncrypted": false,
+        "StatusInfos": [],
+        "CertificateDetails": {
+          "ValidTill": "2027-08-02T09:01:09Z",
+          "CAIdentifier": "rds-ca-rsa2048-g1"
+        },
+        "Port": "3306",
+        "AdditionalStorageVolumes": [],
+        "StorageThroughput": 0,
+        "DbiResourceId": "db-RICQXCNRUIG7DXHZRWSB7YCIQA",
+        "ReadReplicaDBClusterIdentifiers": [],
+        "MonitoringInterval": 0,
+        "DBParameterGroupName": "cdkrdhunt-mixed-dpg",
+        "DBInstanceArn": "arn:aws:rds:us-east-1:111111111111:db:cdkrealdriftintegrdsreplicahunt-source-mhpizssmxojm",
+        "Endpoint": {
+          "Address": "cdkrealdriftintegrdsreplicahunt-source-mhpizssmxojm.caxxotukouxo.us-east-1.rds.amazonaws.com",
+          "Port": "3306",
+          "HostedZoneId": "Z2R2ITUGPM61AM"
+        },
+        "LatestRestorableTime": "2026-08-02T09:21:11Z",
+        "MultiAZ": false,
+        "Engine": "mysql",
+        "Tags": [
+          {
+            "Value": "CdkRealDriftIntegRdsReplicaHunt",
+            "Key": "aws:cloudformation:stack-name"
+          },
+          {
+            "Value": "Source",
+            "Key": "aws:cloudformation:logical-id"
+          },
+          {
+            "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegRdsReplicaHunt/4d849b20-8e50-11f1-b1b5-12d34d5ffe2f",
+            "Key": "aws:cloudformation:stack-id"
+          },
+          {
+            "Value": "1",
+            "Key": "cdkrd:ephemeral"
+          }
+        ],
+        "IsStorageConfigUpgradeAvailable": false,
+        "EngineVersion": "8.4.9",
+        "StorageType": "gp2",
+        "DBInstanceStatus": "available",
+        "DBInstanceClass": "db.t4g.micro",
+        "AvailabilityZone": "us-east-1b",
+        "OptionGroupName": "default:mysql-8-4",
+        "EnablePerformanceInsights": false,
+        "ReadReplicaDBInstanceIdentifiers": [
+          "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h"
+        ],
+        "AutoMinorVersionUpgrade": true,
+        "DBSubnetGroupName": "cdkrdhunt-mixed-sng",
+        "DeletionProtection": false,
+        "DBInstanceIdentifier": "cdkrealdriftintegrdsreplicahunt-source-mhpizssmxojm",
+        "AllocatedStorage": "20",
+        "MasterUserSecret": {},
+        "DBSecurityGroups": [],
+        "MasterUsername": "huntadmin",
+        "PubliclyAccessible": false,
+        "AssociatedRoles": [],
+        "InstanceCreateTime": "2026-08-02T09:03:02.823Z",
+        "ProcessorFeatures": [],
+        "PreferredBackupWindow": "08:42-09:12",
+        "NetworkType": "IPV4",
+        "DedicatedLogVolume": false,
+        "CopyTagsToSnapshot": false,
+        "EngineLifecycleSupport": "open-source-rds-extended-support",
+        "LicenseModel": "general-public-license",
+        "PreferredMaintenanceWindow": "fri:05:17-fri:05:47",
+        "BackupTarget": "region",
+        "CACertificateIdentifier": "rds-ca-rsa2048-g1",
+        "ManageMasterUserPassword": false,
+        "VPCSecurityGroups": ["sg-07188a1fc61c7608a"],
+        "EnableIAMDatabaseAuthentication": false,
+        "BackupRetentionPeriod": 1,
+        "EnableCloudwatchLogsExports": []
+      }
+    }
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "SourceDBInstanceIdentifier",
+      "note": "write-only — cannot be read back",
+      "writeOnly": true,
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "DatabaseInsightsMode",
+      "actual": "standard",
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "StorageEncrypted",
+      "actual": false,
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "Port",
+      "actual": "3306",
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "StorageThroughput",
+      "actual": 0,
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "MonitoringInterval",
+      "actual": 0,
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "DBParameterGroupName",
+      "actual": "cdkrdhunt-mixed-dpg",
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "MultiAZ",
+      "actual": false,
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "Engine",
+      "actual": "mysql",
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "EngineVersion",
+      "actual": "8.4.9",
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "StorageType",
+      "actual": "gp2",
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "AvailabilityZone",
+      "actual": "us-east-1a",
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "OptionGroupName",
+      "actual": "default:mysql-8-4",
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "EnablePerformanceInsights",
+      "actual": false,
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "AutoMinorVersionUpgrade",
+      "actual": true,
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "DBSubnetGroupName",
+      "actual": "cdkrdhunt-mixed-sng",
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "AllocatedStorage",
+      "actual": "20",
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "MasterUsername",
+      "actual": "huntadmin",
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "PreferredBackupWindow",
+      "actual": "08:42-09:12",
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "NetworkType",
+      "actual": "IPV4",
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "DedicatedLogVolume",
+      "actual": false,
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "CopyTagsToSnapshot",
+      "actual": false,
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "EngineLifecycleSupport",
+      "actual": "open-source-rds-extended-support",
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "LicenseModel",
+      "actual": "general-public-license",
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "PreferredMaintenanceWindow",
+      "actual": "fri:05:17-fri:05:47",
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "BackupTarget",
+      "actual": "region",
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "CACertificateIdentifier",
+      "actual": "rds-ca-rsa2048-g1",
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "ManageMasterUserPassword",
+      "actual": false,
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "VPCSecurityGroups",
+      "actual": ["sg-07188a1fc61c7608a"],
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "EnableIAMDatabaseAuthentication",
+      "actual": false,
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Replica",
+      "resourceType": "AWS::RDS::DBInstance",
+      "path": "BackupRetentionPeriod",
+      "actual": 0,
+      "physicalId": "cdkrealdriftintegrdsreplicahunt-replica-ewedf2mzxj7h",
+      "constructPath": "CdkRealDriftIntegRdsReplicaHunt/Replica"
+    }
+  ]
+}
