@@ -35,6 +35,12 @@ import {
   ListEnvironmentsCommand,
 } from '@aws-sdk/client-appconfig';
 import {
+  ApplicationAutoScalingClient,
+  DescribeScalingPoliciesCommand,
+  type ScalingPolicy as AasScalingPolicy,
+  type ServiceNamespace as AasServiceNamespace,
+} from '@aws-sdk/client-application-auto-scaling';
+import {
   type ApiKey as AppSyncApiKey,
   AppSyncClient,
   type DataSource as AppSyncDataSource,
@@ -132,6 +138,16 @@ import {
 } from '@aws-sdk/client-eventbridge';
 import { GetTablesCommand, GlueClient, type Table as GlueTable } from '@aws-sdk/client-glue';
 import {
+  type Destination as GuardDutyDestination,
+  GuardDutyClient,
+  ListFiltersCommand,
+  ListIPSetsCommand,
+  ListPublishingDestinationsCommand,
+  ListThreatEntitySetsCommand,
+  ListThreatIntelSetsCommand,
+  ListTrustedEntitySetsCommand,
+} from '@aws-sdk/client-guardduty';
+import {
   type AliasListEntry,
   type GrantListEntry,
   KMSClient,
@@ -171,6 +187,13 @@ import {
   GetResourcePolicyCommand as SecretsGetResourcePolicyCommand,
   SecretsManagerClient,
 } from '@aws-sdk/client-secrets-manager';
+import {
+  DescribeMaintenanceWindowTargetsCommand,
+  DescribeMaintenanceWindowTasksCommand,
+  type MaintenanceWindowTarget as SsmMaintenanceWindowTarget,
+  type MaintenanceWindowTask as SsmMaintenanceWindowTask,
+  SSMClient,
+} from '@aws-sdk/client-ssm';
 import {
   GetTopicAttributesCommand,
   ListSubscriptionsByTopicCommand,
@@ -320,7 +343,12 @@ export type ChildEnumerator = (ctx: EnumeratorContext) => Promise<AddedChild[]>;
 // (scheduled actions + lifecycle hooks, #1540) the twenty-third; Glue databases (tables,
 // #1540) the twenty-fourth; EC2 transit gateways (VPC attachments + route tables, #1540) the
 // twenty-fifth. #1540 also extended existing parents: EC2 VPCs gained NAT gateways + flow
-// logs, Cognito User Pools gained the hosted-UI domain.
+// logs, Cognito User Pools gained the hosted-UI domain. #1713 added GuardDuty detectors
+// (filters / IP sets / threat-intel + threat/trusted entity sets / publishing
+// destinations — an out-of-band SUPPRESSION filter silently mutes findings) the
+// twenty-sixth; SSM maintenance windows (targets + tasks — an added task is an
+// arbitrary-command execution surface) the twenty-seventh; Application Auto Scaling
+// scalable targets (scaling policies) the twenty-eighth.
 export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::S3::Bucket': enumerateS3BucketChildren,
   'AWS::SQS::Queue': enumerateSqsQueueChildren,
@@ -347,6 +375,9 @@ export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::AutoScaling::AutoScalingGroup': enumerateAutoScalingGroupChildren,
   'AWS::Glue::Database': enumerateGlueDatabaseChildren,
   'AWS::EC2::TransitGateway': enumerateTransitGatewayChildren,
+  'AWS::GuardDuty::Detector': enumerateGuardDutyDetectorChildren,
+  'AWS::SSM::MaintenanceWindow': enumerateMaintenanceWindowChildren,
+  'AWS::ApplicationAutoScaling::ScalableTarget': enumerateScalableTargetChildren,
 };
 
 // ── API Gateway ────────────────────────────────────────────────────────────
@@ -6084,4 +6115,389 @@ async function enumerateTransitGatewayChildren(ctx: EnumeratorContext): Promise<
     ...diffTransitGatewayAttachmentChildren({ declaredAttachmentIds, liveAttachments }),
     ...diffTransitGatewayRouteTableChildren({ declaredRouteTableIds, liveRouteTables }),
   ];
+}
+
+// ── GuardDuty ────────────────────────────────────────────────────────────────
+// An `AWS::GuardDuty::Detector` owns Filters, IPSets, ThreatIntelSets,
+// ThreatEntitySets, TrustedEntitySets, and PublishingDestinations — each a separate
+// CloudFormation resource (#1713). An out-of-band `create-filter` (a SUPPRESSION
+// filter that silently MUTES findings), a rogue trusted-IP set (whitelisting an
+// attacker's range), or an added publishing destination (exfiltrating findings to a
+// foreign bucket) is a security-relevant change invisible to cdk drift / CFn drift
+// detection, and the Detector's own live model does not reflect its children. The
+// composite CC identifiers mirror router.ts CC_IDENTIFIER_ADAPTERS: Filter and
+// PublishingDestination are PARENT-first (`<DetectorId>|<NameOrId>`), the *Set family
+// is CHILD-first (`<Id>|<DetectorId>`); the CFn physical id is the bare Name/Id in
+// every case, so `siblingLookupId` carries it for the sibling-stack membership check.
+
+export interface GuardDutyDetectorChildInput {
+  detectorId: string;
+  declaredFilterNames: string[];
+  declaredIpSetIds: string[];
+  declaredThreatIntelSetIds: string[];
+  declaredThreatEntitySetIds: string[];
+  declaredTrustedEntitySetIds: string[];
+  declaredPublishingDestinationIds: string[];
+  liveFilterNames: string[];
+  liveIpSetIds: string[];
+  liveThreatIntelSetIds: string[];
+  liveThreatEntitySetIds: string[];
+  liveTrustedEntitySetIds: string[];
+  livePublishingDestinations: { id: string; destinationType?: string | undefined }[];
+}
+
+export function diffGuardDutyDetectorChildren(input: GuardDutyDetectorChildInput): AddedChild[] {
+  const d = input.detectorId;
+  const added: AddedChild[] = [];
+  const declaredFilters = new Set(input.declaredFilterNames);
+  for (const name of input.liveFilterNames) {
+    if (declaredFilters.has(name)) continue;
+    added.push({
+      resourceType: 'AWS::GuardDuty::Filter',
+      identifier: `${d}|${name}`, // parent-first (compositeWith, router.ts)
+      label: name,
+      live: { DetectorId: d, Name: name },
+      siblingLookupId: name, // the CFn physical id is the bare filter name
+    });
+  }
+  const childFirstSet = (resourceType: string, declaredIds: string[], liveIds: string[]): void => {
+    const declared = new Set(declaredIds);
+    for (const id of liveIds) {
+      if (declared.has(id)) continue;
+      added.push({
+        resourceType,
+        identifier: `${id}|${d}`, // child-first (compositeChildFirstWith, router.ts)
+        label: id,
+        live: { DetectorId: d, Id: id },
+        siblingLookupId: id, // the CFn physical id is the bare set id
+      });
+    }
+  };
+  childFirstSet('AWS::GuardDuty::IPSet', input.declaredIpSetIds, input.liveIpSetIds);
+  childFirstSet(
+    'AWS::GuardDuty::ThreatIntelSet',
+    input.declaredThreatIntelSetIds,
+    input.liveThreatIntelSetIds
+  );
+  childFirstSet(
+    'AWS::GuardDuty::ThreatEntitySet',
+    input.declaredThreatEntitySetIds,
+    input.liveThreatEntitySetIds
+  );
+  childFirstSet(
+    'AWS::GuardDuty::TrustedEntitySet',
+    input.declaredTrustedEntitySetIds,
+    input.liveTrustedEntitySetIds
+  );
+  const declaredDests = new Set(input.declaredPublishingDestinationIds);
+  for (const dest of input.livePublishingDestinations) {
+    if (declaredDests.has(dest.id)) continue;
+    added.push({
+      resourceType: 'AWS::GuardDuty::PublishingDestination',
+      identifier: `${d}|${dest.id}`, // parent-first (compositeWith, router.ts)
+      label: dest.destinationType ? `${dest.id} (${dest.destinationType})` : dest.id,
+      live: { DetectorId: d, Id: dest.id },
+      siblingLookupId: dest.id,
+    });
+  }
+  return added;
+}
+
+async function pageGuardDutyIds(
+  send: (
+    nextToken: string | undefined
+  ) => Promise<{ ids: string[] | undefined; nextToken: string | undefined }>
+): Promise<string[]> {
+  const out: string[] = [];
+  let token: string | undefined;
+  do {
+    const r = await send(token);
+    out.push(...(r.ids ?? []));
+    token = r.nextToken;
+  } while (token);
+  return out;
+}
+
+async function enumerateGuardDutyDetectorChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  const detectorId = parent.physicalId;
+  if (!detectorId) return [];
+
+  // Declared children attributed to THIS detector. A declared child whose DetectorId did
+  // not resolve (or is genuinely absent) still counts as declared for every detector —
+  // fail-safe: never flag a template-declared child as `added`.
+  const declaredOf = (type: string, nameProp?: string): string[] => {
+    const out: string[] = [];
+    for (const r of desired.resources) {
+      if (r.resourceType !== type) continue;
+      const det = r.declared.DetectorId;
+      if (typeof det === 'string' && det.length > 0 && !parentRefMatches(det, detectorId)) {
+        continue;
+      }
+      const name =
+        nameProp && typeof r.declared[nameProp] === 'string'
+          ? (r.declared[nameProp] as string)
+          : r.physicalId;
+      if (name) out.push(name);
+    }
+    return out;
+  };
+
+  const client = new GuardDutyClient({ region, ...READ_RETRY });
+  const liveFilterNames = await pageGuardDutyIds(async (t) => {
+    const r = await client.send(new ListFiltersCommand({ DetectorId: detectorId, NextToken: t }));
+    return { ids: r.FilterNames, nextToken: r.NextToken };
+  });
+  const liveIpSetIds = await pageGuardDutyIds(async (t) => {
+    const r = await client.send(new ListIPSetsCommand({ DetectorId: detectorId, NextToken: t }));
+    return { ids: r.IpSetIds, nextToken: r.NextToken };
+  });
+  const liveThreatIntelSetIds = await pageGuardDutyIds(async (t) => {
+    const r = await client.send(
+      new ListThreatIntelSetsCommand({ DetectorId: detectorId, NextToken: t })
+    );
+    return { ids: r.ThreatIntelSetIds, nextToken: r.NextToken };
+  });
+  const liveThreatEntitySetIds = await pageGuardDutyIds(async (t) => {
+    const r = await client.send(
+      new ListThreatEntitySetsCommand({ DetectorId: detectorId, NextToken: t })
+    );
+    return { ids: r.ThreatEntitySetIds, nextToken: r.NextToken };
+  });
+  const liveTrustedEntitySetIds = await pageGuardDutyIds(async (t) => {
+    const r = await client.send(
+      new ListTrustedEntitySetsCommand({ DetectorId: detectorId, NextToken: t })
+    );
+    return { ids: r.TrustedEntitySetIds, nextToken: r.NextToken };
+  });
+  const liveDests: GuardDutyDestination[] = [];
+  let destToken: string | undefined;
+  do {
+    const r = await client.send(
+      new ListPublishingDestinationsCommand({ DetectorId: detectorId, NextToken: destToken })
+    );
+    liveDests.push(...(r.Destinations ?? []));
+    destToken = r.NextToken;
+  } while (destToken);
+
+  return diffGuardDutyDetectorChildren({
+    detectorId,
+    declaredFilterNames: declaredOf('AWS::GuardDuty::Filter', 'Name'),
+    declaredIpSetIds: declaredOf('AWS::GuardDuty::IPSet'),
+    declaredThreatIntelSetIds: declaredOf('AWS::GuardDuty::ThreatIntelSet'),
+    declaredThreatEntitySetIds: declaredOf('AWS::GuardDuty::ThreatEntitySet'),
+    declaredTrustedEntitySetIds: declaredOf('AWS::GuardDuty::TrustedEntitySet'),
+    declaredPublishingDestinationIds: declaredOf('AWS::GuardDuty::PublishingDestination'),
+    liveFilterNames,
+    liveIpSetIds,
+    liveThreatIntelSetIds,
+    liveThreatEntitySetIds,
+    liveTrustedEntitySetIds,
+    livePublishingDestinations: liveDests
+      .filter(
+        (x): x is GuardDutyDestination & { DestinationId: string } =>
+          typeof x.DestinationId === 'string'
+      )
+      .map((x) => ({ id: x.DestinationId, destinationType: x.DestinationType })),
+  });
+}
+
+// ── SSM Maintenance Window ───────────────────────────────────────────────────
+// An `AWS::SSM::MaintenanceWindow` owns Targets and Tasks, each a separate
+// CloudFormation resource (#1713). An out-of-band `register-task-with-maintenance-window`
+// is an ARBITRARY-COMMAND execution surface (a RUN_COMMAND task fires on every window
+// occurrence), invisible to cdk drift / CFn drift detection; the window's own live model
+// does not reflect its registrations. CC identifiers are PARENT-first
+// (`<WindowId>|<Id>`, router.ts compositeWith); the CFn physical id is the bare
+// WindowTargetId / WindowTaskId, so `siblingLookupId` carries it.
+
+export interface MaintenanceWindowChildInput {
+  windowId: string;
+  declaredTargetIds: string[];
+  declaredTaskIds: string[];
+  liveTargets: { id: string; label?: string | undefined }[];
+  liveTasks: { id: string; label?: string | undefined }[];
+}
+
+export function diffMaintenanceWindowChildren(input: MaintenanceWindowChildInput): AddedChild[] {
+  const w = input.windowId;
+  const added: AddedChild[] = [];
+  const declaredTargets = new Set(input.declaredTargetIds);
+  for (const t of input.liveTargets) {
+    if (declaredTargets.has(t.id)) continue;
+    added.push({
+      resourceType: 'AWS::SSM::MaintenanceWindowTarget',
+      identifier: `${w}|${t.id}`,
+      label: t.label ?? t.id,
+      live: { WindowId: w, Id: t.id },
+      siblingLookupId: t.id,
+    });
+  }
+  const declaredTasks = new Set(input.declaredTaskIds);
+  for (const t of input.liveTasks) {
+    if (declaredTasks.has(t.id)) continue;
+    added.push({
+      resourceType: 'AWS::SSM::MaintenanceWindowTask',
+      identifier: `${w}|${t.id}`,
+      label: t.label ?? t.id,
+      live: { WindowId: w, Id: t.id },
+      siblingLookupId: t.id,
+    });
+  }
+  return added;
+}
+
+async function enumerateMaintenanceWindowChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  const windowId = parent.physicalId; // a MaintenanceWindow's physical id IS its WindowId
+  if (!windowId) return [];
+
+  const declaredIdsOf = (type: string): string[] => {
+    const out: string[] = [];
+    for (const r of desired.resources) {
+      if (r.resourceType !== type || !parentRefMatches(r.declared.WindowId, windowId)) continue;
+      if (r.physicalId) out.push(r.physicalId);
+    }
+    return out;
+  };
+
+  const client = new SSMClient({ region, ...READ_RETRY });
+  const liveTargets: SsmMaintenanceWindowTarget[] = [];
+  let targetToken: string | undefined;
+  do {
+    const r = await client.send(
+      new DescribeMaintenanceWindowTargetsCommand({ WindowId: windowId, NextToken: targetToken })
+    );
+    liveTargets.push(...(r.Targets ?? []));
+    targetToken = r.NextToken;
+  } while (targetToken);
+  const liveTasks: SsmMaintenanceWindowTask[] = [];
+  let taskToken: string | undefined;
+  do {
+    const r = await client.send(
+      new DescribeMaintenanceWindowTasksCommand({ WindowId: windowId, NextToken: taskToken })
+    );
+    liveTasks.push(...(r.Tasks ?? []));
+    taskToken = r.NextToken;
+  } while (taskToken);
+
+  return diffMaintenanceWindowChildren({
+    windowId,
+    declaredTargetIds: declaredIdsOf('AWS::SSM::MaintenanceWindowTarget'),
+    declaredTaskIds: declaredIdsOf('AWS::SSM::MaintenanceWindowTask'),
+    liveTargets: liveTargets
+      .filter(
+        (t): t is SsmMaintenanceWindowTarget & { WindowTargetId: string } =>
+          typeof t.WindowTargetId === 'string'
+      )
+      .map((t) => ({ id: t.WindowTargetId, label: t.Name ?? t.WindowTargetId })),
+    liveTasks: liveTasks
+      .filter(
+        (t): t is SsmMaintenanceWindowTask & { WindowTaskId: string } =>
+          typeof t.WindowTaskId === 'string'
+      )
+      .map((t) => ({
+        id: t.WindowTaskId,
+        label: t.TaskArn ? `${t.WindowTaskId} (${t.Type ?? '?'} ${t.TaskArn})` : t.WindowTaskId,
+      })),
+  });
+}
+
+// ── Application Auto Scaling ─────────────────────────────────────────────────
+// An `AWS::ApplicationAutoScaling::ScalableTarget` owns ScalingPolicies, each a
+// separate CloudFormation resource (#1713). An out-of-band `put-scaling-policy` (the
+// console's "add scaling policy" flow) changes capacity behavior invisibly to cdk
+// drift / CFn drift detection. The CC identifier is `<PolicyARN>|<ScalableDimension>`
+// (router.ts scalingPolicyComposite); the CFn physical id is the bare PolicyARN, so
+// `siblingLookupId` carries it. Only DECLARED scalable targets are scanned —
+// service-managed auto scaling (a DynamoDB GlobalTable replica's internal policies)
+// rides service-created targets that never appear as declared parents, so it is
+// never flagged here.
+
+export interface ScalableTargetChildInput {
+  serviceNamespace: string;
+  resourceId: string;
+  scalableDimension: string;
+  // declared policy identities: the physical id (the PolicyARN) AND the declared
+  // PolicyName both count — a pre-resolution physical id must not flag a declared
+  // policy as added.
+  declaredPolicyArns: string[];
+  declaredPolicyNames: string[];
+  livePolicies: { arn: string; name?: string | undefined }[];
+}
+
+export function diffScalableTargetChildren(input: ScalableTargetChildInput): AddedChild[] {
+  const declaredArns = new Set(input.declaredPolicyArns);
+  const declaredNames = new Set(input.declaredPolicyNames);
+  const added: AddedChild[] = [];
+  for (const p of input.livePolicies) {
+    if (declaredArns.has(p.arn)) continue;
+    if (p.name !== undefined && declaredNames.has(p.name)) continue;
+    added.push({
+      resourceType: 'AWS::ApplicationAutoScaling::ScalingPolicy',
+      identifier: `${p.arn}|${input.scalableDimension}`,
+      label: p.name ?? p.arn,
+      live: {
+        PolicyName: p.name,
+        ScalingTargetId: `${input.resourceId}|${input.scalableDimension}|${input.serviceNamespace}`,
+      },
+      siblingLookupId: p.arn, // the CFn physical id is the bare PolicyARN
+    });
+  }
+  return added;
+}
+
+async function enumerateScalableTargetChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  const ns = parent.declared.ServiceNamespace;
+  const resourceId = parent.declared.ResourceId;
+  const dimension = parent.declared.ScalableDimension;
+  // All three identity props are required + createOnly; an unresolved one means the
+  // live target cannot be addressed — fail-safe, enumerate nothing.
+  if (typeof ns !== 'string' || typeof resourceId !== 'string' || typeof dimension !== 'string') {
+    return [];
+  }
+
+  const declaredPolicyArns: string[] = [];
+  const declaredPolicyNames: string[] = [];
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::ApplicationAutoScaling::ScalingPolicy') continue;
+    // A policy attributes to this target via ScalingTargetId (the target's physical id /
+    // Ref) OR via the ResourceId+ScalableDimension pair form.
+    const viaTargetId =
+      r.declared.ScalingTargetId !== undefined &&
+      parentRefMatches(r.declared.ScalingTargetId, parent.physicalId);
+    const viaPair =
+      r.declared.ResourceId === resourceId && r.declared.ScalableDimension === dimension;
+    if (!viaTargetId && !viaPair) continue;
+    if (r.physicalId) declaredPolicyArns.push(r.physicalId);
+    if (typeof r.declared.PolicyName === 'string') declaredPolicyNames.push(r.declared.PolicyName);
+  }
+
+  const client = new ApplicationAutoScalingClient({ region, ...READ_RETRY });
+  const livePolicies: AasScalingPolicy[] = [];
+  let token: string | undefined;
+  do {
+    const r = await client.send(
+      new DescribeScalingPoliciesCommand({
+        ServiceNamespace: ns as AasServiceNamespace,
+        ResourceId: resourceId,
+        ScalableDimension: dimension as AasScalingPolicy['ScalableDimension'],
+        NextToken: token,
+      })
+    );
+    livePolicies.push(...(r.ScalingPolicies ?? []));
+    token = r.NextToken;
+  } while (token);
+
+  return diffScalableTargetChildren({
+    serviceNamespace: ns,
+    resourceId,
+    scalableDimension: dimension,
+    declaredPolicyArns,
+    declaredPolicyNames,
+    livePolicies: livePolicies
+      .filter((p): p is AasScalingPolicy & { PolicyARN: string } => typeof p.PolicyARN === 'string')
+      .map((p) => ({ arn: p.PolicyARN, name: p.PolicyName })),
+  });
 }
