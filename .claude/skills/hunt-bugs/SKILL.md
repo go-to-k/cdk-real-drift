@@ -438,6 +438,25 @@ risk is only the #763 explicit-write-ignored class, low), EC2 VPCEndpointService
 `SupportedIpAddressTypes` (needs a dualstack NLB in IPv6 subnets), Synthetics Canary
 `Schedule.DurationInSeconds` + Firehose `HttpEndpointDestinationConfiguration.*`
 (nested pins — same auto-`add` note as OpenSearch, low residual).
+Batch 11 (2026-08-02 hunt, #1709/#1710) found the CLASS behind several of these:
+**DERIVED (tier-2) folds had NO revert-side value source at all** — classify builds
+them into its LOCAL knownDef/knownDefPaths, so the RSDP branch sourced the (wrong)
+static value and the nested explicit-`add` branch missed entirely. Live-proven:
+Route53 HealthCheck `HealthCheckConfig.Port` (derived 80/443) bare-remove no-oped;
+ELBv2 TG `HealthCheckProtocol` no-oped on BOTH the GENEVE and HTTPS arms; an RDS
+READ-REPLICA's `BackupRetentionPeriod` reverted to the static 1 instead of the
+derived 0 (a wrong-value revert that silently enables backups). Fixed generally:
+`derivedRevertDefaultFor` (plan.ts) derives through the SHARED
+`normalize/derived-defaults.ts` helpers — **every future derived fold must add its
+resolver arm there + a stackless convergence probe, or its revert is a silent
+no-op/wrong-value by construction.** The same batch surfaced a FIFTH revert-no-op
+flavor: the explicit default write is REJECTED while an incompatible sibling echo
+remains in the CC read-modify-write model (TG back-to-TCP with the L7
+`Matcher`/`HealthCheckPath` present — "matchers are not supported for TCP"; Volume
+back-to-gp2 with the gp3 `Iops`/`Throughput` echoes — "iops is not supported for
+gp2"). Fix = `REVERT_COMPANION_REMOVES` (plan.ts): sibling `remove`s ride the same
+patch, gated on live-presence + not-declared; both combined patches live-converged.
+Cassandra Table `DefaultTimeToLive` CONVERGED via bare remove (no entry needed).
 Piggyback the convergence
 probe on every NEW KNOWN_DEFAULTS fold a hunt ships (mutate → revert → re-read) —
 it is ~1-in-3 to need an RSDP entry, and the probe is nearly free while the stack
@@ -866,6 +885,23 @@ create-parameter-group` both ACCEPT a mixed-case identifier (storing it lowercas
   the paid CFn fixture for the types the handler lets THROUGH (Redshift::Cluster
   ClusterIdentifier, #1589). Tag the probe resource `cdkrd:ephemeral=1` in its desired
   state and delete it immediately.
+- **A case-insensitive fold on the OWNING name prop implies the same FP on every
+  CONSUMER property that references it — audit the referencing props when adding one.**
+  RDS stores group names lowercased and the owning entries were folded one by one, but a
+  raw-CFn consumer referencing `CdkrdHunt-Mixed-DPG` reads back the lowercased STORED
+  name on `DBInstance.DBParameterGroupName` — a permanent declared FP the owning fold
+  never touches (#1712, classify-proven offline + live E2E on rds-replica-hunt
+  2026-08-02; the whole RDS/DocDB/Neptune/ElastiCache/DMS/Redshift family had the gap).
+  The store-lowercases evidence carries over from the owning probe, so the consumer
+  entries are a same-PR one-liner — no new deploy needed beyond one E2E witness.
+- **LakeFormation LF-Tag creation requires the deploying principal to be a data-lake
+  ADMIN** ("Insufficient Lake Formation permission(s): Required Create LF Tag on
+  Catalog") — a hunt must not grant itself account-level LF admin, so the
+  `AWS::LakeFormation::Tag` row stays claim-only; `PrincipalPermissions` (a grant on a
+  throwaway Glue database) deploys fine without admin and was live-proven instead
+  (lakeformation-hunt, 2026-08-02). RDS fixture era-traps from the same round: the
+  default mysql major is now 8.4 (a `mysql8.0` parameter-group family is rejected), and
+  a mysql read replica cannot be created from a `ManageMasterUserPassword` source.
 - **An undeclared-revert "proof" is void if the CDK L2 declares the leaf.** Before
   claiming a revert no-op / convergence proof for an UNDECLARED property, read the
   DEPLOYED template: mutating a value the L2 silently declared (RDS

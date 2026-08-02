@@ -391,6 +391,11 @@ describe('#1704 RDS read-replica inherited echoes', () => {
     AllocatedStorage: '400',
     MasterUsername: 'cdkrdhunt',
     BackupRetentionPeriod: 0,
+    // The group names joined the inherit list 2026-08-02 (live-caught on the
+    // rds-replica-hunt first check): an undeclared replica reads back the SOURCE's
+    // parameter + subnet groups.
+    DBParameterGroupName: 'cdkrdhunt-mixed-dpg',
+    DBSubnetGroupName: 'cdkrdhunt-mixed-sng',
   };
   const srcModels = {
     'src-db-0801': {
@@ -398,6 +403,8 @@ describe('#1704 RDS read-replica inherited echoes', () => {
       Engine: 'postgres',
       AllocatedStorage: '400',
       MasterUsername: 'cdkrdhunt',
+      DBParameterGroupName: 'cdkrdhunt-mixed-dpg',
+      DBSubnetGroupName: 'cdkrdhunt-mixed-sng',
     },
   };
 
@@ -415,9 +422,25 @@ describe('#1704 RDS read-replica inherited echoes', () => {
     expect(pathsByTier(f, 'undeclared')).toEqual(['AllocatedStorage']);
   });
 
+  it('a replica re-pointed at a different parameter group still surfaces (equality gate)', () => {
+    const f = classifyResource(
+      mk(),
+      { ...liveInherited, DBParameterGroupName: 'some-other-group' },
+      replicaSchema,
+      { siblingRdsSourceModels: srcModels }
+    );
+    expect(pathsByTier(f, 'undeclared')).toEqual(['DBParameterGroupName']);
+  });
+
   it('an out-of-stack source (no sibling model) leaves the inherited values unfolded — fail-safe', () => {
     const f = classifyResource(mk(), liveInherited, replicaSchema);
-    expect(pathsByTier(f, 'undeclared')).toEqual(['AllocatedStorage', 'Engine', 'MasterUsername']);
+    expect(pathsByTier(f, 'undeclared')).toEqual([
+      'AllocatedStorage',
+      'DBParameterGroupName',
+      'DBSubnetGroupName',
+      'Engine',
+      'MasterUsername',
+    ]);
   });
 });
 

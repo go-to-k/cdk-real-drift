@@ -2277,9 +2277,20 @@ export async function regatherTouched(
     siblingClientVpnEndpointVpcs: buildClientVpnEndpointSiblingVpcs(desired),
     siblingCloudFrontCdPolicyIds: buildCloudFrontStagingDistCdPolicyIds(
       desired,
-      liveModelMap(reads)
+      new Map([...gathered.liveByLogical, ...liveModelMap(reads)])
     ),
-    siblingRdsSourceModels: buildRdsReplicaSourceModels(desired, liveModelMap(reads)),
+    // #1716: `reads` covers ONLY the touched resources, but these two builders need the
+    // SIBLING'S live model (the replica's SOURCE instance, a CD policy's staging
+    // distribution) — usually NOT among the touched set. Reverting a replica property
+    // re-read just the replica, the source model was absent, and every #1704/#1715
+    // inherited fold failed on the re-read — phantom "drift remains" in the convergence
+    // report (a full `check` right after was CLEAN). Merge the original gather's live map
+    // underneath the fresh touched reads (fresh wins). The CloudFront map above has the
+    // identical narrow-reads exposure, so it gets the same merge.
+    siblingRdsSourceModels: buildRdsReplicaSourceModels(
+      desired,
+      new Map([...gathered.liveByLogical, ...liveModelMap(reads)])
+    ),
     rdsOptionSettingDefaults: await buildRdsOptionSettingDefaults(desired, region),
   };
 

@@ -15,6 +15,12 @@ import {
   isManagedKmsAliasMatch,
 } from '../normalize/arn-identity.js';
 import { stripCcApiAwsManagedFields } from '../normalize/cc-api-strip.js';
+import {
+  elbTargetGroupDerivedHealthCheckPort,
+  elbTargetGroupDerivedHealthCheckProtocol,
+  rdsReplicaDerivedBackupRetention,
+  route53HealthCheckDerivedPort,
+} from '../normalize/derived-defaults.js';
 import { hasUnresolved, UNRESOLVED } from '../normalize/intrinsic-resolver.js';
 import {
   CASE_INSENSITIVE_ARRAY_PATHS,
@@ -3587,9 +3593,18 @@ export function classifyResource(
       // #1696 (hunt 2026-08-01, GENEVE x instance + HTTPS barest groups): a GWLB (GENEVE)
       // group's HC defaults are TCP on the FIXED port 80 (not traffic-port — the earlier
       // GENEVE x ip case DECLARED both, hiding this), and an HTTPS group's HC protocol
-      // default FOLLOWS the group protocol (HTTPS, not the base HTTP pin).
-      ...(protocol === 'GENEVE' ? { HealthCheckProtocol: 'TCP', HealthCheckPort: '80' } : {}),
-      ...(protocol === 'HTTPS' ? { HealthCheckProtocol: 'HTTPS' } : {}),
+      // default FOLLOWS the group protocol (HTTPS, not the base HTTP pin). The NLB-family
+      // TCP arm (#1626, formerly set by the dedicated block below) rides the same shared
+      // derivation — revert/plan.ts derives the identical values through these helpers so
+      // an out-of-band change REVERTS to the derived default too (#1709).
+      ...((): Record<string, unknown> => {
+        const hcProto = elbTargetGroupDerivedHealthCheckProtocol(protocol, targetType);
+        const hcPort = elbTargetGroupDerivedHealthCheckPort(protocol);
+        return {
+          ...(hcProto !== undefined ? { HealthCheckProtocol: hcProto } : {}),
+          ...(hcPort !== undefined ? { HealthCheckPort: hcPort } : {}),
+        };
+      })(),
       ...(protocolVersion === 'GRPC' ? { Matcher: { GrpcCode: '12' } } : {}),
     };
   }
@@ -3773,7 +3788,10 @@ export function classifyResource(
       // (timeout 6 + Matcher, #1546) — do not clobber them with the TCP-family pair.
       declared['TargetType'] !== 'alb'
     ) {
-      knownDef = { ...knownDef, HealthCheckProtocol: 'TCP', HealthCheckTimeoutSeconds: 10 };
+      // HealthCheckProtocol: 'TCP' for this family now rides the shared
+      // elbTargetGroupDerivedHealthCheckProtocol derivation in the #1546 block above
+      // (#1709) — only the timeout stays here.
+      knownDef = { ...knownDef, HealthCheckTimeoutSeconds: 10 };
     }
   }
   // #975: an ElastiCache ReplicationGroup with in-transit encryption enabled at creation
@@ -3901,11 +3919,27 @@ export function classifyResource(
   // (SourceDBInstanceIdentifier is writeOnly — read from the pre-strip snapshot
   // `rdsReplicaSourceId`, never from the stripped `declared`; the #1500 trap.)
   if (resourceType === 'AWS::RDS::DBInstance' && rdsReplicaSourceId !== undefined) {
-    knownDef = { ...knownDef, BackupRetentionPeriod: 0 };
+    // The derived 0 is shared with revert/plan.ts (#1709) so a replica's out-of-band
+    // BRP change reverts to 0, not the static KNOWN_DEFAULTS 1.
+    knownDef = {
+      ...knownDef,
+      BackupRetentionPeriod: rdsReplicaDerivedBackupRetention(rdsReplicaSourceId) ?? 0,
+    };
     const src = opts.siblingRdsSourceModels?.[rdsReplicaSourceId];
     if (src) {
       const inherit: Record<string, unknown> = {};
-      for (const k of ['Engine', 'AllocatedStorage', 'MasterUsername']) {
+      // DBParameterGroupName / DBSubnetGroupName joined the inherit list 2026-08-02: a
+      // replica that declares neither reads back the SOURCE's groups (live-caught on the
+      // rds-replica-hunt first check — the same inheritance mechanism as the original
+      // trio). Equality-gated against the source's live values: a replica re-pointed at a
+      // different group out of band still surfaces.
+      for (const k of [
+        'Engine',
+        'AllocatedStorage',
+        'MasterUsername',
+        'DBParameterGroupName',
+        'DBSubnetGroupName',
+      ]) {
         if (src[k] !== undefined) inherit[k] = src[k];
       }
       knownDef = { ...knownDef, ...inherit };
@@ -3918,12 +3952,10 @@ export function classifyResource(
   // declared dimension. Live-found on a barest HTTP check (freepack-hunt 2026-08-01).
   if (resourceType === 'AWS::Route53::HealthCheck') {
     const hcType = (declared['HealthCheckConfig'] as Record<string, unknown> | undefined)?.['Type'];
-    const defaultPort =
-      hcType === 'HTTP' || hcType === 'HTTP_STR_MATCH'
-        ? 80
-        : hcType === 'HTTPS' || hcType === 'HTTPS_STR_MATCH'
-          ? 443
-          : undefined;
+    // Shared with revert/plan.ts (#1709) so an out-of-band port change on an
+    // undeclared-Port check reverts via an explicit `add` (the bare `remove` was a
+    // live-proven silent no-op).
+    const defaultPort = route53HealthCheckDerivedPort(hcType);
     if (defaultPort !== undefined) {
       knownDefPaths = { ...knownDefPaths, 'HealthCheckConfig.Port': defaultPort };
     }

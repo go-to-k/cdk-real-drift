@@ -207,6 +207,56 @@ describe('regatherTouched (R44 — scoped post-revert convergence re-gather)', (
     });
   });
 
+  it('#1716: the sibling-source live map survives a touched-only re-read (RDS replica)', async () => {
+    // Reverting a property on a read REPLICA re-reads only the replica; the SOURCE's
+    // live model must come from the ORIGINAL gather's liveByLogical or every
+    // #1704/#1715 inherited fold fails on the re-read (phantom "drift remains").
+    const src: Desired['resources'][number] = {
+      logicalId: 'Source',
+      resourceType: 'AWS::RDS::DBInstance',
+      physicalId: 'src-db',
+      declared: { Engine: 'mysql', DBInstanceClass: 'db.t4g.micro' },
+    };
+    const replica: Desired['resources'][number] = {
+      logicalId: 'Replica',
+      resourceType: 'AWS::RDS::DBInstance',
+      physicalId: 'replica-db',
+      declared: { SourceDBInstanceIdentifier: 'src-db', DBInstanceClass: 'db.t4g.micro' },
+    };
+    const g: GatherResult = {
+      desired: {
+        stackName: 'S',
+        region: 'us-east-1',
+        accountId: '111122223333',
+        resources: [src, replica],
+        rawTemplate: '{}',
+        ctx: ctx(),
+      },
+      findings: [],
+      schemas: new Map([['AWS::RDS::DBInstance', EMPTY_SCHEMA]]),
+      // the ORIGINAL gather read the source — only this map carries its live model
+      liveByLogical: new Map([
+        ['Source', { DBInstanceIdentifier: 'src-db', Engine: 'mysql', MasterUsername: 'admin' }],
+      ]),
+    };
+    const cc = mockClient(CloudControlClient);
+    // the replica re-read echoes the source-inherited values
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: {
+        Identifier: 'replica-db',
+        Properties: JSON.stringify({
+          DBInstanceClass: 'db.t4g.micro',
+          Engine: 'mysql',
+          MasterUsername: 'admin',
+        }),
+      },
+    });
+    const post = await regatherTouched(g, new Set(['Replica']), 'us-east-1');
+    // pre-#1716 the source model was absent from the touched-only reads, the inherit
+    // fold failed, and Engine/MasterUsername surfaced as phantom undeclared drift
+    expect(post.filter((f) => f.tier === 'undeclared')).toEqual([]);
+  });
+
   it('a touched resource deleted mid-revert surfaces as deleted', async () => {
     const cc = mockClient(CloudControlClient);
     const notFound = new Error('gone');

@@ -14,6 +14,12 @@ import { withinStackPath } from '../construct-path.js';
 import { partitionForRegion } from '../desired/template-adapter.js';
 import { GETTEMPLATE_MASK_NOTE } from '../diff/classify.js';
 import { TAG_PROPERTY_NAMES } from '../normalize/cc-api-strip.js';
+import {
+  elbTargetGroupDerivedHealthCheckPort,
+  elbTargetGroupDerivedHealthCheckProtocol,
+  rdsReplicaDerivedBackupRetention,
+  route53HealthCheckDerivedPort,
+} from '../normalize/derived-defaults.js';
 import { hasUnresolved, UNRESOLVED } from '../normalize/intrinsic-resolver.js';
 import {
   awsManagedTags,
@@ -498,6 +504,13 @@ export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   'AWS::RDS::DBInstance\0MonitoringInterval',
   'AWS::RDS::DBInstance\0CopyTagsToSnapshot',
   'AWS::RDS::DBInstance\0CACertificateIdentifier',
+  // #1710 (stackless CC probes 2026-08-02): after an OOB modify-volume gp2->gp3, the bare
+  // `remove /VolumeType` reports SUCCESS with the live value unchanged (silent no-op).
+  // The set-default `add gp2` (from KNOWN_DEFAULTS) converges ONLY with the companion
+  // Iops/Throughput removes (REVERT_COMPANION_REMOVES below) riding the same patch — the
+  // naive add alone is rejected while the gp3 echoes remain in the model ("The parameter
+  // iops is not supported for gp2 volumes"). The combined patch live-converged.
+  'AWS::EC2::Volume\0VolumeType',
   'AWS::RDS::DBCluster\0AutoMinorVersionUpgrade',
   'AWS::Neptune::DBInstance\0AutoMinorVersionUpgrade',
   'AWS::ElastiCache::CacheCluster\0AutoMinorVersionUpgrade',
@@ -988,6 +1001,14 @@ export interface RevertOptions {
   // (unit calls without it) the resolution is skipped and the op falls back to the bare
   // `remove` — fail-safe, same as before.
   identity?: { accountId?: string; region?: string };
+  // logicalId -> the resource's declared (desired) model — the gather model, which keeps
+  // write-only values. Needed by the #1709 derived-default revert route (the derivations
+  // are functions of the declared inputs: Route53 HealthCheckConfig.Type, TargetGroup
+  // Protocol/TargetType, the write-only replica marker SourceDBInstanceIdentifier) and by
+  // the #1710 companion-removes guard (never strip a sibling the template declares).
+  // Absent (unit calls without it): derived paths fall back to the static routes exactly
+  // as before — fail-safe.
+  declaredForLogical?: (logicalId: string) => Record<string, unknown> | undefined;
 }
 
 // True when a finding path is AT or UNDER any create-only schema path. The schema's
@@ -1494,7 +1515,8 @@ export function buildRevertPlan(
       const sib = opts.siblingSgRules?.[f.physicalId]?.[sgSide] ?? [];
       if (sib.length > 0) toRevert = { ...f, desired: [...(f.desired as unknown[]), ...sib] };
     }
-    const op = revertOp(toRevert, recorded, opts.identity);
+    const declaredModel = opts.declaredForLogical?.(f.logicalId);
+    const op = revertOp(toRevert, recorded, opts.identity, declaredModel);
     const key = `${f.logicalId} ${kind}${propScoped ? ` ${f.path}` : ''}`;
     const item =
       itemsByLogical.get(key) ??
@@ -1507,6 +1529,28 @@ export function buildRevertPlan(
         ops: [],
       } as RevertItem);
     item.ops.push(op);
+    // #1710: a default write rejected while an incompatible sibling echo remains in the
+    // model (TargetGroup HC back to TCP with L7 Matcher/HealthCheckPath present; Volume
+    // back to gp2 with the gp3 Iops/Throughput echoes) must carry the sibling removes in
+    // the SAME patch — live-proven convergent. Only cc-kind patches (SDK writers build
+    // native payloads); gated on the sibling being present in the raw live model (a
+    // remove of an absent path fails the whole patch) and NOT declared (declared intent
+    // is never stripped — its own declared-tier op governs it).
+    if (kind === 'cc' && op.op === 'add') {
+      const live = opts.liveByLogical?.get(f.logicalId);
+      for (const sibling of REVERT_COMPANION_REMOVES[`${f.resourceType}\0${f.path}`]?.(op.value) ??
+        []) {
+        if (declaredModel?.[sibling] !== undefined) continue;
+        if (!live || live[sibling] === undefined) continue;
+        const siblingPointer = `/${sibling}`;
+        if (item.ops.some((o) => o.path === siblingPointer)) continue;
+        item.ops.push({
+          op: 'remove',
+          path: siblingPointer,
+          human: `${sibling} -> remove (incompatible with the restored default)`,
+        });
+      }
+    }
     itemsByLogical.set(key, item);
   }
 
@@ -1607,10 +1651,69 @@ function contextArnDefaultFor(
   return Array.isArray(template) ? template.map(substitute) : substitute(template);
 }
 
+// #1709: DERIVED defaults (fold tier 2 — classify computes them into its LOCAL
+// knownDef/knownDefPaths, never into the exported static tables) need the SAME value on
+// the revert side, or the revert either bare-`remove`s (live-proven silent no-op on
+// Route53 HealthCheck Port and the ELBv2 TargetGroup health-check pair) or — worse —
+// writes the STATIC table value that the derivation overrides (the RDS replica
+// BackupRetentionPeriod 1-vs-0 wrong-value revert). Derive through the shared
+// normalize/derived-defaults.js helpers so classify and revert can never disagree.
+// `declared` is the gather desired model, which keeps write-only values (the replica
+// marker SourceDBInstanceIdentifier is write-only). Returns undefined for a path/type
+// with no derivation — callers fall through to the static routes.
+function derivedRevertDefaultFor(
+  resourceType: string,
+  path: string,
+  declared: Record<string, unknown> | undefined
+): unknown {
+  if (!declared) return undefined;
+  if (resourceType === 'AWS::Route53::HealthCheck' && path === 'HealthCheckConfig.Port') {
+    return route53HealthCheckDerivedPort(
+      (declared['HealthCheckConfig'] as Record<string, unknown> | undefined)?.['Type']
+    );
+  }
+  if (resourceType === 'AWS::ElasticLoadBalancingV2::TargetGroup') {
+    if (path === 'HealthCheckProtocol') {
+      return elbTargetGroupDerivedHealthCheckProtocol(declared['Protocol'], declared['TargetType']);
+    }
+    if (path === 'HealthCheckPort')
+      return elbTargetGroupDerivedHealthCheckPort(declared['Protocol']);
+  }
+  if (resourceType === 'AWS::RDS::DBInstance' && path === 'BackupRetentionPeriod') {
+    return rdsReplicaDerivedBackupRetention(declared['SourceDBInstanceIdentifier']);
+  }
+  return undefined;
+}
+
+// #1710: some explicit default writes are REJECTED while an incompatible sibling echo
+// remains in Cloud Control's read-modify-write model — the revert patch must carry the
+// sibling removes too. Keyed `${resourceType}\0${path}`; the resolver receives the value
+// being written and returns the TOP-LEVEL sibling keys to drop. Both entries live-proven
+// by stackless CC probes (2026-08-02): the add alone was rejected, the combined patch
+// converged. Applied only when the sibling is present in the raw live model and not
+// declared in the template (a declared sibling is the user's intent — never strip it).
+export const REVERT_COMPANION_REMOVES: Record<string, (value: unknown) => readonly string[]> = {
+  // Reverting the HC protocol back to TCP (GENEVE / NLB-family derived default) while the
+  // out-of-band L7 config remains fails with "Health check matchers are not supported for
+  // TCP health checks" — drop the HTTP-only Matcher/HealthCheckPath echoes.
+  'AWS::ElasticLoadBalancingV2::TargetGroup\0HealthCheckProtocol': (value) =>
+    value === 'TCP' ? ['Matcher', 'HealthCheckPath'] : [],
+  // Reverting VolumeType to a type that forbids the provisioning parameters fails with
+  // "The parameter iops is not supported for gp2 volumes" — drop the gp3/io* echoes (the
+  // service re-materializes the target type's own defaults: gp2 re-read Iops 100).
+  'AWS::EC2::Volume\0VolumeType': (value) =>
+    value === 'gp2' || value === 'standard' || value === 'st1' || value === 'sc1'
+      ? ['Iops', 'Throughput']
+      : value === 'io1' || value === 'io2'
+        ? ['Throughput']
+        : [],
+};
+
 function revertOp(
   f: Finding,
   recorded: BaselineFile['recorded'],
-  identity?: RevertOptions['identity']
+  identity?: RevertOptions['identity'],
+  declaredModel?: Record<string, unknown>
 ): PatchOp {
   const pointer = toPointer(f.path);
   if (f.tier === 'declared') {
@@ -1655,6 +1758,23 @@ function revertOp(
       value: wasRecorded.value,
       prior: f.actual,
       human: `${f.path} -> baseline value`,
+    };
+  }
+  // #1709: a DERIVED default (computed from the declared inputs — never in the static
+  // tables) writes its derived value explicitly, BEFORE the static routes: it must both
+  // rescue the paths the static tables miss (Route53 HealthCheckConfig.Port, the ELBv2
+  // TargetGroup health-check pair — bare `remove` was a live-proven silent no-op) and
+  // OVERRIDE a static value the derivation shadows (an RDS replica's
+  // BackupRetentionPeriod derives 0; the static KNOWN_DEFAULTS 1 sourced below would
+  // silently turn replica backups ON).
+  const derivedDefault = derivedRevertDefaultFor(f.resourceType, f.path, declaredModel);
+  if (derivedDefault !== undefined) {
+    return {
+      op: 'add',
+      path: pointer,
+      value: derivedDefault,
+      prior: f.actual,
+      human: `${f.path} -> AWS default (derived from declared inputs)`,
     };
   }
   // A property the provider won't reset on absence (REVERT_SET_DEFAULT_PATHS): write the

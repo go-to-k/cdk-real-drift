@@ -1,0 +1,67 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "MixedSng",
+    "resourceType": "AWS::RDS::DBSubnetGroup",
+    "physicalId": "cdkrdhunt-mixed-sng",
+    "constructPath": "CdkRealDriftIntegRdsReplicaHunt/MixedSng",
+    "declared": {
+      "DBSubnetGroupDescription": "cdkrd hunt mixed-case subnet group",
+      "DBSubnetGroupName": "CdkrdHunt-Mixed-SNG",
+      "SubnetIds": ["subnet-0f815bc01c990a21a", "subnet-095ca11d9db0e080a"],
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "DBSubnetGroupName": "cdkrdhunt-mixed-sng",
+    "DBSubnetGroupArn": "arn:aws:rds:us-east-1:111111111111:subgrp:cdkrdhunt-mixed-sng",
+    "DBSubnetGroupDescription": "cdkrd hunt mixed-case subnet group",
+    "SubnetIds": ["subnet-0f815bc01c990a21a", "subnet-095ca11d9db0e080a"],
+    "Tags": [
+      {
+        "Value": "CdkRealDriftIntegRdsReplicaHunt",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "MixedSng",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegRdsReplicaHunt/4d849b20-8e50-11f1-b1b5-12d34d5ffe2f",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["DBSubnetGroupArn"],
+    "writeOnly": [],
+    "createOnly": ["DBSubnetGroupName"],
+    "readOnlyPaths": ["DBSubnetGroupArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["DBSubnetGroupName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["SubnetIds"],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": []
+}

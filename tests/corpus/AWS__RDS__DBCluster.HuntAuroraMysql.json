@@ -1,0 +1,341 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HuntAuroraMysql",
+    "resourceType": "AWS::RDS::DBCluster",
+    "physicalId": "cdkrealdriftintegauroramysqlmin-huntauroramysql-evlst5w7s0ey",
+    "constructPath": "CdkRealDriftIntegAuroraMysqlMin/HuntAuroraMysql",
+    "declared": {
+      "Engine": "aurora-mysql",
+      "MasterUserPassword": "cdkrdHuntPassw0rd1",
+      "MasterUsername": "huntadmin",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "DatabaseInsightsMode": "standard",
+    "StorageEncrypted": false,
+    "AssociatedRoles": [],
+    "EnableHttpEndpoint": false,
+    "EngineMode": "provisioned",
+    "Port": 3306,
+    "DBClusterIdentifier": "cdkrealdriftintegauroramysqlmin-huntauroramysql-evlst5w7s0ey",
+    "PreferredBackupWindow": "04:52-05:22",
+    "Endpoint": {
+      "Address": "cdkrealdriftintegauroramysqlmin-huntauroramysql-evlst5w7s0ey.cluster-caxxotukouxo.us-east-1.rds.amazonaws.com",
+      "Port": "3306"
+    },
+    "NetworkType": "IPV4",
+    "VpcSecurityGroupIds": ["sg-0a26e23e2310ee0c9"],
+    "CopyTagsToSnapshot": false,
+    "Engine": "aurora-mysql",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      },
+      {
+        "Value": "CdkRealDriftIntegAuroraMysqlMin",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "HuntAuroraMysql",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkRealDriftIntegAuroraMysqlMin/6216c080-8e42-11f1-856f-0afff17080ab",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ],
+    "EngineLifecycleSupport": "open-source-rds-extended-support",
+    "EngineVersion": "8.0.mysql_aurora.3.10.3",
+    "StorageType": "aurora",
+    "AvailabilityZones": ["us-east-1c", "us-east-1d", "us-east-1b"],
+    "StorageEncryptionType": "sse-rds",
+    "DBClusterArn": "arn:aws:rds:us-east-1:111111111111:cluster:cdkrealdriftintegauroramysqlmin-huntauroramysql-evlst5w7s0ey",
+    "EnableLocalWriteForwarding": false,
+    "PreferredMaintenanceWindow": "tue:06:41-tue:07:11",
+    "DBClusterResourceId": "cluster-UJFFVZOKEHP3PDXCUGQVGSC5NE",
+    "AutoMinorVersionUpgrade": true,
+    "DBSubnetGroupName": "default",
+    "DeletionProtection": false,
+    "AllocatedStorage": 1,
+    "ManageMasterUserPassword": false,
+    "MasterUserSecret": {},
+    "MasterUsername": "huntadmin",
+    "ReadEndpoint": {
+      "Address": "cdkrealdriftintegauroramysqlmin-huntauroramysql-evlst5w7s0ey.cluster-ro-caxxotukouxo.us-east-1.rds.amazonaws.com"
+    },
+    "EnableIAMDatabaseAuthentication": false,
+    "DBClusterParameterGroupName": "default.aurora-mysql8.0",
+    "BackupRetentionPeriod": 1,
+    "EnableCloudwatchLogsExports": []
+  },
+  "schema": {
+    "readOnly": [
+      "DBClusterArn",
+      "DBClusterResourceId",
+      "Endpoint",
+      "ReadEndpoint",
+      "StorageEncryptionType",
+      "StorageThroughput"
+    ],
+    "writeOnly": [
+      "ClusterScalabilityType",
+      "DBInstanceParameterGroupName",
+      "DeleteAutomatedBackups",
+      "MasterUserAuthenticationType",
+      "MasterUserPassword",
+      "RestoreToTime",
+      "RestoreType",
+      "SnapshotIdentifier",
+      "SourceDBClusterIdentifier",
+      "SourceDbClusterResourceId",
+      "SourceRegion",
+      "UseLatestRestorableTime"
+    ],
+    "createOnly": [
+      "AvailabilityZones",
+      "ClusterScalabilityType",
+      "DBClusterIdentifier",
+      "DBSubnetGroupName",
+      "DBSystemId",
+      "DatabaseName",
+      "EngineMode",
+      "KmsKeyId",
+      "PubliclyAccessible",
+      "RestoreToTime",
+      "RestoreType",
+      "SnapshotIdentifier",
+      "SourceDBClusterIdentifier",
+      "SourceDbClusterResourceId",
+      "SourceRegion",
+      "StorageEncrypted",
+      "UseLatestRestorableTime"
+    ],
+    "readOnlyPaths": [
+      "DBClusterArn",
+      "DBClusterResourceId",
+      "Endpoint",
+      "Endpoint.Address",
+      "Endpoint.Port",
+      "MasterUserSecret.SecretArn",
+      "ReadEndpoint",
+      "ReadEndpoint.Address",
+      "StorageEncryptionType",
+      "StorageThroughput"
+    ],
+    "writeOnlyPaths": [
+      "ClusterScalabilityType",
+      "DBInstanceParameterGroupName",
+      "DeleteAutomatedBackups",
+      "MasterUserAuthenticationType",
+      "MasterUserPassword",
+      "RestoreToTime",
+      "RestoreType",
+      "SnapshotIdentifier",
+      "SourceDBClusterIdentifier",
+      "SourceDbClusterResourceId",
+      "SourceRegion",
+      "UseLatestRestorableTime"
+    ],
+    "createOnlyPaths": [
+      "AvailabilityZones",
+      "ClusterScalabilityType",
+      "DBClusterIdentifier",
+      "DBSubnetGroupName",
+      "DBSystemId",
+      "DatabaseName",
+      "EngineMode",
+      "KmsKeyId",
+      "PubliclyAccessible",
+      "RestoreToTime",
+      "RestoreType",
+      "SnapshotIdentifier",
+      "SourceDBClusterIdentifier",
+      "SourceDbClusterResourceId",
+      "SourceRegion",
+      "StorageEncrypted",
+      "UseLatestRestorableTime"
+    ],
+    "defaults": {
+      "BackupRetentionPeriod": 1
+    },
+    "defaultPaths": {
+      "BackupRetentionPeriod": 1
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "HuntAuroraMysql",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "MasterUserPassword",
+      "note": "write-only — cannot be read back",
+      "writeOnly": true,
+      "physicalId": "cdkrealdriftintegauroramysqlmin-huntauroramysql-evlst5w7s0ey",
+      "constructPath": "CdkRealDriftIntegAuroraMysqlMin/HuntAuroraMysql"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAuroraMysql",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "DatabaseInsightsMode",
+      "actual": "standard",
+      "physicalId": "cdkrealdriftintegauroramysqlmin-huntauroramysql-evlst5w7s0ey",
+      "constructPath": "CdkRealDriftIntegAuroraMysqlMin/HuntAuroraMysql"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAuroraMysql",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "EngineMode",
+      "actual": "provisioned",
+      "physicalId": "cdkrealdriftintegauroramysqlmin-huntauroramysql-evlst5w7s0ey",
+      "constructPath": "CdkRealDriftIntegAuroraMysqlMin/HuntAuroraMysql"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAuroraMysql",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "Port",
+      "actual": 3306,
+      "physicalId": "cdkrealdriftintegauroramysqlmin-huntauroramysql-evlst5w7s0ey",
+      "constructPath": "CdkRealDriftIntegAuroraMysqlMin/HuntAuroraMysql"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAuroraMysql",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "PreferredBackupWindow",
+      "actual": "04:52-05:22",
+      "physicalId": "cdkrealdriftintegauroramysqlmin-huntauroramysql-evlst5w7s0ey",
+      "constructPath": "CdkRealDriftIntegAuroraMysqlMin/HuntAuroraMysql"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAuroraMysql",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "NetworkType",
+      "actual": "IPV4",
+      "physicalId": "cdkrealdriftintegauroramysqlmin-huntauroramysql-evlst5w7s0ey",
+      "constructPath": "CdkRealDriftIntegAuroraMysqlMin/HuntAuroraMysql"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAuroraMysql",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "VpcSecurityGroupIds",
+      "actual": ["sg-0a26e23e2310ee0c9"],
+      "physicalId": "cdkrealdriftintegauroramysqlmin-huntauroramysql-evlst5w7s0ey",
+      "constructPath": "CdkRealDriftIntegAuroraMysqlMin/HuntAuroraMysql"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAuroraMysql",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "EngineLifecycleSupport",
+      "actual": "open-source-rds-extended-support",
+      "physicalId": "cdkrealdriftintegauroramysqlmin-huntauroramysql-evlst5w7s0ey",
+      "constructPath": "CdkRealDriftIntegAuroraMysqlMin/HuntAuroraMysql"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAuroraMysql",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "EngineVersion",
+      "actual": "8.0.mysql_aurora.3.10.3",
+      "physicalId": "cdkrealdriftintegauroramysqlmin-huntauroramysql-evlst5w7s0ey",
+      "constructPath": "CdkRealDriftIntegAuroraMysqlMin/HuntAuroraMysql"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAuroraMysql",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "StorageType",
+      "actual": "aurora",
+      "physicalId": "cdkrealdriftintegauroramysqlmin-huntauroramysql-evlst5w7s0ey",
+      "constructPath": "CdkRealDriftIntegAuroraMysqlMin/HuntAuroraMysql"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAuroraMysql",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "AvailabilityZones",
+      "actual": ["us-east-1b", "us-east-1c", "us-east-1d"],
+      "physicalId": "cdkrealdriftintegauroramysqlmin-huntauroramysql-evlst5w7s0ey",
+      "constructPath": "CdkRealDriftIntegAuroraMysqlMin/HuntAuroraMysql"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAuroraMysql",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "PreferredMaintenanceWindow",
+      "actual": "tue:06:41-tue:07:11",
+      "physicalId": "cdkrealdriftintegauroramysqlmin-huntauroramysql-evlst5w7s0ey",
+      "constructPath": "CdkRealDriftIntegAuroraMysqlMin/HuntAuroraMysql"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAuroraMysql",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "AutoMinorVersionUpgrade",
+      "actual": true,
+      "physicalId": "cdkrealdriftintegauroramysqlmin-huntauroramysql-evlst5w7s0ey",
+      "constructPath": "CdkRealDriftIntegAuroraMysqlMin/HuntAuroraMysql"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAuroraMysql",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "DBSubnetGroupName",
+      "actual": "default",
+      "physicalId": "cdkrealdriftintegauroramysqlmin-huntauroramysql-evlst5w7s0ey",
+      "constructPath": "CdkRealDriftIntegAuroraMysqlMin/HuntAuroraMysql"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAuroraMysql",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "AllocatedStorage",
+      "actual": 1,
+      "physicalId": "cdkrealdriftintegauroramysqlmin-huntauroramysql-evlst5w7s0ey",
+      "constructPath": "CdkRealDriftIntegAuroraMysqlMin/HuntAuroraMysql"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAuroraMysql",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "DBClusterParameterGroupName",
+      "actual": "default.aurora-mysql8.0",
+      "physicalId": "cdkrealdriftintegauroramysqlmin-huntauroramysql-evlst5w7s0ey",
+      "constructPath": "CdkRealDriftIntegAuroraMysqlMin/HuntAuroraMysql"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HuntAuroraMysql",
+      "resourceType": "AWS::RDS::DBCluster",
+      "path": "BackupRetentionPeriod",
+      "actual": 1,
+      "physicalId": "cdkrealdriftintegauroramysqlmin-huntauroramysql-evlst5w7s0ey",
+      "constructPath": "CdkRealDriftIntegAuroraMysqlMin/HuntAuroraMysql"
+    }
+  ]
+}
