@@ -1,0 +1,47 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SpotLt",
+    "resourceType": "AWS::EC2::LaunchTemplate",
+    "physicalId": "lt-0c8540f5ef961699e",
+    "constructPath": "CdkrdHunt0803VarPack/SpotLt",
+    "declared": {
+      "LaunchTemplateData": {
+        "InstanceMarketOptions": {
+          "MarketType": "spot"
+        },
+        "InstanceType": "t3.nano"
+      },
+      "LaunchTemplateName": "cdkrd-hunt-varpack-0803-lt"
+    }
+  },
+  "liveRaw": {
+    "LaunchTemplateName": "cdkrd-hunt-varpack-0803-lt",
+    "LaunchTemplateData": {
+      "InstanceType": "t3.nano",
+      "InstanceMarketOptions": {
+        "MarketType": "spot"
+      }
+    }
+  },
+  "schema": {
+    "readOnly": ["DefaultVersionNumber", "LatestVersionNumber", "LaunchTemplateId"],
+    "writeOnly": ["TagSpecifications", "VersionDescription"],
+    "createOnly": ["LaunchTemplateName"],
+    "readOnlyPaths": ["DefaultVersionNumber", "LatestVersionNumber", "LaunchTemplateId"],
+    "writeOnlyPaths": ["TagSpecifications", "VersionDescription"],
+    "createOnlyPaths": ["LaunchTemplateName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

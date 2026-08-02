@@ -45,6 +45,18 @@ export function elbTargetGroupDerivedHealthCheckPort(protocol: unknown): string 
   return protocol === 'GENEVE' ? '80' : undefined;
 }
 
+// Logs LogGroup: a DELIVERY-class group materializes the FIXED 2-day retention
+// (RetentionInDays: 2) that class always carries — a barest DELIVERY group first-ran
+// it as an FP (#1727, varpack-hunt 2026-08-03). STANDARD / INFREQUENT_ACCESS groups
+// omit RetentionInDays entirely when unset, so no arm exists for them. The revert
+// side is UNREACHABLE by construction: PutRetentionPolicy rejects DELIVERY groups
+// ("This operation is not supported for Delivery log class", CLI-probed 2026-08-03),
+// so the value can never drift out of band — the derivedRevertDefaultFor arm exists
+// only to keep the classify/revert single-source invariant.
+export function logsDeliveryDerivedRetention(logGroupClass: unknown): number | undefined {
+  return logGroupClass === 'DELIVERY' ? 2 : undefined;
+}
+
 // RDS DBInstance: a read replica (SourceDBInstanceIdentifier declared) defaults
 // BackupRetentionPeriod to 0, unlike the source's 1 (#1704). The static KNOWN_DEFAULTS
 // entry stays 1 for non-replicas. SourceDBInstanceIdentifier is WRITE-ONLY, so callers

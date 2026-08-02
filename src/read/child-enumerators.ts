@@ -3609,6 +3609,21 @@ async function pageSubscriptionFilters(
   return out;
 }
 
+// #1726: run a Logs child-inventory call, treating the non-Standard-log-class
+// rejection (ValidationException "This operation is only supported on the Standard
+// log class") as an EMPTY inventory — the child kind cannot exist on that class.
+// Any other failure still propagates (a real scan failure must stay loud).
+export async function tolerateNonStandardLogClass<T>(call: () => Promise<T[]>): Promise<T[]> {
+  try {
+    return await call();
+  } catch (e) {
+    const err = e as { name?: unknown; message?: unknown };
+    const msg = typeof err.message === 'string' ? err.message : '';
+    if (err.name === 'ValidationException' && msg.includes('Standard log class')) return [];
+    throw e;
+  }
+}
+
 async function enumerateLogGroupChildren(ctx: EnumeratorContext): Promise<AddedChild[]> {
   const { parent, desired, region } = ctx;
   const logGroupName = parent.physicalId; // a LogGroup's physical id IS its LogGroupName
@@ -3644,11 +3659,19 @@ async function enumerateLogGroupChildren(ctx: EnumeratorContext): Promise<AddedC
   }
 
   const client = new CloudWatchLogsClient({ region, ...READ_RETRY });
-  const filters = await pageMetricFilters(client, logGroupName);
+  // Non-Standard log classes REJECT some child APIs outright — DescribeMetricFilters
+  // throws ValidationException "This operation is only supported on the Standard log
+  // class" for INFREQUENT_ACCESS and DELIVERY groups (live-proven 2026-08-03, #1726).
+  // That rejection means "this child kind cannot exist here", i.e. zero children —
+  // never a scan failure (which would demote the whole resource to skipped on every
+  // check). Guard BOTH calls: the class restriction is the service's to extend.
+  const filters = await tolerateNonStandardLogClass(() => pageMetricFilters(client, logGroupName));
   const liveFilters = filters
     .filter((f): f is CwlMetricFilter & { filterName: string } => typeof f.filterName === 'string')
     .map((f) => ({ name: f.filterName }));
-  const subs = await pageSubscriptionFilters(client, logGroupName);
+  const subs = await tolerateNonStandardLogClass(() =>
+    pageSubscriptionFilters(client, logGroupName)
+  );
   const liveSubs = subs
     .filter(
       (f): f is CwlSubscriptionFilter & { filterName: string } => typeof f.filterName === 'string'

@@ -1,0 +1,86 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "UnmanagedCe",
+    "resourceType": "AWS::Batch::ComputeEnvironment",
+    "physicalId": "arn:aws:batch:us-east-1:111111111111:compute-environment/cdkrd-hunt-varpack-0803-ce",
+    "constructPath": "CdkrdHunt0803VarPack/UnmanagedCe",
+    "declared": {
+      "ComputeEnvironmentName": "cdkrd-hunt-varpack-0803-ce",
+      "ServiceRole": "arn:aws:iam::111111111111:role/CdkrdHunt0803VarPack-BatchServiceRole57930367-bLR0Tr5Y2vd1",
+      "Tags": {
+        "cdkrd:ephemeral": "1"
+      },
+      "Type": "UNMANAGED"
+    }
+  },
+  "liveRaw": {
+    "Type": "UNMANAGED",
+    "ServiceRole": "arn:aws:iam::111111111111:role/CdkrdHunt0803VarPack-BatchServiceRole57930367-bLR0Tr5Y2vd1",
+    "ComputeEnvironmentName": "cdkrd-hunt-varpack-0803-ce",
+    "State": "ENABLED",
+    "ComputeEnvironmentArn": "arn:aws:batch:us-east-1:111111111111:compute-environment/cdkrd-hunt-varpack-0803-ce",
+    "Tags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "schema": {
+    "readOnly": ["ComputeEnvironmentArn"],
+    "writeOnly": ["ReplaceComputeEnvironment", "UpdatePolicy"],
+    "createOnly": ["ComputeEnvironmentName", "EksConfiguration", "Tags", "Type"],
+    "readOnlyPaths": [
+      "ComputeEnvironmentArn",
+      "ComputeResources.Ec2Configuration.*.BatchImageStatus"
+    ],
+    "writeOnlyPaths": [
+      "ComputeResources.UpdateToLatestImageVersion",
+      "ReplaceComputeEnvironment",
+      "UpdatePolicy"
+    ],
+    "createOnlyPaths": [
+      "ComputeEnvironmentName",
+      "ComputeResources.SpotIamFleetRole",
+      "EksConfiguration",
+      "Tags",
+      "Type"
+    ],
+    "defaults": {
+      "ReplaceComputeEnvironment": true
+    },
+    "defaultPaths": {
+      "ComputeResources.UpdateToLatestImageVersion": false,
+      "ReplaceComputeEnvironment": true,
+      "UpdatePolicy.TerminateJobsOnUpdate": false,
+      "UpdatePolicy.JobExecutionTimeoutMinutes": 30,
+      "EksConfiguration.EksClusterArn": false,
+      "EksConfiguration.KubernetesNamespace": false
+    },
+    "unorderedScalarPaths": [
+      "ComputeResources.InstanceTypes",
+      "ComputeResources.SecurityGroupIds",
+      "ComputeResources.Subnets"
+    ],
+    "unorderedObjectArrayPaths": [
+      "ComputeResources.Ec2Configuration",
+      "ComputeResources.LaunchTemplate.Overrides"
+    ],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "UnmanagedCe",
+      "resourceType": "AWS::Batch::ComputeEnvironment",
+      "path": "State",
+      "actual": "ENABLED",
+      "physicalId": "arn:aws:batch:us-east-1:111111111111:compute-environment/cdkrd-hunt-varpack-0803-ce",
+      "constructPath": "CdkrdHunt0803VarPack/UnmanagedCe"
+    }
+  ]
+}

@@ -89,6 +89,7 @@ import {
   UpdateDomainConfigCommand,
 } from '@aws-sdk/client-opensearch';
 import {
+  DeleteTableCommand,
   GetJobCommand,
   GlueClient,
   UpdateClassifierCommand,
@@ -3774,6 +3775,28 @@ const deleteKmsGrant: SdkDeleter = async (ctx) => {
   );
 };
 
+// AWS::Glue::Table: CC has no DELETE handler (UnsupportedActionException at apply,
+// live-hit by the 2026-08-03 added-pack hunt, #1724), so an added table found by the
+// Glue Database child enumerator is deleted via the service's own DeleteTable. The
+// finding's physicalId is the enumerator identifier `<DatabaseName>|<TableName>`
+// (diffGlueDatabaseChildren) — split on the FIRST '|' (a Glue table name cannot
+// contain '|', and the database name comes first). An already-gone table throws
+// EntityNotFoundException ("... not found"), which isAlreadyGone treats as success.
+const deleteGlueTable: SdkDeleter = async (ctx) => {
+  const sep = ctx.physicalId.indexOf('|');
+  if (sep <= 0) {
+    throw new Error(
+      `cannot split the Glue table identifier '${ctx.physicalId}' into DatabaseName|TableName`
+    );
+  }
+  await new GlueClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
+    new DeleteTableCommand({
+      DatabaseName: ctx.physicalId.slice(0, sep),
+      Name: ctx.physicalId.slice(sep + 1),
+    })
+  );
+};
+
 export const SDK_DELETERS: Record<string, SdkDeleter> = {
   'AWS::AppSync::ApiKey': deleteAppSyncApiKey,
   'AWS::Route53::RecordSet': deleteRoute53RecordSet,
@@ -3781,4 +3804,5 @@ export const SDK_DELETERS: Record<string, SdkDeleter> = {
   'AWS::SecretsManager::ResourcePolicy': deleteSecretsManagerResourcePolicy,
   'AWS::SNS::TopicPolicy': deleteSnsTopicPolicy,
   'AWS::KMS::Grant': deleteKmsGrant,
+  'AWS::Glue::Table': deleteGlueTable,
 };

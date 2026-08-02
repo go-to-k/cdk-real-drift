@@ -1,0 +1,41 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "EmailSub",
+    "resourceType": "AWS::SNS::Subscription",
+    "physicalId": "arn:aws:sns:us-east-1:111111111111:cdkrd-hunt-varpack-0803:a051405d-800b-4afd-8161-e6ca071eaa78",
+    "constructPath": "CdkrdHunt0803VarPack/EmailSub",
+    "declared": {
+      "Endpoint": "cdkrd-test@example.com",
+      "Protocol": "email",
+      "TopicArn": "arn:aws:sns:us-east-1:111111111111:cdkrd-hunt-varpack-0803"
+    }
+  },
+  "liveRaw": {
+    "RawMessageDelivery": false,
+    "Endpoint": "cdkrd-test@example.com",
+    "TopicArn": "arn:aws:sns:us-east-1:111111111111:cdkrd-hunt-varpack-0803",
+    "Arn": "arn:aws:sns:us-east-1:111111111111:cdkrd-hunt-varpack-0803:a051405d-800b-4afd-8161-e6ca071eaa78",
+    "Protocol": "email"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": ["Region"],
+    "createOnly": ["Endpoint", "Protocol", "TopicArn"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": ["Region"],
+    "createOnlyPaths": ["Endpoint", "Protocol", "TopicArn"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

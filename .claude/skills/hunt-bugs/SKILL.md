@@ -457,6 +457,18 @@ back-to-gp2 with the gp3 `Iops`/`Throughput` echoes — "iops is not supported f
 gp2"). Fix = `REVERT_COMPANION_REMOVES` (plan.ts): sibling `remove`s ride the same
 patch, gated on live-presence + not-declared; both combined patches live-converged.
 Cassandra Table `DefaultTimeToLive` CONVERGED via bare remove (no entry needed).
+Batch 12 (2026-08-03 hunt): **CodeDeploy DeploymentGroup `DeploymentConfigName`
+no-oped** (the #1723 fold's revert side; explicit CC `add` converged → RSDP entry,
+#1725) — probed by piggybacking on the enum-added2 stack the same day the fold
+shipped, exactly the piggyback rule below. Its sibling `DeploymentStyle` whole-object
+pin stays revert-unproven: the off-default shape is UNREACHABLE on a barest Server
+DG (UpdateDeploymentGroup rejects WITH_TRAFFIC_CONTROL without LoadBalancerInfo) —
+an LB-attached fixture would be needed. And a REVERT-DELETE flavor: an `added`
+**AWS::Glue::Table** delete-kind item failed at apply with UnsupportedActionException
+(CC has no DELETE handler — the #1405 class, but with a trivial service API) → fixed
+as an `SDK_DELETERS` entry splitting the enumerator identifier `db|table` (#1724);
+when an added-child revert fails this way, prefer the #1431 SDK-deleter route over
+the honest-notRevertable set whenever the service has a one-call delete.
 Piggyback the convergence
 probe on every NEW KNOWN_DEFAULTS fold a hunt ships (mutate → revert → re-read) —
 it is ~1-in-3 to need an RSDP entry, and the probe is nearly free while the stack
@@ -664,6 +676,35 @@ the sentinel by hand to bypass the gate.
 
 ## Gotchas (learned the hard way — keep current)
 
+- **An added-direction probe must create its OOB children AFTER `record` — children
+  that pre-date the record are ENDORSED as recorded-added and never surface.** A
+  resumed/reordered run that records while probe children exist silently converts
+  them into baseline-endorsed recorded-added entries (by design, #764), and the
+  subsequent "must surface as added" assert false-fails — it reads exactly like an
+  enumerator FN when it is a sequencing mistake (hit on enum-added2, 2026-08-03).
+  When an added assert misses, FIRST check whether the child pre-dates the baseline;
+  the recovery is delete-children -> re-record -> re-add, not a bug hunt.
+- **Non-Standard-class parents can REJECT a child-inventory API — an enumerator scan
+  failure demotes the whole resource to `skipped` on every check.** Logs
+  DescribeMetricFilters throws ValidationException "only supported on the Standard
+  log class" for INFREQUENT_ACCESS and DELIVERY groups (#1726, live 2026-08-03), so
+  every IA/DELIVERY log group carried a permanent skipped= since the LogGroup
+  enumerator landed. The class rejection means "this child kind cannot exist here" =
+  empty inventory, not a failure. When adding an enumerator, ask which parent
+  VARIANTS reject the List/Describe calls and tolerate exactly that rejection; a
+  DELIVERY-class group also materializes the fixed `RetentionInDays: 2` (a derived
+  fold off the declared LogGroupClass, #1727 — the class axis carries its own
+  defaults, the LogGroupClass twin of the EFS One Zone lesson).
+- **A stale "unreachable id shape" claim dissolves on a fresh deploy — probe before
+  guarding.** The audit-predicted SNS email-subscription literal physical id
+  "pending confirmation" no longer exists: CFn now mints a REAL ARN for a pending
+  sub, the CC read succeeds, and no declared-read guard is needed (varpack-hunt
+  2026-08-03). Era-check any legacy-physical-id lore against a live create before
+  coding around it. Same round's cheap create-time determinations: an UNMANAGED
+  Batch CE REQUIRES an explicit ServiceRole (no SLR fallback, unlike MANAGED), and
+  DynamoDB scaling allows ONE TargetTracking policy per metric spec and REJECTS
+  CustomizedMetricSpecification on its dimensions — an OOB scaling-policy probe
+  needs a second, policy-less declared target (write dimension).
 - **`record` hides undeclared FPs.** A `record→check→CLEAN` fixture only proves the
   DECLARED dimension is FP-free; undeclared mis-classification is snapshotted away.
   To probe it, `check` BEFORE record and read the `atDefault`/`unresolved`/`[Not

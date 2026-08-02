@@ -1,0 +1,70 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ListParam",
+    "resourceType": "AWS::SSM::Parameter",
+    "physicalId": "cdkrd-hunt-varpack-0803-list",
+    "constructPath": "CdkrdHunt0803VarPack/ListParam",
+    "declared": {
+      "Name": "cdkrd-hunt-varpack-0803-list",
+      "Tags": {
+        "cdkrd:ephemeral": "1"
+      },
+      "Type": "StringList",
+      "Value": "alpha,beta,gamma"
+    }
+  },
+  "liveRaw": {
+    "Type": "StringList",
+    "Value": "alpha,beta,gamma",
+    "DataType": "text",
+    "Arn": "arn:aws:ssm:us-east-1:111111111111:parameter/cdkrd-hunt-varpack-0803-list",
+    "Tags": {
+      "aws:cloudformation:stack-name": "CdkrdHunt0803VarPack",
+      "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0803VarPack/9d479e20-8e8f-11f1-a27f-0e3e127fcef9",
+      "cdkrd:ephemeral": "1",
+      "aws:cloudformation:logical-id": "ListParam"
+    },
+    "Name": "cdkrd-hunt-varpack-0803-list",
+    "Tier": "Standard"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": ["Policies"],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": ["Policies"],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "ListParam",
+      "resourceType": "AWS::SSM::Parameter",
+      "path": "DataType",
+      "actual": "text",
+      "physicalId": "cdkrd-hunt-varpack-0803-list",
+      "constructPath": "CdkrdHunt0803VarPack/ListParam"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "ListParam",
+      "resourceType": "AWS::SSM::Parameter",
+      "path": "Tier",
+      "actual": "Standard",
+      "physicalId": "cdkrd-hunt-varpack-0803-list",
+      "constructPath": "CdkrdHunt0803VarPack/ListParam"
+    }
+  ]
+}

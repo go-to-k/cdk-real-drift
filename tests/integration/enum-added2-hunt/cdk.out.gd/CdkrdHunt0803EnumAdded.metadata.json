@@ -1,0 +1,247 @@
+{
+  "/CdkrdHunt0803EnumAdded": [
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "file:///Users/goto/github/cdk-real-drift/.worktrees/hunt-0803/tests/integration/enum-added2-hunt/app.ts:42: (file:///Users/goto/github/cdk-real-drift/.worktrees/hunt-0803/tests/integration/enum-added2-hunt/app.ts:42:1)",
+        "...node internals..."
+      ]
+    },
+    {
+      "type": "aws:cdk:stack-tags",
+      "data": [
+        {
+          "key": "cdkrd:ephemeral",
+          "value": "1"
+        }
+      ]
+    }
+  ],
+  "/CdkrdHunt0803EnumAdded/Window": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "Window"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "file:///Users/goto/github/cdk-real-drift/.worktrees/hunt-0803/tests/integration/enum-added2-hunt/app.ts:45: (file:///Users/goto/github/cdk-real-drift/.worktrees/hunt-0803/tests/integration/enum-added2-hunt/app.ts:45:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CdkrdHunt0803EnumAdded/Target": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "Target"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "file:///Users/goto/github/cdk-real-drift/.worktrees/hunt-0803/tests/integration/enum-added2-hunt/app.ts:52: (file:///Users/goto/github/cdk-real-drift/.worktrees/hunt-0803/tests/integration/enum-added2-hunt/app.ts:52:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CdkrdHunt0803EnumAdded/Task": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "Task"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "file:///Users/goto/github/cdk-real-drift/.worktrees/hunt-0803/tests/integration/enum-added2-hunt/app.ts:57 (:)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CdkrdHunt0803EnumAdded/CdApp": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CdApp"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "file:///Users/goto/github/cdk-real-drift/.worktrees/hunt-0803/tests/integration/enum-added2-hunt/app.ts:68: (file:///Users/goto/github/cdk-real-drift/.worktrees/hunt-0803/tests/integration/enum-added2-hunt/app.ts:68:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CdkrdHunt0803EnumAdded/CdGroup": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CdGroup"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "file:///Users/goto/github/cdk-real-drift/.worktrees/hunt-0803/tests/integration/enum-added2-hunt/app.ts:78 (:)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CdkrdHunt0803EnumAdded/EbApp": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EbApp"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "file:///Users/goto/github/cdk-real-drift/.worktrees/hunt-0803/tests/integration/enum-added2-hunt/app.ts:85: (file:///Users/goto/github/cdk-real-drift/.worktrees/hunt-0803/tests/integration/enum-added2-hunt/app.ts:85:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CdkrdHunt0803EnumAdded/EbTemplate": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EbTemplate"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "file:///Users/goto/github/cdk-real-drift/.worktrees/hunt-0803/tests/integration/enum-added2-hunt/app.ts:88: (file:///Users/goto/github/cdk-real-drift/.worktrees/hunt-0803/tests/integration/enum-added2-hunt/app.ts:88:2)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CdkrdHunt0803EnumAdded/ScaleTarget": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ScaleTarget"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "file:///Users/goto/github/cdk-real-drift/.worktrees/hunt-0803/tests/integration/enum-added2-hunt/app.ts:120: (file:///Users/goto/github/cdk-real-drift/.worktrees/hunt-0803/tests/integration/enum-added2-hunt/app.ts:120:2)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CdkrdHunt0803EnumAdded/ScalePolicy": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ScalePolicy"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "file:///Users/goto/github/cdk-real-drift/.worktrees/hunt-0803/tests/integration/enum-added2-hunt/app.ts:128 (:)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CdkrdHunt0803EnumAdded/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/CdkrdHunt0803EnumAdded/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/CdkrdHunt0803EnumAdded/CdServiceRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CdServiceRole90268239"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Role2 in aws-cdk-lib...",
+        "file:///Users/goto/github/cdk-real-drift/.worktrees/hunt-0803/tests/integration/enum-added2-hunt/app.ts:72: (file:///Users/goto/github/cdk-real-drift/.worktrees/hunt-0803/tests/integration/enum-added2-hunt/app.ts:72:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CdkrdHunt0803EnumAdded/EbBundleBucket/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "EbBundleBucketF2DF513A"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Bucket2 in aws-cdk-lib...",
+        "file:///Users/goto/github/cdk-real-drift/.worktrees/hunt-0803/tests/integration/enum-added2-hunt/app.ts:104 (:)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CdkrdHunt0803EnumAdded/HuntTable/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "HuntTable71D348F5"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Table2 in aws-cdk-lib...",
+        "file:///Users/goto/github/cdk-real-drift/.worktrees/hunt-0803/tests/integration/enum-added2-hunt/app.ts:110: (file:///Users/goto/github/cdk-real-drift/.worktrees/hunt-0803/tests/integration/enum-added2-hunt/app.ts:110:1)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CdkrdHunt0803EnumAdded/ScalingRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ScalingRoleFEB16CD6"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Role2 in aws-cdk-lib...",
+        "file:///Users/goto/github/cdk-real-drift/.worktrees/hunt-0803/tests/integration/enum-added2-hunt/app.ts:117: (file:///Users/goto/github/cdk-real-drift/.worktrees/hunt-0803/tests/integration/enum-added2-hunt/app.ts:117:2)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CdkrdHunt0803EnumAdded/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...App.synth in aws-cdk-lib...",
+        "file:///Users/goto/github/cdk-real-drift/.worktrees/hunt-0803/tests/integration/enum-added2-hunt/app.ts:147 (:)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/CdkrdHunt0803EnumAdded/CDKMetadata/Condition": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadataAvailable"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...App.synth in aws-cdk-lib...",
+        "file:///Users/goto/github/cdk-real-drift/.worktrees/hunt-0803/tests/integration/enum-added2-hunt/app.ts:147 (:)",
+        "...node internals..."
+      ]
+    }
+  ]
+}
