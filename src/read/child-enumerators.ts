@@ -70,6 +70,7 @@ import {
   type LifecycleHook as AsgLifecycleHook,
   type ScheduledUpdateGroupAction as AsgScheduledUpdateGroupAction,
 } from '@aws-sdk/client-auto-scaling';
+import { CodeDeployClient, ListDeploymentGroupsCommand } from '@aws-sdk/client-codedeploy';
 import {
   CloudWatchLogsClient,
   DescribeMetricFiltersCommand,
@@ -124,6 +125,12 @@ import {
   EFSClient,
   type MountTargetDescription,
 } from '@aws-sdk/client-efs';
+import {
+  type ApplicationVersionDescription as EbApplicationVersionDescription,
+  DescribeApplicationsCommand,
+  DescribeApplicationVersionsCommand,
+  ElasticBeanstalkClient,
+} from '@aws-sdk/client-elastic-beanstalk';
 import {
   DescribeListenersCommand,
   DescribeRulesCommand,
@@ -348,7 +355,10 @@ export type ChildEnumerator = (ctx: EnumeratorContext) => Promise<AddedChild[]>;
 // destinations — an out-of-band SUPPRESSION filter silently mutes findings) the
 // twenty-sixth; SSM maintenance windows (targets + tasks — an added task is an
 // arbitrary-command execution surface) the twenty-seventh; Application Auto Scaling
-// scalable targets (scaling policies) the twenty-eighth.
+// scalable targets (scaling policies) the twenty-eighth. #1718 added CodeDeploy
+// applications (deployment groups — an added group is a deployment surface that can
+// push arbitrary revisions to a fleet) the twenty-ninth and Elastic Beanstalk
+// applications (application versions + configuration templates) the thirtieth.
 export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::S3::Bucket': enumerateS3BucketChildren,
   'AWS::SQS::Queue': enumerateSqsQueueChildren,
@@ -378,6 +388,8 @@ export const CHILD_ENUMERATORS: Record<string, ChildEnumerator> = {
   'AWS::GuardDuty::Detector': enumerateGuardDutyDetectorChildren,
   'AWS::SSM::MaintenanceWindow': enumerateMaintenanceWindowChildren,
   'AWS::ApplicationAutoScaling::ScalableTarget': enumerateScalableTargetChildren,
+  'AWS::CodeDeploy::Application': enumerateCodeDeployApplicationChildren,
+  'AWS::ElasticBeanstalk::Application': enumerateElasticBeanstalkApplicationChildren,
 };
 
 // ── API Gateway ────────────────────────────────────────────────────────────
@@ -6499,5 +6511,174 @@ async function enumerateScalableTargetChildren(ctx: EnumeratorContext): Promise<
     livePolicies: livePolicies
       .filter((p): p is AasScalingPolicy & { PolicyARN: string } => typeof p.PolicyARN === 'string')
       .map((p) => ({ arn: p.PolicyARN, name: p.PolicyName })),
+  });
+}
+
+// ── CodeDeploy ───────────────────────────────────────────────────────────────
+// An `AWS::CodeDeploy::Application` owns DeploymentGroups, each a separate
+// CloudFormation resource (#1718). An out-of-band `create-deployment-group` wires a
+// new target set (EC2 tag filters / ASGs / ECS or Lambda targets) and service role
+// onto the application — a deployment surface that can push arbitrary revisions to a
+// fleet — invisible to cdk drift / CFn drift detection, and the Application's own
+// live model does not reflect its groups. The CC identifier is PARENT-first
+// (`<ApplicationName>|<DeploymentGroupName>`, router.ts compositeWith, verified live
+// there); the CFn physical id is the bare DeploymentGroupName, so `siblingLookupId`
+// carries it.
+
+export interface CodeDeployApplicationChildInput {
+  applicationName: string;
+  declaredGroupNames: string[];
+  liveGroupNames: string[];
+}
+
+export function diffCodeDeployApplicationChildren(
+  input: CodeDeployApplicationChildInput
+): AddedChild[] {
+  const app = input.applicationName;
+  const declared = new Set(input.declaredGroupNames);
+  const added: AddedChild[] = [];
+  for (const name of input.liveGroupNames) {
+    if (declared.has(name)) continue;
+    added.push({
+      resourceType: 'AWS::CodeDeploy::DeploymentGroup',
+      identifier: `${app}|${name}`,
+      label: name,
+      live: { ApplicationName: app, DeploymentGroupName: name },
+      siblingLookupId: name, // the CFn physical id is the bare group name
+    });
+  }
+  return added;
+}
+
+async function enumerateCodeDeployApplicationChildren(
+  ctx: EnumeratorContext
+): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  const applicationName = parent.physicalId; // an Application's physical id IS its name
+  if (!applicationName) return [];
+
+  // Declared group identities: the physical id (the group name) AND the declared
+  // DeploymentGroupName both count — a pre-resolution physical id must not flag a
+  // declared group as added.
+  const declaredGroupNames: string[] = [];
+  for (const r of desired.resources) {
+    if (r.resourceType !== 'AWS::CodeDeploy::DeploymentGroup') continue;
+    if (!parentRefMatches(r.declared.ApplicationName, applicationName)) continue;
+    if (r.physicalId) declaredGroupNames.push(r.physicalId);
+    if (typeof r.declared.DeploymentGroupName === 'string') {
+      declaredGroupNames.push(r.declared.DeploymentGroupName);
+    }
+  }
+
+  const client = new CodeDeployClient({ region, ...READ_RETRY });
+  const liveGroupNames: string[] = [];
+  let token: string | undefined;
+  do {
+    const r = await client.send(
+      new ListDeploymentGroupsCommand({ applicationName, nextToken: token })
+    );
+    liveGroupNames.push(...(r.deploymentGroups ?? []));
+    token = r.nextToken;
+  } while (token);
+
+  return diffCodeDeployApplicationChildren({ applicationName, declaredGroupNames, liveGroupNames });
+}
+
+// ── Elastic Beanstalk ────────────────────────────────────────────────────────
+// An `AWS::ElasticBeanstalk::Application` owns ApplicationVersions and
+// ConfigurationTemplates, each a separate CloudFormation resource (#1718). An
+// out-of-band `create-application-version` stages a deployable bundle (the payload a
+// later `update-environment` swaps onto a running environment), and an out-of-band
+// saved configuration (`create-configuration-template` / `eb config save`) changes
+// what a template-based environment launch materializes — both invisible to cdk
+// drift / CFn drift detection, and the Application's own live model reflects
+// neither. CC identifiers are PARENT-first (`<ApplicationName>|<child>`, router.ts
+// compositeWith): ConfigurationTemplate's second part is the TemplateName;
+// ApplicationVersion's is its readOnly `Id`, which EQUALS the version label (the
+// corpus HuntEbAppVersion live read echoes `Id == physicalId`). The CFn physical id
+// is the bare label / template name, so `siblingLookupId` carries it. Neither child
+// type declares its own name in the template (CloudFormation GENERATES the version
+// label / template name), so declared matching is on the physical id alone.
+
+export interface ElasticBeanstalkApplicationChildInput {
+  applicationName: string;
+  declaredVersionLabels: string[];
+  declaredTemplateNames: string[];
+  liveVersionLabels: string[];
+  liveTemplateNames: string[];
+}
+
+export function diffElasticBeanstalkApplicationChildren(
+  input: ElasticBeanstalkApplicationChildInput
+): AddedChild[] {
+  const app = input.applicationName;
+  const added: AddedChild[] = [];
+  const declaredVersions = new Set(input.declaredVersionLabels);
+  for (const label of input.liveVersionLabels) {
+    if (declaredVersions.has(label)) continue;
+    added.push({
+      resourceType: 'AWS::ElasticBeanstalk::ApplicationVersion',
+      identifier: `${app}|${label}`,
+      label,
+      live: { ApplicationName: app, Id: label },
+      siblingLookupId: label, // the CFn physical id is the bare version label
+    });
+  }
+  const declaredTemplates = new Set(input.declaredTemplateNames);
+  for (const name of input.liveTemplateNames) {
+    if (declaredTemplates.has(name)) continue;
+    added.push({
+      resourceType: 'AWS::ElasticBeanstalk::ConfigurationTemplate',
+      identifier: `${app}|${name}`,
+      label: name,
+      live: { ApplicationName: app, TemplateName: name },
+      siblingLookupId: name, // the CFn physical id is the bare template name
+    });
+  }
+  return added;
+}
+
+async function enumerateElasticBeanstalkApplicationChildren(
+  ctx: EnumeratorContext
+): Promise<AddedChild[]> {
+  const { parent, desired, region } = ctx;
+  const applicationName = parent.physicalId; // an Application's physical id IS its name
+  if (!applicationName) return [];
+
+  const declaredIdsOf = (type: string): string[] => {
+    const out: string[] = [];
+    for (const r of desired.resources) {
+      if (r.resourceType !== type) continue;
+      if (!parentRefMatches(r.declared.ApplicationName, applicationName)) continue;
+      if (r.physicalId) out.push(r.physicalId);
+    }
+    return out;
+  };
+
+  const client = new ElasticBeanstalkClient({ region, ...READ_RETRY });
+  const liveVersions: EbApplicationVersionDescription[] = [];
+  let token: string | undefined;
+  do {
+    const r = await client.send(
+      new DescribeApplicationVersionsCommand({ ApplicationName: applicationName, NextToken: token })
+    );
+    liveVersions.push(...(r.ApplicationVersions ?? []));
+    token = r.NextToken;
+  } while (token);
+  // Configuration templates have no list API of their own — the application's own
+  // description carries their names.
+  const apps = await client.send(
+    new DescribeApplicationsCommand({ ApplicationNames: [applicationName] })
+  );
+  const liveTemplateNames = apps.Applications?.[0]?.ConfigurationTemplates ?? [];
+
+  return diffElasticBeanstalkApplicationChildren({
+    applicationName,
+    declaredVersionLabels: declaredIdsOf('AWS::ElasticBeanstalk::ApplicationVersion'),
+    declaredTemplateNames: declaredIdsOf('AWS::ElasticBeanstalk::ConfigurationTemplate'),
+    liveVersionLabels: liveVersions
+      .map((v) => v.VersionLabel)
+      .filter((l): l is string => typeof l === 'string'),
+    liveTemplateNames,
   });
 }
