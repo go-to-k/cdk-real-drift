@@ -1,3 +1,10 @@
+## [0.25.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.25.1...v0.25.2) (2026-08-02)
+
+
+### Bug Fixes
+
+* **hunt:** 2026-08-03 sweep — Glue Table SDK deleter, CodeDeploy DG RSDP, LogGroup class guard + DELIVERY retention fold, case-fold consumers ([#1728](https://github.com/go-to-k/cdk-real-drift/issues/1728)) ([085c9b3](https://github.com/go-to-k/cdk-real-drift/commit/085c9b321ff0093f363d525d601f02467ecfb5e6))
+
 ## [0.25.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.25.0...v0.25.1) (2026-08-02)
 
 
