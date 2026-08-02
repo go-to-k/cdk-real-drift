@@ -925,6 +925,14 @@ grep ': true'` and pair every new truthy pin with its off-state gate. A SINGLE
   into a harvested corpus case's liveRaw, flip, assert) proves the FN for free before
   any deploy, and `DescribeBudget` RETURNS the all-false object (not vanished), so
   the fix is the isTrivialEmpty gate, not the vanished-default baseline family.
+  AND the inverse interaction (#1702, 2026-08-02): **adding a per-leaf pin for a
+  SIBLING leaf can silently re-fold a WHOLLY-undeclared off-flipped object** — the
+  #624 `allLeavesAtSchemaDefault` whole-object rule counts a false leaf as
+  trivially-empty and the newly-pinned sibling as at-default, so the flipped object
+  folds whole (the #911 ImageTestsConfiguration test caught it). Fixed generally
+  (a trivially-empty leaf with a firing MEANINGFUL_WHEN_OFF_NESTED gate refuses the
+  fold), but when adding per-leaf pins under a whole-object-pinned parent, re-run
+  the parent's off-flip test explicitly.
 - **CloudFront ContinuousDeploymentPolicy cannot be attached at distribution
   CREATION** ("Continuous deployment policy is not supported during distribution
   creation" InvalidRequest) — a CD fixture must deploy the primary WITHOUT

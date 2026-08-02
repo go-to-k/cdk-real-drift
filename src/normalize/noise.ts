@@ -2542,7 +2542,36 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     'TableInput.Retention': 0,
     'TableInput.StorageDescriptor.NumberOfBuckets': 0,
   },
+  // #1702: the PARTIAL-declaration dimension of the whole-object NetworkConfiguration
+  // pin — the standard VPC-connector/egress shape declares only EgressConfiguration, so
+  // the undeclared siblings emit at these nested paths (live-probed via a CC read
+  // 2026-08-02: the partial shape fills IngressConfiguration {IsPubliclyAccessible:true}
+  // and IpAddressType IPV4). The all-boolean IngressConfiguration pin pairs with a
+  // MEANINGFUL_WHEN_OFF_NESTED gate in classify.ts (an out-of-band flip to private reads
+  // back a PRESENT all-false object that isTrivialEmpty otherwise swallows); the
+  // IpAddressType constant is plainly equality-gated (a dualstack service surfaces).
+  'AWS::AppRunner::Service': {
+    'NetworkConfiguration.IngressConfiguration': { IsPubliclyAccessible: true },
+    'NetworkConfiguration.IpAddressType': 'IPV4',
+  },
+  // #1702: the PARTIAL-declaration dimension of the whole-object ImageTestsConfiguration
+  // pin (a pipeline declaring only TimeoutMinutes emits each undeclared leaf alone).
+  // ImageTestsEnabled fills `true` on the partial shape and an out-of-band disable reads
+  // back a PRESENT `false` (both live-probed via a CC read 2026-08-02) — paired with the
+  // MEANINGFUL_WHEN_OFF_NESTED gate in classify.ts so the lone false leaf surfaces
+  // (image tests silently skipped otherwise). TimeoutMinutes pins the documented 720
+  // default for the inverse partial shape (equality-gated; a non-default is a
+  // non-trivial number and surfaces with or without a pin).
+  'AWS::ImageBuilder::ImagePipeline': {
+    'ImageTestsConfiguration.ImageTestsEnabled': true,
+    'ImageTestsConfiguration.TimeoutMinutes': 720,
+  },
   'AWS::Route53::HealthCheck': {
+    // #1702: paired with a CONDITIONAL MEANINGFUL_WHEN_OFF_NESTED gate in classify.ts —
+    // an HTTPS(_STR_MATCH) check created without EnableSNI fills `true` and an
+    // out-of-band `--no-enable-sni` reads back a PRESENT `false` (both live-probed
+    // 2026-08-02), previously swallowed by isTrivialEmpty; a non-HTTPS check reads
+    // `false` at CREATION, so the gate fires only on the HTTPS pair.
     'HealthCheckConfig.EnableSNI': true,
     // A health check that declares neither RequestInterval nor FailureThreshold reads back
     // the AWS service defaults (30-second interval, 3 consecutive failures). Equality-gated:
