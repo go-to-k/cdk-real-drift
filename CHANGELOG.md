@@ -1,3 +1,10 @@
+## [0.23.7](https://github.com/go-to-k/cdk-real-drift/compare/v0.23.6...v0.23.7) (2026-08-02)
+
+
+### Bug Fixes
+
+* **revert:** derived-default revert route + companion removes, CidrList reorder + mixed-case reference FP folds, replica group-name inherit (2026-08-02 hunt) ([#1717](https://github.com/go-to-k/cdk-real-drift/issues/1717)) ([8f7609d](https://github.com/go-to-k/cdk-real-drift/commit/8f7609da44c8661673532516eab2ad000174911a))
+
 ## [0.23.6](https://github.com/go-to-k/cdk-real-drift/compare/v0.23.5...v0.23.6) (2026-08-02)
 
 
