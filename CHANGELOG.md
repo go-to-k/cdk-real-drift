@@ -1,3 +1,10 @@
+# [0.25.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.24.0...v0.25.0) (2026-08-02)
+
+
+### Features
+
+* **read:** child enumerators for CodeDeploy Application and Elastic Beanstalk Application ([#1721](https://github.com/go-to-k/cdk-real-drift/issues/1721)) ([324c73d](https://github.com/go-to-k/cdk-real-drift/commit/324c73d3575b874d6fc8976d2a60bb31b796a556))
+
 # [0.24.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.23.7...v0.24.0) (2026-08-02)
 
 
