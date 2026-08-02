@@ -654,6 +654,13 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     // codedeploy-deploymentgroup-readgap). Equality-gated, so a switch to IGNORE
     // still surfaces.
     OutdatedInstancesStrategy: 'UPDATE',
+    // A group created without either property reads back the documented creation
+    // defaults (live-observed on a minimal ApplicationName+ServiceRoleArn group,
+    // Cdkrd1718Verify / #1722 — the corpus Group case declared both, which is why
+    // replay never caught the first-run FP). Equality-gated: an out-of-band switch
+    // to BLUE_GREEN / WITH_TRAFFIC_CONTROL or another deployment config re-surfaces.
+    DeploymentConfigName: 'CodeDeployDefault.OneAtATime',
+    DeploymentStyle: { DeploymentType: 'IN_PLACE', DeploymentOption: 'WITHOUT_TRAFFIC_CONTROL' },
   },
   'AWS::EFS::FileSystem': {
     ThroughputMode: 'bursting',
