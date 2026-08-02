@@ -1,3 +1,11 @@
+# [0.24.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.23.7...v0.24.0) (2026-08-02)
+
+
+### Features
+
+* **read:** child enumerators for GuardDuty Detector, SSM MaintenanceWindow, and Application Auto Scaling ScalableTarget ([#1720](https://github.com/go-to-k/cdk-real-drift/issues/1720)) ([ea0897a](https://github.com/go-to-k/cdk-real-drift/commit/ea0897a07ae58aee3e52aaab067ae0dd4aca6b93))
+* **revert:** Lambda::Permission SDK writer — RemovePermission+AddPermission rebuild with unprojected-condition guard ([#1719](https://github.com/go-to-k/cdk-real-drift/issues/1719)) ([db8dbb6](https://github.com/go-to-k/cdk-real-drift/commit/db8dbb6ee3350d8f6522d28c6ddf6d8d7e771c01))
+
 ## [0.23.7](https://github.com/go-to-k/cdk-real-drift/compare/v0.23.6...v0.23.7) (2026-08-02)
 
 
