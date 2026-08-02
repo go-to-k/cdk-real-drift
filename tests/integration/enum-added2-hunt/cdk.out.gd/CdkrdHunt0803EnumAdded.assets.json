@@ -1,0 +1,20 @@
+{
+  "version": "54.0.0",
+  "files": {
+    "26efd84948a5db62257613e6cfe6421dba6b37be1af03a7c2e9180b03eb4814c": {
+      "displayName": "CdkrdHunt0803EnumAdded Template",
+      "source": {
+        "path": "CdkrdHunt0803EnumAdded.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "current_account-current_region-3c82e87f": {
+          "bucketName": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}",
+          "objectKey": "26efd84948a5db62257613e6cfe6421dba6b37be1af03a7c2e9180b03eb4814c.json",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-file-publishing-role-${AWS::AccountId}-${AWS::Region}"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

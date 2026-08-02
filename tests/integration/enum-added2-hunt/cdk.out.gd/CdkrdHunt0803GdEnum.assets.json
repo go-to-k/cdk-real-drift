@@ -1,0 +1,20 @@
+{
+  "version": "54.0.0",
+  "files": {
+    "c49ca5bc0937faab6e5423641178919b8caaa0c639098c9c5ab00c2b26972807": {
+      "displayName": "CdkrdHunt0803GdEnum Template",
+      "source": {
+        "path": "CdkrdHunt0803GdEnum.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "current_account-current_region-95c81f13": {
+          "bucketName": "cdk-hnb659fds-assets-${AWS::AccountId}-${AWS::Region}",
+          "objectKey": "c49ca5bc0937faab6e5423641178919b8caaa0c639098c9c5ab00c2b26972807.json",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/cdk-hnb659fds-file-publishing-role-${AWS::AccountId}-${AWS::Region}"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

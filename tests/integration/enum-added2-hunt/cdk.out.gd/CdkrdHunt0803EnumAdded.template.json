@@ -1,0 +1,611 @@
+{
+ "Resources": {
+  "Window": {
+   "Type": "AWS::SSM::MaintenanceWindow",
+   "Properties": {
+    "AllowUnassociatedTargets": false,
+    "Cutoff": 1,
+    "Duration": 2,
+    "Name": "cdkrd-hunt-mw-0803",
+    "Schedule": "rate(7 days)",
+    "Tags": [
+     {
+      "Key": "cdkrd:ephemeral",
+      "Value": "1"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "CdkrdHunt0803EnumAdded/Window"
+   }
+  },
+  "Target": {
+   "Type": "AWS::SSM::MaintenanceWindowTarget",
+   "Properties": {
+    "ResourceType": "INSTANCE",
+    "Targets": [
+     {
+      "Key": "tag:cdkrd",
+      "Values": [
+       "hunt-0803"
+      ]
+     }
+    ],
+    "WindowId": {
+     "Ref": "Window"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "CdkrdHunt0803EnumAdded/Target"
+   }
+  },
+  "Task": {
+   "Type": "AWS::SSM::MaintenanceWindowTask",
+   "Properties": {
+    "MaxConcurrency": "1",
+    "MaxErrors": "1",
+    "Priority": 1,
+    "Targets": [
+     {
+      "Key": "WindowTargetIds",
+      "Values": [
+       {
+        "Ref": "Target"
+       }
+      ]
+     }
+    ],
+    "TaskArn": "AWS-RunShellScript",
+    "TaskType": "RUN_COMMAND",
+    "WindowId": {
+     "Ref": "Window"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "CdkrdHunt0803EnumAdded/Task"
+   }
+  },
+  "CdApp": {
+   "Type": "AWS::CodeDeploy::Application",
+   "Properties": {
+    "ApplicationName": "cdkrd-hunt-cd-0803",
+    "ComputePlatform": "Server",
+    "Tags": [
+     {
+      "Key": "cdkrd:ephemeral",
+      "Value": "1"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "CdkrdHunt0803EnumAdded/CdApp"
+   }
+  },
+  "CdServiceRole90268239": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "codedeploy.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Join": [
+       "",
+       [
+        "arn:",
+        {
+         "Ref": "AWS::Partition"
+        },
+        ":iam::aws:policy/service-role/AWSCodeDeployRole"
+       ]
+      ]
+     }
+    ],
+    "Tags": [
+     {
+      "Key": "cdkrd:ephemeral",
+      "Value": "1"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "CdkrdHunt0803EnumAdded/CdServiceRole/Resource"
+   }
+  },
+  "CdGroup": {
+   "Type": "AWS::CodeDeploy::DeploymentGroup",
+   "Properties": {
+    "ApplicationName": {
+     "Ref": "CdApp"
+    },
+    "DeploymentGroupName": "cdkrd-hunt-dg-0803",
+    "ServiceRoleArn": {
+     "Fn::GetAtt": [
+      "CdServiceRole90268239",
+      "Arn"
+     ]
+    },
+    "Tags": [
+     {
+      "Key": "cdkrd:ephemeral",
+      "Value": "1"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "CdkrdHunt0803EnumAdded/CdGroup"
+   }
+  },
+  "EbApp": {
+   "Type": "AWS::ElasticBeanstalk::Application",
+   "Properties": {
+    "ApplicationName": "cdkrd-hunt-eb-0803"
+   },
+   "Metadata": {
+    "aws:cdk:path": "CdkrdHunt0803EnumAdded/EbApp"
+   }
+  },
+  "EbTemplate": {
+   "Type": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+   "Properties": {
+    "ApplicationName": "cdkrd-hunt-eb-0803",
+    "OptionSettings": [
+     {
+      "Namespace": "aws:elasticbeanstalk:environment",
+      "OptionName": "EnvironmentType",
+      "Value": "SingleInstance"
+     }
+    ],
+    "SolutionStackName": "64bit Amazon Linux 2023 v4.13.3 running Docker"
+   },
+   "DependsOn": [
+    "EbApp"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "CdkrdHunt0803EnumAdded/EbTemplate"
+   }
+  },
+  "EbBundleBucketF2DF513A": {
+   "Type": "AWS::S3::Bucket",
+   "Properties": {
+    "BucketName": "cdkrd-hunt-ebbundle-0803-x9z7q",
+    "Tags": [
+     {
+      "Key": "cdkrd:ephemeral",
+      "Value": "1"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "CdkrdHunt0803EnumAdded/EbBundleBucket/Resource"
+   }
+  },
+  "HuntTable71D348F5": {
+   "Type": "AWS::DynamoDB::Table",
+   "Properties": {
+    "AttributeDefinitions": [
+     {
+      "AttributeName": "pk",
+      "AttributeType": "S"
+     }
+    ],
+    "KeySchema": [
+     {
+      "AttributeName": "pk",
+      "KeyType": "HASH"
+     }
+    ],
+    "ProvisionedThroughput": {
+     "ReadCapacityUnits": 1,
+     "WriteCapacityUnits": 1
+    },
+    "Tags": [
+     {
+      "Key": "cdkrd:ephemeral",
+      "Value": "1"
+     }
+    ]
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "CdkrdHunt0803EnumAdded/HuntTable/Resource"
+   }
+  },
+  "ScalingRoleFEB16CD6": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "application-autoscaling.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Tags": [
+     {
+      "Key": "cdkrd:ephemeral",
+      "Value": "1"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "CdkrdHunt0803EnumAdded/ScalingRole/Resource"
+   }
+  },
+  "ScaleTarget": {
+   "Type": "AWS::ApplicationAutoScaling::ScalableTarget",
+   "Properties": {
+    "MaxCapacity": 2,
+    "MinCapacity": 1,
+    "ResourceId": {
+     "Fn::Join": [
+      "",
+      [
+       "table/",
+       {
+        "Ref": "HuntTable71D348F5"
+       }
+      ]
+     ]
+    },
+    "RoleARN": {
+     "Fn::GetAtt": [
+      "ScalingRoleFEB16CD6",
+      "Arn"
+     ]
+    },
+    "ScalableDimension": "dynamodb:table:ReadCapacityUnits",
+    "ServiceNamespace": "dynamodb"
+   },
+   "Metadata": {
+    "aws:cdk:path": "CdkrdHunt0803EnumAdded/ScaleTarget"
+   }
+  },
+  "ScalePolicy": {
+   "Type": "AWS::ApplicationAutoScaling::ScalingPolicy",
+   "Properties": {
+    "PolicyName": "cdkrd-hunt-declared-pol-0803",
+    "PolicyType": "TargetTrackingScaling",
+    "ScalingTargetId": {
+     "Ref": "ScaleTarget"
+    },
+    "TargetTrackingScalingPolicyConfiguration": {
+     "PredefinedMetricSpecification": {
+      "PredefinedMetricType": "DynamoDBReadCapacityUtilization"
+     },
+     "TargetValue": 70
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "CdkrdHunt0803EnumAdded/ScalePolicy"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/3VPQW6EMAx8y95DumXb3tut1FOlCpB6rEziRV4SG5GkCKH8vQIOe9meZjRjz9ilLl9O+niAKRTG9oWjVi91BNMrmMLPEoLXy/nCn0AckYENfhNbmdQ9sYGxw/iPFfqsjFi0ODiZt9TXYXBkIJLwuvS+OR45foyShqwIvF4qcbi6K2aFDkIk0yJwiOD6ezln4Qt1adyEBv3gIGJW4aSXt2T6/cKdZWVnBi+21UsD7d60kazglgopSjDgiLutsDbg1qHbw/XufokjM+esKgySRoNZsVjU1/DwWz7px2d9PFwDUTEmjuRRVzv+AVUr+uuIAQAA"
+   },
+   "Metadata": {
+    "aws:cdk:path": "CdkrdHunt0803EnumAdded/CDKMetadata/Default"
+   },
+   "Condition": "CDKMetadataAvailable"
+  }
+ },
+ "Conditions": {
+  "CDKMetadataAvailable": {
+   "Fn::Or": [
+    {
+     "Fn::Or": [
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "af-south-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-east-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-northeast-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-northeast-2"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-northeast-3"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-south-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-south-2"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-southeast-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-southeast-2"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-southeast-3"
+       ]
+      }
+     ]
+    },
+    {
+     "Fn::Or": [
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ap-southeast-4"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ca-central-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "ca-west-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "cn-north-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "cn-northwest-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-central-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-central-2"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-north-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-south-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-south-2"
+       ]
+      }
+     ]
+    },
+    {
+     "Fn::Or": [
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-west-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-west-2"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "eu-west-3"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "il-central-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "me-central-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "me-south-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "sa-east-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "us-east-1"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "us-east-2"
+       ]
+      },
+      {
+       "Fn::Equals": [
+        {
+         "Ref": "AWS::Region"
+        },
+        "us-west-1"
+       ]
+      }
+     ]
+    },
+    {
+     "Fn::Equals": [
+      {
+       "Ref": "AWS::Region"
+      },
+      "us-west-2"
+     ]
+    }
+   ]
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

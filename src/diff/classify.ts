@@ -18,6 +18,7 @@ import { stripCcApiAwsManagedFields } from '../normalize/cc-api-strip.js';
 import {
   elbTargetGroupDerivedHealthCheckPort,
   elbTargetGroupDerivedHealthCheckProtocol,
+  logsDeliveryDerivedRetention,
   rdsReplicaDerivedBackupRetention,
   route53HealthCheckDerivedPort,
 } from '../normalize/derived-defaults.js';
@@ -3958,6 +3959,14 @@ export function classifyResource(
     const defaultPort = route53HealthCheckDerivedPort(hcType);
     if (defaultPort !== undefined) {
       knownDefPaths = { ...knownDefPaths, 'HealthCheckConfig.Port': defaultPort };
+    }
+  }
+  // A DELIVERY-class log group always carries the fixed 2-day retention (#1727) —
+  // derived from the declared LogGroupClass; the other classes omit the property.
+  if (resourceType === 'AWS::Logs::LogGroup') {
+    const derivedRetention = logsDeliveryDerivedRetention(declared['LogGroupClass']);
+    if (derivedRetention !== undefined) {
+      knownDef = { ...knownDef, RetentionInDays: derivedRetention };
     }
   }
   if (resourceType === 'AWS::ApiGateway::RestApi') {

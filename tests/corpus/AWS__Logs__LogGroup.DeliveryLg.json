@@ -1,0 +1,106 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "DeliveryLg",
+    "resourceType": "AWS::Logs::LogGroup",
+    "physicalId": "cdkrd-hunt-varpack-0803-delivery",
+    "constructPath": "CdkrdHunt0803VarPack/DeliveryLg",
+    "declared": {
+      "LogGroupClass": "DELIVERY",
+      "LogGroupName": "cdkrd-hunt-varpack-0803-delivery",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "FieldIndexPolicies": [],
+    "RetentionInDays": 2,
+    "BearerTokenAuthenticationEnabled": false,
+    "LogGroupClass": "DELIVERY",
+    "LogGroupName": "cdkrd-hunt-varpack-0803-delivery",
+    "Arn": "arn:aws:logs:us-east-1:111111111111:log-group:cdkrd-hunt-varpack-0803-delivery:*",
+    "DeletionProtectionEnabled": false,
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      },
+      {
+        "Value": "CdkrdHunt0803VarPack",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0803VarPack/9d479e20-8e8f-11f1-a27f-0e3e127fcef9",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "DeliveryLg",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ],
+    "DataProtectionPolicy": {}
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": [],
+    "createOnly": ["LogGroupName"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["LogGroupName"],
+    "defaults": {
+      "LogGroupClass": "STANDARD",
+      "DeletionProtectionEnabled": false,
+      "BearerTokenAuthenticationEnabled": false
+    },
+    "defaultPaths": {
+      "LogGroupClass": "STANDARD",
+      "DeletionProtectionEnabled": false,
+      "BearerTokenAuthenticationEnabled": false
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "DeliveryLg",
+      "resourceType": "AWS::Logs::LogGroup",
+      "path": "RetentionInDays",
+      "actual": 2,
+      "physicalId": "cdkrd-hunt-varpack-0803-delivery",
+      "constructPath": "CdkrdHunt0803VarPack/DeliveryLg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DeliveryLg",
+      "resourceType": "AWS::Logs::LogGroup",
+      "path": "BearerTokenAuthenticationEnabled",
+      "actual": false,
+      "physicalId": "cdkrd-hunt-varpack-0803-delivery",
+      "constructPath": "CdkrdHunt0803VarPack/DeliveryLg"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DeliveryLg",
+      "resourceType": "AWS::Logs::LogGroup",
+      "path": "DeletionProtectionEnabled",
+      "actual": false,
+      "physicalId": "cdkrd-hunt-varpack-0803-delivery",
+      "constructPath": "CdkrdHunt0803VarPack/DeliveryLg"
+    }
+  ]
+}

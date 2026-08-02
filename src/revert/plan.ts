@@ -17,6 +17,7 @@ import { TAG_PROPERTY_NAMES } from '../normalize/cc-api-strip.js';
 import {
   elbTargetGroupDerivedHealthCheckPort,
   elbTargetGroupDerivedHealthCheckProtocol,
+  logsDeliveryDerivedRetention,
   rdsReplicaDerivedBackupRetention,
   route53HealthCheckDerivedPort,
 } from '../normalize/derived-defaults.js';
@@ -144,6 +145,14 @@ export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // "null", not a writable value.)
   'AWS::EC2::CapacityReservation\0InstanceMatchCriteria',
   'AWS::EC2::CapacityReservation\0EndDateType',
+  // #1725: CodeDeploy UpdateDeploymentGroup keeps an OMITTED DeploymentConfigName — a bare
+  // `remove` of an out-of-band config-name change reports SUCCESS yet the live value
+  // persists (silent no-op, live-hit on the 2026-08-03 enum-added2 hunt). The explicit
+  // `add /DeploymentConfigName CodeDeployDefault.OneAtATime` (the #1723 KNOWN_DEFAULTS pin)
+  // converges — stackless CC probe 2026-08-03. The sibling DeploymentStyle whole-object pin
+  // stays revert-unproven: its off-default shape is unreachable on a barest Server DG
+  // (UpdateDeploymentGroup rejects WITH_TRAFFIC_CONTROL without LoadBalancerInfo).
+  'AWS::CodeDeploy::DeploymentGroup\0DeploymentConfigName',
   // #1666: writeDlmLifecyclePolicy builds the Update payload from the desired model, so a
   // bare `remove` of the default-policy shorthand RetainInterval never reaches the call —
   // UpdateLifecyclePolicy keeps the live value (silent no-op, live-proven: an out-of-band
@@ -1696,6 +1705,11 @@ function derivedRevertDefaultFor(
   }
   if (resourceType === 'AWS::RDS::DBInstance' && path === 'BackupRetentionPeriod') {
     return rdsReplicaDerivedBackupRetention(declared['SourceDBInstanceIdentifier']);
+  }
+  // Unreachable in practice (PutRetentionPolicy rejects DELIVERY groups, so the value
+  // cannot drift out of band) — kept for the classify/revert single-source invariant.
+  if (resourceType === 'AWS::Logs::LogGroup' && path === 'RetentionInDays') {
+    return logsDeliveryDerivedRetention(declared['LogGroupClass']);
   }
   return undefined;
 }

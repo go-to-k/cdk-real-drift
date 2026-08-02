@@ -1,0 +1,128 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "StreamingJob",
+    "resourceType": "AWS::Glue::Job",
+    "physicalId": "cdkrd-hunt-varpack-0803-streaming",
+    "constructPath": "CdkrdHunt0803VarPack/StreamingJob",
+    "declared": {
+      "Command": {
+        "Name": "gluestreaming",
+        "ScriptLocation": "s3://cdkrd-hunt-varpack-0803-nonexistent/script.py"
+      },
+      "Name": "cdkrd-hunt-varpack-0803-streaming",
+      "Role": "arn:aws:iam::111111111111:role/CdkrdHunt0803VarPack-GlueRoleDEDFFD2C-omu0CzB5QVO8",
+      "Tags": {
+        "cdkrd:ephemeral": "1"
+      }
+    }
+  },
+  "liveRaw": {
+    "MaxRetries": 0,
+    "Role": "arn:aws:iam::111111111111:role/CdkrdHunt0803VarPack-GlueRoleDEDFFD2C-omu0CzB5QVO8",
+    "JobMode": "SCRIPT",
+    "Command": {
+      "PythonVersion": "2",
+      "ScriptLocation": "s3://cdkrd-hunt-varpack-0803-nonexistent/script.py",
+      "Name": "gluestreaming"
+    },
+    "AllocatedCapacity": 10,
+    "GlueVersion": "5.1",
+    "ExecutionProperty": {
+      "MaxConcurrentRuns": 1
+    },
+    "Tags": {
+      "cdkrd:ephemeral": "1"
+    },
+    "JobRunQueuingEnabled": false,
+    "Name": "cdkrd-hunt-varpack-0803-streaming",
+    "MaxCapacity": 10
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "StreamingJob",
+      "resourceType": "AWS::Glue::Job",
+      "path": "MaxRetries",
+      "actual": 0,
+      "physicalId": "cdkrd-hunt-varpack-0803-streaming",
+      "constructPath": "CdkrdHunt0803VarPack/StreamingJob"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "StreamingJob",
+      "resourceType": "AWS::Glue::Job",
+      "path": "JobMode",
+      "actual": "SCRIPT",
+      "physicalId": "cdkrd-hunt-varpack-0803-streaming",
+      "constructPath": "CdkrdHunt0803VarPack/StreamingJob"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "StreamingJob",
+      "resourceType": "AWS::Glue::Job",
+      "path": "AllocatedCapacity",
+      "actual": 10,
+      "physicalId": "cdkrd-hunt-varpack-0803-streaming",
+      "constructPath": "CdkrdHunt0803VarPack/StreamingJob"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "StreamingJob",
+      "resourceType": "AWS::Glue::Job",
+      "path": "GlueVersion",
+      "actual": "5.1",
+      "physicalId": "cdkrd-hunt-varpack-0803-streaming",
+      "constructPath": "CdkrdHunt0803VarPack/StreamingJob"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "StreamingJob",
+      "resourceType": "AWS::Glue::Job",
+      "path": "ExecutionProperty",
+      "actual": {
+        "MaxConcurrentRuns": 1
+      },
+      "physicalId": "cdkrd-hunt-varpack-0803-streaming",
+      "constructPath": "CdkrdHunt0803VarPack/StreamingJob"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "StreamingJob",
+      "resourceType": "AWS::Glue::Job",
+      "path": "MaxCapacity",
+      "actual": 10,
+      "physicalId": "cdkrd-hunt-varpack-0803-streaming",
+      "constructPath": "CdkrdHunt0803VarPack/StreamingJob"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "StreamingJob",
+      "resourceType": "AWS::Glue::Job",
+      "path": "Command.PythonVersion",
+      "actual": "2",
+      "nested": true,
+      "physicalId": "cdkrd-hunt-varpack-0803-streaming",
+      "constructPath": "CdkrdHunt0803VarPack/StreamingJob"
+    }
+  ]
+}

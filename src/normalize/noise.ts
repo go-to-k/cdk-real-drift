@@ -5278,9 +5278,37 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
   // `cdkrdhunt-mixed-sng` — it IS lowercased, so it is now in the family below.)
   'AWS::ElastiCache::SubnetGroup': new Set(['CacheSubnetGroupName']),
   // CacheSubnetGroupName on the cluster/RG = the #1712 referencing-prop of the
-  // SubnetGroup entry above.
-  'AWS::ElastiCache::ReplicationGroup': new Set(['ReplicationGroupId', 'CacheSubnetGroupName']),
-  'AWS::ElastiCache::CacheCluster': new Set(['ClusterName', 'CacheSubnetGroupName']),
+  // SubnetGroup entry above. CacheParameterGroupName joined 2026-08-03: the raw
+  // CreateCacheParameterGroup ACCEPTS a mixed-case name and stores it lowercased
+  // (live-probed: `CdkrdHunt-Mixed-ECPG` -> `cdkrdhunt-mixed-ecpg`), and the
+  // cluster/RG association echo returns the STORED name — the owning CFn type has no
+  // declarable name (AWS::ElastiCache::ParameterGroup mints one), so consumer-only
+  // entries, the Redshift ClusterSubnetGroupName shape. UserGroupIds is the ARRAY
+  // twin in CASE_INSENSITIVE_ARRAY_PATHS below (owning UserId is CFn-UNREACHABLE:
+  // the CC handler rejects mixed case "must contain only lowercase" — but the raw
+  // CreateUser accepts + lowercases, so a template referencing a CLI-created
+  // mixed-case id still FPs on the consumer, both live-probed 2026-08-03).
+  'AWS::ElastiCache::ReplicationGroup': new Set([
+    'ReplicationGroupId',
+    'CacheSubnetGroupName',
+    'CacheParameterGroupName',
+  ]),
+  'AWS::ElastiCache::CacheCluster': new Set([
+    'ClusterName',
+    'CacheSubnetGroupName',
+    'CacheParameterGroupName',
+  ]),
+  // ServerlessCacheName: SDK doc "stored as a lowercase string" — the identical
+  // ElastiCache naming family (unprobed live: a serverless cache create is paid/slow;
+  // the family evidence + docs stand in). UserGroupId = the scalar consumer of the
+  // user-group id store (see the UserIds array-twin note above).
+  'AWS::ElastiCache::ServerlessCache': new Set(['ServerlessCacheName', 'UserGroupId']),
+  // Route53Resolver lowercases rule domain names on store (live-probed 2026-08-03:
+  // `create-resolver-rule --domain-name Mixed.Example.Com` reads back
+  // `mixed.example.com.` — lowercased AND dot-suffixed; the trailing dot is already
+  // normalized separately). DNS names are case-insensitive, so the fold hides no
+  // real change.
+  'AWS::Route53Resolver::ResolverRule': new Set(['DomainName']),
   'AWS::DocDB::DBCluster': new Set([
     'DBClusterIdentifier',
     // #1712 referencing props (owning entries: DocDB DBSubnetGroup / DBClusterParameterGroup).
@@ -5344,7 +5372,11 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
   // handlers reject mixed-case input client-side ("must not contain uppercase characters"
   // — Database probed via Cloud Control create-resource, Table via a raw CFn stack, both
   // 2026-07-14), so the divergence is unreachable via CloudFormation: no entries needed
-  // (the MemoryDB-family determination).
+  // (the MemoryDB-family determination). CONSUMER refs need no entries either
+  // (2026-08-03 determination): unlike the RDS family, a Glue Crawler stores its
+  // DatabaseName reference AS GIVEN (live-probed: `--database-name CdkrdMixedDb0803`
+  // reads back verbatim while the database itself stored `cdkrdmixeddb0803`), so
+  // declared == live and no case FP can arise on the referencing side.
   // ReplicationSubnetGroupIdentifier on the instance = the #1712 referencing prop of the
   // SubnetGroup entry below. (ReplicationTask.ReplicationTaskIdentifier stays UNLISTED —
   // its lowercase storage is unprobed; probing needs a paid replication instance.)
@@ -5359,9 +5391,16 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
   // the legacy provider with no client-side case rejection (the CC CREATE handler does not
   // exist — UnsupportedActionException — so no MemoryDB-style server-side guard applies).
   // Both names are create-only, so case-insensitive equality hides no revertable drift
-  // (#1621). Cluster.ClusterName is NOT listed — unprobed (cluster create is paid/slow).
+  // (#1621).
   'AWS::DAX::ParameterGroup': new Set(['ParameterGroupName']),
   'AWS::DAX::SubnetGroup': new Set(['SubnetGroupName']),
+  // DAX Cluster (added 2026-08-03): ParameterGroupName / SubnetGroupName are the #1712
+  // referencing props of the two live-proven owning entries above — the store-lowercases
+  // evidence carries over, no new probe needed. ClusterName rides the SDK doc ("The
+  // cluster identifier. This parameter is stored as a lowercase string") — the same
+  // wording the probed group names carry; a paid cluster deploy is not warranted for a
+  // create-only identifier where case-fold hides no revertable drift.
+  'AWS::DAX::Cluster': new Set(['ClusterName', 'ParameterGroupName', 'SubnetGroupName']),
   // ACM lowercases certificate domain names on request (live-probed 2026-07-14:
   // `request-certificate --domain-name CdkrdHunt-0714-Probe.Example.Com` describes back
   // `cdkrdhunt-0714-probe.example.com`, SANs likewise), and the CFn path passes mixed case
@@ -5788,6 +5827,15 @@ export const CASE_INSENSITIVE_ARRAY_PATHS: Record<string, ReadonlySet<string>> =
   // event-type set modulo case is not drift while a genuine add/remove still surfaces. The
   // array is schema insertionOrder:false, so order is already immaterial (#1643).
   'AWS::SES::ConfigurationSetEventDestination': new Set(['EventDestination.MatchingEventTypes']),
+  // ElastiCache stores user / user-group ids lowercased (live-probed 2026-08-03: raw
+  // `create-user --user-id CdkrdHunt-Mixed-User2` stores `cdkrdhunt-mixed-user2`; the
+  // CC handlers reject mixed case, so the OWNING ids are CFn-unreachable — but a
+  // template REFERENCING a CLI-created mixed-case id reads back the lowercase stored
+  // form on the association echo, the #1712 consumer shape). Ids are unique modulo
+  // case in the service, so the same id set modulo case is not drift while a genuine
+  // membership change still surfaces.
+  'AWS::ElastiCache::UserGroup': new Set(['UserIds']),
+  'AWS::ElastiCache::ReplicationGroup': new Set(['UserGroupIds']),
 };
 // True when both values are string arrays holding the same multiset of values
 // modulo ASCII case (order- and case-insensitive). Non-string-array inputs never
