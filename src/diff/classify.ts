@@ -227,8 +227,11 @@ const MEANINGFUL_WHEN_OFF: Record<string, Record<string, (ctx: OffStateContext) 
   // no restore/import/legacy path that yields an untouched `false`), so an undeclared `false`
   // is unambiguously an out-of-band disable. (The DB `AutoMinorVersionUpgrade` /
   // `AllowVersionUpgrade`, ELBv2 TargetGroup `HealthCheckEnabled` (Lambda-target conditional),
-  // and the nested Athena/EKS/Cognito-password/EnableSNI switches are DEFERRED to a live-verified
-  // follow-up — a snapshot-restored DB / a Lambda target group can read `false` legitimately.)
+  // and the nested Athena/EKS switches were DEFERRED to live-verified follow-ups — a
+  // snapshot-restored DB / a Lambda target group can read `false` legitimately. Athena/EKS
+  // landed in MEANINGFUL_WHEN_OFF_NESTED below; Cognito-password was determined NON-vulnerable
+  // (#1701 — the partial fill is false); EnableSNI landed as the CONDITIONAL Route53 entry
+  // below, #1702.)
   //
   // A VPC always resolves DNS by default; disabling it out of band breaks name resolution.
   'AWS::EC2::VPC': { EnableDnsSupport: () => true },
@@ -465,6 +468,44 @@ const MEANINGFUL_WHEN_OFF_NESTED: Record<
   // (#1701 determination: Cognito PasswordPolicy Require* leaves do NOT belong here — a
   // partially-declared policy is filled with FALSE by the service, so an undeclared false
   // is the creation state, not an out-of-band disable. See the noise.ts MinimumLength note.)
+  // #1702: an HTTPS(_STR_MATCH) health check fills EnableSNI=true at creation, and an
+  // out-of-band `update-health-check --no-enable-sni` reads back a PRESENT `false` (both
+  // live-probed 2026-08-02) that isTrivialEmpty swallowed — TLS SNI/cert-hostname
+  // validation silently off. CONDITIONAL on the check type: a non-HTTPS check legitimately
+  // reads `false` at creation (live-probed on an HTTP check the same day), so the gate
+  // fires only when the declared (or live) Type is the HTTPS pair.
+  'AWS::Route53::HealthCheck': {
+    'HealthCheckConfig.EnableSNI': ({ declared, live }) => {
+      const cfg = (declared['HealthCheckConfig'] ?? live['HealthCheckConfig']) as
+        | Record<string, unknown>
+        | undefined;
+      const t = cfg?.['Type'];
+      return t === 'HTTPS' || t === 'HTTPS_STR_MATCH';
+    },
+  },
+  // #1702: an App Runner service that declares NetworkConfiguration PARTIALLY (the
+  // standard egress/VPC-connector shape) emits the undeclared IngressConfiguration
+  // sub-object whole — the service fills {IsPubliclyAccessible: true} on that shape and
+  // an out-of-band update to PRIVATE reads back a PRESENT all-false object (both
+  // live-probed 2026-08-02), swallowed by isTrivialEmpty — the public/private ingress
+  // toggle silently flips. Unconditionally meaningful when off: a user who wants a
+  // private service DECLARES it, and a service has no snapshot/restore lineage yielding
+  // an untouched all-false. Paired with the KNOWN_DEFAULT_PATHS pin (the clean fold).
+  'AWS::AppRunner::Service': {
+    'NetworkConfiguration.IngressConfiguration': () => true,
+  },
+  // #1702: an ImagePipeline that declares ImageTestsConfiguration PARTIALLY (only
+  // TimeoutMinutes) emits the ImageTestsEnabled leaf alone — the service fills it `true`
+  // on that shape and an out-of-band `update-image-pipeline` disable reads back a PRESENT
+  // `false` (both live-probed via a CC read 2026-08-02), swallowed by isTrivialEmpty —
+  // image tests silently skipped (supply-chain adjacent). Unconditionally meaningful when
+  // off: a user who wants tests off DECLARES it, and a pipeline has no snapshot/restore
+  // lineage yielding an untouched false. (The wholly-undeclared off-flip already surfaces:
+  // the flipped whole object keeps the non-trivial TimeoutMinutes, breaking the
+  // whole-object pin equality.) Paired with the KNOWN_DEFAULT_PATHS per-leaf pins.
+  'AWS::ImageBuilder::ImagePipeline': {
+    'ImageTestsConfiguration.ImageTestsEnabled': () => true,
+  },
   // #1530: an ECS service that ENABLES the deployment circuit breaker reads back the AWS-filled
   // sub-default ResetOnHealthyTask=true (the KNOWN_DEFAULT_PATHS pin, live-observed on a fresh
   // Fargate service). An out-of-band UpdateService flipping it false is swallowed by
@@ -4241,7 +4282,24 @@ export function classifyResource(
   // schema-annotated defaults (e.g. KinesisVideo StreamStorageConfiguration `{DefaultStorageTier:"HOT"}`)
   // fold whole atDefault WITHOUT a per-type DESCEND_UNDECLARED_OBJECT_PATHS entry.
   const allLeavesAtSchemaDefault = (value: unknown, basePath: string): boolean => {
-    if (isTrivialEmpty(value)) return true;
+    if (isTrivialEmpty(value)) {
+      // #1702: a trivially-empty leaf (or all-false sub-object) whose path carries a pinned
+      // default AND a firing MEANINGFUL_WHEN_OFF_NESTED gate is an out-of-band OFF state,
+      // not an AWS-materialized default — refuse the fold so the enclosing object surfaces.
+      // (Without this, adding a per-leaf pin for a SIBLING leaf can silently re-fold a
+      // wholly-undeclared off-flipped object: the #911 ImageTestsConfiguration
+      // {ImageTestsEnabled:false, TimeoutMinutes:720} shape folded whole the moment
+      // TimeoutMinutes gained its 720 pin, because the false leaf counted as trivially-empty.)
+      const schemaPath = basePath.replace(/\[[^\]]*\]/g, '.*');
+      if (
+        schemaPath in knownDefPaths &&
+        !matchesKnownDefault(value, knownDefPaths[schemaPath]) &&
+        (MEANINGFUL_WHEN_OFF_NESTED[resourceType]?.[schemaPath]?.({ declared, live }) ?? false)
+      ) {
+        return false;
+      }
+      return true;
+    }
     if (Array.isArray(value)) return false;
     if (isNestedObject(value))
       return Object.entries(value).every(([sk, sv]) =>
