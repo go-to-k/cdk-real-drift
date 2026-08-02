@@ -205,10 +205,11 @@ export const CC_IDENTIFIER_ADAPTERS: Record<
   'AWS::ElasticBeanstalk::ConfigurationTemplate': compositeWith('ApplicationName'),
   // ElasticBeanstalk ApplicationVersion primaryIdentifier is [ApplicationName, Id] —
   // parent-first, the same shape as its ConfigurationTemplate sibling above. The CFn
-  // physical id is the bare version label; the ApplicationName comes from the resolved
-  // declared Ref, so it almost certainly shares the same composite read-gap. Added
-  // BY ANALOGY with the live-proven ConfigurationTemplate (#493) — not separately
-  // live-verified this round.
+  // physical id is the bare version label (== the readOnly `Id`); the ApplicationName
+  // comes from the resolved declared Ref. Originally added by analogy with the
+  // live-proven ConfigurationTemplate (#493); since verified live (#1718 / PR #1721,
+  // Cdkrd1718Verify): `ApplicationName|<label>` reads back the full model of an
+  // out-of-band-created version.
   'AWS::ElasticBeanstalk::ApplicationVersion': compositeWith('ApplicationName'),
   // AutoScaling ScheduledAction primaryIdentifier is [ScheduledActionName,
   // AutoScalingGroupName] — CHILD-first, the REVERSE of its sibling LifecycleHook
