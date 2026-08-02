@@ -69,6 +69,7 @@
     "@aws-sdk/client-cloudwatch": "^3.1078.0",
     "@aws-sdk/client-cloudwatch-logs": "^3.1066.0",
     "@aws-sdk/client-codebuild": "^3.1068.0",
+    "@aws-sdk/client-codedeploy": "^3.1081.0",
     "@aws-sdk/client-cognito-identity-provider": "^3.1069.0",
     "@aws-sdk/client-cognito-sync": "^3.1075.0",
     "@aws-sdk/client-config-service": "^3.1075.0",
