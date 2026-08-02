@@ -1,3 +1,10 @@
+## [0.23.6](https://github.com/go-to-k/cdk-real-drift/compare/v0.23.5...v0.23.6) (2026-08-02)
+
+
+### Bug Fixes
+
+* **diff:** [#1702](https://github.com/go-to-k/cdk-real-drift/issues/1702) off-flip FN gates — Route53 EnableSNI (HTTPS-conditional), ImageBuilder ImageTestsEnabled, AppRunner IngressConfiguration + allLeavesAtSchemaDefault off-gate honor ([#1708](https://github.com/go-to-k/cdk-real-drift/issues/1708)) ([ea27f6d](https://github.com/go-to-k/cdk-real-drift/commit/ea27f6d9a46fdb04c0c08970eda3fbb8e4f5416f))
+
 ## [0.23.5](https://github.com/go-to-k/cdk-real-drift/compare/v0.23.4...v0.23.5) (2026-08-01)
 
 
