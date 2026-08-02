@@ -2731,7 +2731,9 @@ describe('buildRevertPlan', () => {
       [
         F({ tier: 'readGap' }),
         F({ tier: 'unresolved' }),
-        F({ tier: 'declared', resourceType: 'AWS::Lambda::Permission', desired: {} }), // CC-gap, no SDK writer
+        // CC-gap read-override type with no SDK writer (DMS Endpoint is read-ONLY —
+        // ModifyEndpoint writers deferred; Lambda::Permission graduated to a writer in #1714)
+        F({ tier: 'declared', resourceType: 'AWS::DMS::Endpoint', desired: {} }),
         F({ tier: 'declared', physicalId: undefined, desired: 'x' }),
       ],
       undefined
@@ -2857,13 +2859,17 @@ describe('buildRevertPlan', () => {
     ]);
   });
 
-  it('Lambda Permission stays not-revertable, but Budgets Budget now routes to its SDK writer (#1676)', () => {
-    // Budgets Budget graduated out of the not-revertable set (it has writeBudget now); Lambda
-    // Permission stays barred (still no SDK writer — its ADD/REMOVE statement model is not
-    // reconstructable from the thin override reader).
+  it('Lambda Permission and Budgets Budget both route to their SDK writers (#1676, #1714)', () => {
+    // Both graduated out of the not-revertable set: Budgets via writeBudget (#1676),
+    // Lambda Permission via the RemovePermission+AddPermission rebuild writer (#1714).
     const plan = buildRevertPlan(
       [
-        F({ tier: 'declared', resourceType: 'AWS::Lambda::Permission', desired: {} }),
+        F({
+          tier: 'declared',
+          logicalId: 'Perm',
+          resourceType: 'AWS::Lambda::Permission',
+          desired: {},
+        }),
         F({
           tier: 'declared',
           resourceType: 'AWS::Budgets::Budget',
@@ -2875,12 +2881,35 @@ describe('buildRevertPlan', () => {
       ],
       undefined
     );
+    expect(plan.items).toHaveLength(2);
+    expect(plan.items.map((i) => [i.resourceType, i.kind]).sort()).toEqual([
+      ['AWS::Budgets::Budget', 'sdk'],
+      ['AWS::Lambda::Permission', 'sdk'],
+    ]);
+    expect(plan.notRevertable).toHaveLength(0);
+  });
+
+  it('#1714: a create-only path on a REBUILD-writer type is NOT barred (SDK_REBUILD_WRITER_TYPES)', () => {
+    // Every Lambda::Permission property is createOnly in the registry schema (the
+    // resource is CFn-immutable), but the remove+re-add writer applies the change by
+    // construction — the create-only bar must not fire. A non-rebuild type with the
+    // same schema shape stays barred (the S3 BucketName tests below).
+    const plan = buildRevertPlan(
+      [
+        F({
+          tier: 'declared',
+          resourceType: 'AWS::Lambda::Permission',
+          path: 'SourceArn',
+          desired: 'arn:aws:execute-api:us-east-1:1:api/*/GET/x',
+          actual: 'arn:aws:execute-api:us-east-1:1:ROGUE/*',
+        }),
+      ],
+      undefined,
+      { schemas: schemaWithCreateOnly('AWS::Lambda::Permission', 'SourceArn') }
+    );
     expect(plan.items).toHaveLength(1);
-    expect(plan.items[0]!.resourceType).toBe('AWS::Budgets::Budget');
     expect(plan.items[0]!.kind).toBe('sdk');
-    expect(plan.notRevertable).toHaveLength(1);
-    expect(plan.notRevertable[0]!.resourceType).toBe('AWS::Lambda::Permission');
-    expect(plan.notRevertable[0]!.reason).toContain('not revertable');
+    expect(plan.notRevertable).toHaveLength(0);
   });
 
   it('R35: UNRECORDED create-only value -> reason is unrecorded (record is the route)', () => {

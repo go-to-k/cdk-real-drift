@@ -31,7 +31,13 @@ import {
 } from '../normalize/noise.js';
 import { SDK_OVERRIDES } from '../read/overrides.js';
 import type { Finding, SchemaInfo } from '../types.js';
-import { SDK_DELETERS, SDK_NESTED_WRITERS, SDK_PROP_WRITERS, SDK_WRITERS } from './writers.js';
+import {
+  SDK_DELETERS,
+  SDK_NESTED_WRITERS,
+  SDK_PROP_WRITERS,
+  SDK_REBUILD_WRITER_TYPES,
+  SDK_WRITERS,
+} from './writers.js';
 
 // Per type, the writeOnly props that an SDK_SUPPLEMENTS reader makes COMPARABLE
 // (detection works) but Cloud Control still cannot revert via a nested sub-path patch
@@ -1340,8 +1346,17 @@ export function buildRevertPlan(
     }
     // create-only property: an in-place UpdateResource patch would be rejected (the
     // change needs a replacement) — report it now instead of failing at apply time.
+    // EXEMPT a type whose SDK writer REBUILDS the resource (#1714,
+    // SDK_REBUILD_WRITER_TYPES): a remove+re-create writer applies create-only changes
+    // by construction (Lambda::Permission — EVERY property is createOnly in the
+    // registry schema, the resource is CFn-immutable, yet RemovePermission +
+    // AddPermission converges the same statement identity in place).
     const schema = opts.schemas?.get(f.resourceType);
-    if (schema && isUnderCreateOnly(f.path, schema.createOnlyPaths)) {
+    if (
+      schema &&
+      isUnderCreateOnly(f.path, schema.createOnlyPaths) &&
+      !SDK_REBUILD_WRITER_TYPES.has(f.resourceType)
+    ) {
       notRevertable.push({
         displayId,
         resourceType: f.resourceType,
