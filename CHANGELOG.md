@@ -1,3 +1,10 @@
+## [0.25.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.25.0...v0.25.1) (2026-08-02)
+
+
+### Bug Fixes
+
+* **noise:** fold CodeDeploy DeploymentGroup creation defaults (DeploymentStyle, DeploymentConfigName) ([#1723](https://github.com/go-to-k/cdk-real-drift/issues/1723)) ([b3368ac](https://github.com/go-to-k/cdk-real-drift/commit/b3368ac23f2a78c6062a3e2641ca476e2a8b5a8b))
+
 # [0.25.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.24.0...v0.25.0) (2026-08-02)
 
 
