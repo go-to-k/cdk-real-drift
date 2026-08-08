@@ -103,6 +103,11 @@ export interface CorpusCase {
     // does. Stored as an array (JSON has no Set); replay revives it to a Set. Optional for
     // back-compat (pre-#891 cases and non-TargetGroup cases lack it).
     siblingTargetGroupRegistrars?: string[];
+    // #1730: this ListenerRule's own governed entry (keyed by whichever identity classify looks
+    // up — physicalId first, else logicalId) with its allowed forward-TG identity list, present
+    // only when a declared ECS blue/green service governs the rule, so replay reproduces the
+    // controller-rewrite fold. Optional for back-compat (pre-#1730 and non-rule cases lack it).
+    ecsBgGovernedListenerRules?: Record<string, string[]>;
     // The parent DBCluster's live model keyed by THIS instance's physical id — present only on a
     // CLUSTER_ECHO_CHILD case (an Aurora DBInstance echoing its cluster), so replay reproduces the
     // cluster-echo strip. Without it a fresh-harvested reader/writer replays the un-folded echo
@@ -178,6 +183,7 @@ export function buildCorpusCase(
     siblingEipAssociations?: Set<string>;
     siblingSubnetCidrBlocks?: Set<string>;
     siblingTargetGroupRegistrars?: Set<string>;
+    ecsBgGovernedListenerRules?: Record<string, string[]>;
     clusterEchoModel?: Record<string, Record<string, unknown>>;
     rdsOptionSettingDefaults?: Record<string, Record<string, Record<string, string | null>>>;
     siblingListenerPorts?: Record<string, number>;
@@ -221,6 +227,16 @@ export function buildCorpusCase(
       : opts.siblingTargetGroupRegistrars?.has(resource.logicalId)
         ? resource.logicalId
         : undefined;
+  // #1730: carry ONLY this rule's own governed entry. classify keys the fold lookup on the
+  // logicalId first, else the physicalId — carry the matching key so replay folds identically.
+  const bgRuleKey =
+    resource.resourceType === 'AWS::ElasticLoadBalancingV2::ListenerRule'
+      ? opts.ecsBgGovernedListenerRules?.[resource.logicalId] !== undefined
+        ? resource.logicalId
+        : resource.physicalId && opts.ecsBgGovernedListenerRules?.[resource.physicalId]
+          ? resource.physicalId
+          : undefined
+      : undefined;
   // #1498: carry ONLY this Subnet's own identity from the stack-wide sibling-SubnetCidrBlock set.
   // classify keys the reflected Ipv6CidrBlock drop on the physicalId first, else the logicalId —
   // carry the same one that is present, so replay drops the echo the same way the live check did.
@@ -354,6 +370,13 @@ export function buildCorpusCase(
       ...(eipSiblingId ? { siblingEipAssociations: [eipSiblingId] } : {}),
       ...(subnetSiblingId ? { siblingSubnetCidrBlocks: [subnetSiblingId] } : {}),
       ...(tgRegistrarId ? { siblingTargetGroupRegistrars: [tgRegistrarId] } : {}),
+      ...(bgRuleKey !== undefined && opts.ecsBgGovernedListenerRules?.[bgRuleKey]
+        ? {
+            ecsBgGovernedListenerRules: {
+              [bgRuleKey]: opts.ecsBgGovernedListenerRules[bgRuleKey],
+            },
+          }
+        : {}),
       ...(echoModel && resource.physicalId
         ? { clusterEchoModel: { [resource.physicalId]: echoModel } }
         : {}),

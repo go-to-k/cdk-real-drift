@@ -1,0 +1,40 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "VpcesNotif",
+    "resourceType": "AWS::EC2::VPCEndpointConnectionNotification",
+    "physicalId": "vpce-nfn-02c197387acb874e6",
+    "constructPath": "CdkrdHunt0809ElbX/VpcesNotif",
+    "declared": {
+      "ConnectionEvents": ["Reject", "Accept", "Delete", "Connect"],
+      "ConnectionNotificationArn": "arn:aws:sns:us-east-1:111111111111:cdkrd-hunt-0809-vpces-notif",
+      "ServiceId": "vpce-svc-06bde5a07a4ff854b"
+    }
+  },
+  "liveRaw": {
+    "ConnectionEvents": ["Delete", "Connect", "Reject", "Accept"],
+    "VPCEndpointConnectionNotificationId": "vpce-nfn-02c197387acb874e6",
+    "ConnectionNotificationArn": "arn:aws:sns:us-east-1:111111111111:cdkrd-hunt-0809-vpces-notif",
+    "ServiceId": "vpce-svc-06bde5a07a4ff854b"
+  },
+  "schema": {
+    "readOnly": ["VPCEndpointConnectionNotificationId"],
+    "writeOnly": [],
+    "createOnly": ["ServiceId", "VPCEndpointId"],
+    "readOnlyPaths": ["VPCEndpointConnectionNotificationId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ServiceId", "VPCEndpointId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["ConnectionEvents"],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

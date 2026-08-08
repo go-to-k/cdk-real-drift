@@ -1,0 +1,129 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ProdRule",
+    "resourceType": "AWS::ElasticLoadBalancingV2::ListenerRule",
+    "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener-rule/app/cdkrd-hunt-0809-modes-alb/3e63c45a9c21e6de/d91c6235df177ffa/5bff3d34a081b076",
+    "constructPath": "CdkrdHunt0809Modes/ProdRule",
+    "declared": {
+      "Actions": [
+        {
+          "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt-0809-blue/17d3176aab5a792d",
+          "Type": "forward"
+        }
+      ],
+      "Conditions": [
+        {
+          "Field": "path-pattern",
+          "PathPatternConfig": {
+            "Values": ["/*"]
+          }
+        }
+      ],
+      "ListenerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/app/cdkrd-hunt-0809-modes-alb/3e63c45a9c21e6de/d91c6235df177ffa",
+      "Priority": 1,
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "IsDefault": false,
+    "Actions": [
+      {
+        "Type": "forward",
+        "ForwardConfig": {
+          "TargetGroupStickinessConfig": {
+            "Enabled": false
+          },
+          "TargetGroups": [
+            {
+              "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt-0809-green/d37bce8649efb3ba",
+              "Weight": 100
+            },
+            {
+              "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt-0809-blue/17d3176aab5a792d",
+              "Weight": 0
+            }
+          ]
+        }
+      }
+    ],
+    "Priority": 1,
+    "RuleArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener-rule/app/cdkrd-hunt-0809-modes-alb/3e63c45a9c21e6de/d91c6235df177ffa/5bff3d34a081b076",
+    "Transforms": [],
+    "Conditions": [
+      {
+        "Field": "path-pattern",
+        "Values": ["/*"],
+        "PathPatternConfig": {
+          "Values": ["/*"]
+        }
+      }
+    ],
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0809Modes",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "ProdRule",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0809Modes/a875f9d0-9340-11f1-900a-0eb049753e77",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["IsDefault", "RuleArn"],
+    "writeOnly": ["ListenerArn"],
+    "createOnly": ["ListenerArn"],
+    "readOnlyPaths": ["IsDefault", "RuleArn"],
+    "writeOnlyPaths": ["Actions.*.AuthenticateOidcConfig.ClientSecret", "ListenerArn"],
+    "createOnlyPaths": ["ListenerArn"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["Actions", "Conditions", "Transforms"],
+    "freeFormMapPaths": [
+      "Actions.*.AuthenticateCognitoConfig.AuthenticationRequestExtraParams",
+      "Actions.*.AuthenticateOidcConfig.AuthenticationRequestExtraParams"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    },
+    "ecsBgGovernedListenerRules": {
+      "ProdRule": [
+        "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt-0809-blue/17d3176aab5a792d",
+        "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-hunt-0809-green/d37bce8649efb3ba"
+      ]
+    }
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "ProdRule",
+      "resourceType": "AWS::ElasticLoadBalancingV2::ListenerRule",
+      "path": "ListenerArn",
+      "note": "write-only — cannot be read back",
+      "writeOnly": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener-rule/app/cdkrd-hunt-0809-modes-alb/3e63c45a9c21e6de/d91c6235df177ffa/5bff3d34a081b076",
+      "constructPath": "CdkrdHunt0809Modes/ProdRule"
+    }
+  ]
+}

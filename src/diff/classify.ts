@@ -3029,6 +3029,74 @@ export function applyAutoscalerBandFold(
   return out;
 }
 
+// #1730: fold declared drift on a listener rule whose forward action the stack DELEGATES to an
+// ECS blue/green deployment (a sibling AWS::ECS::Service names the rule as its
+// AdvancedConfiguration production/test listener rule). The deployment controller rewrites the
+// rule's forward action to a WEIGHTED ForwardConfig over {TargetGroupArn,
+// AlternateTargetGroupArn} — dropping the scalar TargetGroupArn member — and re-swings the
+// weights on every deployment, so any live forward-target set WITHIN the allowed pair is the
+// controller enforcing the template's own intent, NOT drift: the declared finding is DROPPED. A
+// live target OUTSIDE the pair is a real retarget (traffic interception): it stays visible,
+// marked `ecsBlueGreenGoverned` (+ a hint) so the revert plan refuses a write the controller
+// would immediately undo. Pure; only touches declared-tier findings under the rule's Actions.
+export function applyEcsBlueGreenListenerRuleFold(
+  findings: Finding[],
+  allowedTgIds: readonly string[],
+  liveRaw: Record<string, unknown>
+): Finding[] {
+  const liveTgArns = new Set<string>();
+  const actions = liveRaw.Actions;
+  if (Array.isArray(actions)) {
+    for (const a of actions) {
+      if (!a || typeof a !== 'object') continue;
+      const ao = a as Record<string, unknown>;
+      if (typeof ao.TargetGroupArn === 'string') liveTgArns.add(ao.TargetGroupArn);
+      const fc = ao.ForwardConfig;
+      if (fc && typeof fc === 'object') {
+        const tgs = (fc as Record<string, unknown>).TargetGroups;
+        if (Array.isArray(tgs)) {
+          for (const tg of tgs) {
+            if (tg && typeof tg === 'object') {
+              const arn = (tg as Record<string, unknown>).TargetGroupArn;
+              if (typeof arn === 'string') liveTgArns.add(arn);
+            }
+          }
+        }
+      }
+    }
+  }
+  const allowed = new Set(allowedTgIds);
+  const withinAllowed = liveTgArns.size > 0 && [...liveTgArns].every((arn) => allowed.has(arn));
+  const out: Finding[] = [];
+  for (const f of findings) {
+    const isForwardTargetPath =
+      f.tier === 'declared' &&
+      /^Actions[.[]/.test(f.path) &&
+      (f.path.includes('TargetGroupArn') || f.path.includes('ForwardConfig'));
+    if (!isForwardTargetPath) {
+      out.push(f);
+      continue;
+    }
+    if (withinAllowed) continue;
+    out.push({
+      ...f,
+      ecsBlueGreenGoverned: true,
+      ...(f.hint === undefined
+        ? {
+            hint:
+              'governed by an ECS blue/green deployment (the service rewrites this listener ' +
+              "rule's forward action, swinging weights between the production and alternate " +
+              'target groups); the live forward target is outside that declared pair, so this ' +
+              'is a real change — but revert cannot converge (the deployment controller ' +
+              "re-writes the rule). Update the service's AdvancedConfiguration, or " +
+              'record/ignore to accept',
+          }
+        : {}),
+    });
+  }
+  return out;
+}
+
 export function classifyResource(
   resource: DesiredResource,
   liveRaw: Record<string, unknown>,
@@ -3149,6 +3217,15 @@ export function classifyResource(
     // over-set and SURFACES, marked autoscalerGoverned so revert refuses (a write-back the scaler
     // re-adjusts would never converge). Absent → no fold (fail-open, the finding stays visible).
     scalableTargetBands?: Record<string, { path: string; min: number; max: number }[]>;
+    // #1730: per governed AWS::ElasticLoadBalancingV2::ListenerRule identity (logicalId +
+    // physicalId == the rule ARN), the ALLOWED forward-target-group identity set (the declared
+    // production TargetGroupArn + AdvancedConfiguration.AlternateTargetGroupArn of every ECS
+    // blue/green service naming this rule; see gather.ts buildEcsBgGovernedListenerRules). The
+    // ECS deployment controller rewrites the rule's forward action to a weighted ForwardConfig
+    // over exactly that pair, so classify FOLDS the rule's Actions declared drift while the live
+    // forward-target set stays within it; an outside target SURFACES marked ecsBlueGreenGoverned.
+    // Absent → no fold (fail-open, the finding stays visible).
+    ecsBgGovernedListenerRules?: Record<string, string[]>;
     // Per ClientVpnEndpoint identity (logicalId + physicalId), the VPC id DERIVED from a declared
     // sibling AWS::EC2::ClientVpnTargetNetworkAssociation (its SubnetId's in-stack Subnet.VpcId; see
     // gather.ts buildClientVpnEndpointSiblingVpcs). The FIRST association materializes the endpoint's
@@ -6085,7 +6162,18 @@ export function classifyResource(
   // declared band); an out-of-band value beyond the band stays but is marked non-revertable.
   const bands = opts.scalableTargetBands?.[resource.logicalId];
   const folded = bands ? applyAutoscalerBandFold(findings, bands) : findings;
-  return folded.map((f) => ({
+  // #1730: fold declared drift on a listener rule an ECS blue/green deployment governs (the
+  // controller-rewritten forward action within the declared production/alternate TG pair); an
+  // outside target stays but is marked non-revertable.
+  const bgAllowed =
+    resourceType === 'AWS::ElasticLoadBalancingV2::ListenerRule'
+      ? (opts.ecsBgGovernedListenerRules?.[resource.logicalId] ??
+        (pid !== undefined ? opts.ecsBgGovernedListenerRules?.[pid] : undefined))
+      : undefined;
+  const bgFolded = bgAllowed
+    ? applyEcsBlueGreenListenerRuleFold(folded, bgAllowed, liveRaw)
+    : folded;
+  return bgFolded.map((f) => ({
     ...f,
     ...(pid !== undefined && { physicalId: pid }),
     ...(cp !== undefined && { constructPath: cp }),

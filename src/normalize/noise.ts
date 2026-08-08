@@ -2454,6 +2454,11 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     // MinimumLength is different: the service fills the documented 8 when a partial
     // policy omits it (probed live 2026-08-01), so the equality-gated pin folds the echo
     // and an out-of-band 6 still surfaces as a non-trivial number.
+    // Revert-convergence determination (stackless CC probe, 2026-08-09): a bare
+    // `remove` of this path is HARD-REJECTED by the handler (it maps the missing
+    // member to 0 and fails the >=6 validation — the TagOption flavor), but the
+    // nested-KNOWN_DEFAULT_PATHS revert route already writes the explicit `add 8`,
+    // which was proven to converge live. No RSDP entry needed.
     'Policies.PasswordPolicy.MinimumLength': 8,
     // A DECLARED standard schema attribute (email/name, keyed by Name via
     // NESTED_ARRAY_IDENTITY) that omits its data type / string constraints reads back
@@ -2589,6 +2594,11 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     // out-of-band `--no-enable-sni` reads back a PRESENT `false` (both live-probed
     // 2026-08-02), previously swallowed by isTrivialEmpty; a non-HTTPS check reads
     // `false` at CREATION, so the gate fires only on the HTTPS pair.
+    // Revert-convergence determination (stackless CC probe, 2026-08-09): a bare
+    // `remove` of this path is a SILENT no-op (SUCCESS reported, live stays false —
+    // same handler contract as the sibling Port), but the nested-KNOWN_DEFAULT_PATHS
+    // revert route already writes the explicit `add true`, which was proven to
+    // converge live. No RSDP entry needed.
     'HealthCheckConfig.EnableSNI': true,
     // A health check that declares neither RequestInterval nor FailureThreshold reads back
     // the AWS service defaults (30-second interval, 3 consecutive failures). Equality-gated:
@@ -2626,6 +2636,12 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     // ROLLING strategy with a 0-minute bake time. Observed unanimous across the corpus.
     'DeploymentConfiguration.Strategy': 'ROLLING',
     'DeploymentConfiguration.BakeTimeInMinutes': 0,
+    // #1733: a PARTIALLY-declared DeploymentConfiguration (a blue/green service declaring
+    // only Strategy + BakeTimeInMinutes) is filled with the rollout band defaults — the
+    // CDK L2 always declares Maximum/MinimumPercent, so only the partial raw-CFn shape
+    // leaks them (live, modes-hunt 2026-08-09). Equality-gated: an out-of-band 150 surfaces.
+    'DeploymentConfiguration.MaximumPercent': 200,
+    'DeploymentConfiguration.MinimumHealthyPercent': 100,
     // A service that enables the deployment circuit breaker reads back these AWS-filled
     // sub-defaults (reset the deployment count once a task is healthy, and the built-in
     // BOUNDED_PERCENT / 50% failure threshold). Observed live on a fresh Fargate service.
@@ -2647,6 +2663,14 @@ export const KNOWN_DEFAULT_PATHS: Record<string, Record<string, unknown>> = {
     // (The paired DeploymentConfiguration.Alarms default {AlarmNames:[],Enable:false,
     // Rollback:false} is all-empty/false, so the trivial-empty husk handling already drops
     // it — no explicit entry needed.)
+  },
+  // #1734: a barest VPC origin (endpoint config with only Name + Arn) is filled with the
+  // service's legacy SSL-protocols default (live, modes-hunt 2026-08-09). HTTPPort/
+  // HTTPSPort/OriginProtocolPolicy fold via the schema-annotated defaults; only this
+  // array is unannotated. Exact live element shape per the array-pin rule; equality-gated:
+  // hardening to ["TLSv1.2"] no longer matches and surfaces.
+  'AWS::CloudFront::VpcOrigin': {
+    'VpcOriginEndpointConfig.OriginSSLProtocols': ['SSLv3', 'TLSv1'],
   },
   // A guardrail that declares content/topic policies but no tier reads back the default
   // CLASSIC tier under each policy config. Equality-gated: a STANDARD tier surfaces.

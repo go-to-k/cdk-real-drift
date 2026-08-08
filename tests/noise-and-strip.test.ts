@@ -576,6 +576,9 @@ describe('noise suppressors', () => {
       'NetworkConfiguration.AwsvpcConfiguration.AssignPublicIp': 'DISABLED',
       'DeploymentConfiguration.Strategy': 'ROLLING',
       'DeploymentConfiguration.BakeTimeInMinutes': 0,
+      // #1733: the rollout band the service fills on a PARTIALLY-declared configuration
+      'DeploymentConfiguration.MaximumPercent': 200,
+      'DeploymentConfiguration.MinimumHealthyPercent': 100,
       'DeploymentConfiguration.DeploymentCircuitBreaker.ResetOnHealthyTask': true,
       'DeploymentConfiguration.DeploymentCircuitBreaker.ThresholdConfiguration': {
         Type: 'BOUNDED_PERCENT',

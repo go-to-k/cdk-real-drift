@@ -94,6 +94,14 @@ export interface Finding {
   // immediately re-adjusted by the autoscaler, so the revert never converges (non-revertable, the
   // user must change the ScalableTarget band / scaling policy, or record/ignore to accept).
   autoscalerGoverned?: boolean | undefined;
+  // #1730: declared tier only — the listener rule's forward action is governed by an ECS
+  // blue/green deployment (a sibling AWS::ECS::Service names this rule as its
+  // AdvancedConfiguration production/test listener rule). classify already FOLDED the common
+  // case (the live forward-target set within the declared production/alternate TG pair = the
+  // deployment controller enforcing intent); this flag rides only on the residual OUTSIDE-pair
+  // finding (a real retarget). The revert plan reads it and refuses to act — the controller
+  // re-writes the rule on every deployment, so the revert never converges.
+  ecsBlueGreenGoverned?: boolean | undefined;
   // declared tier only: this per-element finding lives inside an UNORDERED_OBJECT_ARRAY
   // (a SET the service returns REORDERED — SecurityGroup rules, PrefixList Entries, …).
   // classify sorts BOTH sides by canonical JSON before the positional subset diff, so the

@@ -1,0 +1,113 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "VpcOrigin",
+    "resourceType": "AWS::CloudFront::VpcOrigin",
+    "physicalId": "vo_Jj3K54VLqUWGO5Nf0SMQZo",
+    "constructPath": "CdkrdHunt0809Modes/VpcOrigin",
+    "declared": {
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "VpcOriginEndpointConfig": {
+        "Arn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/cdkrd-hunt-0809-modes-alb/3e63c45a9c21e6de",
+        "Name": "cdkrd-hunt-0809-vpco"
+      }
+    }
+  },
+  "liveRaw": {
+    "Status": "Deployed",
+    "AccountId": "111111111111",
+    "CreatedTime": "2026-08-08T15:52:37.673Z",
+    "VpcOriginEndpointConfig": {
+      "HTTPSPort": 443,
+      "OriginSSLProtocols": ["SSLv3", "TLSv1"],
+      "Arn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/cdkrd-hunt-0809-modes-alb/3e63c45a9c21e6de",
+      "HTTPPort": 80,
+      "Name": "cdkrd-hunt-0809-vpco",
+      "OriginProtocolPolicy": "match-viewer"
+    },
+    "LastModifiedTime": "2026-08-08T16:01:44.142Z",
+    "Id": "vo_Jj3K54VLqUWGO5Nf0SMQZo",
+    "Arn": "arn:aws:cloudfront::111111111111:vpcorigin/vo_Jj3K54VLqUWGO5Nf0SMQZo",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["AccountId", "Arn", "CreatedTime", "Id", "LastModifiedTime", "Status"],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": ["AccountId", "Arn", "CreatedTime", "Id", "LastModifiedTime", "Status"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {
+      "VpcOriginEndpointConfig.HTTPPort": 80,
+      "VpcOriginEndpointConfig.HTTPSPort": 443,
+      "VpcOriginEndpointConfig.IpAddressType": "ipv4",
+      "VpcOriginEndpointConfig.OriginProtocolPolicy": "match-viewer",
+      "VpcOriginEndpointConfig.OriginSSLProtocols": ["TLSv1", "SSLv3"]
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "VpcOrigin",
+      "resourceType": "AWS::CloudFront::VpcOrigin",
+      "path": "VpcOriginEndpointConfig.HTTPSPort",
+      "actual": 443,
+      "nested": true,
+      "physicalId": "vo_Jj3K54VLqUWGO5Nf0SMQZo",
+      "constructPath": "CdkrdHunt0809Modes/VpcOrigin"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "VpcOrigin",
+      "resourceType": "AWS::CloudFront::VpcOrigin",
+      "path": "VpcOriginEndpointConfig.OriginSSLProtocols",
+      "actual": ["SSLv3", "TLSv1"],
+      "nested": true,
+      "physicalId": "vo_Jj3K54VLqUWGO5Nf0SMQZo",
+      "constructPath": "CdkrdHunt0809Modes/VpcOrigin"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "VpcOrigin",
+      "resourceType": "AWS::CloudFront::VpcOrigin",
+      "path": "VpcOriginEndpointConfig.HTTPPort",
+      "actual": 80,
+      "nested": true,
+      "physicalId": "vo_Jj3K54VLqUWGO5Nf0SMQZo",
+      "constructPath": "CdkrdHunt0809Modes/VpcOrigin"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "VpcOrigin",
+      "resourceType": "AWS::CloudFront::VpcOrigin",
+      "path": "VpcOriginEndpointConfig.OriginProtocolPolicy",
+      "actual": "match-viewer",
+      "nested": true,
+      "physicalId": "vo_Jj3K54VLqUWGO5Nf0SMQZo",
+      "constructPath": "CdkrdHunt0809Modes/VpcOrigin"
+    }
+  ]
+}
