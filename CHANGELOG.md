@@ -1,3 +1,10 @@
+## [0.25.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.25.2...v0.25.3) (2026-08-08)
+
+
+### Bug Fixes
+
+* **hunt:** 2026-08-09 sweep — inline-policy sibling FPs, ECS blue/green governed rule + folds, CloudFront VpcOrigin SG/SSL folds ([#1735](https://github.com/go-to-k/cdk-real-drift/issues/1735)) ([bb0c371](https://github.com/go-to-k/cdk-real-drift/commit/bb0c371f6731e6811831673bf4d6b3a38ac9b74b))
+
 ## [0.25.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.25.1...v0.25.2) (2026-08-02)
 
 
