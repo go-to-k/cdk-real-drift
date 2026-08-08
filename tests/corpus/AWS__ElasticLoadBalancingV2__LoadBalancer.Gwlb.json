@@ -1,0 +1,132 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Gwlb",
+    "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+    "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/gwy/cdkrd-hunt-0809-gwlb/18bd68d84f416e3e",
+    "constructPath": "CdkrdHunt0809ElbX/Gwlb",
+    "declared": {
+      "Name": "cdkrd-hunt-0809-gwlb",
+      "Subnets": ["subnet-0a4d10aa93d80d043"],
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "Type": "gateway"
+    }
+  },
+  "liveRaw": {
+    "IpAddressType": "ipv4",
+    "SecurityGroups": [],
+    "LoadBalancerAttributes": [
+      {
+        "Value": "false",
+        "Key": "load_balancing.cross_zone.enabled"
+      },
+      {
+        "Value": "false",
+        "Key": "deletion_protection.enabled"
+      }
+    ],
+    "LoadBalancerName": "cdkrd-hunt-0809-gwlb",
+    "Subnets": ["subnet-0a4d10aa93d80d043"],
+    "Type": "gateway",
+    "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/gwy/cdkrd-hunt-0809-gwlb/18bd68d84f416e3e",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0809ElbX",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Gwlb",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0809ElbX/642ee160-9340-11f1-a561-122e7348299d",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "Name": "cdkrd-hunt-0809-gwlb",
+    "LoadBalancerFullName": "gwy/cdkrd-hunt-0809-gwlb/18bd68d84f416e3e",
+    "SubnetMappings": [
+      {
+        "SubnetId": "subnet-0a4d10aa93d80d043"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [
+      "CanonicalHostedZoneID",
+      "DNSName",
+      "LoadBalancerArn",
+      "LoadBalancerFullName",
+      "LoadBalancerName"
+    ],
+    "writeOnly": ["EnableCapacityReservationProvisionStabilize"],
+    "createOnly": ["Name", "Scheme", "Type"],
+    "readOnlyPaths": [
+      "CanonicalHostedZoneID",
+      "DNSName",
+      "LoadBalancerArn",
+      "LoadBalancerFullName",
+      "LoadBalancerName"
+    ],
+    "writeOnlyPaths": ["EnableCapacityReservationProvisionStabilize"],
+    "createOnlyPaths": ["Name", "Scheme", "Type"],
+    "defaults": {
+      "EnableCapacityReservationProvisionStabilize": false
+    },
+    "defaultPaths": {
+      "EnableCapacityReservationProvisionStabilize": false
+    },
+    "unorderedScalarPaths": ["SecurityGroups", "Subnets"],
+    "unorderedObjectArrayPaths": ["SubnetMappings"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Gwlb",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "IpAddressType",
+      "actual": "ipv4",
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/gwy/cdkrd-hunt-0809-gwlb/18bd68d84f416e3e",
+      "constructPath": "CdkrdHunt0809ElbX/Gwlb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Gwlb",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[deletion_protection.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/gwy/cdkrd-hunt-0809-gwlb/18bd68d84f416e3e",
+      "constructPath": "CdkrdHunt0809ElbX/Gwlb"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Gwlb",
+      "resourceType": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "path": "LoadBalancerAttributes[load_balancing.cross_zone.enabled]",
+      "actual": "false",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/gwy/cdkrd-hunt-0809-gwlb/18bd68d84f416e3e",
+      "constructPath": "CdkrdHunt0809ElbX/Gwlb"
+    }
+  ]
+}

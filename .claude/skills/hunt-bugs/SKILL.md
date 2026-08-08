@@ -1180,6 +1180,43 @@ tests/integration/sweep-orphans.sh` to restore main to HEAD — the committed
   it never emits on other shapes — the #1660 lesson) or probe a readGap-free sibling
   resource. The readGap-closing fix then needs the SAME live proof pair as any reader
   fix: clean first run + detection restored.
+- **A CONTROLLER-ATTACHED feature rewrites SIBLING resources — deploy the attached
+  shape and expect drift on resources the feature never names.** ECS blue/green
+  (2026-08-09 hunt, modes-hunt) rewrote its production LISTENER RULE's forward action
+  to a weighted ForwardConfig (scalar `TargetGroupArn` disappears; weights swing every
+  deployment — permanent declared FP, #1730), registered tasks into the ALTERNATE
+  target group (`Targets` FP because the registrar builder only knew
+  `LoadBalancers[].TargetGroupArn`, #1732), and partial-declared
+  `DeploymentConfiguration` filled the Max/Min band (#1733) — three distinct FP classes
+  from ONE feature, none on the resource that declares it. The fix family for the
+  rule takeover is the #688 governed pattern: gather builds the governed-rule → allowed
+  TG-pair map, classify folds within-pair and marks outside-pair non-revertable, corpus
+  recorder carries the per-rule entry. When probing any feature whose docs say a
+  service "manages" a sibling (BG deployments, autoscalers, service discovery), first-check
+  the WHOLE attached graph, not just the declaring resource.
+- **An ECS blue/green fixture's teardown can DELETE_FAILED on the alternate target
+  group** ("currently in use by a listener or a rule"): the controller leaves the
+  listener rule forwarding to the ALTERNATE TG, a dependency CloudFormation does not
+  know (the template only wires the rule to the production TG), so deletion ordering
+  can hit the in-use rejection. A plain `delstack -s <stack>` RETRY succeeds (the rule
+  is gone by then) — retry before diagnosing (2026-08-09, modes-hunt).
+- **AWS services also tag their auto-created resources in the unreserved `aws.` DOT
+  namespace — an `aws:`-prefix filter misses them.** CloudFront's VpcOrigin service SG
+  (`CloudFront-VPCOrigins-Service-SG`) carries `aws.cloudfront.vpcorigin=enabled`, not an
+  `aws:*` tag, so the rogue-SG enumerator flagged it as added (#1731). When a
+  service-created child FPs despite "AWS-managed" filtering, dump its real tags before
+  assuming it is untagged — and add the exact dot-namespace key (never the whole `aws.`
+  prefix: it is user-forgeable and unreserved).
+- **When a service grows a NEW resource type that declares the SAME live surface as an
+  older one, every declared-sibling suppression keyed on the old type silently misses
+  it.** `AWS::SQS::QueueInlinePolicy` / `AWS::SNS::TopicInlinePolicy` (scalar-ref twins
+  of QueuePolicy/TopicPolicy) first-ran an added-tier "created out of band" FP on the
+  very policy the template declared (#1729). When AWS ships an alternative declaration
+  shape for an existing surface (inline twins, *InlinePolicy, *Attachment vs embedded
+  list), grep the enumerators' `hasDeclared*` sibling loops for the old type name — each
+  is a latent FP for the new type's users. Related fixture trap: a verify.sh
+  `drift_entries` grep must match ADDED-tier entry lines too (`<id> ▸ <label> (AWS::…)`,
+  multi-token before the type) — a `^\s+\S+ \(AWS::` pattern silently passes them.
 - **A clean result IS a result — but it must still leave an asset.** "6 common+rich
   stacks, zero FPs, detection+revert verified" is a legitimate, valuable outcome. Do
   NOT manufacture a fix to have something to show. The deliverable of a bug-free

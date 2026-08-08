@@ -1,0 +1,61 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "TsRevocation",
+    "resourceType": "AWS::ElasticLoadBalancingV2::TrustStoreRevocation",
+    "physicalId": "1|arn:aws:elasticloadbalancing:us-east-1:111111111111:truststore/cdkrd-hunt-0809-ts/6e1091bbb22dd11e",
+    "constructPath": "CdkrdHunt0809ElbX/TsRevocation",
+    "declared": {
+      "RevocationContents": [
+        {
+          "S3Bucket": "cdkrd-hunt-tsx-0809-111111111111",
+          "S3Key": "crl.pem"
+        }
+      ],
+      "TrustStoreArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:truststore/cdkrd-hunt-0809-ts/6e1091bbb22dd11e"
+    }
+  },
+  "liveRaw": {
+    "TrustStoreRevocations": [
+      {
+        "NumberOfRevokedEntries": 0,
+        "TrustStoreArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:truststore/cdkrd-hunt-0809-ts/6e1091bbb22dd11e",
+        "RevocationType": "CRL",
+        "RevocationId": "1"
+      }
+    ],
+    "TrustStoreArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:truststore/cdkrd-hunt-0809-ts/6e1091bbb22dd11e",
+    "RevocationId": 1
+  },
+  "schema": {
+    "readOnly": ["RevocationId", "TrustStoreRevocations"],
+    "writeOnly": ["RevocationContents"],
+    "createOnly": ["RevocationContents", "TrustStoreArn"],
+    "readOnlyPaths": ["RevocationId", "TrustStoreRevocations"],
+    "writeOnlyPaths": ["RevocationContents"],
+    "createOnlyPaths": ["RevocationContents", "TrustStoreArn"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["RevocationContents", "TrustStoreRevocations"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "TsRevocation",
+      "resourceType": "AWS::ElasticLoadBalancingV2::TrustStoreRevocation",
+      "path": "RevocationContents",
+      "note": "write-only — cannot be read back",
+      "writeOnly": true,
+      "physicalId": "1|arn:aws:elasticloadbalancing:us-east-1:111111111111:truststore/cdkrd-hunt-0809-ts/6e1091bbb22dd11e",
+      "constructPath": "CdkrdHunt0809ElbX/TsRevocation"
+    }
+  ]
+}

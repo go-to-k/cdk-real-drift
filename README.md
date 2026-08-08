@@ -586,7 +586,12 @@ autoscaled DynamoDB capacity, a Lambda alias's provisioned concurrency, … — 
 flagged while its live value stays within the declared `MinCapacity`/`MaxCapacity`
 band (the autoscaler enforcing the template's own delegation is intent, not drift,
 #688). A value pushed _beyond_ the band still surfaces as real drift, but `revert`
-deliberately refuses it (writing the initial value back would just be re-scaled). For
+deliberately refuses it (writing the initial value back would just be re-scaled). The
+same treatment covers an ECS **blue/green** service's production/test listener rule:
+the deployment controller rewrites its forward action to a weighted config over the
+declared production/alternate target-group pair, which is not flagged while the live
+targets stay within that pair — an out-of-band retarget to any other group still
+surfaces, refused by `revert` for the same reason (#1730). For
 anything cdkrd does not fold — an externally-managed Lambda **reserved** concurrency,
 a value another controller rewrites — run **`cdkrd ignore`** to pick the drift to
 suppress, or hand-edit the git-committed `.cdkrd/ignore.yaml`. It is a

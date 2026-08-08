@@ -1,0 +1,117 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "PrivNat",
+    "resourceType": "AWS::EC2::NatGateway",
+    "physicalId": "nat-050c7cf98fc044226",
+    "constructPath": "CdkrdHunt0809ElbX/PrivNat",
+    "declared": {
+      "ConnectivityType": "private",
+      "SubnetId": "subnet-0a4d10aa93d80d043",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "PrivateIpAddress": "10.0.98.11",
+    "ConnectivityType": "private",
+    "VpcId": "vpc-0b95f89180110c913",
+    "EniId": "eni-0f64f39a5dbe5f582",
+    "AvailabilityMode": "zonal",
+    "SubnetId": "subnet-0a4d10aa93d80d043",
+    "NatGatewayId": "nat-050c7cf98fc044226",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0809ElbX",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "PrivNat",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0809ElbX/642ee160-9340-11f1-a561-122e7348299d",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["AutoProvisionZones", "AutoScalingIps", "EniId", "NatGatewayId", "RouteTableId"],
+    "writeOnly": ["MaxDrainDurationSeconds"],
+    "createOnly": [
+      "AllocationId",
+      "AvailabilityMode",
+      "ConnectivityType",
+      "PrivateIpAddress",
+      "SubnetId",
+      "VpcId"
+    ],
+    "readOnlyPaths": [
+      "AutoProvisionZones",
+      "AutoScalingIps",
+      "EniId",
+      "NatGatewayId",
+      "RouteTableId"
+    ],
+    "writeOnlyPaths": ["MaxDrainDurationSeconds"],
+    "createOnlyPaths": [
+      "AllocationId",
+      "AvailabilityMode",
+      "ConnectivityType",
+      "PrivateIpAddress",
+      "SubnetId",
+      "VpcId"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["AvailabilityZoneAddresses"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "PrivNat",
+      "resourceType": "AWS::EC2::NatGateway",
+      "path": "PrivateIpAddress",
+      "actual": "10.0.98.11",
+      "physicalId": "nat-050c7cf98fc044226",
+      "constructPath": "CdkrdHunt0809ElbX/PrivNat"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "PrivNat",
+      "resourceType": "AWS::EC2::NatGateway",
+      "path": "VpcId",
+      "actual": "vpc-0b95f89180110c913",
+      "physicalId": "nat-050c7cf98fc044226",
+      "constructPath": "CdkrdHunt0809ElbX/PrivNat"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "PrivNat",
+      "resourceType": "AWS::EC2::NatGateway",
+      "path": "AvailabilityMode",
+      "actual": "zonal",
+      "physicalId": "nat-050c7cf98fc044226",
+      "constructPath": "CdkrdHunt0809ElbX/PrivNat"
+    }
+  ]
+}

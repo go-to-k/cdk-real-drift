@@ -1142,6 +1142,20 @@ export function buildRevertPlan(
       });
       continue;
     }
+    // #1730: the listener rule's forward action is governed by an ECS blue/green deployment.
+    // classify folded the within-pair case; this residual finding is a retarget OUTSIDE the
+    // declared production/alternate pair. Writing the declared action back would be re-written
+    // by the deployment controller on its next deployment — non-convergent, so refuse it.
+    if (f.ecsBlueGreenGoverned) {
+      notRevertable.push({
+        displayId,
+        resourceType: f.resourceType,
+        path: f.path,
+        reason:
+          "managed by an ECS blue/green deployment — revert would fight the deployment controller; update the service's AdvancedConfiguration, or record/ignore to accept",
+      });
+      continue;
+    }
     if (f.tier === 'deleted') {
       // a resource deleted out of band cannot be patched back — it must be
       // recreated by re-deploying the stack.

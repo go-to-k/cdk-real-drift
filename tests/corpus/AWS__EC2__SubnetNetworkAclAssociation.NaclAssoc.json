@@ -1,0 +1,38 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "NaclAssoc",
+    "resourceType": "AWS::EC2::SubnetNetworkAclAssociation",
+    "physicalId": "aclassoc-0f2a9a2a08cc78e3a",
+    "constructPath": "CdkrdHunt0809ElbX/NaclAssoc",
+    "declared": {
+      "NetworkAclId": "acl-0e9738e0688800e16",
+      "SubnetId": "subnet-0281122c2110072b5"
+    }
+  },
+  "liveRaw": {
+    "NetworkAclId": "acl-0e9738e0688800e16",
+    "SubnetId": "subnet-0281122c2110072b5",
+    "AssociationId": "aclassoc-0f2a9a2a08cc78e3a"
+  },
+  "schema": {
+    "readOnly": ["AssociationId"],
+    "writeOnly": [],
+    "createOnly": ["NetworkAclId", "SubnetId"],
+    "readOnlyPaths": ["AssociationId"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["NetworkAclId", "SubnetId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

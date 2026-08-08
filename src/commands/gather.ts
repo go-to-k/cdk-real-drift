@@ -1520,11 +1520,20 @@ export function buildSiblingTargetGroupRegistrars(desired: Desired): Set<string>
     if (!decl || typeof decl !== 'object') continue;
     const d = decl as Record<string, unknown>;
     if (r.resourceType === ECS_SERVICE_TYPE) {
-      // An ECS service dynamically registers its tasks into each LoadBalancers[].TargetGroupArn.
+      // An ECS service dynamically registers its tasks into each LoadBalancers[].TargetGroupArn —
+      // and a blue/green service ALSO into the AdvancedConfiguration.AlternateTargetGroupArn
+      // (#1732: the green TG's membership surfaced as potential drift while blue folded).
       const lbs = d.LoadBalancers;
       if (Array.isArray(lbs)) {
         for (const lb of lbs) {
-          if (lb && typeof lb === 'object') markTg((lb as Record<string, unknown>).TargetGroupArn);
+          if (lb && typeof lb === 'object') {
+            const lbo = lb as Record<string, unknown>;
+            markTg(lbo.TargetGroupArn);
+            const adv = lbo.AdvancedConfiguration;
+            if (adv && typeof adv === 'object') {
+              markTg((adv as Record<string, unknown>).AlternateTargetGroupArn);
+            }
+          }
         }
       }
     } else if (r.resourceType === AUTO_SCALING_GROUP_TYPE) {
@@ -1539,6 +1548,83 @@ export function buildSiblingTargetGroupRegistrars(desired: Desired): Set<string>
     }
   }
   return registered;
+}
+
+// #1730: per governed ListenerRule identity (logicalId + physicalId == the rule ARN), the
+// ALLOWED forward-target-group ARNs/ids — the declared production `LoadBalancers[].TargetGroupArn`
+// plus the `AdvancedConfiguration.AlternateTargetGroupArn` of every ECS blue/green service that
+// names the rule as its Production/TestListenerRule. classify folds the rule's
+// controller-rewritten forward action while its live target set stays within this pair.
+// Fail-open: an unresolvable ref simply produces no entry / no allowed id, so the rule's drift
+// stays VISIBLE (never a hidden change).
+export function buildEcsBgGovernedListenerRules(desired: Desired): Record<string, string[]> {
+  const LISTENER_RULE_TYPE = 'AWS::ElasticLoadBalancingV2::ListenerRule';
+  const ruleIdsByLogicalId = new Map<string, string[]>();
+  const ruleLogicalIdByPhysicalId = new Map<string, string>();
+  const tgIdsByLogicalId = new Map<string, string[]>();
+  for (const r of desired.resources) {
+    if (r.resourceType === LISTENER_RULE_TYPE) {
+      ruleIdsByLogicalId.set(r.logicalId, [r.logicalId, ...(r.physicalId ? [r.physicalId] : [])]);
+      if (r.physicalId) ruleLogicalIdByPhysicalId.set(r.physicalId, r.logicalId);
+    } else if (r.resourceType === TARGET_GROUP_TYPE) {
+      tgIdsByLogicalId.set(r.logicalId, [r.logicalId, ...(r.physicalId ? [r.physicalId] : [])]);
+    }
+  }
+  // A ref names a sibling by `{Ref}` / `{Fn::GetAtt}` (→ its logicalId) or as the resolved
+  // ARN string; any other intrinsic (ImportValue, …) does not resolve → skipped fail-open.
+  const refLogicalId = (ref: unknown): string | undefined => {
+    if (ref && typeof ref === 'object') {
+      if ('Ref' in ref && typeof (ref as { Ref: unknown }).Ref === 'string') {
+        return (ref as { Ref: string }).Ref;
+      }
+      if ('Fn::GetAtt' in ref) {
+        const g = (ref as { 'Fn::GetAtt': unknown })['Fn::GetAtt'];
+        if (Array.isArray(g) && typeof g[0] === 'string') return g[0];
+      }
+    }
+    return undefined;
+  };
+  const out: Record<string, string[]> = {};
+  for (const r of desired.resources) {
+    if (r.resourceType !== ECS_SERVICE_TYPE) continue;
+    const decl = r.declared;
+    if (!decl || typeof decl !== 'object') continue;
+    const lbs = (decl as Record<string, unknown>).LoadBalancers;
+    if (!Array.isArray(lbs)) continue;
+    for (const lb of lbs) {
+      if (!lb || typeof lb !== 'object') continue;
+      const lbo = lb as Record<string, unknown>;
+      const adv = lbo.AdvancedConfiguration;
+      if (!adv || typeof adv !== 'object') continue;
+      const advo = adv as Record<string, unknown>;
+      const allowed: string[] = [];
+      for (const tgRef of [lbo.TargetGroupArn, advo.AlternateTargetGroupArn]) {
+        const lg = refLogicalId(tgRef);
+        if (lg !== undefined) {
+          const ids = tgIdsByLogicalId.get(lg);
+          if (ids) allowed.push(...ids);
+        } else if (typeof tgRef === 'string' && tgRef) {
+          allowed.push(tgRef);
+        }
+      }
+      if (allowed.length === 0) continue;
+      for (const key of ['ProductionListenerRule', 'TestListenerRule']) {
+        const ruleRef = advo[key];
+        let ruleIds: string[] | undefined;
+        const lg = refLogicalId(ruleRef);
+        if (lg !== undefined) ruleIds = ruleIdsByLogicalId.get(lg);
+        else if (typeof ruleRef === 'string' && ruleRef) {
+          const rl = ruleLogicalIdByPhysicalId.get(ruleRef);
+          ruleIds = rl !== undefined ? ruleIdsByLogicalId.get(rl) : [ruleRef];
+        }
+        if (!ruleIds) continue;
+        for (const id of ruleIds) {
+          out[id] = [...new Set([...(out[id] ?? []), ...allowed])];
+        }
+      }
+    }
+  }
+  return out;
 }
 
 // Per Aurora DBInstance physical id, the parent DBCluster's live model — the source for the
@@ -2155,6 +2241,7 @@ export async function gatherFindings(
     bucketNotificationConfigs: buildBucketNotificationConfigs(desired),
     clusterEchoModel: buildClusterEchoModels(desired),
     scalableTargetBands: buildScalableTargetBands(desired),
+    ecsBgGovernedListenerRules: buildEcsBgGovernedListenerRules(desired),
     siblingClientVpnEndpointVpcs: buildClientVpnEndpointSiblingVpcs(desired),
     siblingCloudFrontCdPolicyIds: buildCloudFrontStagingDistCdPolicyIds(
       desired,
@@ -2274,6 +2361,7 @@ export async function regatherTouched(
     bucketNotificationConfigs: buildBucketNotificationConfigs(desired),
     clusterEchoModel: buildClusterEchoModels(desired),
     scalableTargetBands: buildScalableTargetBands(desired),
+    ecsBgGovernedListenerRules: buildEcsBgGovernedListenerRules(desired),
     siblingClientVpnEndpointVpcs: buildClientVpnEndpointSiblingVpcs(desired),
     siblingCloudFrontCdPolicyIds: buildCloudFrontStagingDistCdPolicyIds(
       desired,

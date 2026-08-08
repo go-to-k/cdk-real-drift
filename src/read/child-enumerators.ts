@@ -1605,9 +1605,16 @@ export async function enumerateSnsTopicChildren(ctx: EnumeratorContext): Promise
   // A declared AWS::SNS::TopicPolicy covers this topic iff one of its (gather-resolved) `Topics`
   // equals this topic's ARN (the declared override reader `readSnsTopicPolicy` handles it). A
   // declared TopicPolicy whose `Topics` is UNRESOLVED is conservatively treated as covering this
-  // topic — a false `added` on a clean deploy is worse than a missed rogue.
+  // topic — a false `added` on a clean deploy is worse than a missed rogue. #1729: the scalar
+  // inline twin `AWS::SNS::TopicInlinePolicy` (TopicArn) declares the SAME live policy surface,
+  // so it suppresses the added finding identically.
   let hasDeclaredPolicy = false;
   for (const r of desired.resources) {
+    if (r.resourceType === 'AWS::SNS::TopicInlinePolicy') {
+      const t = r.declared.TopicArn;
+      if (t === topicArn || (t !== undefined && hasUnresolved(t))) hasDeclaredPolicy = true;
+      continue;
+    }
     if (r.resourceType !== 'AWS::SNS::TopicPolicy') continue;
     const topics = r.declared.Topics;
     if (Array.isArray(topics)) {
@@ -2403,9 +2410,16 @@ export async function enumerateSqsQueueChildren(ctx: EnumeratorContext): Promise
   // `Queues` equals this queue's URL. gather resolves a same-stack `{ Ref: Queue }` to the
   // URL (the declared override reader `readSqsQueuePolicy` consumes it as a plain string).
   // A declared QueuePolicy whose `Queues` is UNRESOLVED is conservatively treated as covering
-  // this queue — a false `added` on a clean deploy is worse than a missed rogue.
+  // this queue — a false `added` on a clean deploy is worse than a missed rogue. #1729: the
+  // scalar inline twin `AWS::SQS::QueueInlinePolicy` (Queue = the URL) declares the SAME live
+  // policy surface, so it suppresses the added finding identically.
   let hasDeclaredPolicy = false;
   for (const r of desired.resources) {
+    if (r.resourceType === 'AWS::SQS::QueueInlinePolicy') {
+      const q = r.declared.Queue;
+      if (q === queueUrl || (q !== undefined && hasUnresolved(q))) hasDeclaredPolicy = true;
+      continue;
+    }
     if (r.resourceType !== 'AWS::SQS::QueuePolicy') continue;
     const queues = r.declared.Queues;
     if (Array.isArray(queues)) {
@@ -4086,11 +4100,17 @@ export function diffVpcCidrBlockChildren(input: VpcCidrBlockChildInput): AddedCh
 // An AWS-service-created security group carries an AWS-reserved tag (the `aws:` namespace — e.g.
 // `aws:eks:cluster-name`, `aws:cloudformation:*`) or a Kubernetes cluster-owner tag. Users cannot
 // create `aws:`-prefixed tags, so this can never fold a user's genuine rogue group.
+// #1731: CloudFront's VPC-origin service group (`CloudFront-VPCOrigins-Service-SG`) is tagged in
+// the DOT namespace (`aws.cloudfront.vpcorigin=enabled`, live-verified 2026-08-09), which is NOT
+// reserved — a user could forge it to hide a rogue group, the same accepted tradeoff as the
+// `kubernetes.io/cluster/` marker (a rogue human SG is untagged in practice).
 export function isAwsManagedSecurityGroup(tags: Ec2Tag[] | undefined): boolean {
   return (tags ?? []).some(
     (t) =>
       typeof t.Key === 'string' &&
-      (t.Key.startsWith('aws:') || t.Key.startsWith('kubernetes.io/cluster/'))
+      (t.Key.startsWith('aws:') ||
+        t.Key.startsWith('kubernetes.io/cluster/') ||
+        t.Key === 'aws.cloudfront.vpcorigin')
   );
 }
 
