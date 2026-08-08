@@ -694,7 +694,8 @@ The table of every drift kind and its section label is up in
   in full as _potential_ (unconfirmed) drift and don't drive the `--fail` exit;
   `result:` points you at `cdkrd record` to accept them (or `revert` to remove).
   Once a resource is fully snapshotted, a value that _appears_ later is real drift
-  (`appeared since record`).
+  (`appeared since record`) — and the same applies to a whole out-of-band-created
+  child resource once its parent's child inventory is recorded.
 - **`↳` origin hint**: when a finding's live value has a recognizable external
   source — e.g. the CloudWatch Application Signals / Lambda Insights
   auto-instrumentation footprint (an added Insights layer + tracer execution

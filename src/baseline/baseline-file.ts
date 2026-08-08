@@ -120,6 +120,26 @@ export interface BaselineFile {
   // KNOWN_DEFAULTS pin as the restore value. Additive & OPTIONAL: old committed
   // baselines have none and keep today's behavior until the next `record` stamps it.
   observedDefaults?: ObservedDefaultEntry[];
+  // #1737: declared PARENTS whose child-enumerator scan completed at record time AND
+  // whose then-present out-of-band children were all endorsed into `recorded` — the
+  // child inventory was recorded COMPLETE. An `added` finding with NO recorded entry
+  // under such a parent provably APPEARED after the record, so applyBaseline keeps it
+  // as CONFIRMED "created out of band" drift (it fails `check --fail`) instead of
+  // potential-only inventory. Additive & OPTIONAL: old committed baselines have none,
+  // and a marker is only stamped by a binary whose enumerator actually scanned the
+  // parent — so a cdkrd upgrade that ADDS an enumerator can never false-confirm
+  // pre-existing children (#764's endorsement contract stays honored). NOT monotonic
+  // by design: a re-record whose scan failed (or where the user declined to endorse a
+  // present child) drops the marker, falling back to the safe potential-only behavior.
+  enumeratedParents?: EnumeratedParentEntry[];
+}
+
+// #1737: one `enumeratedParents` marker — the parent's template identity (the same
+// logicalId+resourceType pair the `added` finding carries as parentLogicalId /
+// parentResourceType).
+export interface EnumeratedParentEntry {
+  logicalId: string;
+  resourceType: string;
 }
 
 // #1048: the known top-level keys of a baseline file (the `BaselineFile` fields). Used to
@@ -137,6 +157,7 @@ const KNOWN_BASELINE_KEYS = new Set<string>([
   'recordedPhysicalIds',
   'recordedSourceFingerprints',
   'observedDefaults',
+  'enumeratedParents',
 ]);
 // #1048: the known keys of a `recorded` array element. A typo'd key (`Value`, `vaule`) whose
 // intended `value` is then ABSENT reads as recorded `undefined` — a confirmed-drift false
@@ -296,6 +317,7 @@ export async function loadBaseline(
   validateRecordedPhysicalIds(parsed.recordedPhysicalIds, path);
   validateRecordedSourceFingerprints(parsed.recordedSourceFingerprints, path);
   validateObservedDefaults(parsed.observedDefaults, path);
+  validateEnumeratedParents(parsed.enumeratedParents, path);
   return parsed;
 }
 
@@ -439,6 +461,32 @@ function validateObservedDefaults(value: unknown, path: string): void {
   });
 }
 
+/**
+ * #1737: validate `enumeratedParents` (optional). When present it must be an array of
+ * { logicalId, resourceType } string pairs with no unknown keys — same loud-vs-silent
+ * principle as validateObservedDefaults (a malformed marker would silently disable the
+ * appeared-since-record confirmation this field exists to drive).
+ */
+function validateEnumeratedParents(value: unknown, path: string): void {
+  if (value === undefined) return;
+  const at = `baseline file ${path}: \`enumeratedParents\``;
+  if (!Array.isArray(value))
+    throw new Error(`${at} must be an array of { logicalId, resourceType }`);
+  value.forEach((entry, i) => {
+    if (typeof entry !== 'object' || entry === null || Array.isArray(entry))
+      throw new Error(`${at}[${i}] must be an object { logicalId, resourceType }`);
+    const obj = entry as Record<string, unknown>;
+    for (const k of ['logicalId', 'resourceType'] as const)
+      if (typeof obj[k] !== 'string')
+        throw new Error(`${at}[${i}]: "${k}" is required and must be a string`);
+    const unknown = Object.keys(obj).filter((k) => k !== 'logicalId' && k !== 'resourceType');
+    if (unknown.length > 0)
+      throw new Error(
+        `${at}[${i}]: unknown key(s) ${unknown.map((k) => `"${k}"`).join(', ')} — known keys: "logicalId", "resourceType"`
+      );
+  });
+}
+
 /** Deterministic order for `recorded` entries: lexicographic by (logicalId, path).
  *  The single point where order is imposed — read/compare logic is order-independent,
  *  so this only affects the bytes on disk. Without it the entries inherit findings
@@ -527,6 +575,16 @@ export async function writeBaselineFile(b: BaselineFile): Promise<string> {
             (a, c) =>
               (a.logicalId < c.logicalId ? -1 : a.logicalId > c.logicalId ? 1 : 0) ||
               (a.path < c.path ? -1 : a.path > c.path ? 1 : 0)
+          ),
+        }
+      : {}),
+    // #1737: same byte-stability for the child-scan-complete parent markers.
+    ...(b.enumeratedParents && b.enumeratedParents.length > 0
+      ? {
+          enumeratedParents: [...b.enumeratedParents].sort(
+            (a, c) =>
+              (a.logicalId < c.logicalId ? -1 : a.logicalId > c.logicalId ? 1 : 0) ||
+              (a.resourceType < c.resourceType ? -1 : a.resourceType > c.resourceType ? 1 : 0)
           ),
         }
       : {}),
@@ -634,6 +692,12 @@ export async function writeBaseline(
     // source — letting a later legit code deploy void the stale hash instead of
     // false-surfacing it. Optional: an omitting caller keeps today's behavior.
     declaredByLogical?: Map<string, Record<string, unknown>> | undefined;
+    // #1737: parents whose child-enumerator scan completed this gather run (Desired's
+    // `childScanComplete`). Written as the baseline `enumeratedParents` marker after
+    // demoting any parent with a present-but-unendorsed added child (the #790 mirror:
+    // declining to record a child must not let it later false-confirm as "appeared").
+    // Optional: an omitting caller writes no marker (safe potential-only behavior).
+    enumeratedParents?: EnumeratedParentEntry[] | undefined;
   } = {}
 ): Promise<{ path: string; count: number }> {
   const allIds = opts.allLogicalIds ?? [
@@ -673,8 +737,44 @@ export async function writeBaseline(
     // #1637: persist the curated paths observed AT their AWS default this run, so a later
     // out-of-band DELETION of the whole value (it vanishes from the live read) surfaces.
     ...buildObservedDefaults(findings, opts.previous),
+    // #1737: persist the child-scan-complete parent markers, so a later check can confirm
+    // that an added child with no recorded entry APPEARED after this record.
+    ...buildEnumeratedParents(opts.enumeratedParents, findings, recorded),
   });
   return { path, count: recorded.length };
+}
+
+/**
+ * #1737: finalize the `enumeratedParents` marker for this record run. Seeds from the
+ * gather's scan-complete parents, then DEMOTES any parent that has an `added` finding
+ * this run whose entry is NOT in the final recorded set — the user (selective picker /
+ * drop flow) or the run itself (a model-read-failed child buildRecorded skips) declined
+ * to endorse a PRESENT child, so marking the parent complete would let that child later
+ * false-confirm as "appeared since record" (the #790 completeness-demotion mirror).
+ * Deterministic sort; `{}` (spread to nothing) when empty so old-shaped baselines stay
+ * byte-identical. Pure + exported for unit tests.
+ */
+export function buildEnumeratedParents(
+  candidates: EnumeratedParentEntry[] | undefined,
+  findings: Finding[],
+  recorded: RecordedEntry[]
+): { enumeratedParents?: EnumeratedParentEntry[] } {
+  if (!candidates || candidates.length === 0) return {};
+  const recordedKeys = new Set(recorded.map(recordedKey));
+  const blocked = new Set<string>();
+  for (const f of findings) {
+    if (f.tier !== 'added' || f.parentLogicalId === undefined) continue;
+    if (!recordedKeys.has(recordedKey({ logicalId: f.logicalId, path: f.path })))
+      blocked.add(`${f.parentLogicalId}\0${f.parentResourceType}`);
+  }
+  const out = candidates
+    .filter((p) => !blocked.has(`${p.logicalId}\0${p.resourceType}`))
+    .sort(
+      (a, c) =>
+        (a.logicalId < c.logicalId ? -1 : a.logicalId > c.logicalId ? 1 : 0) ||
+        (a.resourceType < c.resourceType ? -1 : a.resourceType > c.resourceType ? 1 : 0)
+    );
+  return out.length > 0 ? { enumeratedParents: out } : {};
 }
 
 /**
@@ -1500,6 +1600,7 @@ export function applyBaseline(
     );
   const recorded = baseline.recorded;
   const complete = new Set(baseline.completeResources ?? []); // v1 file: nothing complete
+  const enumeratedParents = baseline.enumeratedParents ?? []; // pre-#1737 file: no confirms
   const kept: Finding[] = [];
   // #675: current template's logical-id set (optional). Recorded entries for a logicalId
   // NOT in it belong to a resource removed from the template — folded, never surfaced.
@@ -1571,10 +1672,12 @@ export function applyBaseline(
     // the WHOLE resource (path ''), not a property. A matching entry whose value is equal
     // is suppressed; a recorded value that CHANGED stays `added` drift with a "changed
     // since record" note + the baseline value on `desired` (so the report shows it); a
-    // resource with NO entry is unrecorded inventory (not drift). The completeResources /
-    // "appeared since record" mechanism is undeclared-only (it is keyed per template
-    // resource, and an added child has a synthesized id that never enters allLogicalIds),
-    // so a newly-appeared added resource is simply unrecorded until the user records it.
+    // resource with NO entry is unrecorded inventory (not drift) — UNLESS its parent
+    // carries the #1737 `enumeratedParents` marker (its child inventory was recorded
+    // complete), in which case the child provably APPEARED after the record and is
+    // confirmed drift. The completeResources mechanism itself stays undeclared-only (it
+    // is keyed per template resource, and an added child has a synthesized id that never
+    // enters allLogicalIds) — the marker is its added-tier, per-PARENT sibling.
     if (f.tier === 'added') {
       const entry = recorded.find((a) => entryMatches(a, f));
       // PR4: the full model could not be read this run — `actual` is only the identity
@@ -1592,6 +1695,26 @@ export function applyBaseline(
           ...f,
           desired: canonicalizeForCompare(entry.value, f.resourceType),
           note: f.note ? `${f.note}; changed since record` : 'changed since record',
+        });
+        continue;
+      }
+      // #1737: the parent's child inventory was recorded COMPLETE (`enumeratedParents`
+      // marker: its enumerator ran at record time and every then-present out-of-band
+      // child was endorsed), so a live child with NO entry provably APPEARED after the
+      // record — CONFIRMED drift (it fails `check --fail`), not undecided inventory.
+      // Old baselines (no marker) and unmarked parents keep the safe potential-only
+      // behavior below; the marker is only stamped by a binary whose enumerator actually
+      // scanned the parent, so a cdkrd upgrade that ADDS an enumerator can never
+      // false-confirm children that pre-date the record (#764 stays honored).
+      if (
+        f.parentLogicalId !== undefined &&
+        enumeratedParents.some(
+          (ep) => ep.logicalId === f.parentLogicalId && ep.resourceType === f.parentResourceType
+        )
+      ) {
+        kept.push({
+          ...f,
+          note: f.note ? `${f.note}; appeared since record` : 'appeared since record',
         });
         continue;
       }

@@ -948,7 +948,8 @@ replace it — lives in [why-a-baseline-file.md](why-a-baseline-file.md).
   "recordedPhysicalIds": { "<logicalId>": "<physical id at record>", ... },
   "recordedSourceFingerprints":
     { "<logicalId>::<path>": "<declared-source hash>", ... },
-  "observedDefaults": [ { "logicalId", "resourceType", "path" }, ... ] }
+  "observedDefaults": [ { "logicalId", "resourceType", "path" }, ... ],
+  "enumeratedParents": [ { "logicalId", "resourceType" }, ... ] }
 ```
 
 `observedDefaults` (additive, optional — #1637) records the CURATED top-level paths
@@ -965,6 +966,25 @@ re-typed / read-gapped / since-declared resources all stay silent, mirroring the
 removed-since-record guards), carrying the pin as `desired` so `revert` re-adds the
 default. Curated, NOT blanket: CC read shapes fluctuate across handler versions, so
 tracking every atDefault path would false-flag handler churn as deletion.
+
+`enumeratedParents` (additive, optional — #1737) records the declared PARENTS whose
+child-enumerator scan completed at record time AND whose then-present out-of-band
+children were all endorsed into `recorded` — the child inventory was recorded
+COMPLETE. It exists because the per-entry mechanism above is keyed per template
+resource, so an `added` child (synthesized logicalId, never in the template) could
+never be confirmed "appeared since record": an OOB-created child after `record`
+read as potential-only and `check --fail` exited 0 — the added tier could never
+fail CI (live-proven: an OOB `register-task-with-maintenance-window` and
+`create-configuration-template` both stayed exit 0 against a fresh baseline).
+With the marker, an entry-less added child under a marked parent is CONFIRMED
+"appeared since record" drift; old baselines / unmarked parents keep the safe
+potential-only behavior. The marker is only stamped by a binary whose enumerator
+actually scanned the parent, so a cdkrd upgrade that ADDS an enumerator can never
+false-confirm children that pre-date the record (#764's endorsement contract), and
+a parent with a present-but-unendorsed child (the user declined the selective
+picker) is DEMOTED at write time (the #790 completeness-demotion mirror). NOT
+monotonic by design: a re-record whose scan failed drops the marker, falling back
+to potential-only.
 
 `recordedPhysicalIds` (additive, optional — #674) records the PHYSICAL id each
 recorded-OR-snapshot-`complete` resource was captured against, so a later deploy

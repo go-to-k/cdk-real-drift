@@ -72,6 +72,15 @@ export interface Finding {
   // "changed since record" off the degraded snippet (it suppresses a recorded one until
   // a clean read, like a transiently-skipped resource). Self-heals on the next check.
   modelReadFailed?: boolean;
+  // added tier only (#1737): the DECLARED parent this out-of-band child was enumerated
+  // under (the CHILD_ENUMERATORS key resource). applyBaseline matches these against the
+  // baseline's `enumeratedParents` marker to decide whether a child with no recorded
+  // entry provably APPEARED after the record (the parent's child inventory was recorded
+  // complete) — confirmed drift — or is undecided inventory (potential only). Explicit
+  // fields rather than splitting the synthesized `logicalId` (whose child-identifier
+  // half may itself contain separators).
+  parentLogicalId?: string | undefined;
+  parentResourceType?: string | undefined;
   // readGap tier only (#1582): the readGap is a DECLARED WRITE-ONLY property (expectedly
   // unreadable), NOT a genuine coverage gap in the readable model. Unlike a real readGap it
   // must NOT disqualify the resource from `completeResources` — the undeclared readable model

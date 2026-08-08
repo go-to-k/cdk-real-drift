@@ -435,6 +435,11 @@ export function addedFinding(
     physicalId: c.identifier,
     constructPath: `${parent.constructPath ?? parent.logicalId} ▸ ${c.label}`,
     resourceType: c.resourceType,
+    // #1737: explicit parent identity, so applyBaseline can match the finding against the
+    // baseline's `enumeratedParents` marker (appeared-since-record confirmation) without
+    // re-splitting the synthesized logicalId.
+    parentLogicalId: parent.logicalId,
+    parentResourceType: parent.resourceType,
     path: '',
     actual: read.model,
     note: read.ok
@@ -2039,6 +2044,10 @@ export async function gatherFindings(
   // Cross-region escalation for GLOBAL-service children (Route53 RecordSet, #1651): built lazily,
   // its enabled-region list + per-region clients/caches memoized for the whole run.
   const crossRegionProbe = makeCrossRegionSiblingProbe(desired.accountId, region);
+  // #1737: parents whose child scan COMPLETED this run — post-assigned onto `desired`
+  // below so `record` can write the baseline `enumeratedParents` marker (which is what
+  // lets a later check confirm a child with no entry APPEARED after the record).
+  const childScanComplete: { logicalId: string; resourceType: string }[] = [];
   for (const r of desired.resources) {
     const enumerate = CHILD_ENUMERATORS[r.resourceType];
     if (!enumerate || !r.physicalId) continue;
@@ -2097,6 +2106,10 @@ export async function gatherFindings(
         );
         findings.push(addedFinding(r, c, read));
       }
+      // The scan ran to completion — every live child of this parent is now either a
+      // declared match, a sibling-managed skip, or an emitted `added` finding, so the
+      // inventory is decidably COMPLETE for this run (#1737).
+      childScanComplete.push({ logicalId: r.logicalId, resourceType: r.resourceType });
     } catch (e) {
       findings.push({
         tier: 'skipped',
@@ -2107,6 +2120,7 @@ export async function gatherFindings(
       });
     }
   }
+  desired.childScanComplete = childScanComplete;
 
   // KMS managed-alias resolution (R9): only if the stack declares any `alias/aws/*`,
   // fetch alias -> target key id once so classify can tell a managed-default key from

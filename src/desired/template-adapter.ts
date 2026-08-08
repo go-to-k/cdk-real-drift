@@ -35,6 +35,13 @@ export interface Desired {
   // but results may be unreliable — check prints this). REVIEW_IN_PROGRESS / deleting
   // states never reach here: loadDesired throws StackNotCheckableError for those.
   stackStatusWarning?: string | undefined;
+  // #1737: declared parents whose child-enumerator scan COMPLETED this gather run (type
+  // in CHILD_ENUMERATORS, parent read live, enumerate() returned without throwing).
+  // Post-assigned by gather (like stackTags — run-state metadata riding Desired so the
+  // record path can reach it without new plumbing): `record` writes these as the
+  // baseline `enumeratedParents` marker, which is what lets a LATER check confirm that
+  // a live child with no recorded entry under such a parent appeared after the record.
+  childScanComplete?: { logicalId: string; resourceType: string }[];
 }
 
 /** Parse a deployed template body (JSON or CFn-flavored YAML). */
