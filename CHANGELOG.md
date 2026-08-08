@@ -1,3 +1,11 @@
+## [0.25.4](https://github.com/go-to-k/cdk-real-drift/compare/v0.25.3...v0.25.4) (2026-08-08)
+
+
+### Bug Fixes
+
+* **baseline:** confirm added resources created after record via enumeratedParents child-scan marker ([#1739](https://github.com/go-to-k/cdk-real-drift/issues/1739)) ([15f3edd](https://github.com/go-to-k/cdk-real-drift/commit/15f3eddb1d7d9f320ee49dcfee2125eb5d00a059))
+* **revert:** CodeDeploy DG DeploymentStyle + LoadBalancerInfo explicit-write reverts ([#1738](https://github.com/go-to-k/cdk-real-drift/issues/1738)) ([aa14e2c](https://github.com/go-to-k/cdk-real-drift/commit/aa14e2c6ac7ef4c599386d4cfe55886b3c3d3a0b))
+
 ## [0.25.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.25.2...v0.25.3) (2026-08-08)
 
 
