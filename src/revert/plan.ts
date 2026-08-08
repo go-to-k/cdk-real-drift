@@ -149,10 +149,19 @@ export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
   // `remove` of an out-of-band config-name change reports SUCCESS yet the live value
   // persists (silent no-op, live-hit on the 2026-08-03 enum-added2 hunt). The explicit
   // `add /DeploymentConfigName CodeDeployDefault.OneAtATime` (the #1723 KNOWN_DEFAULTS pin)
-  // converges — stackless CC probe 2026-08-03. The sibling DeploymentStyle whole-object pin
-  // stays revert-unproven: its off-default shape is unreachable on a barest Server DG
-  // (UpdateDeploymentGroup rejects WITH_TRAFFIC_CONTROL without LoadBalancerInfo).
+  // converges — stackless CC probe 2026-08-03. #1736: the sibling DeploymentStyle
+  // whole-object pin shares the keep-omitted contract — its off-default shape IS reachable
+  // once a standalone target group exists (no load balancer needed: UpdateDeploymentGroup
+  // accepts WITH_TRAFFIC_CONTROL + targetGroupInfoList naming a bare TG), and the bare
+  // `remove` was a live-proven silent no-op (cdstyle-hunt 2026-08-09). The explicit
+  // `add /DeploymentStyle {IN_PLACE, WITHOUT_TRAFFIC_CONTROL}` (the #1723 KNOWN_DEFAULTS
+  // pin) was CC-patch-proven to converge even while LoadBalancerInfo is still attached.
+  // The LoadBalancerInfo that same OOB flip attaches no-ops on `remove` identically and
+  // has no KNOWN_DEFAULTS source — its clearing write (an explicit empty
+  // TargetGroupInfoList) lives in REVERT_SET_DEFAULT_VALUES.
   'AWS::CodeDeploy::DeploymentGroup\0DeploymentConfigName',
+  'AWS::CodeDeploy::DeploymentGroup\0DeploymentStyle',
+  'AWS::CodeDeploy::DeploymentGroup\0LoadBalancerInfo',
   // #1666: writeDlmLifecyclePolicy builds the Update payload from the desired model, so a
   // bare `remove` of the default-policy shorthand RetainInterval never reaches the call —
   // UpdateLifecyclePolicy keeps the live value (silent no-op, live-proven: an out-of-band
@@ -617,6 +626,13 @@ const REVERT_SET_DEFAULT_VALUES: Record<string, unknown> = {
   // to reset on absence (both fields default to absent — no KNOWN_DEFAULTS source).
   'AWS::ApiGatewayV2::IntegrationResponse\0TemplateSelectionExpression': '',
   'AWS::ApiGatewayV2::RouteResponse\0ModelSelectionExpression': '',
+  // #1736: CodeDeploy UpdateDeploymentGroup keeps an omitted LoadBalancerInfo (the same
+  // keep-omitted contract as DeploymentConfigName/DeploymentStyle), so the `remove` a
+  // revert plans for an out-of-band traffic-control attach leaves the target group stuck.
+  // The default is absent (no KNOWN_DEFAULTS source); the explicit empty
+  // TargetGroupInfoList write detaches it — CC-patch-proven live (cdstyle-hunt
+  // 2026-08-09: `loadBalancerInfo` read back null afterwards).
+  'AWS::CodeDeploy::DeploymentGroup\0LoadBalancerInfo': { TargetGroupInfoList: [] },
 };
 
 /**
