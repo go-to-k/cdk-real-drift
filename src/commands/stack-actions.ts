@@ -743,6 +743,10 @@ export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
       allLogicalIds: desired.resources.map((r) => r.logicalId),
       previous: existing,
       physicalIdByLogical: physicalIdsByLogical(desired.resources),
+      // #1737: parents whose child scan completed this gather run — written as the
+      // baseline `enumeratedParents` marker (after writeBaseline's unendorsed-child
+      // demotion), enabling appeared-since-record confirmation for added children.
+      enumeratedParents: desired.childScanComplete,
       // declared models so the recordable-generated content hashes (Lambda CodeSha256,
       // Glue ScriptSha256) are stamped with their declared-source fingerprint — a later
       // legit code deploy then voids the stale hash instead of false-surfacing it.

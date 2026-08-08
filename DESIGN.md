@@ -47,11 +47,15 @@ un-deployed code edits would show as false "drift".
     `added` tier (CHILD_ENUMERATORS; API GW REST resources + methods + authorizers + models + request validators + gateway responses + stages, API GW V2 routes + integrations + authorizers + stages, SNS topic subs + topic access policies, Lambda ESMs + function URLs + aliases + versions + resource-policy statements, EventBridge bus rules, Cognito user pool clients + groups + resource servers, AppSync data sources + resolvers + functions, CloudWatch Logs metric filters + subscription filters, ELBv2 listeners, ELBv2 listener rules, EC2 VPC subnets, EC2 VPC endpoints, EC2 VPC route tables, EC2 VPC network ACLs, EC2 VPC security groups, EC2 VPC NAT gateways + flow logs, EC2 route table routes, EC2 network ACL entries, ECS cluster services, KMS key aliases + grants, AppConfig environments + configuration profiles, EFS mount targets, RDS DB cluster instances, Route53 hosted zone record sets, S3 bucket resource policies, SQS queue access policies, Secrets Manager secret resource policies, Cognito user pool hosted-UI domains, AutoScaling group scheduled actions + lifecycle hooks, Glue database tables, EC2 transit gateway attachments + route tables, GuardDuty detector filters + IP/threat/trusted sets + publishing destinations, SSM maintenance window targets + tasks, Application Auto Scaling scaling policies, CodeDeploy application deployment groups, Elastic Beanstalk application versions + configuration templates). Resource-granularity
     sibling of undeclared, reconciled against the baseline the same way: each added
     child is read in FULL (CC GetResource) + normalized, so `record` snapshots it and a
-    later CHANGE surfaces as drift; an UNRECORDED added resource is Not-Recorded
-    inventory (not drift), a recorded+unchanged one is suppressed (PR4). Not a
-    per-property compare, so it runs outside classify. Revertable by Cloud Control
-    DeleteResource, or an SDK_DELETERS per-type delete where CC lacks DELETE support
-    (AppSync ApiKey, #1386); an unrecorded one needs --remove-unrecorded.
+    later CHANGE surfaces as drift; a recorded+unchanged one is suppressed (PR4). An
+    entry-less added child under a parent whose child scan was recorded complete (the
+    baseline `enumeratedParents` marker, #1737) provably APPEARED after the record →
+    confirmed "appeared since record" drift (fails --fail); under any other parent it
+    is Not-Recorded inventory (not drift). Not a per-property compare, so it runs
+    outside classify. Revertable by Cloud Control DeleteResource, or an SDK_DELETERS
+    per-type delete where CC lacks DELETE support (AppSync ApiKey, #1386); an
+    unrecorded one needs --remove-unrecorded (a confirmed appeared one is drift, so
+    it deletes flaglessly).
 6. report + exit code (report-only by default; --fail → 1 on drift; --strict → 1 on incomplete coverage; 2 error)
 ```
 

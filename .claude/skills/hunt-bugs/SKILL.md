@@ -1217,6 +1217,20 @@ tests/integration/sweep-orphans.sh` to restore main to HEAD — the committed
   is a latent FP for the new type's users. Related fixture trap: a verify.sh
   `drift_entries` grep must match ADDED-tier entry lines too (`<id> ▸ <label> (AWS::…)`,
   multi-token before the type) — a `^\s+\S+ \(AWS::` pattern silently passes them.
+- **Added-after-record is CONFIRMED drift since #1737 — assert exit 1 on an OOB-added
+  probe, and expect plain `revert --yes` to delete it.** Before #1737, an OOB child
+  created AFTER `record` surfaced only as `[Potential Drift]` (`check --fail` exit 0 —
+  the 2026-08-09 enumrev2-hunt's live find), so older verify scripts never asserted the
+  exit code on the added step. A post-#1737 probe MUST assert `check --fail` exits 1
+  and the output carries `appeared since record`; the delete then plans WITHOUT
+  `--remove-unrecorded` (the flag still gates unrecorded/pre-record inventory and the
+  #764 recorded-changed state). Note the marker is stamped at `record` time — a
+  baseline recorded by an older binary keeps the potential-only behavior.
+- **A backgrounded `verify.sh 2>&1 | tail` reports the PIPELINE's exit (tail's 0) — an
+  INTEG FAIL reads as success.** The 2026-08-09 hunt's first enumrev2 run "completed
+  exit 0" while the log said `INTEG FAIL`. Run background verifies as
+  `./verify.sh > log 2>&1; echo "EXIT=$?"` (capture the exit before any pipe) — the
+  same lesson as the tracker's un-piped verify/clear rule, now for verify scripts.
 - **A clean result IS a result — but it must still leave an asset.** "6 common+rich
   stacks, zero FPs, detection+revert verified" is a legitimate, valuable outcome. Do
   NOT manufacture a fix to have something to show. The deliverable of a bug-free
