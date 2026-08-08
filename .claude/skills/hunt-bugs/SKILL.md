@@ -1194,6 +1194,12 @@ tests/integration/sweep-orphans.sh` to restore main to HEAD — the committed
   recorder carries the per-rule entry. When probing any feature whose docs say a
   service "manages" a sibling (BG deployments, autoscalers, service discovery), first-check
   the WHOLE attached graph, not just the declaring resource.
+- **An ECS blue/green fixture's teardown can DELETE_FAILED on the alternate target
+  group** ("currently in use by a listener or a rule"): the controller leaves the
+  listener rule forwarding to the ALTERNATE TG, a dependency CloudFormation does not
+  know (the template only wires the rule to the production TG), so deletion ordering
+  can hit the in-use rejection. A plain `delstack -s <stack>` RETRY succeeds (the rule
+  is gone by then) — retry before diagnosing (2026-08-09, modes-hunt).
 - **AWS services also tag their auto-created resources in the unreserved `aws.` DOT
   namespace — an `aws:`-prefix filter misses them.** CloudFront's VpcOrigin service SG
   (`CloudFront-VPCOrigins-Service-SG`) carries `aws.cloudfront.vpcorigin=enabled`, not an
