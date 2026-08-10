@@ -192,7 +192,7 @@ import { GetTopicAttributesCommand, SNSClient } from '@aws-sdk/client-sns';
 import { GetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { ResourceGoneError } from '../aws-errors.js';
 import { partitionForRegion } from '../desired/template-adapter.js';
-import { unescapeRoute53Name } from './child-enumerators.js';
+import { pageResourceRecordSets, unescapeRoute53Name } from './child-enumerators.js';
 import { CLIENT_REQUEST_HANDLER, READ_RETRY } from './client-config.js';
 import { isDefinitiveDenial } from './kms-aliases.js';
 import { hashCaBundle, sha256Hex } from './pem.js';
@@ -1758,7 +1758,7 @@ const alignTrailingDot = (live: string | undefined, declared: unknown): string |
 // one apex name can host both a PUBLIC and a PRIVATE hosted zone, and picking the wrong one would
 // compare the record against the wrong zone. Only an unambiguous single match is used.
 const canonZone = (s: string): string => unescapeRoute53Name(s).replace(/\.$/, '').toLowerCase();
-const resolveHostedZoneIdByName = async (
+export const resolveHostedZoneIdByName = async (
   c: Route53Client,
   zoneName: string
 ): Promise<string | undefined> => {
@@ -1840,19 +1840,37 @@ const readRoute53RecordSet: OverrideReader = async ({ physicalId, declared, regi
     throw new ResourceGoneError(
       `Route53 RecordSet ${name} ${type} absent from zone ${hostedZoneId}`
     );
+  // Mirror the DECLARED zone identifier. A record declared via HostedZoneName has no declared
+  // HostedZoneId, so emitting the resolved id would surface it as undeclared drift on a clean
+  // deploy (and the declared HostedZoneName would readGap, never returned by the live read).
+  // Echo the declared name instead — it is an immutable identity input (changing it replaces the
+  // record), so echoing loses no meaningful detection. A record declared by id emits the id as
+  // before (including the physical-id fallback, where zoneName is absent).
+  return projectRoute53RecordModel(
+    rec,
+    declared,
+    byName ? { HostedZoneName: zoneName } : { HostedZoneId: hostedZoneId }
+  );
+};
+
+// Project one live ResourceRecordSet into the CFn RecordSet model shape, compared against
+// the record's own DECLARED props (dot alignment on Name / AliasTarget.DNSName). `zoneField`
+// carries the zone-identity key(s) the caller wants mirrored into the model — the standalone
+// RecordSet reader passes its declared zone ref; the RecordSetGroup reader (#1743) mirrors
+// each MEMBER's own declared ref (usually none — the group-level ref governs). Shared so the
+// two readers can never diverge on the projection.
+function projectRoute53RecordModel(
+  rec: ResourceRecordSet,
+  declared: Record<string, unknown>,
+  zoneField: Record<string, unknown>
+): Record<string, unknown> {
   const model: Record<string, unknown> = {
     Name: alignTrailingDot(
       rec.Name === undefined ? undefined : unescapeRoute53Name(rec.Name),
       declared.Name
     ),
     Type: rec.Type,
-    // Mirror the DECLARED zone identifier. A record declared via HostedZoneName has no declared
-    // HostedZoneId, so emitting the resolved id would surface it as undeclared drift on a clean
-    // deploy (and the declared HostedZoneName would readGap, never returned by the live read).
-    // Echo the declared name instead — it is an immutable identity input (changing it replaces the
-    // record), so echoing loses no meaningful detection. A record declared by id emits the id as
-    // before (including the physical-id fallback, where zoneName is absent).
-    ...(byName ? { HostedZoneName: zoneName } : { HostedZoneId: hostedZoneId }),
+    ...zoneField,
   };
   if (rec.TTL !== undefined) model.TTL = String(rec.TTL); // CFn TTL is a string
   const records = rec.ResourceRecords?.map((rr) => rr.Value).filter((v): v is string => !!v);
@@ -1912,6 +1930,60 @@ const readRoute53RecordSet: OverrideReader = async ({ physicalId, declared, regi
       ...(cidr.LocationName !== undefined && { LocationName: cidr.LocationName }),
     };
   return model;
+}
+
+// AWS::Route53::RecordSetGroup (#1743) — no Cloud Control handlers at all
+// (UnsupportedActionException → the whole group was `skipped`, so an out-of-band change to a
+// group member's TTL / values / alias was INVISIBLE, and the RecordSet fold family never
+// applied to group-declared records). Read the zone's records once and project each DECLARED
+// member (matched canonically by name+type+SetIdentifier, exactly like the standalone
+// reader) through the shared projection, in DECLARED order so the element-wise declared
+// compare lines up. A declared member ABSENT from the live zone is omitted from the
+// projected array — the declared-vs-live array diff then surfaces the deletion (a whole-group
+// ResourceGoneError would falsely mark the entire group deleted). Live records that are NOT
+// declared members are never included — the zone child-enumerator owns the `added` dimension.
+const readRoute53RecordSetGroup: OverrideReader = async ({ declared, region }) => {
+  const c = new Route53Client({ region, ...READ_RETRY });
+  const declaredZoneId = str(declared.HostedZoneId);
+  const zoneName = str(declared.HostedZoneName);
+  const byName = !declaredZoneId && !!zoneName;
+  const hostedZoneId =
+    declaredZoneId ?? (zoneName ? await resolveHostedZoneIdByName(c, zoneName) : undefined);
+  const declSets = Array.isArray(declared.RecordSets)
+    ? (declared.RecordSets as Record<string, unknown>[])
+    : undefined;
+  if (!hostedZoneId || !declSets) return undefined; // unresolvable → skipped (fail open)
+  const live = await pageResourceRecordSets(c, hostedZoneId);
+  const canon = (s: string): string => unescapeRoute53Name(s).replace(/\.$/, '').toLowerCase();
+  const projected: Record<string, unknown>[] = [];
+  for (const d of declSets) {
+    if (!d || typeof d !== 'object') continue;
+    const name = str(d.Name);
+    const type = str(d.Type);
+    if (!name || !type) continue;
+    const declSetId = str(d.SetIdentifier);
+    const rec = live.find(
+      (x) =>
+        x.Type === type &&
+        !!x.Name &&
+        canon(x.Name) === canon(name) &&
+        (x.SetIdentifier ?? undefined) === declSetId
+    );
+    if (!rec) continue; // member deleted out of band → surfaces via the array diff
+    // Mirror the MEMBER's own declared zone ref when present (legal but uncommon —
+    // normally the GROUP-level ref governs and the member carries none, so none is emitted).
+    projected.push(
+      projectRoute53RecordModel(rec, d, {
+        ...(str(d.HostedZoneId) !== undefined && { HostedZoneId: d.HostedZoneId }),
+        ...(str(d.HostedZoneName) !== undefined && { HostedZoneName: d.HostedZoneName }),
+      })
+    );
+  }
+  return {
+    ...(declaredZoneId !== undefined && { HostedZoneId: declaredZoneId }),
+    ...(byName && { HostedZoneName: zoneName }),
+    RecordSets: projected,
+  };
 };
 
 // AWS::Glue::Table — CC API GetResource throws UnsupportedActionException. Read via
@@ -3609,6 +3681,7 @@ export const SDK_OVERRIDES: Record<string, OverrideReader> = {
   'AWS::MediaConvert::Queue': readMediaConvertQueue,
   'AWS::MediaConvert::JobTemplate': readMediaConvertJobTemplate,
   'AWS::Route53::RecordSet': readRoute53RecordSet,
+  'AWS::Route53::RecordSetGroup': readRoute53RecordSetGroup,
   'AWS::Glue::Table': readGlueTable,
   'AWS::Glue::Classifier': readGlueClassifier,
   'AWS::Glue::Workflow': readGlueWorkflow,

@@ -5250,6 +5250,13 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
   // still differs after case-fold). The sibling `AliasTarget.DNSName` on this same
   // type was case-folded for the identical reason.
   'AWS::Route53::RecordSet': new Set(['Name', 'AliasTarget.DNSName']),
+  // #1743: the RecordSetGroup members are the SAME records one level down — the group
+  // reader mirrors the standalone reader's projection (dot-aligned, case as stored), so
+  // the identical case tolerance applies at the member paths (indices normalize to `.*`).
+  'AWS::Route53::RecordSetGroup': new Set([
+    'RecordSets.*.Name',
+    'RecordSets.*.AliasTarget.DNSName',
+  ]),
   // Batch ComputeEnvironment `Type` — CDK's `FargateComputeEnvironment` /
   // `ManagedComputeEnvironment` emits the value LOWERCASE (`managed`) in the
   // template, but the Batch API accepts it case-insensitively and the live read
@@ -6608,6 +6615,9 @@ export const UNORDERED_ARRAY_PROPS: Record<string, ReadonlySet<string>> = {
   // add/remove still changes the multiset. (Weighted/latency routing uses separate
   // RecordSets with SetIdentifier, not ordered ResourceRecords, so this is FP-safe.)
   'AWS::Route53::RecordSet': new Set(['ResourceRecords']),
+  // #1743: the group-member twin of the entry above — the same Route53 canonical-order
+  // echo one level down (`RecordSets.*.ResourceRecords`, the CidrCollection nested shape).
+  'AWS::Route53::RecordSetGroup': new Set(['RecordSets.*.ResourceRecords']),
   // Live-observed on a fresh codedeploy-deploymentgroup-readgap deploy: a deployment
   // group's AutoRollbackConfiguration.Events is a SET of rollback-trigger enums that
   // CodeDeploy echoes SORTED alphabetically, not in template order (declared
