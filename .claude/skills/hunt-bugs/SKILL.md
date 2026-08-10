@@ -487,6 +487,30 @@ companion-removes flavor, fixed with a derived whole-object explicit `add` + an
 `AWS::ECS::Service\0DeploymentConfiguration` companion entry (#1740). The audit
 shape ("which writers have zero live evidence?") is repeatable and cheap — re-run it
 whenever a few new writers have accumulated.
+Batch 14 (2026-08-11 hunt): a SIXTH revert-no-op flavor — **GuardDuty Detector
+rejects EVERY CC patch** on a current-era detector: the model echo carries BOTH the
+deprecated `EKS_RUNTIME_MONITORING` and successor `RUNTIME_MONITORING` features
+("cannot be provided in the same request"), and separately DataSources+Features may
+not coexist in one update ("provide only one") — so even a patch touching NEITHER
+fails. Fix shape (#1752, all legs live-proven stackless): TRANSLATE any
+`/DataSources/*` op to the successor-API side (`/Features/<idx>/Status`), companion-
+remove `/DataSources` (a derived projection — dropping it from the WRITE model is
+not a state change), companion-remove the deprecated feature element LAST (index
+stability). When a type carries a deprecated/successor API-alias pair in one model,
+expect this class. Same batch: ServerlessCache `Description` bare-remove silently
+no-ops (RSDP `' '` one-space placeholder converges, #1753); Transfer `Protocols` is
+OOB-UNREACHABLE on the barest form (UpdateServer rejects FTP/FTPS "unsupported for
+IdentityProviderType SERVICE_MANAGED", 2026-08-11 — a barest server can never drift
+its protocols, so that pin's revert convergence is moot; an API_GATEWAY-idp server
+could, left unproven). A stackless Transfer probe artifact worth knowing: CC
+UpdateResource on a tagless Transfer Server fails model validation ("#/Tags:
+expected minimum item count: 1") — tag the probe resource or expect the reject. Deferred convergence candidates (unproven, from the plan.ts
+audit — probe when their infra is cheap to stand up): ELBv2 Listener
+`MutualAuthentication.AdvertiseTrustStoreCaNames` (#1698, needs mTLS listener),
+ImageBuilder `ImageTestsConfiguration.*` (#1702, needs recipe+infra chain), ASG
+`MixedInstancesPolicy.InstancesDistribution` (#1695, needs MIP ASG), CloudFront
+VpcOrigin `OriginSSLProtocols` (#1734, needs VPC-origin infra), AppSync DataSource
+`MetricsConfig` + SourceApiAssociation config (#1751, needs API+schema+DS chain).
 Piggyback the convergence
 probe on every NEW KNOWN_DEFAULTS fold a hunt ships (mutate → revert → re-read) —
 it is ~1-in-3 to need an RSDP entry, and the probe is nearly free while the stack
@@ -1015,6 +1039,34 @@ create-parameter-group` both ACCEPT a mixed-case identifier (storing it lowercas
   new deploy hits `DELETE_IN_PROGRESS state and can not be updated`. Both hit on
   2026-08-10; wait for the old PROCESS to exit AND `describe-stacks` to 404 before
   relaunching.
+- **CloudTrail Lake is closed to new customers** ("CloudTrail Lake is no longer
+  accepting new customers", live CREATE_FAILED on a barest EventDataStore 2026-08-11)
+  — `AWS::CloudTrail::EventDataStore` joins the dead-service exclusion list
+  (QLDB / CodeCommit / S3ObjectLambda / Cognito Sync class); don't re-probe.
+- **A parent whose declared shape is a LINK/PROXY to another container enumerates the
+  TARGET's children — skip enumeration for link shapes and drop proxy echoes.** Glue
+  `GetTables` on a resource-link database transparently returns the linked TARGET's
+  tables (each echoed with the target's DatabaseName), so a declared link false-added
+  every target table WITH a destructive delete offer (#1749). Fix pattern: early-return
+  for the declared link/federated shape + a generic owning-container-mismatch filter in
+  the pure diff. When adding an enumerator, ask whether the parent type has a
+  link/alias/federated variant whose child-inventory API proxies elsewhere.
+- **The #1729 twin-declaration class includes the parent's OWN inline property, not just
+  new sibling TYPES.** An SNS Topic's canonical inline `Subscription: [{Protocol,
+Endpoint}]` (raw CFn / L1) creates live subscriptions with no AWS::SNS::Subscription
+  resource, and the enumerator's declared-set missed them → false `added` + delete
+  offer on a clean deploy (#1754, live barest5-hunt). When building/auditing an
+  enumerator's declared-set, enumerate EVERY declaration shape for the child surface:
+  sibling resource type(s), \*InlinePolicy twins, AND inline properties on the parent
+  resource itself (match by natural key, conservatively on unresolved refs).
+- **2026-08-11 stackless declared-FP determinations (do not re-probe):** RDS
+  GlobalCluster mixed-case identifier IS accepted + stored lowercased (#1750, fixed);
+  Route53 HealthCheck `FullyQualifiedDomainName` PRESERVES case; Backup BackupPlan
+  `ScheduleExpression` REJECTS `rate()` outright ("Cron expression is not valid" — the
+  rate-canonicalization FP is CFn-unreachable); MemoryDB ACL `UserNames` echoes in
+  DECLARED order (no reorder FP); RDS EventSubscription `SourceIds` rejects mixed case
+  with a 404 ("Could not find source" — lookup is case-sensitive against the lowercase
+  store, so the consumer-case FP is unreachable) and echoes declared order.
 - **Cognito Sync is closed to new customers** (`SetCognitoEvents` →
   NotAuthorizedException "no longer accepting new customers"), so the IdentityPool
   `CognitoEvents` prop writer AND its drift are unreachable from current accounts —

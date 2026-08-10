@@ -1,0 +1,39 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Ccpa",
+    "resourceType": "AWS::ECS::ClusterCapacityProviderAssociations",
+    "physicalId": "cdkrd-hunt-0811-ccpa",
+    "constructPath": "CdkrdHunt0811LinkPack/Ccpa",
+    "declared": {
+      "CapacityProviders": ["FARGATE_SPOT", "FARGATE"],
+      "Cluster": "cdkrd-hunt-0811-ccpa",
+      "DefaultCapacityProviderStrategy": []
+    }
+  },
+  "liveRaw": {
+    "DefaultCapacityProviderStrategy": [],
+    "CapacityProviders": ["FARGATE", "FARGATE_SPOT"],
+    "Cluster": "cdkrd-hunt-0811-ccpa"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["Cluster"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Cluster"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

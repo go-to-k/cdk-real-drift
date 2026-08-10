@@ -1,0 +1,130 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "MultinodeJd",
+    "resourceType": "AWS::Batch::JobDefinition",
+    "physicalId": "arn:aws:batch:us-east-1:111111111111:job-definition/cdkrd-hunt-0811-multinode:4",
+    "constructPath": "CdkrdHunt0811BarestA/MultinodeJd",
+    "declared": {
+      "JobDefinitionName": "cdkrd-hunt-0811-multinode",
+      "NodeProperties": {
+        "MainNode": 0,
+        "NodeRangeProperties": [
+          {
+            "Container": {
+              "Image": "public.ecr.aws/amazonlinux/amazonlinux:latest",
+              "ResourceRequirements": [
+                {
+                  "Type": "VCPU",
+                  "Value": "1"
+                },
+                {
+                  "Type": "MEMORY",
+                  "Value": "1024"
+                }
+              ]
+            },
+            "TargetNodes": "0:"
+          }
+        ],
+        "NumNodes": 2
+      },
+      "Tags": {
+        "cdkrd:ephemeral": "1"
+      },
+      "Type": "multinode"
+    }
+  },
+  "liveRaw": {
+    "Type": "multinode",
+    "Parameters": {},
+    "NodeProperties": {
+      "MainNode": 0,
+      "NodeRangeProperties": [
+        {
+          "Container": {
+            "MountPoints": [],
+            "Volumes": [],
+            "Secrets": [],
+            "Command": [],
+            "Environment": [],
+            "Ulimits": [],
+            "Image": "public.ecr.aws/amazonlinux/amazonlinux:latest",
+            "ResourceRequirements": [
+              {
+                "Type": "VCPU",
+                "Value": "1"
+              },
+              {
+                "Type": "MEMORY",
+                "Value": "1024"
+              }
+            ]
+          },
+          "TargetNodes": "0:",
+          "InstanceTypes": []
+        }
+      ],
+      "NumNodes": 2
+    },
+    "JobDefinitionArn": "arn:aws:batch:us-east-1:111111111111:job-definition/cdkrd-hunt-0811-multinode:4",
+    "JobDefinitionName": "cdkrd-hunt-0811-multinode",
+    "PropagateTags": false,
+    "Tags": {
+      "aws:cloudformation:stack-name": "CdkrdHunt0811BarestA",
+      "aws:cloudformation:stack-id": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0811BarestA/1b689460-94eb-11f1-87ae-0affdb7e7f31",
+      "cdkrd:ephemeral": "1",
+      "aws:cloudformation:logical-id": "MultinodeJd"
+    }
+  },
+  "schema": {
+    "readOnly": ["JobDefinitionArn"],
+    "writeOnly": ["ResourceRetentionPolicy"],
+    "createOnly": ["JobDefinitionName"],
+    "readOnlyPaths": ["JobDefinitionArn"],
+    "writeOnlyPaths": ["ResourceRetentionPolicy", "ResourceRetentionPolicy.SkipDeregisterOnUpdate"],
+    "createOnlyPaths": ["JobDefinitionName"],
+    "defaults": {},
+    "defaultPaths": {
+      "ResourceRetentionPolicy.SkipDeregisterOnUpdate": false
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [
+      "ContainerProperties.LinuxParameters.Devices",
+      "ContainerProperties.LinuxParameters.Tmpfs",
+      "ContainerProperties.MountPoints",
+      "ContainerProperties.ResourceRequirements",
+      "EcsProperties.TaskProperties",
+      "NodeProperties.NodeRangeProperties",
+      "RetryStrategy.EvaluateOnExit"
+    ],
+    "freeFormMapPaths": [
+      "ContainerProperties.LogConfiguration.Options",
+      "EcsProperties.TaskProperties.*.Containers.*.FirelensConfiguration.Options",
+      "EcsProperties.TaskProperties.*.Containers.*.LogConfiguration.Options",
+      "EksProperties.PodProperties.Containers.*.Resources.Limits",
+      "EksProperties.PodProperties.Containers.*.Resources.Requests",
+      "EksProperties.PodProperties.InitContainers.*.Resources.Limits",
+      "EksProperties.PodProperties.InitContainers.*.Resources.Requests",
+      "EksProperties.PodProperties.Metadata.Annotations",
+      "EksProperties.PodProperties.Metadata.Labels",
+      "NodeProperties.NodeRangeProperties.*.Container.LogConfiguration.Options",
+      "NodeProperties.NodeRangeProperties.*.EcsProperties.TaskProperties.*.Containers.*.FirelensConfiguration.Options",
+      "NodeProperties.NodeRangeProperties.*.EcsProperties.TaskProperties.*.Containers.*.LogConfiguration.Options",
+      "NodeProperties.NodeRangeProperties.*.EksProperties.PodProperties.Containers.*.Resources.Limits",
+      "NodeProperties.NodeRangeProperties.*.EksProperties.PodProperties.Containers.*.Resources.Requests",
+      "NodeProperties.NodeRangeProperties.*.EksProperties.PodProperties.InitContainers.*.Resources.Limits",
+      "NodeProperties.NodeRangeProperties.*.EksProperties.PodProperties.InitContainers.*.Resources.Requests",
+      "NodeProperties.NodeRangeProperties.*.EksProperties.PodProperties.Metadata.Annotations",
+      "NodeProperties.NodeRangeProperties.*.EksProperties.PodProperties.Metadata.Labels",
+      "Parameters"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

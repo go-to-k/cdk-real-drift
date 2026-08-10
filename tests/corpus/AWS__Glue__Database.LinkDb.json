@@ -1,0 +1,77 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "LinkDb",
+    "resourceType": "AWS::Glue::Database",
+    "physicalId": "cdkrd_hunt_0811_link",
+    "constructPath": "CdkrdHunt0811LinkPack/LinkDb",
+    "declared": {
+      "CatalogId": "111111111111",
+      "DatabaseInput": {
+        "Name": "cdkrd_hunt_0811_link",
+        "TargetDatabase": {
+          "CatalogId": "111111111111",
+          "DatabaseName": "cdkrd_hunt_0811_link_target"
+        }
+      }
+    }
+  },
+  "liveRaw": {
+    "DatabaseName": "cdkrd_hunt_0811_link",
+    "DatabaseInput": {
+      "CreateTableDefaultPermissions": [
+        {
+          "Permissions": ["ALL"],
+          "Principal": {
+            "DataLakePrincipalIdentifier": "IAM_ALLOWED_PRINCIPALS"
+          }
+        }
+      ],
+      "Parameters": {},
+      "TargetDatabase": {
+        "DatabaseName": "cdkrd_hunt_0811_link_target",
+        "CatalogId": "111111111111"
+      },
+      "Name": "cdkrd_hunt_0811_link"
+    },
+    "CatalogId": "111111111111"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["DatabaseName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["DatabaseName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["DatabaseInput.CreateTableDefaultPermissions"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "LinkDb",
+      "resourceType": "AWS::Glue::Database",
+      "path": "DatabaseInput.CreateTableDefaultPermissions",
+      "actual": [
+        {
+          "Permissions": ["ALL"],
+          "Principal": {
+            "DataLakePrincipalIdentifier": "IAM_ALLOWED_PRINCIPALS"
+          }
+        }
+      ],
+      "nested": true,
+      "physicalId": "cdkrd_hunt_0811_link",
+      "constructPath": "CdkrdHunt0811LinkPack/LinkDb"
+    }
+  ]
+}

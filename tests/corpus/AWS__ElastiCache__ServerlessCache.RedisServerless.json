@@ -1,0 +1,142 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "RedisServerless",
+    "resourceType": "AWS::ElastiCache::ServerlessCache",
+    "physicalId": "cdkrd-hunt-0811-redis",
+    "constructPath": "CdkrdHunt0811BarestA/RedisServerless",
+    "declared": {
+      "Engine": "redis",
+      "ServerlessCacheName": "cdkrd-hunt-0811-redis",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Status": "available",
+    "Description": " ",
+    "CreateTime": "2026-08-10T18:41:44.368Z",
+    "SecurityGroupIds": ["sg-0a26e23e2310ee0c9"],
+    "SubnetIds": [
+      "subnet-0839f35959eaf9126",
+      "subnet-0db5f5bc4e364ba95",
+      "subnet-0ddbb00e7c1d5b679"
+    ],
+    "DailySnapshotTime": "10:00",
+    "ReaderEndpoint": {
+      "Address": "cdkrd-hunt-0811-redis-jzgy0l.serverless.use1.cache.amazonaws.com",
+      "Port": "6380"
+    },
+    "SnapshotRetentionLimit": 0,
+    "FullEngineVersion": "7.1",
+    "Endpoint": {
+      "Address": "cdkrd-hunt-0811-redis-jzgy0l.serverless.use1.cache.amazonaws.com",
+      "Port": "6379"
+    },
+    "ServerlessCacheName": "cdkrd-hunt-0811-redis",
+    "MajorEngineVersion": "7",
+    "ARN": "arn:aws:elasticache:us-east-1:111111111111:serverlesscache:cdkrd-hunt-0811-redis",
+    "Engine": "redis",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["ARN", "CreateTime", "FullEngineVersion", "Status"],
+    "writeOnly": ["FinalSnapshotName", "SnapshotArnsToRestore"],
+    "createOnly": ["KmsKeyId", "ServerlessCacheName", "SnapshotArnsToRestore", "SubnetIds"],
+    "readOnlyPaths": [
+      "ARN",
+      "CreateTime",
+      "Endpoint.Address",
+      "Endpoint.Port",
+      "FullEngineVersion",
+      "ReaderEndpoint.Address",
+      "ReaderEndpoint.Port",
+      "Status"
+    ],
+    "writeOnlyPaths": ["FinalSnapshotName", "SnapshotArnsToRestore"],
+    "createOnlyPaths": ["KmsKeyId", "ServerlessCacheName", "SnapshotArnsToRestore", "SubnetIds"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": ["SecurityGroupIds", "SnapshotArnsToRestore", "SubnetIds"],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "RedisServerless",
+      "resourceType": "AWS::ElastiCache::ServerlessCache",
+      "path": "Description",
+      "actual": " ",
+      "physicalId": "cdkrd-hunt-0811-redis",
+      "constructPath": "CdkrdHunt0811BarestA/RedisServerless"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "RedisServerless",
+      "resourceType": "AWS::ElastiCache::ServerlessCache",
+      "path": "SecurityGroupIds",
+      "actual": ["sg-0a26e23e2310ee0c9"],
+      "physicalId": "cdkrd-hunt-0811-redis",
+      "constructPath": "CdkrdHunt0811BarestA/RedisServerless"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "RedisServerless",
+      "resourceType": "AWS::ElastiCache::ServerlessCache",
+      "path": "SubnetIds",
+      "actual": [
+        "subnet-0839f35959eaf9126",
+        "subnet-0db5f5bc4e364ba95",
+        "subnet-0ddbb00e7c1d5b679"
+      ],
+      "physicalId": "cdkrd-hunt-0811-redis",
+      "constructPath": "CdkrdHunt0811BarestA/RedisServerless"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "RedisServerless",
+      "resourceType": "AWS::ElastiCache::ServerlessCache",
+      "path": "DailySnapshotTime",
+      "actual": "10:00",
+      "physicalId": "cdkrd-hunt-0811-redis",
+      "constructPath": "CdkrdHunt0811BarestA/RedisServerless"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "RedisServerless",
+      "resourceType": "AWS::ElastiCache::ServerlessCache",
+      "path": "SnapshotRetentionLimit",
+      "actual": 0,
+      "physicalId": "cdkrd-hunt-0811-redis",
+      "constructPath": "CdkrdHunt0811BarestA/RedisServerless"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "RedisServerless",
+      "resourceType": "AWS::ElastiCache::ServerlessCache",
+      "path": "MajorEngineVersion",
+      "actual": "7",
+      "physicalId": "cdkrd-hunt-0811-redis",
+      "constructPath": "CdkrdHunt0811BarestA/RedisServerless"
+    }
+  ]
+}

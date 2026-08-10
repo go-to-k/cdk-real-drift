@@ -140,6 +140,11 @@ const CC_REVERTABLE_DESPITE_READ_OVERRIDE = new Set<string>([
 // entry here (#702): UpdateUserPool ignores an omitted property, so a fold WITHOUT an RSDP
 // entry silently reverts as a no-op `remove`. Keyed `${resourceType}\0${path}`.
 export const REVERT_SET_DEFAULT_PATHS = new Set<string>([
+  // #1753: ElastiCache ModifyServerlessCache leaves an OMITTED Description unchanged — a
+  // bare `remove` of an out-of-band description reports SUCCESS yet the value persists
+  // (silent no-op, proven via explicit CC patches on a CC-created cache, 2026-08-11);
+  // the explicit `add` of the one-space KNOWN_DEFAULTS placeholder converges.
+  'AWS::ElastiCache::ServerlessCache\0Description',
   // EC2 ModifyCapacityReservation leaves an OMITTED property unchanged — a bare `remove`
   // of an out-of-band InstanceMatchCriteria=targeted or EndDateType=limited reports
   // SUCCESS yet the live value persists (silent no-op, proven via explicit Cloud Control
@@ -955,6 +960,107 @@ function nullHuskRemovalOps(model: Record<string, unknown>): PatchOp[] {
   return ops;
 }
 
+// #1752: GuardDuty Detector patch shape — the UpdateDetector CC handler rejects EVERY
+// patch on a current-era detector unless the write model satisfies two exclusivity rules
+// (all three legs live-proven by stackless CC probes, 2026-08-11):
+//   1. the Features echo carries BOTH the deprecated EKS_RUNTIME_MONITORING and its
+//      successor RUNTIME_MONITORING → "cannot be provided in the same request" — the
+//      deprecated element must be REMOVED from the model;
+//   2. the model carries BOTH the (derived-view) DataSources echo and Features → "both
+//      data sources and features were provided. You can provide only one" — the
+//      DataSources block must be REMOVED from the model (it is a projection of Features;
+//      dropping it from the WRITE model changes no live state);
+//   3. consequently a revert op targeting /DataSources/... can never be written on that
+//      side — it must be TRANSLATED to the equivalent Features Status write
+//      (S3Logs→S3_DATA_EVENTS, Kubernetes.AuditLogs→EKS_AUDIT_LOGS,
+//      MalwareProtection→EBS_MALWARE_PROTECTION), after which the live DataSources view
+//      follows the feature (probe: S3Logs read back ENABLED).
+const GUARDDUTY_DS_FEATURE_BLOCKS: readonly { block: string; feature: string }[] = [
+  { block: 'S3Logs', feature: 'S3_DATA_EVENTS' },
+  { block: 'Kubernetes', feature: 'EKS_AUDIT_LOGS' },
+  { block: 'MalwareProtection', feature: 'EBS_MALWARE_PROTECTION' },
+];
+
+// First boolean leaf of a DataSources sub-block ({Enable: b} / {AuditLogs: {Enable: b}} /
+// {ScanEc2InstanceWithFindings: {EbsVolumes: b}}) — each block carries exactly one toggle.
+function firstBooleanLeaf(v: unknown): boolean | undefined {
+  if (typeof v === 'boolean') return v;
+  if (v && typeof v === 'object' && !Array.isArray(v)) {
+    for (const x of Object.values(v as Record<string, unknown>)) {
+      const b = firstBooleanLeaf(x);
+      if (b !== undefined) return b;
+    }
+  }
+  return undefined;
+}
+
+export function applyGuardDutyDetectorPatchShape(
+  item: RevertItem,
+  live: Record<string, unknown>
+): void {
+  const features = Array.isArray(live.Features)
+    ? (live.Features as { Name?: unknown; Status?: unknown }[])
+    : [];
+  const featureIdx = (name: string) => features.findIndex((f) => f && f.Name === name);
+
+  // Leg 3: translate /DataSources ops to Features Status writes (original op kept only
+  // when no translation is possible — an unobserved shape should fail loudly, not no-op).
+  const ops: PatchOp[] = [];
+  for (const op of item.ops) {
+    if (!op.path.startsWith('/DataSources')) {
+      ops.push(op);
+      continue;
+    }
+    const seg = op.path.split('/')[2];
+    const blocks = seg
+      ? GUARDDUTY_DS_FEATURE_BLOCKS.filter((b) => b.block === seg)
+      : GUARDDUTY_DS_FEATURE_BLOCKS;
+    const translated: PatchOp[] = [];
+    for (const b of blocks) {
+      const sub = seg ? op.value : (op.value as Record<string, unknown> | undefined)?.[b.block];
+      // A bare `remove` means return-to-default, and the #1700 creation defaults are
+      // all-enabled; an add/replace carries the target toggle inside its value.
+      const enabled = op.op === 'remove' ? true : firstBooleanLeaf(sub);
+      const idx = featureIdx(b.feature);
+      if (enabled === undefined || idx < 0) continue;
+      translated.push({
+        op: 'add',
+        path: `/Features/${idx}/Status`,
+        value: enabled ? 'ENABLED' : 'DISABLED',
+        prior: op.prior,
+        human: `${b.feature} -> ${enabled ? 'ENABLED' : 'DISABLED'} (translated from ${op.path}, #1752)`,
+      });
+    }
+    ops.push(...(translated.length > 0 ? translated : [op]));
+  }
+
+  // Leg 2: strip the DataSources projection from the write model. Runs after the
+  // translated Status writes (ops apply in order; its removal cannot shift /Features
+  // indices).
+  if (live.DataSources !== undefined && !ops.some((o) => o.path === '/DataSources')) {
+    ops.push({
+      op: 'remove',
+      path: '/DataSources',
+      contract: true,
+      human: 'DataSources -> remove from the write model (Features projection, #1752)',
+    });
+  }
+
+  // Leg 1: strip the deprecated-alias feature element — LAST, so no earlier
+  // /Features/<i> op sees a shifted index.
+  const eksIdx = featureIdx('EKS_RUNTIME_MONITORING');
+  if (eksIdx >= 0 && featureIdx('RUNTIME_MONITORING') >= 0) {
+    ops.push({
+      op: 'remove',
+      path: `/Features/${eksIdx}`,
+      contract: true,
+      human: 'EKS_RUNTIME_MONITORING -> remove (deprecated alias of RUNTIME_MONITORING, #1752)',
+    });
+  }
+
+  item.ops = ops;
+}
+
 // Total-order comparator putting two JSON pointers into DESCENDING document order: at the
 // first differing segment, larger index / lexically-greater key first (a numeric-vs-numeric
 // pair compares numerically so `/Rules/10` sorts before `/Rules/2`); if one pointer is a
@@ -1674,6 +1780,11 @@ export function buildRevertPlan(
       item.liveRaw = live;
       const huskOps = nullHuskRemovalOps(live);
       if (huskOps.length > 0) item.ops.unshift(...huskOps);
+      // #1752: GuardDuty Detector patches need the DataSources→Features translation +
+      // the two exclusivity companion removes or the handler rejects the whole patch.
+      if (item.resourceType === 'AWS::GuardDuty::Detector') {
+        applyGuardDutyDetectorPatchShape(item, live);
+      }
     }
   }
 

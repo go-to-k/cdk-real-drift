@@ -1,0 +1,70 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SamlIdp",
+    "resourceType": "AWS::Cognito::UserPoolIdentityProvider",
+    "physicalId": "cdkrd-hunt-saml",
+    "constructPath": "CdkrdHunt0811BarestA/SamlIdp",
+    "declared": {
+      "ProviderDetails": {
+        "MetadataFile": "<?xml version=\"1.0\"?><md:EntityDescriptor xmlns:md=\"urn:oasis:names:tc:SAML:2.0:metadata\" entityID=\"urn:cdkrd-hunt-0811-idp\"><md:IDPSSODescriptor WantAuthnRequestsSigned=\"false\" protocolSupportEnumeration=\"urn:oasis:names:tc:SAML:2.0:protocol\"><md:KeyDescriptor use=\"signing\"><ds:KeyInfo xmlns:ds=\"http://www.w3.org/2000/09/xmldsig#\"><ds:X509Data><ds:X509Certificate>MIIDEzCCAfugAwIBAgIUd23PixfCQqbN8bNqptEqE+9GNsMwDQYJKoZIhvcNAQELBQAwGTEXMBUGA1UEAwwOY2RrcmQtaHVudC1pZHAwHhcNMjYwODEwMTc1ODI0WhcNMjYwOTA5MTc1ODI0WjAZMRcwFQYDVQQDDA5jZGtyZC1odW50LWlkcDCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAMIRGjNNMo4aLwcGxCPEbN2GOpNel9TyHo1BsRax9FIZApdSa22mXs9o2UObdqYuVfvSMC83sxTDLxqTiYTy672yS7JLaVhOHUdi8dONyCMf2W9CPmg49iLEq5285It4LzYoKVgAWkk4qF6BHTHn2WU9j1pVJb+nte078L3CPqwC0208RSbsVSTrn3QSVcloaZNOKP+p045444mWKt9hc4Kn0nM73BZRhqNL/Mkgy6zptY4FFKtw2593rvnmOoM2O5dXrL2hG/DGSPAIWRjAFNZYctikC2ldPloxR7sfe5E3L2ELl5NXLbnpShSBThsuIpD7FHerqwq6LF7ptEPY1xMCAwEAAaNTMFEwHQYDVR0OBBYEFHWmzjhTgKum0G+1bvI57hKw5I/sMB8GA1UdIwQYMBaAFHWmzjhTgKum0G+1bvI57hKw5I/sMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEBABoJmw5e2ptW0s3jjLJbr4VnIrbFQ5ieSemHC8VhujphYv7vPr5iLnqkM1QZrjRGWXDAB9PSIAZVPTw3S67AAIK6KRJxFdYr8xnKChsjzdjhqW3fkxRVefMP3Nxn8fx6rO9Hf50hXsU8Gbmzrh77uLECH+DI/KpiSui8wvZikNsbQ1WyEneP0yakj/C7VDmHHFP5FKHeHGh04eVygxPf89ctWHe9okm3KDbSkRmQMnwpLKF2Tvk1J5KIZFvkR6y+w8nh81N702lh1in/BSbXFp8aiGO1liQJTy4Duf3X6PrZOMwF30HrvYeACALjtwxt8tZL4epW2KsHVsozEJxrm38=</ds:X509Certificate></ds:X509Data></ds:KeyInfo></md:KeyDescriptor><md:NameIDFormat>urn:oasis:names:tc:SAML:2.0:nameid-format:persistent</md:NameIDFormat><md:SingleSignOnService Binding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect\" Location=\"https://example.com/sso\"/></md:IDPSSODescriptor></md:EntityDescriptor>"
+      },
+      "ProviderName": "cdkrd-hunt-saml",
+      "ProviderType": "SAML",
+      "UserPoolId": "us-east-1_cjQKm0iga"
+    }
+  },
+  "liveRaw": {
+    "ProviderName": "cdkrd-hunt-saml",
+    "UserPoolId": "us-east-1_cjQKm0iga",
+    "AttributeMapping": {},
+    "ProviderDetails": {
+      "MetadataFile": "<?xml version=\"1.0\"?><md:EntityDescriptor xmlns:md=\"urn:oasis:names:tc:SAML:2.0:metadata\" entityID=\"urn:cdkrd-hunt-0811-idp\"><md:IDPSSODescriptor WantAuthnRequestsSigned=\"false\" protocolSupportEnumeration=\"urn:oasis:names:tc:SAML:2.0:protocol\"><md:KeyDescriptor use=\"signing\"><ds:KeyInfo xmlns:ds=\"http://www.w3.org/2000/09/xmldsig#\"><ds:X509Data><ds:X509Certificate>MIIDEzCCAfugAwIBAgIUd23PixfCQqbN8bNqptEqE+9GNsMwDQYJKoZIhvcNAQELBQAwGTEXMBUGA1UEAwwOY2RrcmQtaHVudC1pZHAwHhcNMjYwODEwMTc1ODI0WhcNMjYwOTA5MTc1ODI0WjAZMRcwFQYDVQQDDA5jZGtyZC1odW50LWlkcDCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAMIRGjNNMo4aLwcGxCPEbN2GOpNel9TyHo1BsRax9FIZApdSa22mXs9o2UObdqYuVfvSMC83sxTDLxqTiYTy672yS7JLaVhOHUdi8dONyCMf2W9CPmg49iLEq5285It4LzYoKVgAWkk4qF6BHTHn2WU9j1pVJb+nte078L3CPqwC0208RSbsVSTrn3QSVcloaZNOKP+p045444mWKt9hc4Kn0nM73BZRhqNL/Mkgy6zptY4FFKtw2593rvnmOoM2O5dXrL2hG/DGSPAIWRjAFNZYctikC2ldPloxR7sfe5E3L2ELl5NXLbnpShSBThsuIpD7FHerqwq6LF7ptEPY1xMCAwEAAaNTMFEwHQYDVR0OBBYEFHWmzjhTgKum0G+1bvI57hKw5I/sMB8GA1UdIwQYMBaAFHWmzjhTgKum0G+1bvI57hKw5I/sMA8GA1UdEwEB/wQFMAMBAf8wDQYJKoZIhvcNAQELBQADggEBABoJmw5e2ptW0s3jjLJbr4VnIrbFQ5ieSemHC8VhujphYv7vPr5iLnqkM1QZrjRGWXDAB9PSIAZVPTw3S67AAIK6KRJxFdYr8xnKChsjzdjhqW3fkxRVefMP3Nxn8fx6rO9Hf50hXsU8Gbmzrh77uLECH+DI/KpiSui8wvZikNsbQ1WyEneP0yakj/C7VDmHHFP5FKHeHGh04eVygxPf89ctWHe9okm3KDbSkRmQMnwpLKF2Tvk1J5KIZFvkR6y+w8nh81N702lh1in/BSbXFp8aiGO1liQJTy4Duf3X6PrZOMwF30HrvYeACALjtwxt8tZL4epW2KsHVsozEJxrm38=</ds:X509Certificate></ds:X509Data></ds:KeyInfo></md:KeyDescriptor><md:NameIDFormat>urn:oasis:names:tc:SAML:2.0:nameid-format:persistent</md:NameIDFormat><md:SingleSignOnService Binding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect\" Location=\"https://example.com/sso\"/></md:IDPSSODescriptor></md:EntityDescriptor>",
+      "SSORedirectBindingURI": "https://example.com/sso",
+      "ActiveEncryptionCertificate": "MIICvDCCAaSgAwIBAgIIRMJHbK9FFy4wDQYJKoZIhvcNAQELBQAwHjEcMBoGA1UEAwwTdXMtZWFzdC0xX2NqUUttMGlnYTAeFw0yNjA4MTAxODQxNDhaFw0zNjA4MTAwNDUzNDhaMB4xHDAaBgNVBAMME3VzLWVhc3QtMV9jalFLbTBpZ2EwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDWYMkyGkhXS4SxENMYlf2RTMWZuNNF3DnHpjnf6OeLrYu9bBjdLp7VugHOLZWZfmpJSGKYzIkRSX1jrtbv26jvHuWbyK+i87pRKGjY+vAi7zwBPEApuoO41lpUJWjB7VPpvHIxuhKy7TIS0ei6iyEm75AiOcnJxY8FjW0uZ/B84O/04sDJrjbffudW6scyAuTteJVcLlzI81WsOItEd1WNzSzawHm1CKHEcIYJhXTIPJQQQpp/3MUAXwMDAXqAuXio18T0YPssdl7EOzg/+CXUwYBYpSc2Gc9exRfeBQtjq6s+9NZoa/zc5kh9Y4CXYuIWmJ3SlRX2ZnYB2j0pw89BAgMBAAEwDQYJKoZIhvcNAQELBQADggEBALUR+ntqCzETCVMVJmmEppxW9+HgCVBG1Nz7uoen5KwhdYXVRfoKpMsusU24YF5OlyN10zAW7blyil1yYQ6DTWh1k8EYKRmb/86JxG+xlHa7T8fwxn0BNl5gJwmsbji6TCj9tyqevkNoPPgQIGqXkUs/TU5n/C9ptSVlI6NxS9T7mSX5Z/aQ/pdKWEgF4bTr2ouzC8gzlqSmkSe4GW85S2l3zdOkXpsxR6gyvewj3XNHeO3jX0OaUx4hjSnHGAe983Wmahla5GtBVDdbTR3I7VjJcaOLrkJYqyPYZR0iuHSsulLjAvEgaE/CWKj39keQCZESFn5csdXENGji0cKyHKE="
+    },
+    "ProviderType": "SAML",
+    "IdpIdentifiers": []
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["ProviderName", "ProviderType", "UserPoolId"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ProviderName", "ProviderType", "UserPoolId"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": ["AttributeMapping", "ProviderDetails"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "SamlIdp",
+      "resourceType": "AWS::Cognito::UserPoolIdentityProvider",
+      "path": "ProviderDetails.SSORedirectBindingURI",
+      "actual": "https://example.com/sso",
+      "nested": true,
+      "physicalId": "cdkrd-hunt-saml",
+      "constructPath": "CdkrdHunt0811BarestA/SamlIdp"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "SamlIdp",
+      "resourceType": "AWS::Cognito::UserPoolIdentityProvider",
+      "path": "ProviderDetails.ActiveEncryptionCertificate",
+      "actual": "MIICvDCCAaSgAwIBAgIIRMJHbK9FFy4wDQYJKoZIhvcNAQELBQAwHjEcMBoGA1UEAwwTdXMtZWFzdC0xX2NqUUttMGlnYTAeFw0yNjA4MTAxODQxNDhaFw0zNjA4MTAwNDUzNDhaMB4xHDAaBgNVBAMME3VzLWVhc3QtMV9jalFLbTBpZ2EwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDWYMkyGkhXS4SxENMYlf2RTMWZuNNF3DnHpjnf6OeLrYu9bBjdLp7VugHOLZWZfmpJSGKYzIkRSX1jrtbv26jvHuWbyK+i87pRKGjY+vAi7zwBPEApuoO41lpUJWjB7VPpvHIxuhKy7TIS0ei6iyEm75AiOcnJxY8FjW0uZ/B84O/04sDJrjbffudW6scyAuTteJVcLlzI81WsOItEd1WNzSzawHm1CKHEcIYJhXTIPJQQQpp/3MUAXwMDAXqAuXio18T0YPssdl7EOzg/+CXUwYBYpSc2Gc9exRfeBQtjq6s+9NZoa/zc5kh9Y4CXYuIWmJ3SlRX2ZnYB2j0pw89BAgMBAAEwDQYJKoZIhvcNAQELBQADggEBALUR+ntqCzETCVMVJmmEppxW9+HgCVBG1Nz7uoen5KwhdYXVRfoKpMsusU24YF5OlyN10zAW7blyil1yYQ6DTWh1k8EYKRmb/86JxG+xlHa7T8fwxn0BNl5gJwmsbji6TCj9tyqevkNoPPgQIGqXkUs/TU5n/C9ptSVlI6NxS9T7mSX5Z/aQ/pdKWEgF4bTr2ouzC8gzlqSmkSe4GW85S2l3zdOkXpsxR6gyvewj3XNHeO3jX0OaUx4hjSnHGAe983Wmahla5GtBVDdbTR3I7VjJcaOLrkJYqyPYZR0iuHSsulLjAvEgaE/CWKj39keQCZESFn5csdXENGji0cKyHKE=",
+      "nested": true,
+      "physicalId": "cdkrd-hunt-saml",
+      "constructPath": "CdkrdHunt0811BarestA/SamlIdp"
+    }
+  ]
+}

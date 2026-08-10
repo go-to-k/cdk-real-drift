@@ -1,0 +1,83 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "AutomationDoc",
+    "resourceType": "AWS::SSM::Document",
+    "physicalId": "CdkrdHunt0811BarestA-AutomationDoc-569eWauPQFf4",
+    "constructPath": "CdkrdHunt0811BarestA/AutomationDoc",
+    "declared": {
+      "Content": {
+        "schemaVersion": "0.3",
+        "mainSteps": [
+          {
+            "name": "sleep",
+            "action": "aws:sleep",
+            "inputs": {
+              "Duration": "PT5S"
+            }
+          }
+        ]
+      },
+      "DocumentType": "Automation",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "DocumentFormat": "JSON",
+    "Content": "{\n  \"schemaVersion\" : \"0.3\",\n  \"mainSteps\" : [ {\n    \"inputs\" : {\n      \"Duration\" : \"PT5S\"\n    },\n    \"name\" : \"sleep\",\n    \"action\" : \"aws:sleep\"\n  } ]\n}",
+    "DocumentType": "Automation",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0811BarestA",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "AutomationDoc",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0811BarestA/1b689460-94eb-11f1-87ae-0affdb7e7f31",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "Name": "CdkrdHunt0811BarestA-AutomationDoc-569eWauPQFf4"
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": ["Attachments", "UpdateMethod"],
+    "createOnly": ["DocumentType", "Name"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": ["Attachments", "UpdateMethod"],
+    "createOnlyPaths": ["DocumentType", "Name"],
+    "defaults": {
+      "DocumentFormat": "JSON",
+      "UpdateMethod": "Replace"
+    },
+    "defaultPaths": {
+      "DocumentFormat": "JSON",
+      "UpdateMethod": "Replace"
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": []
+}

@@ -1,0 +1,164 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "TransferBarest",
+    "resourceType": "AWS::Transfer::Server",
+    "physicalId": "arn:aws:transfer:us-east-1:111111111111:server/s-b44deb54dcc541998",
+    "constructPath": "CdkrdHunt0811BarestA/TransferBarest",
+    "declared": {
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "IpAddressType": "IPV4",
+    "Protocols": ["SFTP"],
+    "StructuredLogDestinations": [],
+    "ServerId": "s-b44deb54dcc541998",
+    "As2ServiceManagedEgressIpAddresses": [],
+    "State": "ONLINE",
+    "EndpointType": "PUBLIC",
+    "SecurityPolicyName": "TransferSecurityPolicy-2018-11",
+    "ProtocolDetails": {
+      "PassiveIp": "AUTO",
+      "SetStatOption": "DEFAULT",
+      "TlsSessionResumptionMode": "ENFORCED"
+    },
+    "S3StorageOptions": {
+      "DirectoryListingOptimization": "DISABLED"
+    },
+    "Arn": "arn:aws:transfer:us-east-1:111111111111:server/s-b44deb54dcc541998",
+    "Domain": "S3",
+    "IdentityProviderType": "SERVICE_MANAGED",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0811BarestA",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "TransferBarest",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0811BarestA/1b689460-94eb-11f1-87ae-0affdb7e7f31",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "As2ServiceManagedEgressIpAddresses", "ServerId", "State"],
+    "writeOnly": [],
+    "createOnly": ["Domain"],
+    "readOnlyPaths": ["Arn", "As2ServiceManagedEgressIpAddresses", "ServerId", "State"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Domain"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [
+      "As2ServiceManagedEgressIpAddresses",
+      "EndpointDetails.SecurityGroupIds",
+      "ProtocolDetails.As2Transports",
+      "Protocols",
+      "StructuredLogDestinations"
+    ],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "TransferBarest",
+      "resourceType": "AWS::Transfer::Server",
+      "path": "IpAddressType",
+      "actual": "IPV4",
+      "physicalId": "arn:aws:transfer:us-east-1:111111111111:server/s-b44deb54dcc541998",
+      "constructPath": "CdkrdHunt0811BarestA/TransferBarest"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "TransferBarest",
+      "resourceType": "AWS::Transfer::Server",
+      "path": "Protocols",
+      "actual": ["SFTP"],
+      "physicalId": "arn:aws:transfer:us-east-1:111111111111:server/s-b44deb54dcc541998",
+      "constructPath": "CdkrdHunt0811BarestA/TransferBarest"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "TransferBarest",
+      "resourceType": "AWS::Transfer::Server",
+      "path": "EndpointType",
+      "actual": "PUBLIC",
+      "physicalId": "arn:aws:transfer:us-east-1:111111111111:server/s-b44deb54dcc541998",
+      "constructPath": "CdkrdHunt0811BarestA/TransferBarest"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "TransferBarest",
+      "resourceType": "AWS::Transfer::Server",
+      "path": "SecurityPolicyName",
+      "actual": "TransferSecurityPolicy-2018-11",
+      "physicalId": "arn:aws:transfer:us-east-1:111111111111:server/s-b44deb54dcc541998",
+      "constructPath": "CdkrdHunt0811BarestA/TransferBarest"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "TransferBarest",
+      "resourceType": "AWS::Transfer::Server",
+      "path": "ProtocolDetails",
+      "actual": {
+        "PassiveIp": "AUTO",
+        "SetStatOption": "DEFAULT",
+        "TlsSessionResumptionMode": "ENFORCED"
+      },
+      "physicalId": "arn:aws:transfer:us-east-1:111111111111:server/s-b44deb54dcc541998",
+      "constructPath": "CdkrdHunt0811BarestA/TransferBarest"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "TransferBarest",
+      "resourceType": "AWS::Transfer::Server",
+      "path": "S3StorageOptions",
+      "actual": {
+        "DirectoryListingOptimization": "DISABLED"
+      },
+      "physicalId": "arn:aws:transfer:us-east-1:111111111111:server/s-b44deb54dcc541998",
+      "constructPath": "CdkrdHunt0811BarestA/TransferBarest"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "TransferBarest",
+      "resourceType": "AWS::Transfer::Server",
+      "path": "Domain",
+      "actual": "S3",
+      "physicalId": "arn:aws:transfer:us-east-1:111111111111:server/s-b44deb54dcc541998",
+      "constructPath": "CdkrdHunt0811BarestA/TransferBarest"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "TransferBarest",
+      "resourceType": "AWS::Transfer::Server",
+      "path": "IdentityProviderType",
+      "actual": "SERVICE_MANAGED",
+      "physicalId": "arn:aws:transfer:us-east-1:111111111111:server/s-b44deb54dcc541998",
+      "constructPath": "CdkrdHunt0811BarestA/TransferBarest"
+    }
+  ]
+}

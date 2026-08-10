@@ -1,0 +1,51 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SrcDs",
+    "resourceType": "AWS::AppSync::DataSource",
+    "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/4j3suerumfetpgnqlyaa5kaf7e/datasources/NoneDs",
+    "constructPath": "CdkrdHunt0811LinkPack/SrcDs",
+    "declared": {
+      "ApiId": "4j3suerumfetpgnqlyaa5kaf7e",
+      "Name": "NoneDs",
+      "Type": "NONE"
+    }
+  },
+  "liveRaw": {
+    "DataSourceArn": "arn:aws:appsync:us-east-1:111111111111:apis/4j3suerumfetpgnqlyaa5kaf7e/datasources/NoneDs",
+    "Type": "NONE",
+    "ApiId": "4j3suerumfetpgnqlyaa5kaf7e",
+    "MetricsConfig": "DISABLED",
+    "Name": "NoneDs"
+  },
+  "schema": {
+    "readOnly": ["DataSourceArn"],
+    "writeOnly": [],
+    "createOnly": ["ApiId", "Name"],
+    "readOnlyPaths": ["DataSourceArn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["ApiId", "Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "SrcDs",
+      "resourceType": "AWS::AppSync::DataSource",
+      "path": "MetricsConfig",
+      "actual": "DISABLED",
+      "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/4j3suerumfetpgnqlyaa5kaf7e/datasources/NoneDs",
+      "constructPath": "CdkrdHunt0811LinkPack/SrcDs"
+    }
+  ]
+}
