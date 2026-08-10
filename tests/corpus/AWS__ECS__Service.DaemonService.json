@@ -1,0 +1,173 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "DaemonService",
+    "resourceType": "AWS::ECS::Service",
+    "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/cdkrd-0810v-cluster/CdkrdHunt0810Var-DaemonService-MdHrEZT8rLIt",
+    "constructPath": "CdkrdHunt0810Var/DaemonService",
+    "declared": {
+      "Cluster": "cdkrd-0810v-cluster",
+      "LaunchType": "EC2",
+      "SchedulingStrategy": "DAEMON",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "TaskDefinition": "arn:aws:ecs:us-east-1:111111111111:task-definition/cdkrd-0810v-td:6"
+    }
+  },
+  "liveRaw": {
+    "HealthCheckGracePeriodSeconds": 0,
+    "EnableECSManagedTags": false,
+    "EnableExecuteCommand": false,
+    "PlacementConstraints": [],
+    "Cluster": "cdkrd-0810v-cluster",
+    "ServiceArn": "arn:aws:ecs:us-east-1:111111111111:service/cdkrd-0810v-cluster/CdkrdHunt0810Var-DaemonService-MdHrEZT8rLIt",
+    "DesiredCount": 0,
+    "PlacementStrategies": [],
+    "DeploymentController": {
+      "Type": "ECS"
+    },
+    "LaunchType": "EC2",
+    "Name": "CdkrdHunt0810Var-DaemonService-MdHrEZT8rLIt",
+    "AvailabilityZoneRebalancing": "DISABLED",
+    "SchedulingStrategy": "DAEMON",
+    "TaskDefinition": "arn:aws:ecs:us-east-1:111111111111:task-definition/cdkrd-0810v-td:6",
+    "ServiceName": "CdkrdHunt0810Var-DaemonService-MdHrEZT8rLIt",
+    "DeploymentConfiguration": {
+      "BakeTimeInMinutes": 0,
+      "Strategy": "ROLLING",
+      "DeploymentCircuitBreaker": {
+        "ThresholdConfiguration": {
+          "Type": "BOUNDED_PERCENT",
+          "Value": 50
+        },
+        "Enable": false,
+        "ResetOnHealthyTask": true,
+        "Rollback": false
+      },
+      "MaximumPercent": 100,
+      "MinimumHealthyPercent": 0
+    },
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Name", "ServiceArn"],
+    "writeOnly": ["ForceNewDeployment", "Monitoring"],
+    "createOnly": ["Cluster", "Role", "SchedulingStrategy", "ServiceName"],
+    "readOnlyPaths": ["Name", "ServiceArn"],
+    "writeOnlyPaths": ["ForceNewDeployment", "Monitoring"],
+    "createOnlyPaths": ["Cluster", "Role", "SchedulingStrategy", "ServiceName"],
+    "defaults": {
+      "PlatformVersion": "LATEST",
+      "AvailabilityZoneRebalancing": "ENABLED"
+    },
+    "defaultPaths": {
+      "PlatformVersion": "LATEST",
+      "AvailabilityZoneRebalancing": "ENABLED"
+    },
+    "unorderedScalarPaths": [
+      "NetworkConfiguration.AwsvpcConfiguration.SecurityGroups",
+      "NetworkConfiguration.AwsvpcConfiguration.Subnets"
+    ],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": ["ServiceConnectConfiguration.LogConfiguration.Options"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "DaemonService",
+      "resourceType": "AWS::ECS::Service",
+      "path": "HealthCheckGracePeriodSeconds",
+      "actual": 0,
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/cdkrd-0810v-cluster/CdkrdHunt0810Var-DaemonService-MdHrEZT8rLIt",
+      "constructPath": "CdkrdHunt0810Var/DaemonService"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DaemonService",
+      "resourceType": "AWS::ECS::Service",
+      "path": "EnableExecuteCommand",
+      "actual": false,
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/cdkrd-0810v-cluster/CdkrdHunt0810Var-DaemonService-MdHrEZT8rLIt",
+      "constructPath": "CdkrdHunt0810Var/DaemonService"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DaemonService",
+      "resourceType": "AWS::ECS::Service",
+      "path": "DesiredCount",
+      "actual": 0,
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/cdkrd-0810v-cluster/CdkrdHunt0810Var-DaemonService-MdHrEZT8rLIt",
+      "constructPath": "CdkrdHunt0810Var/DaemonService"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DaemonService",
+      "resourceType": "AWS::ECS::Service",
+      "path": "DeploymentController",
+      "actual": {
+        "Type": "ECS"
+      },
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/cdkrd-0810v-cluster/CdkrdHunt0810Var-DaemonService-MdHrEZT8rLIt",
+      "constructPath": "CdkrdHunt0810Var/DaemonService"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DaemonService",
+      "resourceType": "AWS::ECS::Service",
+      "path": "AvailabilityZoneRebalancing",
+      "actual": "DISABLED",
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/cdkrd-0810v-cluster/CdkrdHunt0810Var-DaemonService-MdHrEZT8rLIt",
+      "constructPath": "CdkrdHunt0810Var/DaemonService"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "DaemonService",
+      "resourceType": "AWS::ECS::Service",
+      "path": "ServiceName",
+      "actual": "CdkrdHunt0810Var-DaemonService-MdHrEZT8rLIt",
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/cdkrd-0810v-cluster/CdkrdHunt0810Var-DaemonService-MdHrEZT8rLIt",
+      "constructPath": "CdkrdHunt0810Var/DaemonService"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "DaemonService",
+      "resourceType": "AWS::ECS::Service",
+      "path": "DeploymentConfiguration",
+      "actual": {
+        "BakeTimeInMinutes": 0,
+        "Strategy": "ROLLING",
+        "DeploymentCircuitBreaker": {
+          "ThresholdConfiguration": {
+            "Type": "BOUNDED_PERCENT",
+            "Value": 50
+          },
+          "Enable": false,
+          "ResetOnHealthyTask": true,
+          "Rollback": false
+        },
+        "MaximumPercent": 100,
+        "MinimumHealthyPercent": 0
+      },
+      "physicalId": "arn:aws:ecs:us-east-1:111111111111:service/cdkrd-0810v-cluster/CdkrdHunt0810Var-DaemonService-MdHrEZT8rLIt",
+      "constructPath": "CdkrdHunt0810Var/DaemonService"
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Zone",
+    "resourceType": "AWS::Route53::HostedZone",
+    "physicalId": "Z0879385SJQYCXQF64RB",
+    "constructPath": "CdkrdHunt0810Allow/Zone",
+    "declared": {
+      "HostedZoneTags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "Name": "cdkrd-fphunt-a0810.com."
+    }
+  },
+  "liveRaw": {
+    "HostedZoneTags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "HostedZoneFeatures": {
+      "EnableAcceleratedRecovery": false
+    },
+    "HostedZoneConfig": {},
+    "Id": "Z0879385SJQYCXQF64RB",
+    "NameServers": [
+      "ns-553.awsdns-05.net",
+      "ns-94.awsdns-11.com",
+      "ns-1588.awsdns-06.co.uk",
+      "ns-1496.awsdns-59.org"
+    ],
+    "Name": "cdkrd-fphunt-a0810.com."
+  },
+  "schema": {
+    "readOnly": ["Id", "NameServers"],
+    "writeOnly": [],
+    "createOnly": ["Name"],
+    "readOnlyPaths": ["Id", "NameServers"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["VPCs"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

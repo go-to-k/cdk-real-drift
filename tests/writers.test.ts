@@ -4553,6 +4553,55 @@ describe('Budgets Budget writer (UpdateBudget full-object reconstruction, #1676)
     expect(nb.CostFilters).toEqual({ Service: ['Amazon Elastic Compute Cloud - Compute'] });
   });
 
+  it('#1744: stringifies a numeric declared BudgetLimit.Amount before UpdateBudget', async () => {
+    // The CFn schema allows a NUMERIC Spend.Amount (a template declares `Amount: 100`), but
+    // the Budgets API models Amount as a STRING — the raw number failed the live revert with
+    // "SerializationException: NUMBER_VALUE can not be converted to a String" (wrtpack-hunt
+    // 2026-08-10). The declared-drift op therefore carries the number; the writer must
+    // stringify it (and any PlannedBudgetLimits spends).
+    budgets.on(DescribeBudgetCommand).resolves({
+      Budget: {
+        BudgetName: 'my-budget',
+        BudgetType: 'COST',
+        TimeUnit: 'MONTHLY',
+        BudgetLimit: { Amount: '50.0', Unit: 'USD' },
+      },
+    } as never);
+    budgets.on(UpdateBudgetCommand).resolves({});
+    await SDK_WRITERS['AWS::Budgets::Budget'](budgetCtx(), [
+      {
+        op: 'add',
+        path: '/Budget/BudgetLimit/Amount',
+        value: 100,
+        human: 'Budget.BudgetLimit.Amount -> deployed-template value',
+      },
+    ]);
+    const nb = budgets.commandCalls(UpdateBudgetCommand)[0]!.args[0].input.NewBudget!;
+    expect(nb.BudgetLimit).toEqual({ Amount: '100', Unit: 'USD' });
+  });
+
+  it('#1744: stringifies numeric PlannedBudgetLimits amounts too', async () => {
+    budgets.on(DescribeBudgetCommand).resolves({
+      Budget: {
+        BudgetName: 'my-budget',
+        BudgetType: 'COST',
+        TimeUnit: 'MONTHLY',
+        PlannedBudgetLimits: { '1750000000': { Amount: '10.0', Unit: 'USD' } },
+      },
+    } as never);
+    budgets.on(UpdateBudgetCommand).resolves({});
+    await SDK_WRITERS['AWS::Budgets::Budget'](budgetCtx(), [
+      {
+        op: 'add',
+        path: '/Budget/PlannedBudgetLimits/1750000000/Amount',
+        value: 20,
+        human: 'Budget.PlannedBudgetLimits.1750000000.Amount -> deployed-template value',
+      },
+    ]);
+    const nb = budgets.commandCalls(UpdateBudgetCommand)[0]!.args[0].input.NewBudget!;
+    expect(nb.PlannedBudgetLimits).toEqual({ '1750000000': { Amount: '20', Unit: 'USD' } });
+  });
+
   it('drops the computed BudgetLimit for an auto-adjusting budget so revert keeps it auto-adjusting', async () => {
     budgets.on(DescribeBudgetCommand).resolves({
       Budget: {

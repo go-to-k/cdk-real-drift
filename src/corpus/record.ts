@@ -147,6 +147,10 @@ export interface CorpusCase {
     // in-stack sibling), so replay reproduces the inherited-echo folds. Optional for
     // back-compat.
     siblingRdsSourceModels?: Record<string, Record<string, unknown>>;
+    // #1746: sg-id -> GroupName for the sg-ids this EB Environment's SecurityGroups options
+    // echo, so replay resolves the raw-id echo through the anchored generated-name gate the
+    // same way the live check did. Optional for back-compat.
+    ebSgNamesById?: Record<string, string>;
   };
   expected: Finding[]; // what classifyResource produced at record time (reviewed at commit)
 }
@@ -194,6 +198,7 @@ export function buildCorpusCase(
     siblingClientVpnEndpointVpcs?: Record<string, string | null>;
     siblingCloudFrontCdPolicyIds?: Record<string, string | null>;
     siblingRdsSourceModels?: Record<string, Record<string, unknown>>;
+    ebSgNamesById?: Record<string, string> | undefined;
   },
   findings: Finding[]
 ): CorpusCase {
@@ -395,6 +400,13 @@ export function buildCorpusCase(
         : {}),
       ...(rdsSrcKey !== undefined && rdsSrcMap !== undefined && rdsSrcMap[rdsSrcKey]
         ? { siblingRdsSourceModels: { [rdsSrcKey]: rdsSrcMap[rdsSrcKey] } }
+        : {}),
+      // #1746: carry the sg-id -> GroupName map on an EB Environment case, so replay
+      // resolves the raw-id SecurityGroups echo through the anchored gate identically.
+      ...(resource.resourceType === 'AWS::ElasticBeanstalk::Environment' &&
+      opts.ebSgNamesById &&
+      Object.keys(opts.ebSgNamesById).length > 0
+        ? { ebSgNamesById: opts.ebSgNamesById }
         : {}),
     },
     expected: findings,

@@ -1,0 +1,237 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Broker",
+    "resourceType": "AWS::AmazonMQ::Broker",
+    "physicalId": "b-a15bd5d4-f4bf-42bc-96ef-8ba5abb140b2",
+    "constructPath": "CdkrdHunt0810Mq/Broker",
+    "declared": {
+      "AutoMinorVersionUpgrade": true,
+      "BrokerName": "cdkrd-0810-rabbit",
+      "DeploymentMode": "SINGLE_INSTANCE",
+      "EngineType": "RABBITMQ",
+      "HostInstanceType": "mq.m5.large",
+      "PubliclyAccessible": true,
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "Users": [
+        {
+          "Password": "cdkrd-hunt-0810-pw!A1",
+          "Username": "cdkrdhunt"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "AuthenticationStrategy": "SIMPLE",
+    "SubnetIds": ["subnet-0839f35959eaf9126"],
+    "StompEndpoints": [],
+    "MqttEndpoints": [],
+    "AmqpEndpoints": ["amqps://b-a15bd5d4-f4bf-42bc-96ef-8ba5abb140b2.mq.us-east-1.on.aws:5671"],
+    "DeploymentMode": "SINGLE_INSTANCE",
+    "EngineType": "RABBITMQ",
+    "EncryptionOptions": {
+      "UseAwsOwnedKey": true
+    },
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0810Mq",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Broker",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0810Mq/565b6f20-94aa-11f1-9f73-0ec6625581b5",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "StorageType": "EBS",
+    "ConfigurationRevision": "1",
+    "MaintenanceWindowStartTime": {
+      "DayOfWeek": "MONDAY",
+      "TimeOfDay": "17:00",
+      "TimeZone": "UTC"
+    },
+    "HostInstanceType": "mq.m5.large",
+    "AutoMinorVersionUpgrade": true,
+    "Logs": {
+      "General": false
+    },
+    "ConsoleURLs": ["https://b-a15bd5d4-f4bf-42bc-96ef-8ba5abb140b2.mq.us-east-1.on.aws"],
+    "ConfigurationId": "c-5789d12a-8b4a-4233-9e2d-6105e35763fc",
+    "DataReplicationMode": "NONE",
+    "BrokerName": "cdkrd-0810-rabbit",
+    "EngineVersionCurrent": "3.13.7",
+    "WssEndpoints": [],
+    "IpAddresses": [],
+    "OpenWireEndpoints": [],
+    "Id": "b-a15bd5d4-f4bf-42bc-96ef-8ba5abb140b2",
+    "PubliclyAccessible": true,
+    "Arn": "arn:aws:mq:us-east-1:111111111111:broker:cdkrd-0810-rabbit:b-a15bd5d4-f4bf-42bc-96ef-8ba5abb140b2"
+  },
+  "schema": {
+    "readOnly": [
+      "AmqpEndpoints",
+      "Arn",
+      "ConfigurationId",
+      "ConfigurationRevision",
+      "ConsoleURLs",
+      "EngineVersionCurrent",
+      "Id",
+      "IpAddresses",
+      "MqttEndpoints",
+      "OpenWireEndpoints",
+      "StompEndpoints",
+      "WssEndpoints"
+    ],
+    "writeOnly": ["Configuration", "DataReplicationPrimaryBrokerArn", "EngineVersion", "Users"],
+    "createOnly": [
+      "AuthenticationStrategy",
+      "BrokerName",
+      "DeploymentMode",
+      "EncryptionOptions",
+      "EngineType",
+      "PubliclyAccessible",
+      "StorageType",
+      "SubnetIds"
+    ],
+    "readOnlyPaths": [
+      "AmqpEndpoints",
+      "Arn",
+      "ConfigurationId",
+      "ConfigurationRevision",
+      "ConsoleURLs",
+      "EngineVersionCurrent",
+      "Id",
+      "IpAddresses",
+      "MqttEndpoints",
+      "OpenWireEndpoints",
+      "StompEndpoints",
+      "WssEndpoints"
+    ],
+    "writeOnlyPaths": [
+      "Configuration",
+      "DataReplicationPrimaryBrokerArn",
+      "EngineVersion",
+      "LdapServerMetadata.ServiceAccountPassword",
+      "Users"
+    ],
+    "createOnlyPaths": [
+      "AuthenticationStrategy",
+      "BrokerName",
+      "DeploymentMode",
+      "EncryptionOptions",
+      "EngineType",
+      "PubliclyAccessible",
+      "StorageType",
+      "SubnetIds"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [
+      "AmqpEndpoints",
+      "ConsoleURLs",
+      "IpAddresses",
+      "MqttEndpoints",
+      "OpenWireEndpoints",
+      "ResourceShareArns",
+      "SecurityGroups",
+      "StompEndpoints",
+      "SubnetIds",
+      "WssEndpoints"
+    ],
+    "unorderedObjectArrayPaths": ["Users"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "Broker",
+      "resourceType": "AWS::AmazonMQ::Broker",
+      "path": "Users",
+      "note": "write-only — cannot be read back",
+      "writeOnly": true,
+      "physicalId": "b-a15bd5d4-f4bf-42bc-96ef-8ba5abb140b2",
+      "constructPath": "CdkrdHunt0810Mq/Broker"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Broker",
+      "resourceType": "AWS::AmazonMQ::Broker",
+      "path": "AuthenticationStrategy",
+      "actual": "SIMPLE",
+      "physicalId": "b-a15bd5d4-f4bf-42bc-96ef-8ba5abb140b2",
+      "constructPath": "CdkrdHunt0810Mq/Broker"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Broker",
+      "resourceType": "AWS::AmazonMQ::Broker",
+      "path": "SubnetIds",
+      "actual": ["subnet-0839f35959eaf9126"],
+      "physicalId": "b-a15bd5d4-f4bf-42bc-96ef-8ba5abb140b2",
+      "constructPath": "CdkrdHunt0810Mq/Broker"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Broker",
+      "resourceType": "AWS::AmazonMQ::Broker",
+      "path": "EncryptionOptions",
+      "actual": {
+        "UseAwsOwnedKey": true
+      },
+      "physicalId": "b-a15bd5d4-f4bf-42bc-96ef-8ba5abb140b2",
+      "constructPath": "CdkrdHunt0810Mq/Broker"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Broker",
+      "resourceType": "AWS::AmazonMQ::Broker",
+      "path": "StorageType",
+      "actual": "EBS",
+      "physicalId": "b-a15bd5d4-f4bf-42bc-96ef-8ba5abb140b2",
+      "constructPath": "CdkrdHunt0810Mq/Broker"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Broker",
+      "resourceType": "AWS::AmazonMQ::Broker",
+      "path": "MaintenanceWindowStartTime",
+      "actual": {
+        "DayOfWeek": "MONDAY",
+        "TimeOfDay": "17:00",
+        "TimeZone": "UTC"
+      },
+      "physicalId": "b-a15bd5d4-f4bf-42bc-96ef-8ba5abb140b2",
+      "constructPath": "CdkrdHunt0810Mq/Broker"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Broker",
+      "resourceType": "AWS::AmazonMQ::Broker",
+      "path": "DataReplicationMode",
+      "actual": "NONE",
+      "physicalId": "b-a15bd5d4-f4bf-42bc-96ef-8ba5abb140b2",
+      "constructPath": "CdkrdHunt0810Mq/Broker"
+    }
+  ]
+}

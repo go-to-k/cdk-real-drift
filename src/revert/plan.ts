@@ -12,9 +12,16 @@
 import type { BaselineFile } from '../baseline/baseline-file.js';
 import { withinStackPath } from '../construct-path.js';
 import { partitionForRegion } from '../desired/template-adapter.js';
-import { GETTEMPLATE_MASK_NOTE } from '../diff/classify.js';
+import {
+  ELB_ATTRIBUTE_BAGS,
+  elbAttributeDefaultsFor,
+  GETTEMPLATE_MASK_NOTE,
+} from '../diff/classify.js';
 import { TAG_PROPERTY_NAMES } from '../normalize/cc-api-strip.js';
 import {
+  ecsDaemonDerivedDeploymentConfiguration,
+  ecsDaemonDerivedMaximumPercent,
+  ecsDaemonDerivedMinimumHealthyPercent,
   elbTargetGroupDerivedHealthCheckPort,
   elbTargetGroupDerivedHealthCheckProtocol,
   logsDeliveryDerivedRetention,
@@ -724,6 +731,21 @@ export function isUnrevertableNested(f: Finding): boolean {
   return isNestedUndeclared(f) && f.path.includes('[');
 }
 
+// #1745: an ELB attribute-bag element path (`LoadBalancerAttributes[<key>]` /
+// `TargetGroupAttributes[<key>]` / `ListenerAttributes[<key>]`). Unlike a generic
+// nested array element (unpatchable via a flat RFC6902 pointer), the bags have a
+// PER-KEY SDK writer (R78 `attributeKey` ops) and a curated per-key default table, so
+// an undeclared bag element IS revertable when both resolve — see the bar exemption
+// and the revertOp branch.
+export function elbAttributeBagElementOf(
+  f: Pick<Finding, 'resourceType' | 'path'>
+): { prop: string; key: string } | undefined {
+  const bag = ELB_ATTRIBUTE_BAGS[f.resourceType];
+  if (!bag || !f.path.startsWith(`${bag}[`) || !f.path.endsWith(']')) return undefined;
+  const key = f.path.slice(bag.length + 1, -1);
+  return key ? { prop: bag, key } : undefined;
+}
+
 // An out-of-band ManagedPolicy attachment member (a live-only `Roles[x]`/`Users[x]`/
 // `Groups[x]` — the union, surfaced as nested undeclared). Unlike a generic nested
 // undeclared value, this one HAS a precise, flat SDK op to undo it (DetachX-Policy by
@@ -1278,7 +1300,26 @@ export function buildRevertPlan(
     // record is reconstructed (baseline-file.ts) WITHOUT the flag, but keeps its nested
     // path. A top-level undeclared path is a single key (never contains '.'/'['), and
     // declared drift is a different tier — so this never blocks a top-level revert.
-    if (isUnrevertableNested(f) && !isManagedPolicyAttachmentMember(f) && !isNestedSdkWritable(f)) {
+    // #1745: an ELB attribute-bag element escapes the array-element bar when the per-key
+    // prop writer exists AND a revert value resolves (the baseline-recorded value, or the
+    // curated per-key default) — the bar's rationale (no flat pointer) does not apply to
+    // an attributeKey-routed SDK write. No writer / no value → stays barred (honest).
+    const bagElement = elbAttributeBagElementOf(f);
+    const bagElementRevertible =
+      bagElement !== undefined &&
+      !SDK_WRITERS[f.resourceType] &&
+      SDK_PROP_WRITERS[f.resourceType]?.[bagElement.prop] !== undefined &&
+      (f.desired !== undefined ||
+        recorded.some((a) => a.logicalId === f.logicalId && a.path === f.path) ||
+        elbAttributeDefaultsFor(f.resourceType, opts.declaredForLogical?.(f.logicalId) ?? {}, {})[
+          bagElement.key
+        ] !== undefined);
+    if (
+      isUnrevertableNested(f) &&
+      !isManagedPolicyAttachmentMember(f) &&
+      !isNestedSdkWritable(f) &&
+      !bagElementRevertible
+    ) {
       notRevertable.push({
         displayId,
         resourceType: f.resourceType,
@@ -1446,7 +1487,8 @@ export function buildRevertPlan(
     // split into one cc item and one sdk item per scoped path — key the grouping
     // by kind (+ path when prop-scoped) so each item resolves to ONE writer.
     const propScoped =
-      !SDK_WRITERS[f.resourceType] && SDK_PROP_WRITERS[f.resourceType]?.[f.path] !== undefined;
+      !SDK_WRITERS[f.resourceType] &&
+      SDK_PROP_WRITERS[f.resourceType]?.[bagElement?.prop ?? f.path] !== undefined;
     // A nested-path SDK writer (SDK_NESTED_WRITERS) reverts a DEEP sub-field its predicate
     // matches (e.g. ApiGateway Method integration knobs). Unlike propScoped, every matching
     // nested op of one resource batches into ONE sdk item (no path suffix in the key below) —
@@ -1571,7 +1613,9 @@ export function buildRevertPlan(
     }
     const declaredModel = opts.declaredForLogical?.(f.logicalId);
     const op = revertOp(toRevert, recorded, opts.identity, declaredModel);
-    const key = `${f.logicalId} ${kind}${propScoped ? ` ${f.path}` : ''}`;
+    // (#1745: a bag element groups under its BAG prop so declared per-key drift and
+    // undeclared bag elements of one resource land in the same writer item)
+    const key = `${f.logicalId} ${kind}${propScoped ? ` ${bagElement?.prop ?? f.path}` : ''}`;
     const item =
       itemsByLogical.get(key) ??
       ({
@@ -1601,6 +1645,11 @@ export function buildRevertPlan(
         item.ops.push({
           op: 'remove',
           path: siblingPointer,
+          // #967 contract semantics: plumbing that exists only to make the CC patch valid —
+          // never a standalone selectable row, and the convergence no-op detector skips it
+          // (an ECS-managed DesiredCount echo persists by design after the DAEMON
+          // DeploymentConfiguration revert, #1740 — flagging it was a false NOT-reverted).
+          contract: true,
           human: `${sibling} -> remove (incompatible with the restored default)`,
         });
       }
@@ -1736,6 +1785,22 @@ function derivedRevertDefaultFor(
   if (resourceType === 'AWS::RDS::DBInstance' && path === 'BackupRetentionPeriod') {
     return rdsReplicaDerivedBackupRetention(declared['SourceDBInstanceIdentifier']);
   }
+  // #1740: a DAEMON-scheduled ECS service's rollout band derives 100/0 (the static
+  // KNOWN_DEFAULT_PATHS entries carry the REPLICA 200/100 — sourcing them here would
+  // wrong-write a DAEMON service's band). The whole-object arm exists because the bare
+  // `remove` is live-impossible (the CC model's DesiredCount echo fails DAEMON
+  // validation) — see ecsDaemonDerivedDeploymentConfiguration + the companion remove.
+  if (resourceType === 'AWS::ECS::Service') {
+    if (path === 'DeploymentConfiguration') {
+      return ecsDaemonDerivedDeploymentConfiguration(declared['SchedulingStrategy']);
+    }
+    if (path === 'DeploymentConfiguration.MaximumPercent') {
+      return ecsDaemonDerivedMaximumPercent(declared['SchedulingStrategy']);
+    }
+    if (path === 'DeploymentConfiguration.MinimumHealthyPercent') {
+      return ecsDaemonDerivedMinimumHealthyPercent(declared['SchedulingStrategy']);
+    }
+  }
   // Unreachable in practice (PutRetentionPolicy rejects DELIVERY groups, so the value
   // cannot drift out of band) — kept for the classify/revert single-source invariant.
   if (resourceType === 'AWS::Logs::LogGroup' && path === 'RetentionInDays') {
@@ -1766,6 +1831,13 @@ export const REVERT_COMPANION_REMOVES: Record<string, (value: unknown) => readon
       : value === 'io1' || value === 'io2'
         ? ['Throughput']
         : [],
+  // #1740: reverting a DAEMON service's DeploymentConfiguration while the CC model still
+  // carries the ECS-managed DesiredCount echo fails with "The daemon scheduling strategy
+  // does not support a desired count for services" (live, variants6-hunt 2026-08-10) —
+  // drop the echo from the same patch. The live-presence + not-declared gates keep a
+  // REPLICA service's DECLARED DesiredCount untouched, and an undeclared one is
+  // no-change-on-absence for the ECS provider.
+  'AWS::ECS::Service\0DeploymentConfiguration': () => ['DesiredCount'],
 };
 
 function revertOp(
@@ -1801,6 +1873,34 @@ function revertOp(
   // `prior` carries the finding's current live value for property-scoped SDK
   // writers (per-entry revert); Cloud Control serialization ignores it.
   const wasRecorded = recorded.find((a) => a.logicalId === f.logicalId && a.path === f.path);
+  // #1745: an ELB attribute-bag element reverts via the per-key prop writer (R78
+  // attributeKey ops), never a CC pointer — the bracket path is flat-unpatchable, but
+  // the write mechanism and value source both exist. Value preference: the baseline
+  // value when the finding carries/records one (restore), else the curated per-key
+  // default (shared elbAttributeDefaultsFor, so classify and revert can never
+  // disagree). The plan-loop bar already refused the no-writer / no-value cases.
+  const bagEl = elbAttributeBagElementOf(f);
+  if (bagEl) {
+    const baselineValue = f.desired !== undefined ? f.desired : wasRecorded?.value;
+    const value =
+      baselineValue !== undefined
+        ? baselineValue
+        : elbAttributeDefaultsFor(f.resourceType, declaredModel ?? {}, {})[bagEl.key];
+    if (value !== undefined) {
+      return {
+        op: 'add',
+        path: toPointer(bagEl.prop),
+        value,
+        prior: f.actual,
+        attributeKey: bagEl.key,
+        human: `${bagEl.prop}[${bagEl.key}] -> ${
+          baselineValue !== undefined
+            ? 'baseline value'
+            : 'AWS default (undeclared, not in baseline)'
+        }`,
+      };
+    }
+  }
   if (f.actual === undefined && f.desired !== undefined) {
     // removed-undeclared finding: re-add the baseline value
     return {

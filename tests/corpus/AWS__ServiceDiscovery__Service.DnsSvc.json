@@ -1,0 +1,95 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Svc",
+    "resourceType": "AWS::ServiceDiscovery::Service",
+    "physicalId": "srv-oljjlzoxcj3uafqw",
+    "constructPath": "CdkrdHunt0810Wrt/Svc",
+    "declared": {
+      "Description": "cdkrd 0810 writer hunt svc",
+      "DnsConfig": {
+        "DnsRecords": [
+          {
+            "TTL": 60,
+            "Type": "A"
+          }
+        ],
+        "RoutingPolicy": "MULTIVALUE"
+      },
+      "Name": "cdkrd-0810w-svc",
+      "NamespaceId": "ns-xotqrau7tiqhrkp5",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Name": "cdkrd-0810w-svc",
+    "Description": "cdkrd 0810 writer hunt svc",
+    "NamespaceId": "ns-xotqrau7tiqhrkp5",
+    "Type": "DNS_HTTP",
+    "DnsConfig": {
+      "RoutingPolicy": "MULTIVALUE",
+      "DnsRecords": [
+        {
+          "Type": "A",
+          "TTL": 60
+        }
+      ]
+    },
+    "Tags": [
+      {
+        "Key": "aws:cloudformation:stack-name",
+        "Value": "CdkrdHunt0810Wrt"
+      },
+      {
+        "Key": "aws:cloudformation:logical-id",
+        "Value": "Svc"
+      },
+      {
+        "Key": "aws:cloudformation:stack-id",
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0810Wrt/468d3b70-94ad-11f1-aa91-12787c3aadc7"
+      },
+      {
+        "Key": "cdkrd:ephemeral",
+        "Value": "1"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id"],
+    "writeOnly": [],
+    "createOnly": ["HealthCheckCustomConfig", "Name", "NamespaceId", "Type"],
+    "readOnlyPaths": ["Arn", "Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["HealthCheckCustomConfig", "Name", "NamespaceId", "Type"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": ["ServiceAttributes"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Svc",
+      "resourceType": "AWS::ServiceDiscovery::Service",
+      "path": "Type",
+      "actual": "DNS_HTTP",
+      "physicalId": "srv-oljjlzoxcj3uafqw",
+      "constructPath": "CdkrdHunt0810Wrt/Svc"
+    }
+  ]
+}

@@ -1722,6 +1722,10 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     if (item.kind === 'delete' || !okIds.has(item.logicalId)) continue;
     for (const op of item.ops) {
       if (op.op !== 'remove' && op.op !== 'add') continue;
+      // #967/#1740: a CONTRACT op is patch plumbing, not a user-chosen revert — a companion
+      // remove of an AWS-managed echo (the DAEMON DesiredCount) persists by design and must
+      // not drive a "NOT reverted" verdict.
+      if (op.contract) continue;
       const dotted = op.path.replace(/^\//, '').replace(/\//g, '.');
       const key = `${item.logicalId}\0${dotted}`;
       if (!preActual.has(key)) continue;

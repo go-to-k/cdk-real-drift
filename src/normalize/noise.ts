@@ -3775,17 +3775,31 @@ export const EB_OPTION_VALUE_INDEPENDENT: ReadonlySet<string> = new Set([
 //     `AWSEB…SecurityGroup` logical-id shape.
 // A rogue SG (`eb update-environment …SecurityGroups=sg-…`, `my-awseb-backdoor`) matches
 // none of these anchored shapes and surfaces.
-function isEbGeneratedGroup(el: string): boolean {
-  const name = el.trim();
+// #1746: a LIVE classic-LB environment echoes the option as the RAW sg-id of its own
+// generated LB security group (not a name) — resolve the id to its GroupName (the
+// gather-prefetched `sgNamesById` map, one DescribeSecurityGroups call) and apply the
+// SAME anchored shapes. An unresolvable id (lookup denied / a foreign SG) SURFACES —
+// fail-closed, because folding an arbitrary sg-id would resurrect the #1264
+// rogue-SG-hiding bug.
+function isEbGeneratedGroup(el: string, sgNamesById?: Readonly<Record<string, string>>): boolean {
+  let name = el.trim();
   if (name === '') return false;
+  if (/^sg-[0-9a-f]+$/i.test(name)) {
+    const resolved = sgNamesById?.[name];
+    if (resolved === undefined) return false;
+    name = resolved;
+  }
   // resolved environment-resource name: awseb-e-<envid>-…
   if (/^awseb-e-/i.test(name)) return true;
   // resolved name carrying the CFn logical fragment, or the bare logical id (Ref echo)
   return /AWSEB(LoadBalancer)?SecurityGroup/.test(name);
 }
-function isAllEbGeneratedGroups(value: unknown): boolean {
+function isAllEbGeneratedGroups(
+  value: unknown,
+  sgNamesById?: Readonly<Record<string, string>>
+): boolean {
   if (typeof value !== 'string' || value === '') return false;
-  return value.split(',').every((el) => isEbGeneratedGroup(el));
+  return value.split(',').every((el) => isEbGeneratedGroup(el, sgNamesById));
 }
 // #1278/#1263: when the user declares no `aws:ec2:instances|InstanceTypes` option, EB assigns
 // the platform's smallest burstable pair for the environment's processor architecture — a
@@ -3821,7 +3835,10 @@ export function ebOptionSettingTier(
   // #893: look up a SIBLING option's live Value on the same environment (returns undefined
   // when absent). Threaded by the classify caller from the full OptionSettings array so a
   // derived default (InstanceType = InstanceTypes[0]) can be computed and equality-gated.
-  siblingOption?: (namespace: string, optionName: string) => unknown
+  siblingOption?: (namespace: string, optionName: string) => unknown,
+  // #1746: sg-id -> GroupName map (gather prefetch) so a raw-id SecurityGroups echo can be
+  // resolved and run through the anchored generated-name shapes.
+  sgNamesById?: Readonly<Record<string, string>>
 ): 'atDefault' | 'undeclared' {
   // An unset option: DescribeConfigurationSettings returns many option keys with a null or
   // empty Value (BlockDeviceMappings, VPCId, Notification*, RootVolume*, …). Unset is not
@@ -3833,7 +3850,7 @@ export function ebOptionSettingTier(
     key === 'aws:autoscaling:launchconfiguration|SecurityGroups' ||
     key === 'aws:elb:loadbalancer|SecurityGroups'
   ) {
-    return isAllEbGeneratedGroups(value) ? 'atDefault' : 'undeclared';
+    return isAllEbGeneratedGroups(value, sgNamesById) ? 'atDefault' : 'undeclared';
   }
   // #893: InstanceType — derived default = the first element of the sibling InstanceTypes
   // option; a bump that differs (the silent cost bomb) surfaces. When the sibling is absent
@@ -5271,17 +5288,24 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
   // DBParameterGroupName/DBSubnetGroupName pair additionally live-proven E2E on
   // rds-replica-hunt, 2026-08-02). A reference differing only by case can never be real
   // drift — these names are case-insensitively unique in their services.
+  // #1741: `Engine` joins the family — RDS engine-name matching is case-insensitive with a
+  // lowercase store (`describe-db-engine-versions --engine MySQL` resolves and returns
+  // `mysql`; the OptionGroup `EngineName: "MySQL"` CC probe stored `mysql`, 2026-08-10), so
+  // a template declaring `Engine: MySQL` reads back `mysql` — a permanent declared FP. Two
+  // engines differing beyond case are a genuine replacement and still surface.
   'AWS::RDS::DBInstance': new Set([
     'DBInstanceIdentifier',
     'DBParameterGroupName',
     'DBSubnetGroupName',
     'OptionGroupName',
     'DBClusterIdentifier',
+    'Engine',
   ]),
   'AWS::RDS::DBCluster': new Set([
     'DBClusterIdentifier',
     'DBClusterParameterGroupName',
     'DBSubnetGroupName',
+    'Engine',
   ]),
   // The "stored as a lowercase string" identifier family — ElastiCache, DocumentDB,
   // Neptune, and DMS all lowercase their resource identifier on creation (AWS CLI help:
@@ -5362,9 +5386,16 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
   // as this entry). All are create-only names, so case-insensitive equality hides no
   // revertable drift (a genuine rename is a replacement). Neptune/DocDB spell the CFn
   // property `Name`.
-  'AWS::RDS::DBParameterGroup': new Set(['DBParameterGroupName']),
-  'AWS::RDS::DBClusterParameterGroup': new Set(['DBClusterParameterGroupName']),
-  'AWS::RDS::OptionGroup': new Set(['OptionGroupName']),
+  // #1741: `Family` / `EngineName` join their owning types — the CFn/CC handlers ACCEPT a
+  // mixed-case value and the service stores it lowercased (stackless CC probes 2026-08-10:
+  // DBParameterGroup `Family: "MySQL8.4"` -> `mysql8.4`, DBClusterParameterGroup
+  // `Family: "Aurora-MySQL8.0"` -> `aurora-mysql8.0`, OptionGroup `EngineName: "MySQL"` ->
+  // `mysql`; mixed-case OptionGroup EngineName + DBParameterGroup Family also E2E-witnessed
+  // via CloudFormation in allowpack-hunt). All create-only, so case-insensitive equality
+  // hides no revertable drift.
+  'AWS::RDS::DBParameterGroup': new Set(['DBParameterGroupName', 'Family']),
+  'AWS::RDS::DBClusterParameterGroup': new Set(['DBClusterParameterGroupName', 'Family']),
+  'AWS::RDS::OptionGroup': new Set(['OptionGroupName', 'EngineName']),
   'AWS::RDS::DBSubnetGroup': new Set(['DBSubnetGroupName']),
   'AWS::Neptune::DBParameterGroup': new Set(['Name']),
   'AWS::Neptune::DBClusterParameterGroup': new Set(['Name']),

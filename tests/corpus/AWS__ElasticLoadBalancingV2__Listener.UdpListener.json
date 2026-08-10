@@ -1,0 +1,86 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "UdpListener",
+    "resourceType": "AWS::ElasticLoadBalancingV2::Listener",
+    "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/net/cdkrd-0810v-nlb/432b7954855f911c/b35decea7f387098",
+    "constructPath": "CdkrdHunt0810Var/UdpListener",
+    "declared": {
+      "DefaultActions": [
+        {
+          "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-0810v-udp-tg/a286d5299944b210",
+          "Type": "forward"
+        }
+      ],
+      "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/cdkrd-0810v-nlb/432b7954855f911c",
+      "Port": 53,
+      "Protocol": "UDP"
+    }
+  },
+  "liveRaw": {
+    "ListenerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/net/cdkrd-0810v-nlb/432b7954855f911c/b35decea7f387098",
+    "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/cdkrd-0810v-nlb/432b7954855f911c",
+    "DefaultActions": [
+      {
+        "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-0810v-udp-tg/a286d5299944b210",
+        "Type": "forward",
+        "ForwardConfig": {
+          "TargetGroupStickinessConfig": {
+            "Enabled": false
+          },
+          "TargetGroups": [
+            {
+              "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-0810v-udp-tg/a286d5299944b210"
+            }
+          ]
+        }
+      }
+    ],
+    "Port": 53,
+    "Protocol": "UDP",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0810Var",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "UdpListener",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0810Var/c5403370-94b0-11f1-b059-0ef131302bd7",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["ListenerArn"],
+    "writeOnly": [],
+    "createOnly": ["LoadBalancerArn"],
+    "readOnlyPaths": ["ListenerArn"],
+    "writeOnlyPaths": ["DefaultActions.*.AuthenticateOidcConfig.ClientSecret"],
+    "createOnlyPaths": ["LoadBalancerArn"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": [
+      "DefaultActions.*.AuthenticateCognitoConfig.AuthenticationRequestExtraParams",
+      "DefaultActions.*.AuthenticateOidcConfig.AuthenticationRequestExtraParams"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": []
+}

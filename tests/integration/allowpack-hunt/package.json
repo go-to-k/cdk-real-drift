@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-integ-allowpack-hunt",
+  "private": true,
+  "version": "0.0.0",
+  "description": "2026-08-10 hunt: predicted allowlist-gap FPs — S3 lifecycle date rules + EventBridge notification, SNS partial DeliveryPolicy expansion, Route53 RecordSetGroup fold-family bypass, WAFv2 mixed-case SingleHeader/SingleQueryArgument names. First-run FP probe via verify.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module"
+}

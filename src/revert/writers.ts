@@ -237,7 +237,12 @@ import {
 } from '@aws-sdk/client-servicediscovery';
 import { SetTopicAttributesCommand, SNSClient } from '@aws-sdk/client-sns';
 import { SetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
-import { type Budget, BudgetsClient, UpdateBudgetCommand } from '@aws-sdk/client-budgets';
+import {
+  type Budget,
+  BudgetsClient,
+  type Spend,
+  UpdateBudgetCommand,
+} from '@aws-sdk/client-budgets';
 import { partitionForRegion } from '../desired/template-adapter.js';
 import { NESTED_ARRAY_IDENTITY } from '../diff/classify.js';
 import { deepEqual } from '../diff/drift-calculator.js';
@@ -3204,6 +3209,21 @@ const writeBudget: SdkWriter = async (ctx, ops) => {
   // limit would convert the budget to a fixed one (a wrong write). Drop BudgetLimit when
   // AutoAdjustData is present so the budget stays auto-adjusting.
   const newBudget: Budget = budget.AutoAdjustData ? { ...budget, BudgetLimit: undefined } : budget;
+  // #1744: the CFn schema allows a NUMERIC Spend.Amount (a template declares
+  // `BudgetLimit: {Amount: 100}`), but the Budgets API models Amount as a STRING — the
+  // SDK serializer rejects the number ("NUMBER_VALUE can not be converted to a String",
+  // live wrtpack-hunt 2026-08-10). Stringify every Spend.Amount before the write.
+  const stringifySpend = (s: unknown): Spend | undefined => {
+    if (!s || typeof s !== 'object') return undefined;
+    const sp = s as Record<string, unknown>;
+    return { ...sp, ...(sp.Amount !== undefined && { Amount: String(sp.Amount) }) } as Spend;
+  };
+  if (newBudget.BudgetLimit) newBudget.BudgetLimit = stringifySpend(newBudget.BudgetLimit);
+  if (newBudget.PlannedBudgetLimits) {
+    newBudget.PlannedBudgetLimits = Object.fromEntries(
+      Object.entries(newBudget.PlannedBudgetLimits).map(([k, v]) => [k, stringifySpend(v)])
+    ) as Record<string, Spend>;
+  }
   await new BudgetsClient({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
     new UpdateBudgetCommand({ AccountId: ctx.accountId, NewBudget: newBudget })
   );

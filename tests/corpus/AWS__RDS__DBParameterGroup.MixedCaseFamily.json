@@ -1,0 +1,67 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Dpg",
+    "resourceType": "AWS::RDS::DBParameterGroup",
+    "physicalId": "cdkrd-0810a-dpg",
+    "constructPath": "CdkrdHunt0810Allow/Dpg",
+    "declared": {
+      "DBParameterGroupName": "cdkrd-0810a-dpg",
+      "Description": "cdkrd 0810 allowpack",
+      "Family": "MySQL8.4",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "DBParameterGroupName": "cdkrd-0810a-dpg",
+    "Description": "cdkrd 0810 allowpack",
+    "Parameters": {},
+    "Family": "mysql8.4",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0810Allow",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Dpg",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0810Allow/461684d0-94ad-11f1-ab4e-0affd2ec42e1",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["DBParameterGroupName", "Description", "Family"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["DBParameterGroupName", "Description", "Family"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": []
+}
