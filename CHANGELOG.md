@@ -1,3 +1,10 @@
+## [0.25.5](https://github.com/go-to-k/cdk-real-drift/compare/v0.25.4...v0.25.5) (2026-08-10)
+
+
+### Bug Fixes
+
+* **hunt:** 2026-08-10 sweep — writer-proof pack (3 revert bugs), ECS DAEMON folds, RDS mixed-case Engine/Family, RecordSetGroup added-FP, EB LB sg-id gate ([#1747](https://github.com/go-to-k/cdk-real-drift/issues/1747)) ([6483c44](https://github.com/go-to-k/cdk-real-drift/commit/6483c44942d8b664204fb0bc345187fb03791028))
+
 ## [0.25.4](https://github.com/go-to-k/cdk-real-drift/compare/v0.25.3...v0.25.4) (2026-08-08)
 
 
