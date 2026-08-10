@@ -1,0 +1,103 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "TcpUdpListener",
+    "resourceType": "AWS::ElasticLoadBalancingV2::Listener",
+    "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/net/cdkrd-0810v-nlb/432b7954855f911c/82444f8517ef06de",
+    "constructPath": "CdkrdHunt0810Var/TcpUdpListener",
+    "declared": {
+      "DefaultActions": [
+        {
+          "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-0810v-tu-tg/05818f2964167e88",
+          "Type": "forward"
+        }
+      ],
+      "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/cdkrd-0810v-nlb/432b7954855f911c",
+      "Port": 54,
+      "Protocol": "TCP_UDP"
+    }
+  },
+  "liveRaw": {
+    "ListenerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/net/cdkrd-0810v-nlb/432b7954855f911c/82444f8517ef06de",
+    "ListenerAttributes": [
+      {
+        "Value": "350",
+        "Key": "tcp.idle_timeout.seconds"
+      }
+    ],
+    "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/net/cdkrd-0810v-nlb/432b7954855f911c",
+    "DefaultActions": [
+      {
+        "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-0810v-tu-tg/05818f2964167e88",
+        "Type": "forward",
+        "ForwardConfig": {
+          "TargetGroupStickinessConfig": {
+            "Enabled": false
+          },
+          "TargetGroups": [
+            {
+              "TargetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/cdkrd-0810v-tu-tg/05818f2964167e88"
+            }
+          ]
+        }
+      }
+    ],
+    "Port": 54,
+    "Protocol": "TCP_UDP",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0810Var",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "TcpUdpListener",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0810Var/c5403370-94b0-11f1-b059-0ef131302bd7",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["ListenerArn"],
+    "writeOnly": [],
+    "createOnly": ["LoadBalancerArn"],
+    "readOnlyPaths": ["ListenerArn"],
+    "writeOnlyPaths": ["DefaultActions.*.AuthenticateOidcConfig.ClientSecret"],
+    "createOnlyPaths": ["LoadBalancerArn"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": [
+      "DefaultActions.*.AuthenticateCognitoConfig.AuthenticationRequestExtraParams",
+      "DefaultActions.*.AuthenticateOidcConfig.AuthenticationRequestExtraParams"
+    ]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "TcpUdpListener",
+      "resourceType": "AWS::ElasticLoadBalancingV2::Listener",
+      "path": "ListenerAttributes[tcp.idle_timeout.seconds]",
+      "actual": "350",
+      "nested": true,
+      "physicalId": "arn:aws:elasticloadbalancing:us-east-1:111111111111:listener/net/cdkrd-0810v-nlb/432b7954855f911c/82444f8517ef06de",
+      "constructPath": "CdkrdHunt0810Var/TcpUdpListener"
+    }
+  ]
+}

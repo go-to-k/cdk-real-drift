@@ -67,3 +67,40 @@ export function rdsReplicaDerivedBackupRetention(
 ): number | undefined {
   return sourceDbInstanceIdentifier !== undefined ? 0 : undefined;
 }
+
+// ECS Service: a DAEMON-scheduled service's rollout band defaults differ from the
+// REPLICA band the static pins encode — MaximumPercent 100 / MinimumHealthyPercent 0
+// (#1740, live variants6-hunt 2026-08-10). The static KNOWN_DEFAULT_PATHS entries
+// stay 200/100 for REPLICA services.
+export function ecsDaemonDerivedMaximumPercent(schedulingStrategy: unknown): number | undefined {
+  return schedulingStrategy === 'DAEMON' ? 100 : undefined;
+}
+export function ecsDaemonDerivedMinimumHealthyPercent(
+  schedulingStrategy: unknown
+): number | undefined {
+  return schedulingStrategy === 'DAEMON' ? 0 : undefined;
+}
+
+// ECS Service (DAEMON): the WHOLE-OBJECT DeploymentConfiguration revert default. A bare
+// `remove` is impossible live: the CC read-modify-write model carries the ECS-managed
+// DesiredCount echo, which the ECS API rejects for DAEMON ("The daemon scheduling strategy
+// does not support a desired count") — so revert writes this explicit object (the exact
+// live-observed DAEMON creation default, variants6-hunt 2026-08-10) and a
+// REVERT_COMPANION_REMOVES entry drops the DesiredCount echo from the same patch.
+export function ecsDaemonDerivedDeploymentConfiguration(
+  schedulingStrategy: unknown
+): Record<string, unknown> | undefined {
+  if (schedulingStrategy !== 'DAEMON') return undefined;
+  return {
+    BakeTimeInMinutes: 0,
+    Strategy: 'ROLLING',
+    DeploymentCircuitBreaker: {
+      ThresholdConfiguration: { Type: 'BOUNDED_PERCENT', Value: 50 },
+      Enable: false,
+      ResetOnHealthyTask: true,
+      Rollback: false,
+    },
+    MaximumPercent: 100,
+    MinimumHealthyPercent: 0,
+  };
+}

@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-integ-wrtpack-hunt",
+  "private": true,
+  "version": "0.0.0",
+  "description": "2026-08-10 hunt: live-proof pack for never-exercised SDK writers/deleters (TG attributes, ElastiCache/DAX ParameterGroup, Budgets, CompositeAlarm ActionsEnabled, Cognito IdentityPool CognitoEvents, SES CSED, ServiceDiscovery Service, KMS Grant revoke, LogGroup bearer-token). Run via verify-detect.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module"
+}

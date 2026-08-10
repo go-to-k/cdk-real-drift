@@ -469,6 +469,24 @@ an LB-attached fixture would be needed. And a REVERT-DELETE flavor: an `added`
 as an `SDK_DELETERS` entry splitting the enumerator identifier `db|table` (#1724);
 when an added-child revert fails this way, prefer the #1431 SDK-deleter route over
 the honest-notRevertable set whenever the service has a one-call delete.
+Batch 13 (2026-08-10 hunt, the "writer-proof pack"): the Round-0 offline audit found
+the READ side fully corpus-exercised but ~10 SDK writers/deleters that had NEVER run
+live — one nearly-free stack (`wrtpack-hunt`) mutate→detect→revert→live-assert'd all
+of them at once and found THREE revert bugs in one run: **Budgets `writeBudget`
+crashed on a template-declared NUMERIC `BudgetLimit.Amount`** (the CFn schema allows
+a number, the API models Spend.Amount as a STRING → SerializationException; #1744 —
+when writing a writer, check every CFn-numeric/API-string field, the Spend shape
+recurs); **an UNDECLARED ELB attribute-bag element (`TargetGroupAttributes[key]`)
+was pre-barred by the generic nested-array-element gate** before the per-key prop
+writer could take it (#1745 — when a "not revertable" reason fires on a path a
+writer COULD serve, check the bar's ordering before accepting it); and **ECS DAEMON
+`DeploymentConfiguration` remove was REJECTED outright** because the CC
+read-modify-write model still carried the ECS-managed `DesiredCount` echo ("daemon
+scheduling strategy does not support a desired count") — the #1710
+companion-removes flavor, fixed with a derived whole-object explicit `add` + an
+`AWS::ECS::Service\0DeploymentConfiguration` companion entry (#1740). The audit
+shape ("which writers have zero live evidence?") is repeatable and cheap — re-run it
+whenever a few new writers have accumulated.
 Piggyback the convergence
 probe on every NEW KNOWN_DEFAULTS fold a hunt ships (mutate → revert → re-read) —
 it is ~1-in-3 to need an RSDP entry, and the probe is nearly free while the stack
@@ -986,6 +1004,26 @@ create-parameter-group` both ACCEPT a mixed-case identifier (storing it lowercas
   lines inside the block** (`sed -n '/\[Potential Drift/,/^──/p' | grep -E '^\s+\S+ \(AWS::'`),
   or a fully-clean-but-for-the-allowed-entry run false-fails on the header (hit on
   elbpack-hunt 2026-08-01).
+- **A detect-assert grep needle must target the finding PATH line, not a nested value
+  key — long `actual =` values are TRUNCATED with `…` in the report.** A DAEMON band
+  change surfaced as the whole `DeploymentConfiguration` object whose JSON was cut
+  right before `MinimumHealthyPercent`, so `grep MinimumHealthyPercent` false-failed a
+  successful detection (variants6-hunt 2026-08-10). Grep `Logical.Prop` instead.
+- **Never relaunch a verify.sh while the previous instance's cleanup trap is still
+  running.** The old trap's `delstack` + `rm -rf cdk.out` race the new run two ways:
+  the fresh `cdk.out` is deleted mid-deploy (ENOENT on the template asset), or the
+  new deploy hits `DELETE_IN_PROGRESS state and can not be updated`. Both hit on
+  2026-08-10; wait for the old PROCESS to exit AND `describe-stacks` to 404 before
+  relaunching.
+- **Cognito Sync is closed to new customers** (`SetCognitoEvents` →
+  NotAuthorizedException "no longer accepting new customers"), so the IdentityPool
+  `CognitoEvents` prop writer AND its drift are unreachable from current accounts —
+  determination recorded in wrtpack-hunt; don't re-probe. Same family of service-side
+  closures as S3 Object Lambda / QLDB in the missing-type audit.
+- **A Cloud Map Service in an HTTP namespace is API-ONLY and cannot be updated**
+  ("Service in API-only namespace cannot be updated") — an UpdateService writer
+  probe needs a DNS-namespace service (PrivateDnsNamespace + DnsConfig), and the
+  update JSON must re-include DnsConfig or it is deleted (wrtpack-hunt 2026-08-10).
 - **A NEW all-boolean pin family can arrive via a READER-projection fix — re-run the
   off-flip audit over the diff window, not just the historical tables.** The #1658
   Budgets reader fix (projecting the full 11-boolean `CostTypes`) necessarily added a

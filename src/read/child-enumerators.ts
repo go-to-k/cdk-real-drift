@@ -5673,6 +5673,48 @@ function route53ZoneRefMatches(
   );
 }
 
+// Declared RecordSets targeting a zone, collected from BOTH declaration forms. Standalone
+// `AWS::Route53::RecordSet` resources match on their own zone ref; `AWS::Route53::
+// RecordSetGroup` members (#1742) match on the GROUP-level zone ref (HostedZoneId /
+// HostedZoneName) or — legal but uncommon — a per-member ref. Without the group walk every
+// group member was flagged `added` (live, allowpack-hunt 2026-08-10), and a revert
+// --remove-unrecorded would have DELETED the user's own declared records. Pure + exported
+// for tests.
+export function collectDeclaredRoute53Records(
+  resources: readonly { resourceType: string; declared: Record<string, unknown> }[],
+  hostedZoneId: string,
+  zoneApex: string | undefined
+): { name: string; type: string; setIdentifier?: string | undefined }[] {
+  const declaredRecords: { name: string; type: string; setIdentifier?: string | undefined }[] = [];
+  const pushDeclared = (rec: Record<string, unknown>) => {
+    const name = typeof rec.Name === 'string' ? rec.Name : undefined;
+    const type = typeof rec.Type === 'string' ? rec.Type : undefined;
+    if (name && type) {
+      declaredRecords.push({
+        name,
+        type,
+        setIdentifier: typeof rec.SetIdentifier === 'string' ? rec.SetIdentifier : undefined,
+      });
+    }
+  };
+  for (const r of resources) {
+    if (r.resourceType === 'AWS::Route53::RecordSet') {
+      if (!route53ZoneRefMatches(r.declared, hostedZoneId, zoneApex)) continue;
+      pushDeclared(r.declared);
+    } else if (r.resourceType === 'AWS::Route53::RecordSetGroup') {
+      const groupMatches = route53ZoneRefMatches(r.declared, hostedZoneId, zoneApex);
+      const sets = Array.isArray(r.declared.RecordSets) ? r.declared.RecordSets : [];
+      for (const rs of sets) {
+        if (!rs || typeof rs !== 'object') continue;
+        const rec = rs as Record<string, unknown>;
+        if (!groupMatches && !route53ZoneRefMatches(rec, hostedZoneId, zoneApex)) continue;
+        pushDeclared(rec);
+      }
+    }
+  }
+  return declaredRecords;
+}
+
 export async function enumerateRoute53HostedZoneChildren(
   ctx: EnumeratorContext
 ): Promise<AddedChild[]> {
@@ -5687,21 +5729,7 @@ export async function enumerateRoute53HostedZoneChildren(
   // Declared RecordSets targeting THIS zone (by HostedZoneId or HostedZoneName). Each is a
   // SEPARATE CloudFormation resource, so the template lists every declared one; a live record
   // matching none is out of band.
-  const declaredRecords: { name: string; type: string; setIdentifier?: string | undefined }[] = [];
-  for (const r of desired.resources) {
-    if (r.resourceType !== 'AWS::Route53::RecordSet') continue;
-    if (!route53ZoneRefMatches(r.declared, hostedZoneId, zoneApex)) continue;
-    const name = typeof r.declared.Name === 'string' ? r.declared.Name : undefined;
-    const type = typeof r.declared.Type === 'string' ? r.declared.Type : undefined;
-    if (name && type) {
-      declaredRecords.push({
-        name,
-        type,
-        setIdentifier:
-          typeof r.declared.SetIdentifier === 'string' ? r.declared.SetIdentifier : undefined,
-      });
-    }
-  }
+  const declaredRecords = collectDeclaredRoute53Records(desired.resources, hostedZoneId, zoneApex);
 
   const client = new Route53Client({ region, ...READ_RETRY });
   const records = await pageResourceRecordSets(client, hostedZoneId);

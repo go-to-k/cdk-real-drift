@@ -1,0 +1,239 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Bucket",
+    "resourceType": "AWS::S3::Bucket",
+    "physicalId": "cdkrdhunt0810allow-bucket-ecd3ouvbjagy",
+    "constructPath": "CdkrdHunt0810Allow/Bucket",
+    "declared": {
+      "LifecycleConfiguration": {
+        "Rules": [
+          {
+            "ExpirationDate": "2027-01-01T00:00:00Z",
+            "Id": "date-expire",
+            "Prefix": "archive/",
+            "Status": "Enabled",
+            "Transitions": [
+              {
+                "StorageClass": "GLACIER",
+                "TransitionDate": "2026-12-01T00:00:00Z"
+              }
+            ]
+          }
+        ]
+      },
+      "NotificationConfiguration": {
+        "EventBridgeConfiguration": {
+          "EventBridgeEnabled": true
+        }
+      },
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "DomainName": "cdkrdhunt0810allow-bucket-ecd3ouvbjagy.s3.amazonaws.com",
+    "BucketEncryption": {
+      "ServerSideEncryptionConfiguration": [
+        {
+          "BucketKeyEnabled": false,
+          "BlockedEncryptionTypes": {
+            "EncryptionType": ["SSE-C"]
+          },
+          "ServerSideEncryptionByDefault": {
+            "SSEAlgorithm": "AES256"
+          }
+        }
+      ]
+    },
+    "WebsiteURL": "http://cdkrdhunt0810allow-bucket-ecd3ouvbjagy.s3-website-us-east-1.amazonaws.com",
+    "NotificationConfiguration": {
+      "TopicConfigurations": [],
+      "QueueConfigurations": [],
+      "LambdaConfigurations": [],
+      "EventBridgeConfiguration": {
+        "EventBridgeEnabled": true
+      }
+    },
+    "LifecycleConfiguration": {
+      "TransitionDefaultMinimumObjectSize": "all_storage_classes_128K",
+      "Rules": [
+        {
+          "Status": "Enabled",
+          "ExpirationDate": "2027-01-01T00:00:00Z",
+          "Transitions": [
+            {
+              "TransitionDate": "2026-12-01T00:00:00Z",
+              "StorageClass": "GLACIER"
+            }
+          ],
+          "Id": "date-expire",
+          "Prefix": "archive/"
+        }
+      ]
+    },
+    "DualStackDomainName": "cdkrdhunt0810allow-bucket-ecd3ouvbjagy.s3.dualstack.us-east-1.amazonaws.com",
+    "AbacStatus": "Disabled",
+    "PublicAccessBlockConfiguration": {
+      "RestrictPublicBuckets": true,
+      "BlockPublicPolicy": true,
+      "BlockPublicAcls": true,
+      "IgnorePublicAcls": true
+    },
+    "BucketName": "cdkrdhunt0810allow-bucket-ecd3ouvbjagy",
+    "RegionalDomainName": "cdkrdhunt0810allow-bucket-ecd3ouvbjagy.s3.us-east-1.amazonaws.com",
+    "OwnershipControls": {
+      "Rules": [
+        {
+          "ObjectOwnership": "BucketOwnerEnforced"
+        }
+      ]
+    },
+    "Arn": "arn:aws:s3:::cdkrdhunt0810allow-bucket-ecd3ouvbjagy",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0810Allow",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Bucket",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0810Allow/461684d0-94ad-11f1-ab4e-0affd2ec42e1",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "DomainName", "DualStackDomainName", "RegionalDomainName", "WebsiteURL"],
+    "writeOnly": ["AccessControl", "BucketNamePrefix", "BucketNamespace"],
+    "createOnly": ["BucketName", "BucketNamePrefix", "BucketNamespace"],
+    "readOnlyPaths": [
+      "Arn",
+      "DomainName",
+      "DualStackDomainName",
+      "MetadataConfiguration.AnnotationTableConfiguration.TableArn",
+      "MetadataConfiguration.AnnotationTableConfiguration.TableName",
+      "MetadataConfiguration.Destination",
+      "MetadataConfiguration.InventoryTableConfiguration.TableArn",
+      "MetadataConfiguration.InventoryTableConfiguration.TableName",
+      "MetadataConfiguration.JournalTableConfiguration.TableArn",
+      "MetadataConfiguration.JournalTableConfiguration.TableName",
+      "MetadataTableConfiguration.S3TablesDestination.TableArn",
+      "MetadataTableConfiguration.S3TablesDestination.TableNamespace",
+      "RegionalDomainName",
+      "WebsiteURL"
+    ],
+    "writeOnlyPaths": [
+      "AccessControl",
+      "BucketNamePrefix",
+      "BucketNamespace",
+      "LifecycleConfiguration.Rules.*.ExpiredObjectDeleteMarker",
+      "LifecycleConfiguration.Rules.*.NoncurrentVersionExpirationInDays",
+      "LifecycleConfiguration.Rules.*.NoncurrentVersionTransition",
+      "LifecycleConfiguration.Rules.*.Transition",
+      "MetadataConfiguration.AnnotationTableConfiguration.EncryptionConfiguration",
+      "MetadataConfiguration.InventoryTableConfiguration.EncryptionConfiguration",
+      "MetadataConfiguration.JournalTableConfiguration.EncryptionConfiguration",
+      "ReplicationConfiguration.Rules.*.Prefix"
+    ],
+    "createOnlyPaths": ["BucketName", "BucketNamePrefix", "BucketNamespace"],
+    "defaults": {},
+    "defaultPaths": {
+      "NotificationConfiguration.EventBridgeConfiguration.EventBridgeEnabled": "true",
+      "VersioningConfiguration.Status": "Suspended"
+    },
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Bucket",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "BucketEncryption",
+      "actual": {
+        "ServerSideEncryptionConfiguration": [
+          {
+            "BucketKeyEnabled": false,
+            "BlockedEncryptionTypes": {
+              "EncryptionType": ["SSE-C"]
+            },
+            "ServerSideEncryptionByDefault": {
+              "SSEAlgorithm": "AES256"
+            }
+          }
+        ]
+      },
+      "physicalId": "cdkrdhunt0810allow-bucket-ecd3ouvbjagy",
+      "constructPath": "CdkrdHunt0810Allow/Bucket"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Bucket",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "AbacStatus",
+      "actual": "Disabled",
+      "physicalId": "cdkrdhunt0810allow-bucket-ecd3ouvbjagy",
+      "constructPath": "CdkrdHunt0810Allow/Bucket"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Bucket",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "PublicAccessBlockConfiguration",
+      "actual": {
+        "RestrictPublicBuckets": true,
+        "BlockPublicPolicy": true,
+        "BlockPublicAcls": true,
+        "IgnorePublicAcls": true
+      },
+      "physicalId": "cdkrdhunt0810allow-bucket-ecd3ouvbjagy",
+      "constructPath": "CdkrdHunt0810Allow/Bucket"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Bucket",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "OwnershipControls",
+      "actual": {
+        "Rules": [
+          {
+            "ObjectOwnership": "BucketOwnerEnforced"
+          }
+        ]
+      },
+      "physicalId": "cdkrdhunt0810allow-bucket-ecd3ouvbjagy",
+      "constructPath": "CdkrdHunt0810Allow/Bucket"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "Bucket",
+      "resourceType": "AWS::S3::Bucket",
+      "path": "LifecycleConfiguration.TransitionDefaultMinimumObjectSize",
+      "actual": "all_storage_classes_128K",
+      "nested": true,
+      "physicalId": "cdkrdhunt0810allow-bucket-ecd3ouvbjagy",
+      "constructPath": "CdkrdHunt0810Allow/Bucket"
+    }
+  ]
+}

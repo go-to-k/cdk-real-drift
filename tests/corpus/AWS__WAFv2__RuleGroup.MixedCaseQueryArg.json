@@ -1,0 +1,152 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "RuleGroup",
+    "resourceType": "AWS::WAFv2::RuleGroup",
+    "physicalId": "cdkrd-0810a-rg|c9ca734a-0e89-4c8d-9056-efb7594fabeb|REGIONAL",
+    "constructPath": "CdkrdHunt0810Allow/RuleGroup",
+    "declared": {
+      "Capacity": 25,
+      "Name": "cdkrd-0810a-rg",
+      "Rules": [
+        {
+          "Action": {
+            "Count": {}
+          },
+          "Name": "qarg",
+          "Priority": 0,
+          "Statement": {
+            "ByteMatchStatement": {
+              "FieldToMatch": {
+                "SingleQueryArgument": {
+                  "Name": "SessionId"
+                }
+              },
+              "PositionalConstraint": "EXACTLY",
+              "SearchString": "x",
+              "TextTransformations": [
+                {
+                  "Priority": 0,
+                  "Type": "NONE"
+                }
+              ]
+            }
+          },
+          "VisibilityConfig": {
+            "CloudWatchMetricsEnabled": false,
+            "MetricName": "cdkrd0810aQarg",
+            "SampledRequestsEnabled": false
+          }
+        }
+      ],
+      "Scope": "REGIONAL",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "VisibilityConfig": {
+        "CloudWatchMetricsEnabled": false,
+        "MetricName": "cdkrd0810aRg",
+        "SampledRequestsEnabled": false
+      }
+    }
+  },
+  "liveRaw": {
+    "Description": "",
+    "Scope": "REGIONAL",
+    "Capacity": 25,
+    "AvailableLabels": [],
+    "Id": "c9ca734a-0e89-4c8d-9056-efb7594fabeb",
+    "ConsumedLabels": [],
+    "Arn": "arn:aws:wafv2:us-east-1:111111111111:regional/rulegroup/cdkrd-0810a-rg/c9ca734a-0e89-4c8d-9056-efb7594fabeb",
+    "Rules": [
+      {
+        "Action": {
+          "Count": {}
+        },
+        "Priority": 0,
+        "Statement": {
+          "ByteMatchStatement": {
+            "SearchStringBase64": "eA==",
+            "TextTransformations": [
+              {
+                "Type": "NONE",
+                "Priority": 0
+              }
+            ],
+            "PositionalConstraint": "EXACTLY",
+            "SearchString": "x",
+            "FieldToMatch": {
+              "SingleQueryArgument": {
+                "Name": "sessionid"
+              }
+            }
+          }
+        },
+        "RuleLabels": [],
+        "VisibilityConfig": {
+          "MetricName": "cdkrd0810aQarg",
+          "SampledRequestsEnabled": false,
+          "CloudWatchMetricsEnabled": false
+        },
+        "Name": "qarg"
+      }
+    ],
+    "VisibilityConfig": {
+      "MetricName": "cdkrd0810aRg",
+      "SampledRequestsEnabled": false,
+      "CloudWatchMetricsEnabled": false
+    },
+    "LabelNamespace": "awswaf:111111111111:rulegroup:cdkrd-0810a-rg:",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0810Allow",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "RuleGroup",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0810Allow/461684d0-94ad-11f1-ab4e-0affd2ec42e1",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "Name": "cdkrd-0810a-rg"
+  },
+  "schema": {
+    "readOnly": ["Arn", "Id", "LabelNamespace"],
+    "writeOnly": [],
+    "createOnly": ["Name", "Scope"],
+    "readOnlyPaths": [
+      "Arn",
+      "AvailableLabels.*.Name",
+      "ConsumedLabels.*.Name",
+      "Id",
+      "LabelNamespace"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name", "Scope"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": ["CustomResponseBodies"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": []
+}

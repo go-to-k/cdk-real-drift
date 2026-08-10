@@ -1,0 +1,144 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SpotCe",
+    "resourceType": "AWS::Batch::ComputeEnvironment",
+    "physicalId": "arn:aws:batch:us-east-1:111111111111:compute-environment/cdkrd-0810v-spotce",
+    "constructPath": "CdkrdHunt0810Var/SpotCe",
+    "declared": {
+      "ComputeEnvironmentName": "cdkrd-0810v-spotce",
+      "ComputeResources": {
+        "InstanceRole": "arn:aws:iam::111111111111:instance-profile/CdkrdHunt0810Var-BatchInstanceProfile-AuGzsfvO0HaQ",
+        "InstanceTypes": ["optimal"],
+        "MaxvCpus": 1,
+        "MinvCpus": 0,
+        "SecurityGroupIds": ["sg-0434023ccb8de2ad9"],
+        "SpotIamFleetRole": "arn:aws:iam::111111111111:role/CdkrdHunt0810Var-SpotFleetRole-1Ea5yFPQRxlG",
+        "Subnets": ["subnet-0eed3f0cb3854dce1"],
+        "Type": "SPOT"
+      },
+      "Tags": {
+        "cdkrd:ephemeral": "1"
+      },
+      "Type": "MANAGED"
+    }
+  },
+  "liveRaw": {
+    "Type": "MANAGED",
+    "ServiceRole": "arn:aws:iam::111111111111:role/aws-service-role/batch.amazonaws.com/AWSServiceRoleForBatch",
+    "ComputeEnvironmentName": "cdkrd-0810v-spotce",
+    "ComputeResources": {
+      "Subnets": ["subnet-0eed3f0cb3854dce1"],
+      "Type": "SPOT",
+      "MinvCpus": 0,
+      "SpotIamFleetRole": "arn:aws:iam::111111111111:role/CdkrdHunt0810Var-SpotFleetRole-1Ea5yFPQRxlG",
+      "MaxvCpus": 1,
+      "InstanceRole": "arn:aws:iam::111111111111:instance-profile/CdkrdHunt0810Var-BatchInstanceProfile-AuGzsfvO0HaQ",
+      "InstanceTypes": ["optimal"],
+      "Ec2Configuration": [
+        {
+          "ImageType": "ECS_AL2023"
+        }
+      ],
+      "SecurityGroupIds": ["sg-0434023ccb8de2ad9"],
+      "DesiredvCpus": 0
+    },
+    "State": "ENABLED",
+    "ComputeEnvironmentArn": "arn:aws:batch:us-east-1:111111111111:compute-environment/cdkrd-0810v-spotce",
+    "Tags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "schema": {
+    "readOnly": ["ComputeEnvironmentArn"],
+    "writeOnly": ["ReplaceComputeEnvironment", "UpdatePolicy"],
+    "createOnly": ["ComputeEnvironmentName", "EksConfiguration", "Tags", "Type"],
+    "readOnlyPaths": [
+      "ComputeEnvironmentArn",
+      "ComputeResources.Ec2Configuration.*.BatchImageStatus"
+    ],
+    "writeOnlyPaths": [
+      "ComputeResources.UpdateToLatestImageVersion",
+      "ReplaceComputeEnvironment",
+      "UpdatePolicy"
+    ],
+    "createOnlyPaths": [
+      "ComputeEnvironmentName",
+      "ComputeResources.SpotIamFleetRole",
+      "EksConfiguration",
+      "Tags",
+      "Type"
+    ],
+    "defaults": {
+      "ReplaceComputeEnvironment": true
+    },
+    "defaultPaths": {
+      "ComputeResources.UpdateToLatestImageVersion": false,
+      "ReplaceComputeEnvironment": true,
+      "UpdatePolicy.TerminateJobsOnUpdate": false,
+      "UpdatePolicy.JobExecutionTimeoutMinutes": 30,
+      "EksConfiguration.EksClusterArn": false,
+      "EksConfiguration.KubernetesNamespace": false
+    },
+    "unorderedScalarPaths": [
+      "ComputeResources.InstanceTypes",
+      "ComputeResources.SecurityGroupIds",
+      "ComputeResources.Subnets"
+    ],
+    "unorderedObjectArrayPaths": [
+      "ComputeResources.Ec2Configuration",
+      "ComputeResources.LaunchTemplate.Overrides"
+    ],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "SpotCe",
+      "resourceType": "AWS::Batch::ComputeEnvironment",
+      "path": "ServiceRole",
+      "actual": "arn:aws:iam::111111111111:role/aws-service-role/batch.amazonaws.com/AWSServiceRoleForBatch",
+      "physicalId": "arn:aws:batch:us-east-1:111111111111:compute-environment/cdkrd-0810v-spotce",
+      "constructPath": "CdkrdHunt0810Var/SpotCe"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "SpotCe",
+      "resourceType": "AWS::Batch::ComputeEnvironment",
+      "path": "State",
+      "actual": "ENABLED",
+      "physicalId": "arn:aws:batch:us-east-1:111111111111:compute-environment/cdkrd-0810v-spotce",
+      "constructPath": "CdkrdHunt0810Var/SpotCe"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "SpotCe",
+      "resourceType": "AWS::Batch::ComputeEnvironment",
+      "path": "ComputeResources.Ec2Configuration",
+      "actual": [
+        {
+          "ImageType": "ECS_AL2023"
+        }
+      ],
+      "nested": true,
+      "physicalId": "arn:aws:batch:us-east-1:111111111111:compute-environment/cdkrd-0810v-spotce",
+      "constructPath": "CdkrdHunt0810Var/SpotCe"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "SpotCe",
+      "resourceType": "AWS::Batch::ComputeEnvironment",
+      "path": "ComputeResources.DesiredvCpus",
+      "actual": 0,
+      "nested": true,
+      "physicalId": "arn:aws:batch:us-east-1:111111111111:compute-environment/cdkrd-0810v-spotce",
+      "constructPath": "CdkrdHunt0810Var/SpotCe"
+    }
+  ]
+}

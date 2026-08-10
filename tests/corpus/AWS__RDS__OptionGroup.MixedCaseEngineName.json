@@ -1,0 +1,89 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Og",
+    "resourceType": "AWS::RDS::OptionGroup",
+    "physicalId": "cdkrd-0810a-og",
+    "constructPath": "CdkrdHunt0810Allow/Og",
+    "declared": {
+      "EngineName": "MySQL",
+      "MajorEngineVersion": "8.4",
+      "OptionGroupDescription": "cdkrd 0810 allowpack",
+      "OptionGroupName": "cdkrd-0810a-og",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "OptionGroupDescription": "cdkrd 0810 allowpack",
+    "OptionGroupName": "cdkrd-0810a-og",
+    "OptionConfigurations": [],
+    "MajorEngineVersion": "8.4",
+    "EngineName": "mysql",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0810Allow",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "Og",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0810Allow/461684d0-94ad-11f1-ab4e-0affd2ec42e1",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": [],
+    "writeOnly": [],
+    "createOnly": ["EngineName", "MajorEngineVersion", "OptionGroupDescription", "OptionGroupName"],
+    "readOnlyPaths": [],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "EngineName",
+      "MajorEngineVersion",
+      "OptionGroupDescription",
+      "OptionGroupName"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": ["OptionConfigurations"],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    },
+    "rdsOptionSettingDefaults": {
+      "cdkrd-0810a-og": {
+        "MARIADB_AUDIT_PLUGIN": {
+          "SERVER_AUDIT_FILE_ROTATIONS": null,
+          "SERVER_AUDIT_EVENTS": "CONNECT,QUERY",
+          "SERVER_AUDIT_LOGGING": "ON",
+          "SERVER_AUDIT_INCL_USERS": null,
+          "SERVER_AUDIT_FILE_PATH": "/rdsdbdata/log/audit/",
+          "SERVER_AUDIT_EXCL_USERS": null,
+          "SERVER_AUDIT": "FORCE_PLUS_PERMANENT",
+          "SERVER_AUDIT_FILE_ROTATE_SIZE": null,
+          "SERVER_AUDIT_QUERY_LOG_LIMIT": "1024"
+        }
+      }
+    }
+  },
+  "expected": []
+}

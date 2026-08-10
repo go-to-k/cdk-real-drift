@@ -143,6 +143,67 @@ const DEFAULT_SUBNET_LIST_TYPES: ReadonlySet<string> = new Set([
 // ANY error — missing ec2:DescribeSecurityGroups, throttle, network) so classify keeps folding the
 // undeclared SG list and a clean deploy never gains a first-run false positive. The derived
 // swap/append detection is therefore best-effort and requires ec2:DescribeSecurityGroups.
+// #1746: resolve the raw sg-ids an EB Environment's SecurityGroups options echo (the
+// environment's own generated LB / instance security group) to their GroupNames, so the
+// classify gate can run the ANCHORED generated-name shapes against them. Collected from
+// the LIVE models (the echo is live-only by definition); one DescribeSecurityGroups call
+// filtered by group-id (tolerant of already-deleted ids, unlike the GroupIds parameter).
+// Returns undefined on ANY error — classify then SURFACES the raw-id element (fail-closed:
+// folding an arbitrary sg-id would resurrect the #1264 rogue-SG-hiding bug).
+const EB_SG_OPTION_KEYS = new Set([
+  'aws:elb:loadbalancer|SecurityGroups',
+  'aws:autoscaling:launchconfiguration|SecurityGroups',
+]);
+export function collectEbSecurityGroupIds(
+  resources: readonly { logicalId: string; resourceType: string }[],
+  liveById: ReadonlyMap<string, Record<string, unknown>>
+): string[] {
+  const ids = new Set<string>();
+  for (const r of resources) {
+    if (r.resourceType !== 'AWS::ElasticBeanstalk::Environment') continue;
+    const live = liveById.get(r.logicalId);
+    if (!live) continue;
+    const settings = live.OptionSettings;
+    if (!Array.isArray(settings)) continue;
+    for (const s of settings) {
+      if (!s || typeof s !== 'object') continue;
+      const e = s as Record<string, unknown>;
+      if (!EB_SG_OPTION_KEYS.has(`${String(e.Namespace)}|${String(e.OptionName)}`)) continue;
+      if (typeof e.Value !== 'string') continue;
+      for (const el of e.Value.split(',')) {
+        const t = el.trim();
+        if (/^sg-[0-9a-f]+$/i.test(t)) ids.add(t);
+      }
+    }
+  }
+  return [...ids];
+}
+async function fetchSgNamesByIds(
+  region: string,
+  ids: readonly string[]
+): Promise<Record<string, string> | undefined> {
+  try {
+    const c = new EC2Client({ region, ...READ_RETRY });
+    const out: Record<string, string> = {};
+    let token: string | undefined;
+    do {
+      const r = await c.send(
+        new DescribeSecurityGroupsCommand({
+          Filters: [{ Name: 'group-id', Values: [...ids] }],
+          NextToken: token,
+        })
+      );
+      for (const g of r.SecurityGroups ?? []) {
+        if (g.GroupId && g.GroupName) out[g.GroupId] = g.GroupName;
+      }
+      token = r.NextToken;
+    } while (token);
+    return out;
+  } catch {
+    return undefined;
+  }
+}
+
 const defaultSgIdsCache = new Map<string, Set<string>>();
 async function fetchDefaultSgIds(region: string): Promise<Set<string>> {
   const cached = defaultSgIdsCache.get(region);
@@ -2263,6 +2324,13 @@ export async function gatherFindings(
     ),
     siblingRdsSourceModels: buildRdsReplicaSourceModels(desired, liveModelMap(reads)),
     rdsOptionSettingDefaults: await buildRdsOptionSettingDefaults(desired, region),
+    // #1746: resolve the sg-ids an EB Environment's SecurityGroups options echo (its own
+    // generated LB / instance SG) to GroupNames, so classify's anchored generated-name
+    // gate can fold the raw-id form. Only when a live env actually echoes ids.
+    ebSgNamesById: await (async () => {
+      const ids = collectEbSecurityGroupIds(desired.resources, liveModelMap(reads));
+      return ids.length > 0 ? fetchSgNamesByIds(region, ids) : undefined;
+    })(),
   };
 
   // Pass 2: classify (declared already re-resolved + override retries applied above).
@@ -2394,6 +2462,13 @@ export async function regatherTouched(
       new Map([...gathered.liveByLogical, ...liveModelMap(reads)])
     ),
     rdsOptionSettingDefaults: await buildRdsOptionSettingDefaults(desired, region),
+    // #1746: mirror the primary gather's EB sg-id -> GroupName prefetch (same merged map
+    // as the sibling builders above so an untouched env's echo still resolves).
+    ebSgNamesById: await (async () => {
+      const merged = new Map([...gathered.liveByLogical, ...liveModelMap(reads)]);
+      const ids = collectEbSecurityGroupIds(desired.resources, merged);
+      return ids.length > 0 ? fetchSgNamesByIds(region, ids) : undefined;
+    })(),
   };
 
   const fresh: Finding[] = [];

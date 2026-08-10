@@ -1,0 +1,164 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "WebAcl",
+    "resourceType": "AWS::WAFv2::WebACL",
+    "physicalId": "cdkrd-0810a-acl|a1f6c56c-0dc8-48be-8968-f91ec5a9f785|REGIONAL",
+    "constructPath": "CdkrdHunt0810Allow/WebAcl",
+    "declared": {
+      "DefaultAction": {
+        "Allow": {}
+      },
+      "Name": "cdkrd-0810a-acl",
+      "Rules": [
+        {
+          "Action": {
+            "Block": {}
+          },
+          "Name": "hdr",
+          "Priority": 0,
+          "Statement": {
+            "ByteMatchStatement": {
+              "FieldToMatch": {
+                "SingleHeader": {
+                  "Name": "User-Agent"
+                }
+              },
+              "PositionalConstraint": "CONTAINS",
+              "SearchString": "cdkrd-hunt",
+              "TextTransformations": [
+                {
+                  "Priority": 0,
+                  "Type": "NONE"
+                }
+              ]
+            }
+          },
+          "VisibilityConfig": {
+            "CloudWatchMetricsEnabled": false,
+            "MetricName": "cdkrd0810aHdr",
+            "SampledRequestsEnabled": false
+          }
+        }
+      ],
+      "Scope": "REGIONAL",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "VisibilityConfig": {
+        "CloudWatchMetricsEnabled": false,
+        "MetricName": "cdkrd0810aAcl",
+        "SampledRequestsEnabled": false
+      }
+    }
+  },
+  "liveRaw": {
+    "Description": "",
+    "DefaultAction": {
+      "Allow": {}
+    },
+    "Scope": "REGIONAL",
+    "Capacity": 10,
+    "Id": "a1f6c56c-0dc8-48be-8968-f91ec5a9f785",
+    "Arn": "arn:aws:wafv2:us-east-1:111111111111:regional/webacl/cdkrd-0810a-acl/a1f6c56c-0dc8-48be-8968-f91ec5a9f785",
+    "OnSourceDDoSProtectionConfig": {
+      "ALBLowReputationMode": "ACTIVE_UNDER_DDOS"
+    },
+    "Rules": [
+      {
+        "Action": {
+          "Block": {}
+        },
+        "Priority": 0,
+        "Statement": {
+          "ByteMatchStatement": {
+            "SearchStringBase64": "Y2RrcmQtaHVudA==",
+            "TextTransformations": [
+              {
+                "Type": "NONE",
+                "Priority": 0
+              }
+            ],
+            "PositionalConstraint": "CONTAINS",
+            "SearchString": "cdkrd-hunt",
+            "FieldToMatch": {
+              "SingleHeader": {
+                "Name": "user-agent"
+              }
+            }
+          }
+        },
+        "RuleLabels": [],
+        "VisibilityConfig": {
+          "MetricName": "cdkrd0810aHdr",
+          "SampledRequestsEnabled": false,
+          "CloudWatchMetricsEnabled": false
+        },
+        "Name": "hdr"
+      }
+    ],
+    "VisibilityConfig": {
+      "MetricName": "cdkrd0810aAcl",
+      "SampledRequestsEnabled": false,
+      "CloudWatchMetricsEnabled": false
+    },
+    "LabelNamespace": "awswaf:111111111111:webacl:cdkrd-0810a-acl:",
+    "Tags": [
+      {
+        "Value": "CdkrdHunt0810Allow",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "WebAcl",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0810Allow/461684d0-94ad-11f1-ab4e-0affd2ec42e1",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "Name": "cdkrd-0810a-acl"
+  },
+  "schema": {
+    "readOnly": ["Arn", "Capacity", "Id", "LabelNamespace"],
+    "writeOnly": [],
+    "createOnly": ["Name", "Scope"],
+    "readOnlyPaths": ["Arn", "Capacity", "Id", "LabelNamespace"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["Name", "Scope"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": ["AssociationConfig.RequestBody", "CustomResponseBodies"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "WebAcl",
+      "resourceType": "AWS::WAFv2::WebACL",
+      "path": "OnSourceDDoSProtectionConfig",
+      "actual": {
+        "ALBLowReputationMode": "ACTIVE_UNDER_DDOS"
+      },
+      "physicalId": "cdkrd-0810a-acl|a1f6c56c-0dc8-48be-8968-f91ec5a9f785|REGIONAL",
+      "constructPath": "CdkrdHunt0810Allow/WebAcl"
+    }
+  ]
+}

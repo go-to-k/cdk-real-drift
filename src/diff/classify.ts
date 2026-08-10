@@ -16,6 +16,8 @@ import {
 } from '../normalize/arn-identity.js';
 import { stripCcApiAwsManagedFields } from '../normalize/cc-api-strip.js';
 import {
+  ecsDaemonDerivedMaximumPercent,
+  ecsDaemonDerivedMinimumHealthyPercent,
   elbTargetGroupDerivedHealthCheckPort,
   elbTargetGroupDerivedHealthCheckProtocol,
   logsDeliveryDerivedRetention,
@@ -128,7 +130,10 @@ import { calculateResourceDrift, deepEqual } from './drift-calculator.js';
 // discriminators (LoadBalancer Type; TargetGroup Protocol / TargetType), declared
 // preferred with the live echo as fallback. A discriminator that matches no override
 // leaves the shared values standing; every value stays equality-gated at the call site.
-function elbAttributeDefaultsFor(
+// Exported (#1745): revert/plan sources the same per-key defaults when reverting an
+// UNDECLARED bag element (`TargetGroupAttributes[<key>]` appeared since record) back to
+// its AWS default — classify and revert can never disagree on the value.
+export function elbAttributeDefaultsFor(
   resourceType: string,
   declared: Record<string, unknown>,
   live: Record<string, unknown>
@@ -159,7 +164,7 @@ function elbAttributeDefaultsFor(
   return shared;
 }
 
-const ELB_ATTRIBUTE_BAGS: Record<string, string> = {
+export const ELB_ATTRIBUTE_BAGS: Record<string, string> = {
   'AWS::ElasticLoadBalancingV2::LoadBalancer': 'LoadBalancerAttributes',
   'AWS::ElasticLoadBalancingV2::TargetGroup': 'TargetGroupAttributes',
   'AWS::ElasticLoadBalancingV2::Listener': 'ListenerAttributes',
@@ -1509,7 +1514,12 @@ interface CompositeSubsetSpec {
   // full live array, return 'atDefault' when the entry is at its AWS first-run default (folds,
   // invariant) or 'undeclared' otherwise (surfaces — a change away from the default). Absent →
   // every live-only entry is 'undeclared' (recorded inventory; a later change still surfaces).
-  entryTier?: (entry: Record<string, unknown>, liveArray: unknown) => 'atDefault' | 'undeclared';
+  entryTier?: (
+    entry: Record<string, unknown>,
+    liveArray: unknown,
+    // #1746: sg-id -> GroupName map for the EB SecurityGroups gate (gather prefetch)
+    ebSgNamesById?: Readonly<Record<string, string>>
+  ) => 'atDefault' | 'undeclared';
 }
 // AWS (both an EB ConfigurationTemplate and an Environment) materializes the FULL option set
 // from the declared subset; fold each service-filled extra to its first-run default (equality-
@@ -1518,7 +1528,8 @@ interface CompositeSubsetSpec {
 // back via the SDK_SUPPLEMENTS DescribeConfigurationSettings reader (writeOnly-but-readable).
 const ebOptionSettingsEntryTier: NonNullable<CompositeSubsetSpec['entryTier']> = (
   entry,
-  liveArray
+  liveArray,
+  ebSgNamesById
 ) => {
   const arr = Array.isArray(liveArray) ? (liveArray as Record<string, unknown>[]) : [];
   const envEntry = arr.find((e) => e && e.OptionName === 'EnvironmentType');
@@ -1532,7 +1543,8 @@ const ebOptionSettingsEntryTier: NonNullable<CompositeSubsetSpec['entryTier']> =
     entry.OptionName,
     entry.Value,
     envType,
-    siblingOption
+    siblingOption,
+    ebSgNamesById
   );
 };
 const ebOptionSettingsSubsetSpec: CompositeSubsetSpec = {
@@ -3113,6 +3125,11 @@ export function classifyResource(
     // DERIVED equality gate rather than a value-independent one: a single default SG folds, a
     // 2+-element APPEND or a single non-default SG SWAP surfaces. Undefined/empty → fail open (fold).
     defaultSgIds?: ReadonlySet<string>;
+    // #1746: sg-id -> GroupName for the sg-ids an EB Environment's SecurityGroups options echo
+    // (one DescribeSecurityGroups call in gather), so the anchored generated-name gate can
+    // resolve a raw-id echo. Undefined / missing id → the element SURFACES (fail-closed —
+    // folding an arbitrary sg-id would resurrect the #1264 rogue-SG-hiding bug).
+    ebSgNamesById?: Readonly<Record<string, string>>;
     // #1269: the account/region DEFAULT-VPC subnet ids, prefetched by gather.ts so the UNDECLARED
     // default-subnet-list fold (RedshiftServerless Workgroup SubnetIds) is a DERIVED gate: a
     // workgroup that declares no SubnetIds is placed into the default VPC and reads back all its
@@ -3817,12 +3834,43 @@ export function classifyResource(
     const engineType = declared['EngineType'];
     const engineStorageDefault: Record<string, string> = {
       ACTIVEMQ: 'EFS',
+      // live-proven 2026-08-10 (mq-rabbit-hunt): a barest RabbitMQ broker reads back
+      // StorageType EBS + a clean first run — the row is no longer a doc-derived mirror.
+      // (RabbitMQ also REJECTS mq.t3.micro at create — m5+ only, an engine-axis
+      // validation difference recorded in the fixture.)
       RABBITMQ: 'EBS',
     };
     const storageDefault =
       typeof engineType === 'string' ? engineStorageDefault[engineType.toUpperCase()] : undefined;
     if (storageDefault !== undefined) {
       knownDef = { ...knownDef, StorageType: storageDefault };
+    }
+  }
+  // #1740: a DAEMON-scheduled ECS service's rollout band defaults are 100/0, not the
+  // REPLICA 200/100 the static pins encode (live, variants6-hunt 2026-08-10). Overlay the
+  // whole-object DeploymentConfiguration pin and the two per-leaf gates with the derived
+  // band (fold tier 2, equality-gated — an out-of-band band change still surfaces; revert
+  // derives the same values via derivedRevertDefaultFor).
+  if (resourceType === 'AWS::ECS::Service') {
+    const daemonMax = ecsDaemonDerivedMaximumPercent(declared['SchedulingStrategy']);
+    const daemonMin = ecsDaemonDerivedMinimumHealthyPercent(declared['SchedulingStrategy']);
+    if (daemonMax !== undefined && daemonMin !== undefined) {
+      const dcPin = knownDef['DeploymentConfiguration'];
+      if (dcPin && typeof dcPin === 'object') {
+        knownDef = {
+          ...knownDef,
+          DeploymentConfiguration: {
+            ...(dcPin as Record<string, unknown>),
+            MaximumPercent: daemonMax,
+            MinimumHealthyPercent: daemonMin,
+          },
+        };
+      }
+      knownDefPaths = {
+        ...knownDefPaths,
+        'DeploymentConfiguration.MaximumPercent': daemonMax,
+        'DeploymentConfiguration.MinimumHealthyPercent': daemonMin,
+      };
     }
   }
   // #975: a CE AnomalySubscription declaring the LEGACY numeric `Threshold` reads back an
@@ -5013,7 +5061,7 @@ export function classifyResource(
             const r = lo as Record<string, unknown>;
             const key = ckSubsetSpec.keyFields.map((f) => String(r[f])).join('|');
             findings.push({
-              tier: ckSubsetSpec.entryTier?.(r, d.awsValue) ?? 'undeclared',
+              tier: ckSubsetSpec.entryTier?.(r, d.awsValue, opts.ebSgNamesById) ?? 'undeclared',
               logicalId,
               resourceType,
               path: `${d.path}[${key}]`,
@@ -5658,6 +5706,13 @@ export function classifyResource(
       (VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS[resourceType]?.has(k) &&
         !isTrivialEmpty(v) &&
         !(k in knownDef)) ||
+      // #1740: a DAEMON-scheduled ECS service's DesiredCount is ECS-MANAGED — it mirrors
+      // the current container-instance count and CANNOT be declared for DAEMON, so any
+      // echoed value is AWS's runtime state, not user intent (value-independent by
+      // construction; live variants6-hunt 2026-08-10).
+      (resourceType === 'AWS::ECS::Service' &&
+        k === 'DesiredCount' &&
+        declared['SchedulingStrategy'] === 'DAEMON') ||
       // #705: a Classic ELB's undeclared Policies folds atDefault ONLY when it is exactly the
       // AWS default SSL negotiation policy (by PolicyName); a downgrade / added policy surfaces.
       clbDefaultSslPoliciesAtDefault(resourceType, k, v) ||
