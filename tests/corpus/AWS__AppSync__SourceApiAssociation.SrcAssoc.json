@@ -1,0 +1,99 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "SrcAssoc",
+    "resourceType": "AWS::AppSync::SourceApiAssociation",
+    "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/wqmk6hy7evdmhlebmp5z46rkmi/sourceApiAssociations/2b26d4c7-1e97-4a03-8fad-5712d581383e",
+    "constructPath": "CdkrdHunt0811LinkPack/SrcAssoc",
+    "declared": {
+      "MergedApiIdentifier": "wqmk6hy7evdmhlebmp5z46rkmi",
+      "SourceApiIdentifier": "4j3suerumfetpgnqlyaa5kaf7e"
+    }
+  },
+  "liveRaw": {
+    "AssociationArn": "arn:aws:appsync:us-east-1:111111111111:apis/wqmk6hy7evdmhlebmp5z46rkmi/sourceApiAssociations/2b26d4c7-1e97-4a03-8fad-5712d581383e",
+    "MergedApiId": "wqmk6hy7evdmhlebmp5z46rkmi",
+    "SourceApiArn": "arn:aws:appsync:us-east-1:111111111111:apis/4j3suerumfetpgnqlyaa5kaf7e",
+    "LastSuccessfulMergeDate": "2026-08-10T18:26:06.339Z",
+    "SourceApiAssociationConfig": {
+      "MergeType": "MANUAL_MERGE"
+    },
+    "SourceApiAssociationStatusDetail": "Successfully merged source GraphQL API (API Id: 4j3suerumfetpgnqlyaa5kaf7e, Association Id: 2b26d4c7-1e97-4a03-8fad-5712d581383e)",
+    "MergedApiArn": "arn:aws:appsync:us-east-1:111111111111:apis/wqmk6hy7evdmhlebmp5z46rkmi",
+    "AssociationId": "2b26d4c7-1e97-4a03-8fad-5712d581383e",
+    "SourceApiAssociationStatus": "MERGE_SUCCESS",
+    "SourceApiId": "4j3suerumfetpgnqlyaa5kaf7e"
+  },
+  "schema": {
+    "readOnly": [
+      "AssociationArn",
+      "AssociationId",
+      "LastSuccessfulMergeDate",
+      "MergedApiArn",
+      "MergedApiId",
+      "SourceApiArn",
+      "SourceApiAssociationStatus",
+      "SourceApiAssociationStatusDetail",
+      "SourceApiId"
+    ],
+    "writeOnly": ["MergedApiIdentifier", "SourceApiIdentifier"],
+    "createOnly": ["MergedApiIdentifier", "SourceApiIdentifier"],
+    "readOnlyPaths": [
+      "AssociationArn",
+      "AssociationId",
+      "LastSuccessfulMergeDate",
+      "MergedApiArn",
+      "MergedApiId",
+      "SourceApiArn",
+      "SourceApiAssociationStatus",
+      "SourceApiAssociationStatusDetail",
+      "SourceApiId"
+    ],
+    "writeOnlyPaths": ["MergedApiIdentifier", "SourceApiIdentifier"],
+    "createOnlyPaths": ["MergedApiIdentifier", "SourceApiIdentifier"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "readGap",
+      "logicalId": "SrcAssoc",
+      "resourceType": "AWS::AppSync::SourceApiAssociation",
+      "path": "MergedApiIdentifier",
+      "note": "write-only — cannot be read back",
+      "writeOnly": true,
+      "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/wqmk6hy7evdmhlebmp5z46rkmi/sourceApiAssociations/2b26d4c7-1e97-4a03-8fad-5712d581383e",
+      "constructPath": "CdkrdHunt0811LinkPack/SrcAssoc"
+    },
+    {
+      "tier": "readGap",
+      "logicalId": "SrcAssoc",
+      "resourceType": "AWS::AppSync::SourceApiAssociation",
+      "path": "SourceApiIdentifier",
+      "note": "write-only — cannot be read back",
+      "writeOnly": true,
+      "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/wqmk6hy7evdmhlebmp5z46rkmi/sourceApiAssociations/2b26d4c7-1e97-4a03-8fad-5712d581383e",
+      "constructPath": "CdkrdHunt0811LinkPack/SrcAssoc"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "SrcAssoc",
+      "resourceType": "AWS::AppSync::SourceApiAssociation",
+      "path": "SourceApiAssociationConfig",
+      "actual": {
+        "MergeType": "MANUAL_MERGE"
+      },
+      "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/wqmk6hy7evdmhlebmp5z46rkmi/sourceApiAssociations/2b26d4c7-1e97-4a03-8fad-5712d581383e",
+      "constructPath": "CdkrdHunt0811LinkPack/SrcAssoc"
+    }
+  ]
+}

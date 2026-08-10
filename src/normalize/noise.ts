@@ -989,6 +989,19 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     ResolverCountLimit: 0,
     XrayEnabled: false,
   },
+  // #1751: a DataSource that declares no metrics config reads back the service default
+  // `MetricsConfig: "DISABLED"` (live-observed first-run on a fresh NONE data source,
+  // linkpack-hunt 2026-08-11). Equality-gated: an out-of-band ENABLED still surfaces.
+  'AWS::AppSync::DataSource': {
+    MetricsConfig: 'DISABLED',
+  },
+  // #1751: a SourceApiAssociation that declares no config materializes
+  // `{MergeType: "MANUAL_MERGE"}` (live-observed first-run, linkpack-hunt 2026-08-11 —
+  // AUTO_MERGE requires an explicit opt-in). Whole-object equality gate: an out-of-band
+  // switch to AUTO_MERGE still surfaces.
+  'AWS::AppSync::SourceApiAssociation': {
+    SourceApiAssociationConfig: { MergeType: 'MANUAL_MERGE' },
+  },
   // AppSync Resolvers / Functions default MaxBatchSize to 0 (no batch invocation)
   // when the template declares no batching — observed live on a fresh
   // appsync-resolver-rich deploy across UNIT + PIPELINE resolvers and the Function.
@@ -1010,6 +1023,20 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
     KeySpec: 'SYMMETRIC_DEFAULT',
     KeyUsage: 'ENCRYPT_DECRYPT',
     Origin: 'AWS_KMS',
+  },
+  // #1754: a ReplicaKey is created enabled like its primary (live-observed first-run,
+  // barest5-hunt 2026-08-11); the KeySpec/KeyUsage/Origin trio is INHERITED from the
+  // primary (read-only on a replica) so only Enabled materializes undeclared. Paired
+  // with the MEANINGFUL_WHEN_OFF gate in classify.ts — an out-of-band `disable-key` on
+  // a replica must surface, exactly like the AWS::KMS::Key entry above.
+  'AWS::KMS::ReplicaKey': {
+    Enabled: true,
+  },
+  // #1754: an AccessPoint that declares no RootDirectory materializes the filesystem
+  // root `{Path: "/"}` (live-observed first-run, barest5-hunt 2026-08-11).
+  // Whole-object equality gate: an out-of-band re-point still surfaces.
+  'AWS::EFS::AccessPoint': {
+    RootDirectory: { Path: '/' },
   },
   // A default-policy shorthand DLM policy (`DefaultPolicy: VOLUME|INSTANCE`) that leaves
   // RetainInterval unset reads back the documented default of 7 days (#1663; CreateInterval's
@@ -1205,6 +1232,11 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   },
   'AWS::ElastiCache::ServerlessCache': {
     SnapshotRetentionLimit: 0,
+    // #1753: a barest redis serverless cache (engine+name only) reads back a literal
+    // ONE-SPACE Description (" ") — the service's undeclared-description placeholder
+    // (live-observed first-run, barest5-hunt 2026-08-11). Equality-gated; a real
+    // description set out of band still surfaces.
+    Description: ' ',
   },
   'AWS::OpenSearchService::Domain': {
     IPAddressType: 'ipv4',
@@ -1889,6 +1921,13 @@ export const KNOWN_DEFAULTS: Record<string, Record<string, unknown>> = {
   },
   'AWS::Transfer::Server': {
     IpAddressType: 'IPV4',
+    // #1753: a ZERO-property server (every prop undeclared — live-observed first-run,
+    // barest5-hunt 2026-08-11) reads back the classic SFTP/public/service-managed
+    // trio. All three are equality-gated (array pinned in its exact live shape), so an
+    // out-of-band protocol add / endpoint change / auth-provider change still surfaces.
+    Protocols: ['SFTP'],
+    EndpointType: 'PUBLIC',
+    IdentityProviderType: 'SERVICE_MANAGED',
     ProtocolDetails: {
       PassiveIp: 'AUTO',
       SetStatOption: 'DEFAULT',
@@ -4124,8 +4163,11 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
   // so it folds value-independent too. Live-observed first-run on a fresh headless GlobalCluster
   // (`open-source-rds-extended-support`, #1406). A DECLARED enrollment is compared in the
   // declared loop (detected). GlobalCluster has no KmsKeyId / AZ / window props of its own
-  // (those live on the member cluster), so this is the only value-independent entry it needs.
-  'AWS::RDS::GlobalCluster': new Set(['EngineLifecycleSupport']),
+  // (those live on the member cluster). #1751: undeclared `EngineVersion` joins (the current
+  // GA version, "17.7" on a fresh headless aurora-postgresql GlobalCluster, linkpack-hunt
+  // 2026-08-11) — the same moves-per-GA-release rationale as the DBCluster/DBInstance
+  // entries above; a DECLARED version is still compared in the declared loop.
+  'AWS::RDS::GlobalCluster': new Set(['EngineLifecycleSupport', 'EngineVersion']),
   //   AWS::EKS::AccessEntry.Username is NO LONGER value-independent (#890): the undeclared
   //   default is a DETERMINISTIC transform of the declared PrincipalArn, so it is folded by a
   //   tier-2 derived equality gate in classify.ts (which STILL surfaces an out-of-band RBAC
@@ -4278,7 +4320,11 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
     'SnapshotWindow',
     'EngineVersion',
   ]),
-  'AWS::ElastiCache::ServerlessCache': new Set(['DailySnapshotTime']),
+  //   AWS::ElastiCache::ServerlessCache.MajorEngineVersion — #1753: a cache that declares
+  //   no version reads back the engine's current GA major ("7" for redis today, moving as
+  //   AWS promotes new majors) — the MemoryDB/RDS undeclared-EngineVersion class one row
+  //   below; a user who pins a major DECLARES it and is compared in the declared loop.
+  'AWS::ElastiCache::ServerlessCache': new Set(['DailySnapshotTime', 'MajorEngineVersion']),
   //   AWS::MemoryDB::Cluster.EngineVersion — #1503: a cluster that declares no EngineVersion
   //   reads back the current GA patch AWS auto-selected for the engine track (valkey "7.3"
   //   today), which AWS moves over time as it ships new GA versions — not a constant we can
@@ -4625,6 +4671,19 @@ export const VALUE_INDEPENDENT_DEFAULT_TOPLEVEL_PATHS: Record<string, ReadonlySe
 //   (#1501, live-repro'd 2026-07-12 on tests/integration/s3kms-ddb-batch-min).
 export const VALUE_INDEPENDENT_DEFAULT_NESTED_PATHS: Record<string, ReadonlySet<string>> = {
   'AWS::Batch::ComputeEnvironment': new Set(['ComputeResources.DesiredvCpus']),
+  // #1753: a SAML identity provider ENRICHES its declared ProviderDetails with values
+  // COMPUTED from the metadata document (live-observed first-run, barest5-hunt
+  // 2026-08-11): SSORedirectBindingURI (extracted from the metadata's
+  // SingleSignOnService element; SLO is the same extraction for SingleLogoutService)
+  // and ActiveEncryptionCertificate (a Cognito-GENERATED per-pool certificate). None
+  // is user intent — the user declared the metadata itself, which stays compared —
+  // and the cert is AWS-assigned per resource, so the enrichments fold
+  // value-independent.
+  'AWS::Cognito::UserPoolIdentityProvider': new Set([
+    'ProviderDetails.SSORedirectBindingURI',
+    'ProviderDetails.SLORedirectBindingURI',
+    'ProviderDetails.ActiveEncryptionCertificate',
+  ]),
   // #1663: an interval-based schedule CreateRule that declares no Times reads back a
   // creation-time-assigned start time (e.g. `Times: ["03:06"]` — DLM picks a time within a
   // window after policy creation, different per resource). Not a constant and not derivable
@@ -5313,7 +5372,17 @@ export const CASE_INSENSITIVE_PATHS: Record<string, ReadonlySet<string>> = {
     'DBClusterParameterGroupName',
     'DBSubnetGroupName',
     'Engine',
+    // #1750: consumer of the GlobalCluster entry below — a member cluster's
+    // GlobalClusterIdentifier echoes the STORED (lowercased) global cluster name.
+    'GlobalClusterIdentifier',
   ]),
+  // #1750: live CC probe 2026-08-11 — create-resource passes a mixed-case
+  // `GlobalClusterIdentifier: CdkrdHunt-Mixed-GC` through and the stored echo reads
+  // back `cdkrdhunt-mixed-gc` (the CC physical identifier keeps the declared case;
+  // only the properties echo lowercases — exactly the DBCluster shape). `Engine`
+  // carries over from #1741: RDS engine-name matching is case-insensitive with a
+  // lowercase store service-wide, and a GlobalCluster declares the same engine names.
+  'AWS::RDS::GlobalCluster': new Set(['GlobalClusterIdentifier', 'Engine']),
   // The "stored as a lowercase string" identifier family — ElastiCache, DocumentDB,
   // Neptune, and DMS all lowercase their resource identifier on creation (AWS CLI help:
   // "This parameter is stored as a lowercase string"), so a template that declares a
@@ -6576,6 +6645,10 @@ export const UNORDERED_ARRAY_PROPS: Record<string, ReadonlySet<string>> = {
   // changes the multiset. DefaultCapacityProviderStrategy order was live-proven PRESERVED
   // in the same probe and is deliberately NOT folded.
   'AWS::ECS::Cluster': new Set(['CapacityProviders']),
+  // #1751: the association-resource twin of the entry above — the SAME ECS attachment API
+  // echoes the provider set sorted (declared [FARGATE_SPOT, FARGATE] read back
+  // [FARGATE, FARGATE_SPOT], live-proven first-run on linkpack-hunt 2026-08-11).
+  'AWS::ECS::ClusterCapacityProviderAssociations': new Set(['CapacityProviders']),
   'AWS::Cognito::UserPoolClient': new Set([
     'AllowedOAuthFlows',
     'AllowedOAuthScopes',

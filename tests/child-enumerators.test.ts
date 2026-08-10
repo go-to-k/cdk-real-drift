@@ -1054,6 +1054,39 @@ describe('diffSnsTopicChildren (SNS Topic subscriptions)', () => {
     ).toEqual([]);
   });
 
+  // #1754: the topic's own INLINE `Subscription` property (raw CFn / L1 CfnTopic) is the
+  // second declaration shape for the same live subscriptions — a live subscription created
+  // by it is template-declared, not out of band (the QueueInlinePolicy / TopicInlinePolicy
+  // #1729 class one resource up). Matched by (Protocol, Endpoint); an unresolved endpoint
+  // conservatively suppresses by protocol alone.
+  it('suppresses a subscription declared INLINE on the Topic (#1754) but still flags a rogue', () => {
+    const added = diffSnsTopicChildren({
+      declaredSubscriptionArns: [],
+      declaredInlineSubscriptions: [
+        { protocol: 'sqs', endpoint: 'arn:aws:sqs:us-east-1:111122223333:inlineq' },
+        { protocol: 'lambda', endpointUnresolved: true },
+      ],
+      liveSubscriptions: [
+        {
+          arn: SUB('inline'),
+          label: 'sqs arn:aws:sqs:us-east-1:111122223333:inlineq',
+          protocol: 'sqs',
+          endpoint: 'arn:aws:sqs:us-east-1:111122223333:inlineq',
+        },
+        // unresolved-endpoint inline entry suppresses by protocol alone (conservative)
+        { arn: SUB('inline2'), label: 'lambda fn', protocol: 'lambda', endpoint: 'arn:fn' },
+        // same protocol, DIFFERENT endpoint than any inline entry → still a real added
+        {
+          arn: SUB('rogue'),
+          label: 'sqs arn:aws:sqs:us-east-1:111122223333:rogueq',
+          protocol: 'sqs',
+          endpoint: 'arn:aws:sqs:us-east-1:111122223333:rogueq',
+        },
+      ],
+    });
+    expect(added.map((a) => a.identifier)).toEqual([SUB('rogue')]);
+  });
+
   // AWS Chatbot (SlackChannelConfiguration / Teams / Amazon Q console) auto-subscribes its
   // fixed global endpoint to every topic a channel config points at. That subscription is
   // never in the template, so without a fold it surfaces as a false `added` out-of-band

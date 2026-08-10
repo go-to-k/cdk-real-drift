@@ -1,0 +1,12 @@
+{
+  "name": "cdk-real-drift-integ-barest5-hunt",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Barest first-run FP probe (2026-08-11): ElastiCache ServerlessCache redis, Transfer Server zero-prop, CloudTrail EventDataStore, Batch multinode JobDefinition, SSM Automation Document, Cognito SAML IdP, EFS AccessPoint barest, SNS firehose subscription + inline-subscription topic, KMS ReplicaKey. Run via verify.sh.",
+  "devDependencies": {
+    "aws-cdk": "^2.0.0",
+    "aws-cdk-lib": "^2.0.0",
+    "constructs": "^10.0.0"
+  },
+  "type": "module"
+}

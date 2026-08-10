@@ -1,0 +1,92 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "ReplicaKey",
+    "resourceType": "AWS::KMS::ReplicaKey",
+    "physicalId": "mrk-c13b7e251eec4ac19f6e8fbc3bf1ecaa",
+    "constructPath": "CdkrdHunt0811BarestB/ReplicaKey",
+    "declared": {
+      "KeyPolicy": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Sid": "root",
+            "Effect": "Allow",
+            "Principal": {
+              "AWS": "arn:aws:iam::111111111111:root"
+            },
+            "Action": "kms:*",
+            "Resource": "*"
+          }
+        ]
+      },
+      "PrimaryKeyArn": "arn:aws:kms:us-west-2:111111111111:key/mrk-c13b7e251eec4ac19f6e8fbc3bf1ecaa",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "Description": "",
+    "KeyPolicy": {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Action": "kms:*",
+          "Resource": "*",
+          "Effect": "Allow",
+          "Principal": {
+            "AWS": "arn:aws:iam::111111111111:root"
+          },
+          "Sid": "root"
+        }
+      ]
+    },
+    "PrimaryKeyArn": "arn:aws:kms:us-west-2:111111111111:key/mrk-c13b7e251eec4ac19f6e8fbc3bf1ecaa",
+    "Enabled": true,
+    "KeyId": "mrk-c13b7e251eec4ac19f6e8fbc3bf1ecaa",
+    "Arn": "arn:aws:kms:us-east-1:111111111111:key/mrk-c13b7e251eec4ac19f6e8fbc3bf1ecaa",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Arn", "KeyId"],
+    "writeOnly": ["PendingWindowInDays"],
+    "createOnly": ["PrimaryKeyArn"],
+    "readOnlyPaths": ["Arn", "KeyId"],
+    "writeOnlyPaths": ["PendingWindowInDays"],
+    "createOnlyPaths": ["PrimaryKeyArn"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "ReplicaKey",
+      "resourceType": "AWS::KMS::ReplicaKey",
+      "path": "Enabled",
+      "actual": true,
+      "physicalId": "mrk-c13b7e251eec4ac19f6e8fbc3bf1ecaa",
+      "constructPath": "CdkrdHunt0811BarestB/ReplicaKey"
+    }
+  ]
+}

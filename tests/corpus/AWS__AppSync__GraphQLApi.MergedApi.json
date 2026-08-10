@@ -1,0 +1,131 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "MergedApi",
+    "resourceType": "AWS::AppSync::GraphQLApi",
+    "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/wqmk6hy7evdmhlebmp5z46rkmi",
+    "constructPath": "CdkrdHunt0811LinkPack/MergedApi",
+    "declared": {
+      "ApiType": "MERGED",
+      "AuthenticationType": "API_KEY",
+      "MergedApiExecutionRoleArn": "arn:aws:iam::111111111111:role/CdkrdHunt0811LinkPack-MergeRoleC1AB97BF-LQE1G4UQKG3j",
+      "Name": "cdkrd-hunt-0811-merged",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "QueryDepthLimit": 0,
+    "IntrospectionConfig": "ENABLED",
+    "MergedApiExecutionRoleArn": "arn:aws:iam::111111111111:role/CdkrdHunt0811LinkPack-MergeRoleC1AB97BF-LQE1G4UQKG3j",
+    "RealtimeDns": "lt67dmsc25ga5cask37j34zspm.appsync-realtime-api.us-east-1.amazonaws.com",
+    "ResolverCountLimit": 0,
+    "Name": "cdkrd-hunt-0811-merged",
+    "RealtimeUrl": "wss://lt67dmsc25ga5cask37j34zspm.appsync-realtime-api.us-east-1.amazonaws.com/graphql",
+    "EnvironmentVariables": {},
+    "GraphQLUrl": "https://lt67dmsc25ga5cask37j34zspm.appsync-api.us-east-1.amazonaws.com/graphql",
+    "GraphQLDns": "lt67dmsc25ga5cask37j34zspm.appsync-api.us-east-1.amazonaws.com",
+    "ApiType": "MERGED",
+    "XrayEnabled": false,
+    "Visibility": "GLOBAL",
+    "Arn": "arn:aws:appsync:us-east-1:111111111111:apis/wqmk6hy7evdmhlebmp5z46rkmi",
+    "ApiId": "wqmk6hy7evdmhlebmp5z46rkmi",
+    "Tags": [
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      }
+    ],
+    "AuthenticationType": "API_KEY",
+    "GraphQLEndpointArn": "arn:aws:appsync:us-east-1:111111111111:endpoints/graphql-api/lt67dmsc25ga5cask37j34zspm"
+  },
+  "schema": {
+    "readOnly": [
+      "ApiId",
+      "Arn",
+      "GraphQLDns",
+      "GraphQLEndpointArn",
+      "GraphQLUrl",
+      "RealtimeDns",
+      "RealtimeUrl"
+    ],
+    "writeOnly": [],
+    "createOnly": [],
+    "readOnlyPaths": [
+      "ApiId",
+      "Arn",
+      "GraphQLDns",
+      "GraphQLEndpointArn",
+      "GraphQLUrl",
+      "RealtimeDns",
+      "RealtimeUrl"
+    ],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": ["EnvironmentVariables"]
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "MergedApi",
+      "resourceType": "AWS::AppSync::GraphQLApi",
+      "path": "QueryDepthLimit",
+      "actual": 0,
+      "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/wqmk6hy7evdmhlebmp5z46rkmi",
+      "constructPath": "CdkrdHunt0811LinkPack/MergedApi"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MergedApi",
+      "resourceType": "AWS::AppSync::GraphQLApi",
+      "path": "IntrospectionConfig",
+      "actual": "ENABLED",
+      "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/wqmk6hy7evdmhlebmp5z46rkmi",
+      "constructPath": "CdkrdHunt0811LinkPack/MergedApi"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MergedApi",
+      "resourceType": "AWS::AppSync::GraphQLApi",
+      "path": "ResolverCountLimit",
+      "actual": 0,
+      "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/wqmk6hy7evdmhlebmp5z46rkmi",
+      "constructPath": "CdkrdHunt0811LinkPack/MergedApi"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MergedApi",
+      "resourceType": "AWS::AppSync::GraphQLApi",
+      "path": "XrayEnabled",
+      "actual": false,
+      "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/wqmk6hy7evdmhlebmp5z46rkmi",
+      "constructPath": "CdkrdHunt0811LinkPack/MergedApi"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "MergedApi",
+      "resourceType": "AWS::AppSync::GraphQLApi",
+      "path": "Visibility",
+      "actual": "GLOBAL",
+      "physicalId": "arn:aws:appsync:us-east-1:111111111111:apis/wqmk6hy7evdmhlebmp5z46rkmi",
+      "constructPath": "CdkrdHunt0811LinkPack/MergedApi"
+    }
+  ]
+}

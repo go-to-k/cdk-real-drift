@@ -1269,9 +1269,13 @@ describe('noise suppressors', () => {
       },
     });
     // A Transfer server assigns the stable default security policy, an S3 domain, and
-    // directory-listing optimization DISABLED when those are omitted.
+    // directory-listing optimization DISABLED when those are omitted — and (#1753) a
+    // ZERO-property server additionally reads back the SFTP/public/service-managed trio.
     expect(KNOWN_DEFAULTS['AWS::Transfer::Server']).toEqual({
       IpAddressType: 'IPV4',
+      Protocols: ['SFTP'],
+      EndpointType: 'PUBLIC',
+      IdentityProviderType: 'SERVICE_MANAGED',
       ProtocolDetails: {
         PassiveIp: 'AUTO',
         SetStatOption: 'DEFAULT',

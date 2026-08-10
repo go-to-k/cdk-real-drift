@@ -1,0 +1,43 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "FhSub",
+    "resourceType": "AWS::SNS::Subscription",
+    "physicalId": "arn:aws:sns:us-east-1:111111111111:cdkrd-hunt-0811-topic:f108fd27-55d5-466a-a5c6-6fac7988687d",
+    "constructPath": "CdkrdHunt0811BarestB/FhSub",
+    "declared": {
+      "Endpoint": "arn:aws:firehose:us-east-1:111111111111:deliverystream/cdkrd-hunt-0811-fh",
+      "Protocol": "firehose",
+      "SubscriptionRoleArn": "arn:aws:iam::111111111111:role/CdkrdHunt0811BarestB-SnsSubRoleF54CF7B8-AsiDXjM3ScYW",
+      "TopicArn": "arn:aws:sns:us-east-1:111111111111:cdkrd-hunt-0811-topic"
+    }
+  },
+  "liveRaw": {
+    "RawMessageDelivery": false,
+    "Endpoint": "arn:aws:firehose:us-east-1:111111111111:deliverystream/cdkrd-hunt-0811-fh",
+    "TopicArn": "arn:aws:sns:us-east-1:111111111111:cdkrd-hunt-0811-topic",
+    "SubscriptionRoleArn": "arn:aws:iam::111111111111:role/CdkrdHunt0811BarestB-SnsSubRoleF54CF7B8-AsiDXjM3ScYW",
+    "Arn": "arn:aws:sns:us-east-1:111111111111:cdkrd-hunt-0811-topic:f108fd27-55d5-466a-a5c6-6fac7988687d",
+    "Protocol": "firehose"
+  },
+  "schema": {
+    "readOnly": ["Arn"],
+    "writeOnly": ["Region"],
+    "createOnly": ["Endpoint", "Protocol", "TopicArn"],
+    "readOnlyPaths": ["Arn"],
+    "writeOnlyPaths": ["Region"],
+    "createOnlyPaths": ["Endpoint", "Protocol", "TopicArn"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

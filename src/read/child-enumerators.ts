@@ -1540,9 +1540,20 @@ const CHATBOT_SUBSCRIPTION_ENDPOINT = 'https://global.sns-api.chatbot.amazonaws.
 // Pure diff: declared subscription arns + live inventory -> the added subscriptions.
 export interface SnsTopicChildInput {
   declaredSubscriptionArns: string[]; // physical ids of AWS::SNS::Subscription in the template
+  // #1754: the topic's own INLINE `Subscription` property (raw CFn / L1) declares the
+  // same live subscriptions WITHOUT an AWS::SNS::Subscription sibling — each entry is
+  // matched by (Protocol, Endpoint). An entry whose endpoint the resolver could not
+  // collapse is conservatively protocol-only (a false `added` with a destructive delete
+  // offer is worse than a missed rogue — the TopicPolicy precedent).
+  declaredInlineSubscriptions?: {
+    protocol?: string | undefined;
+    endpoint?: string | undefined;
+    endpointUnresolved?: boolean | undefined;
+  }[];
   liveSubscriptions: {
     arn: string;
     label?: string | undefined;
+    protocol?: string | undefined;
     endpoint?: string | undefined;
     owner?: string | undefined; // the subscription's owning account (SNS `Owner`)
   }[];
@@ -1550,9 +1561,18 @@ export interface SnsTopicChildInput {
 
 export function diffSnsTopicChildren(input: SnsTopicChildInput): AddedChild[] {
   const declared = new Set(input.declaredSubscriptionArns);
+  const inline = input.declaredInlineSubscriptions ?? [];
+  const matchesInline = (s: SnsTopicChildInput['liveSubscriptions'][number]): boolean =>
+    inline.some(
+      (d) =>
+        (d.protocol === undefined ||
+          d.protocol.toLowerCase() === (s.protocol ?? '').toLowerCase()) &&
+        (d.endpointUnresolved || d.endpoint === s.endpoint)
+    );
   const added: AddedChild[] = [];
   for (const s of input.liveSubscriptions) {
     if (declared.has(s.arn)) continue;
+    if (matchesInline(s)) continue; // #1754: declared inline on the Topic itself
     if (s.endpoint === CHATBOT_SUBSCRIPTION_ENDPOINT) continue; // AWS Chatbot auto-managed
     added.push({
       resourceType: 'AWS::SNS::Subscription',
@@ -1602,6 +1622,28 @@ export async function enumerateSnsTopicChildren(ctx: EnumeratorContext): Promise
     }
   }
 
+  // #1754: the topic's own INLINE `Subscription` property (raw CFn / L1 `CfnTopic`) is
+  // the second declaration shape for the same live subscriptions — a live subscription
+  // created by it is template-declared, not out of band. Matched by (Protocol,
+  // Endpoint); an unresolved endpoint conservatively suppresses by protocol alone.
+  const declaredInlineSubscriptions: {
+    protocol?: string | undefined;
+    endpoint?: string | undefined;
+    endpointUnresolved?: boolean | undefined;
+  }[] = [];
+  const inlineDecl = parent.declared?.Subscription;
+  if (Array.isArray(inlineDecl)) {
+    for (const e of inlineDecl) {
+      if (!e || typeof e !== 'object') continue;
+      const { Protocol, Endpoint } = e as { Protocol?: unknown; Endpoint?: unknown };
+      declaredInlineSubscriptions.push({
+        protocol: typeof Protocol === 'string' ? Protocol : undefined,
+        endpoint: typeof Endpoint === 'string' ? Endpoint : undefined,
+        endpointUnresolved: Endpoint !== undefined && hasUnresolved(Endpoint),
+      });
+    }
+  }
+
   // A declared AWS::SNS::TopicPolicy covers this topic iff one of its (gather-resolved) `Topics`
   // equals this topic's ARN (the declared override reader `readSnsTopicPolicy` handles it). A
   // declared TopicPolicy whose `Topics` is UNRESOLVED is conservatively treated as covering this
@@ -1638,6 +1680,7 @@ export async function enumerateSnsTopicChildren(ctx: EnumeratorContext): Promise
     .map((s) => ({
       arn: s.SubscriptionArn,
       label: s.Protocol ? `${s.Protocol} ${s.Endpoint ?? ''}`.trim() : s.SubscriptionArn,
+      protocol: s.Protocol,
       endpoint: s.Endpoint,
       owner: s.Owner, // owning account — foreign-scope signal for the sibling-stack check (#1322)
     }));
@@ -1648,9 +1691,11 @@ export async function enumerateSnsTopicChildren(ctx: EnumeratorContext): Promise
   // default and only surfaces a divergent one.
   const livePolicy = await readSnsTopicPolicyDocument(client, topicArn);
 
-  return diffSnsTopicChildren({ declaredSubscriptionArns, liveSubscriptions }).concat(
-    diffSnsTopicPolicy({ topicArn, hasDeclaredPolicy, livePolicy })
-  );
+  return diffSnsTopicChildren({
+    declaredSubscriptionArns,
+    declaredInlineSubscriptions,
+    liveSubscriptions,
+  }).concat(diffSnsTopicPolicy({ topicArn, hasDeclaredPolicy, livePolicy }));
 }
 
 // The AWS-default SNS topic access policy — every topic ALWAYS carries one at creation, so
@@ -5923,7 +5968,13 @@ async function enumerateAutoScalingGroupChildren(ctx: EnumeratorContext): Promis
 export interface GlueDatabaseChildInput {
   databaseName: string;
   declaredTableNames: string[]; // TableInput.Name values (or Ref/physical id) of AWS::Glue::Table on this database
-  liveTables: { name: string; label?: string | undefined }[];
+  // GetTables echoes each table's OWNING DatabaseName — for a resource-link database the
+  // echo names the linked TARGET, not the queried link (#1749).
+  liveTables: {
+    name: string;
+    label?: string | undefined;
+    sourceDatabaseName?: string | undefined;
+  }[];
 }
 
 export function diffGlueDatabaseChildren(input: GlueDatabaseChildInput): AddedChild[] {
@@ -5932,6 +5983,11 @@ export function diffGlueDatabaseChildren(input: GlueDatabaseChildInput): AddedCh
   const added: AddedChild[] = [];
   for (const t of liveTables) {
     if (declared.has(t.name)) continue;
+    // #1749: a table whose owning DatabaseName differs from the queried database is a
+    // resource-link PROXY echo of the linked target's table — it does not live "in" this
+    // database, the template does not govern it, and flagging it added would offer a
+    // destructive delete of the shared real table. Only a link can produce the mismatch.
+    if (t.sourceDatabaseName !== undefined && t.sourceDatabaseName !== databaseName) continue;
     added.push({
       resourceType: 'AWS::Glue::Table',
       identifier: `${databaseName}|${t.name}`, // DatabaseName|TableName — the composite readGlueTable consumes
@@ -5968,6 +6024,18 @@ async function enumerateGlueDatabaseChildren(ctx: EnumeratorContext): Promise<Ad
   const databaseName = parent.physicalId; // a Glue Database's physical id IS its name
   if (!databaseName) return [];
 
+  // #1749: a declared RESOURCE LINK (`DatabaseInput.TargetDatabase`) has no tables of its
+  // own — GetTables on it transparently proxies to the linked target database (live-proven
+  // 2026-08-11), so enumerating would false-flag every target table as `added` (and offer
+  // a destructive delete of the linked real table). Children cannot exist "in" a link.
+  // A FEDERATED database (`DatabaseInput.FederatedDatabase`) is the same shape one step
+  // further out — its tables live in the remote federation source, never as in-catalog
+  // children the template could govern — so it skips enumeration identically.
+  const dbInput = parent.declared.DatabaseInput as
+    | { TargetDatabase?: unknown; FederatedDatabase?: unknown }
+    | undefined;
+  if (dbInput?.TargetDatabase !== undefined || dbInput?.FederatedDatabase !== undefined) return [];
+
   // Declared tables of THIS database (Ref DatabaseName already resolved to the physical id
   // by gather). A table's identity is its TableInput.Name; fall back to the CFn physical id
   // (Ref = the bare table name — defensively take the last `|` segment in case a composite
@@ -5995,7 +6063,13 @@ async function enumerateGlueDatabaseChildren(ctx: EnumeratorContext): Promise<Ad
   const tables = await pageGlueTables(client, databaseName, catalogId);
   const liveTables = tables
     .filter((t): t is GlueTable & { Name: string } => typeof t.Name === 'string')
-    .map((t) => ({ name: t.Name, label: t.TableType ? `${t.Name} (${t.TableType})` : t.Name }));
+    .map((t) => ({
+      name: t.Name,
+      label: t.TableType ? `${t.Name} (${t.TableType})` : t.Name,
+      // Owning database per the live echo — differs from `databaseName` only for a
+      // resource-link proxy echo (#1749), which the pure diff drops.
+      sourceDatabaseName: t.DatabaseName,
+    }));
 
   return diffGlueDatabaseChildren({ databaseName, declaredTableNames, liveTables });
 }

@@ -1,0 +1,100 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Ap",
+    "resourceType": "AWS::EFS::AccessPoint",
+    "physicalId": "fsap-06f206e224a019d01",
+    "constructPath": "CdkrdHunt0811BarestB/Ap",
+    "declared": {
+      "AccessPointTags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ],
+      "FileSystemId": "fs-0095a4e88992de345"
+    }
+  },
+  "liveRaw": {
+    "AccessPointId": "fsap-06f206e224a019d01",
+    "FileSystemId": "fs-0095a4e88992de345",
+    "RootDirectory": {
+      "Path": "/"
+    },
+    "Arn": "arn:aws:elasticfilesystem:us-east-1:111111111111:access-point/fsap-06f206e224a019d01",
+    "ClientToken": "Ap-fOyykpY6zBUz",
+    "AccessPointTags": [
+      {
+        "Value": "CdkrdHunt0811BarestB",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0811BarestB/dbe593b0-94ea-11f1-a0e1-0eefa0f25c89",
+        "Key": "aws:cloudformation:stack-id"
+      },
+      {
+        "Value": "Ap",
+        "Key": "aws:cloudformation:logical-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["AccessPointId", "Arn"],
+    "writeOnly": [],
+    "createOnly": ["ClientToken", "CreationInfo", "FileSystemId", "PosixUser", "RootDirectory"],
+    "readOnlyPaths": ["AccessPointId", "Arn"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "ClientToken",
+      "CreationInfo",
+      "CreationInfo.OwnerGid",
+      "CreationInfo.OwnerUid",
+      "CreationInfo.Permissions",
+      "FileSystemId",
+      "PosixUser",
+      "PosixUser.Gid",
+      "PosixUser.SecondaryGids",
+      "PosixUser.Uid",
+      "RootDirectory",
+      "RootDirectory.CreationInfo",
+      "RootDirectory.Path"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "Ap",
+      "resourceType": "AWS::EFS::AccessPoint",
+      "path": "RootDirectory",
+      "actual": {
+        "Path": "/"
+      },
+      "physicalId": "fsap-06f206e224a019d01",
+      "constructPath": "CdkrdHunt0811BarestB/Ap"
+    },
+    {
+      "tier": "generated",
+      "logicalId": "Ap",
+      "resourceType": "AWS::EFS::AccessPoint",
+      "path": "ClientToken",
+      "actual": "Ap-fOyykpY6zBUz",
+      "physicalId": "fsap-06f206e224a019d01",
+      "constructPath": "CdkrdHunt0811BarestB/Ap"
+    }
+  ]
+}

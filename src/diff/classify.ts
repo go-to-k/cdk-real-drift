@@ -216,6 +216,9 @@ const notRestored =
 const MEANINGFUL_WHEN_OFF: Record<string, Record<string, (ctx: OffStateContext) => boolean>> = {
   // A KMS key is always created enabled; `disable-key` (Enabled=false) is always meaningful.
   'AWS::KMS::Key': { Enabled: () => true },
+  // #1754: the replica twin — a ReplicaKey is created enabled and an out-of-band
+  // `disable-key` on it is always meaningful.
+  'AWS::KMS::ReplicaKey': { Enabled: () => true },
   // A TagOption is always created active (the KNOWN_DEFAULTS true pin, barest4/ccpi hunt
   // 2026-07-14); an undeclared `false` is an out-of-band deactivate that blocks the option
   // from new provisioning — a bare false isTrivialEmpty would otherwise swallow.
@@ -691,6 +694,11 @@ export const DEFAULT_SG_LIST_PATHS: Record<string, string> = {
   // the derived gate folds the single default and surfaces an append/swap. Keep in sync
   // with gather.ts DEFAULT_SG_LIST_TYPES.
   'AWS::EC2::VPCEndpoint': 'SecurityGroupIds',
+  // #1753: a barest ElastiCache ServerlessCache (engine+name only) is placed into the
+  // default VPC's default SG (live, barest5-hunt 2026-08-11). OOB-mutable
+  // (`elasticache modify-serverless-cache --security-group-ids`), so the derived gate
+  // folds the single default and surfaces a swap/append.
+  'AWS::ElastiCache::ServerlessCache': 'SecurityGroupIds',
 };
 /** #1269 fold decision for an UNDECLARED default-SUBNET list (RedshiftServerless Workgroup
  *  SubnetIds). Unlike the SG gate (which folds only a SINGLE default SG), a workgroup placed into
@@ -715,6 +723,10 @@ export function shouldFoldDefaultSubnetList(
 }
 const DEFAULT_SUBNET_LIST_PATHS: Record<string, string> = {
   'AWS::RedshiftServerless::Workgroup': 'SubnetIds',
+  // #1753: a barest ServerlessCache reads back the default-VPC subnets AWS auto-placed
+  // it into (live, barest5-hunt 2026-08-11) — fold only while every member is a
+  // default-VPC subnet; an OOB re-placement surfaces.
+  'AWS::ElastiCache::ServerlessCache': 'SubnetIds',
 };
 // #1272: the AWS default effective ConfigParameters a RedshiftServerless Workgroup reads back when
 // it declares none (harvested live from a fresh us-east-1 workgroup, 2026-07-11). Keyed by

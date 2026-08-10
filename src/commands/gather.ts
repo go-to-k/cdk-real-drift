@@ -128,6 +128,11 @@ export const DEFAULT_SG_LIST_TYPES: ReadonlySet<string> = new Set([
   // DEFAULT_SG_LIST_PATHS, so the prefetch must fire when a VPC endpoint is present or the
   // OOB-swap gate loses its default-SG ids.
   'AWS::EC2::VPCEndpoint',
+  // #1753: a barest ElastiCache ServerlessCache (engine+name only) is placed into the
+  // default VPC's default SG (live, barest5-hunt 2026-08-11) — registered in classify
+  // DEFAULT_SG_LIST_PATHS, so the prefetch must fire when a serverless cache is present
+  // or the OOB-swap gate loses its default-SG ids.
+  'AWS::ElastiCache::ServerlessCache',
 ]);
 
 // #1269: types whose undeclared SubnetIds default to ALL of the account's DEFAULT-VPC subnets —
@@ -135,6 +140,9 @@ export const DEFAULT_SG_LIST_TYPES: ReadonlySet<string> = new Set([
 // non-default subnet surfaces. Distinct from DEFAULT_SG_LIST_TYPES (that is a single-SG gate).
 const DEFAULT_SUBNET_LIST_TYPES: ReadonlySet<string> = new Set([
   'AWS::RedshiftServerless::Workgroup',
+  // #1753: a barest ServerlessCache also reads back the default-VPC subnets it was
+  // auto-placed into (a 3-subnet subset, still all default-VPC members).
+  'AWS::ElastiCache::ServerlessCache',
 ]);
 
 // #889: fetch the account/region VPC-default security-group ids — one `DescribeSecurityGroups`

@@ -1,0 +1,97 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "HeadlessGc",
+    "resourceType": "AWS::RDS::GlobalCluster",
+    "physicalId": "cdkrd-hunt-0811-gc",
+    "constructPath": "CdkrdHunt0811LinkPack/HeadlessGc",
+    "declared": {
+      "Engine": "aurora-postgresql",
+      "GlobalClusterIdentifier": "cdkrd-hunt-0811-gc",
+      "Tags": [
+        {
+          "Key": "cdkrd:ephemeral",
+          "Value": "1"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "EngineLifecycleSupport": "open-source-rds-extended-support",
+    "StorageEncrypted": false,
+    "EngineVersion": "17.7",
+    "DeletionProtection": false,
+    "GlobalClusterIdentifier": "cdkrd-hunt-0811-gc",
+    "Engine": "aurora-postgresql",
+    "Tags": [
+      {
+        "Value": "HeadlessGc",
+        "Key": "aws:cloudformation:logical-id"
+      },
+      {
+        "Value": "1",
+        "Key": "cdkrd:ephemeral"
+      },
+      {
+        "Value": "CdkrdHunt0811LinkPack",
+        "Key": "aws:cloudformation:stack-name"
+      },
+      {
+        "Value": "arn:aws:cloudformation:us-east-1:111111111111:stack/CdkrdHunt0811LinkPack/de3b0750-94e8-11f1-b451-0affeb9d18e3",
+        "Key": "aws:cloudformation:stack-id"
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["GlobalEndpoint"],
+    "writeOnly": [],
+    "createOnly": [
+      "Engine",
+      "GlobalClusterIdentifier",
+      "SourceDBClusterIdentifier",
+      "StorageEncrypted"
+    ],
+    "readOnlyPaths": ["GlobalEndpoint"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": [
+      "Engine",
+      "GlobalClusterIdentifier",
+      "SourceDBClusterIdentifier",
+      "StorageEncrypted"
+    ],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {},
+    "stackTags": {
+      "cdkrd:ephemeral": "1"
+    }
+  },
+  "expected": [
+    {
+      "tier": "atDefault",
+      "logicalId": "HeadlessGc",
+      "resourceType": "AWS::RDS::GlobalCluster",
+      "path": "EngineLifecycleSupport",
+      "actual": "open-source-rds-extended-support",
+      "physicalId": "cdkrd-hunt-0811-gc",
+      "constructPath": "CdkrdHunt0811LinkPack/HeadlessGc"
+    },
+    {
+      "tier": "atDefault",
+      "logicalId": "HeadlessGc",
+      "resourceType": "AWS::RDS::GlobalCluster",
+      "path": "EngineVersion",
+      "actual": "17.7",
+      "physicalId": "cdkrd-hunt-0811-gc",
+      "constructPath": "CdkrdHunt0811LinkPack/HeadlessGc"
+    }
+  ]
+}

@@ -9,6 +9,7 @@
 // table excluded.
 import { describe, expect, it } from 'vite-plus/test';
 import {
+  CHILD_ENUMERATORS,
   diffAsgLifecycleHookChildren,
   diffAsgScheduledActionChildren,
   diffGlueDatabaseChildren,
@@ -115,6 +116,50 @@ describe('#1540 Glue database table children', () => {
     });
     expect(added.map((a) => a.identifier)).toEqual(['hunt_db|oob_table']);
     expect(added[0]!.resourceType).toBe('AWS::Glue::Table');
+  });
+
+  // #1749: GetTables on a resource-link database proxies to the linked TARGET's tables
+  // (each echoed with the TARGET's DatabaseName) — a proxy echo is not a child of the
+  // link and must never surface as added (the offered delete would destroy the shared
+  // real table). A genuine out-of-band table still surfaces: its owning DatabaseName
+  // matches the queried database (or is absent on an older echo shape).
+  it('drops resource-link proxy echoes (owning DatabaseName differs) but keeps real OOB tables (#1749)', () => {
+    const added = diffGlueDatabaseChildren({
+      databaseName: 'link_db',
+      declaredTableNames: [],
+      liveTables: [
+        { name: 'proxied_target_table', sourceDatabaseName: 'target_db' },
+        { name: 'real_oob_table', sourceDatabaseName: 'link_db' },
+        { name: 'legacy_echo_no_owner' },
+      ],
+    });
+    expect(added.map((a) => a.identifier)).toEqual([
+      'link_db|real_oob_table',
+      'link_db|legacy_echo_no_owner',
+    ]);
+  });
+
+  it('declared resource link (DatabaseInput.TargetDatabase) short-circuits enumeration with no API call (#1749)', async () => {
+    const enumerate = CHILD_ENUMERATORS['AWS::Glue::Database']!;
+    const added = await enumerate({
+      parent: {
+        logicalId: 'LinkDb',
+        resourceType: 'AWS::Glue::Database',
+        physicalId: 'link_db',
+        declared: {
+          CatalogId: '111111111111',
+          DatabaseInput: {
+            Name: 'link_db',
+            TargetDatabase: { CatalogId: '111111111111', DatabaseName: 'target_db' },
+          },
+        },
+      } as never,
+      desired: { resources: [] } as never,
+      // An invalid region guarantees the test fails loudly if the enumerator ever
+      // reaches the Glue client instead of short-circuiting.
+      region: 'invalid-region-never-called',
+    });
+    expect(added).toEqual([]);
   });
 });
 
