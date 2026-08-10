@@ -1,3 +1,10 @@
+## [0.26.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.26.0...v0.26.1) (2026-08-10)
+
+
+### Bug Fixes
+
+* **hunt:** 2026-08-11 sweep — Glue link/SNS inline added-FPs, GuardDuty revert patch shape, GlobalCluster case fold, barest5/linkpack folds ([#1755](https://github.com/go-to-k/cdk-real-drift/issues/1755)) ([964d86e](https://github.com/go-to-k/cdk-real-drift/commit/964d86e68f08d3d2cfab4609a983c9eac8fe1321))
+
 # [0.26.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.25.5...v0.26.0) (2026-08-10)
 
 
