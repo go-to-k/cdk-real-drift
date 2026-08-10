@@ -1,0 +1,63 @@
+{
+  "corpusVersion": 1,
+  "resource": {
+    "logicalId": "Records",
+    "resourceType": "AWS::Route53::RecordSetGroup",
+    "physicalId": "CdkrdHunt0810Allow-Records-3ZIHE6L1MPZF",
+    "constructPath": "CdkrdHunt0810Allow/Records",
+    "declared": {
+      "HostedZoneId": "Z03071861ZEOY3LILKOPX",
+      "RecordSets": [
+        {
+          "Name": "MiXeD-Case.cdkrd-fphunt-a0810.com",
+          "ResourceRecords": ["192.0.2.1"],
+          "TTL": "300",
+          "Type": "A"
+        },
+        {
+          "Name": "txt.cdkrd-fphunt-a0810.com.",
+          "ResourceRecords": ["\"zulu\"", "\"alpha\"", "\"mike\""],
+          "TTL": "300",
+          "Type": "TXT"
+        }
+      ]
+    }
+  },
+  "liveRaw": {
+    "HostedZoneId": "Z03071861ZEOY3LILKOPX",
+    "RecordSets": [
+      {
+        "Name": "mixed-case.cdkrd-fphunt-a0810.com",
+        "Type": "A",
+        "TTL": "300",
+        "ResourceRecords": ["192.0.2.1"]
+      },
+      {
+        "Name": "txt.cdkrd-fphunt-a0810.com.",
+        "Type": "TXT",
+        "TTL": "300",
+        "ResourceRecords": ["\"alpha\"", "\"mike\"", "\"zulu\""]
+      }
+    ]
+  },
+  "schema": {
+    "readOnly": ["Id"],
+    "writeOnly": [],
+    "createOnly": ["HostedZoneId", "HostedZoneName"],
+    "readOnlyPaths": ["Id"],
+    "writeOnlyPaths": [],
+    "createOnlyPaths": ["HostedZoneId", "HostedZoneName"],
+    "defaults": {},
+    "defaultPaths": {},
+    "unorderedScalarPaths": [],
+    "unorderedObjectArrayPaths": [],
+    "freeFormMapPaths": []
+  },
+  "opts": {
+    "accountId": "111111111111",
+    "region": "us-east-1",
+    "kmsAliasTargets": {},
+    "oaiCanonicalIds": {}
+  },
+  "expected": []
+}

@@ -253,6 +253,7 @@ import { CLIENT_TIMEOUTS } from '../read/client-config.js';
 import {
   DLM_DEFAULT_POLICY_SHORTHAND,
   type OverrideCtx,
+  resolveHostedZoneIdByName,
   SDK_OVERRIDES,
 } from '../read/overrides.js';
 import { applyOps } from './apply-ops.js';
@@ -1440,22 +1441,77 @@ const RR_ROUTING_FIELDS = [
   'GeoProximityLocation',
   'CidrRoutingConfig',
 ] as const;
-const writeRoute53RecordSet: SdkWriter = async (ctx, ops) => {
-  const m = await desiredModel('AWS::Route53::RecordSet', ctx, ops);
-  const zone = str(m.HostedZoneId) ?? str(ctx.declared['HostedZoneId']);
-  const name = str(m.Name) ?? str(ctx.declared['Name']);
-  const type = str(m.Type) ?? str(ctx.declared['Type']);
-  if (!zone || !name || !type) throw new Error('cannot resolve Route53 record target for revert');
+// Build the ChangeResourceRecordSets rrset payload from one CFn-shaped record model.
+// Shared by the standalone RecordSet writer and the RecordSetGroup per-member writer
+// (#1743) so the two can never diverge. Returns undefined when the model lacks its
+// Name/Type identity.
+function buildRoute53RrSet(m: Record<string, unknown>): Record<string, unknown> | undefined {
+  const name = str(m.Name);
+  const type = str(m.Type);
+  if (!name || !type) return undefined;
   const rrset: Record<string, unknown> = { Name: name, Type: type };
   if (m.TTL !== undefined) rrset.TTL = Number(m.TTL); // CFn TTL is a string; the API wants a number
   if (Array.isArray(m.ResourceRecords))
     rrset.ResourceRecords = (m.ResourceRecords as string[]).map((v) => ({ Value: v }));
   if (m.AliasTarget !== undefined) rrset.AliasTarget = m.AliasTarget;
   for (const k of RR_ROUTING_FIELDS) if (m[k] !== undefined) rrset[k] = m[k];
+  return rrset;
+}
+const writeRoute53RecordSet: SdkWriter = async (ctx, ops) => {
+  const m = await desiredModel('AWS::Route53::RecordSet', ctx, ops);
+  const zone = str(m.HostedZoneId) ?? str(ctx.declared['HostedZoneId']);
+  const rrset = buildRoute53RrSet({
+    ...m,
+    Name: str(m.Name) ?? str(ctx.declared['Name']),
+    Type: str(m.Type) ?? str(ctx.declared['Type']),
+  });
+  if (!zone || !rrset) throw new Error('cannot resolve Route53 record target for revert');
   await new Route53Client({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
     new ChangeResourceRecordSetsCommand({
       HostedZoneId: zone,
       ChangeBatch: { Changes: [{ Action: 'UPSERT', ResourceRecordSet: rrset as never }] },
+    })
+  );
+};
+
+// AWS::Route53::RecordSetGroup (#1743) — no Cloud Control handlers, read via the
+// readRoute53RecordSetGroup override, so revert routes here. Apply the revert ops to the
+// projected group model, then UPSERT ONLY the members the ops touched (parsed from the
+// `/RecordSets/<i>/...` pointers; a whole-array op — a member deleted out of band being
+// restored — UPSERTs every declared member). One ChangeBatch carries all the changes
+// atomically, the same call the standalone RecordSet writer makes per record.
+const writeRoute53RecordSetGroup: SdkWriter = async (ctx, ops) => {
+  const m = await desiredModel('AWS::Route53::RecordSetGroup', ctx, ops);
+  let zone = str(m.HostedZoneId) ?? str(ctx.declared['HostedZoneId']);
+  if (!zone) {
+    const zoneName = str(m.HostedZoneName) ?? str(ctx.declared['HostedZoneName']);
+    if (zoneName) {
+      zone = await resolveHostedZoneIdByName(
+        new Route53Client({ region: ctx.region, ...CLIENT_TIMEOUTS }),
+        zoneName
+      );
+    }
+  }
+  const sets = Array.isArray(m.RecordSets) ? (m.RecordSets as Record<string, unknown>[]) : [];
+  if (!zone || sets.length === 0)
+    throw new Error('cannot resolve Route53 record-set-group target for revert');
+  const wholeArray = ops.some((o) => o.path === '/RecordSets');
+  const touched = new Set<number>();
+  for (const o of ops) {
+    const i = /^\/RecordSets\/(\d+)(\/|$)/.exec(o.path)?.[1];
+    if (i !== undefined) touched.add(Number(i));
+  }
+  const members = wholeArray ? sets : [...touched].map((i) => sets[i]).filter((s) => !!s);
+  const changes = members
+    .map((member) => buildRoute53RrSet(member as Record<string, unknown>))
+    .filter((r): r is Record<string, unknown> => r !== undefined)
+    .map((rrset) => ({ Action: 'UPSERT' as const, ResourceRecordSet: rrset as never }));
+  if (changes.length === 0)
+    throw new Error('Route53 record-set-group revert: no member resolved from the revert ops');
+  await new Route53Client({ region: ctx.region, ...CLIENT_TIMEOUTS }).send(
+    new ChangeResourceRecordSetsCommand({
+      HostedZoneId: zone,
+      ChangeBatch: { Changes: changes },
     })
   );
 };
@@ -3333,6 +3389,7 @@ export const SDK_WRITERS: Record<string, SdkWriter> = {
   'AWS::DLM::LifecyclePolicy': writeDlmLifecyclePolicy,
   'AWS::Logs::MetricFilter': writeMetricFilter,
   'AWS::Route53::RecordSet': writeRoute53RecordSet,
+  'AWS::Route53::RecordSetGroup': writeRoute53RecordSetGroup,
   'AWS::DocDB::DBCluster': writeDocDbCluster,
   'AWS::DocDB::DBInstance': writeDocDbInstance,
   'AWS::ServiceDiscovery::HttpNamespace': writeServiceDiscoveryHttpNamespace,
