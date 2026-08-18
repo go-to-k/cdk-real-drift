@@ -243,7 +243,10 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
     a merge from `main` touching an UNRELATED in-scope file no longer forces a
     re-run of an expensive real-AWS verification, while a same-file change and any
     local in-scope edit still stale it. A diff gate ERRORS (exit 2) when run from a
-    clean base branch. Rationale + accepted cost are in `.markgate.yml`.
+    clean base branch. The invalidations it removes are provably uninformative; the
+    risk it accepts — undetected cross-FILE interaction, which by definition sits in
+    the zero-overlap cases — is bounded but NOT quantified. Full rationale in
+    `.markgate.yml`.
   - `/hunt-bugs` is the (non-marker) skill that drives a periodic real-AWS bug-hunt:
     deploy UNCOVERED, high-frequency resource types / configs / CFn notations, then
     catch false positives (clean `record`→`check` must be CLEAN) and missed

@@ -41,10 +41,19 @@
 #               explicitly: markgate has no `origin/HEAD` fallback, and that ref is
 #               commonly unset in CI clones, which would make the same gate mean
 #               different things locally and in CI. Accepted cost: cross-FILE
-#               interaction goes unseen (branch changes A, `main` changes B, the
-#               deltas never overlap) — 14 of the 83 cases; the 14d TTL still
-#               forces a periodic real run. On a clean `main` the delta is empty
-#               and markgate ERRORS (exit 2) rather than silently passing.
+#               interaction goes unseen — a caller uses A and B, this branch
+#               changes A, `main` changes B. By definition those two changes sit in
+#               DIFFERENT files, so this class lives inside the 69 ZERO-OVERLAP
+#               cases, NOT the 14 overlapping ones: an overlapping change lands
+#               inside this branch's own delta and is still caught. The residual
+#               risk is therefore bounded above by 69, and how much of that 69 is
+#               genuine semantic coupling rather than genuinely independent work is
+#               UNMEASURED — the measurement distinguishes file overlap, not
+#               coupling. The trade is still worth making, but on those terms: the
+#               invalidations removed are provably uninformative, while the risk
+#               accepted is bounded but not quantified. The 14d TTL still forces a
+#               periodic real run. On a clean `main` the delta is empty and
+#               markgate ERRORS (exit 2) rather than silently passing.
 #
 #               `check` / `docs` deliberately STAY on `hash: files`: it is the
 #               stricter mode, and strictness is only worth trading away where the
