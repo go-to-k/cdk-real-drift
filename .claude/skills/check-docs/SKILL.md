@@ -13,8 +13,10 @@ docs describe.
 
 ## Steps
 
-1. **Identify what changed**: Run `git diff HEAD~5 --name-only` (solo repo, no PR
-   base) to see recently changed files.
+1. **Identify what changed**: on a `wt-*` branch, diff against the base to see
+   everything this PR changes, committed or not:
+   `git diff --name-only "$(git merge-base origin/main HEAD)"`. On `main`, fall
+   back to `git diff HEAD~5 --name-only`.
 
 2. **Decide whether a deep review is needed (short-circuit)**. Skip the LLM-judged
    review and set the marker directly when the diff **only** touches files the

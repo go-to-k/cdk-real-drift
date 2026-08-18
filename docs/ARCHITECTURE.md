@@ -1420,11 +1420,14 @@ check` green). The earlier `TS2591 'process'` errors came from oxc's type-aware
 7. **Governance / repo hygiene (in place)**: CI (`.github/workflows/ci.yml` =
    `vp run check` + test + build; `release.yml` semantic-release; `pr-title-check.yml`),
    `.markgate.yml` (check/docs/verify-pr), `.claude/skills/{check,check-docs,verify-pr}`,
-   `.claude/hooks/check-gate.sh` (+ `.claude/settings.json`), `CLAUDE.md`,
-   `CONTRIBUTING.md`. Deliberately deferred until the repo has a remote (Phase 4):
-   branch/PR/merge gates and `.claude/rules` / `.claude/agents` — cdkd's heavy
-   50-hook / 10-rule suite is disproportionate for a new repo. _Open question: which
-   of those become worth adding once there are external contributors?_
+   the `.claude/hooks/` suite (+ `.claude/settings.json`) — `check-gate`,
+   `branch-gate`, `verify-pr-gate`, `ci-green-gate`, `stale-base-gate`,
+   `non-english-text-gate`, `worktree-guard`, and the bug-hunt cleanup gates —
+   plus `CLAUDE.md` and `CONTRIBUTING.md`. Still deliberately absent:
+   `.claude/rules` / `.claude/agents` (and with them the pr-review gate) —
+   cdkd's heavy 50-hook / 10-rule suite is disproportionate for a repo this size.
+   _Open question: which of those become worth adding once there are external
+   contributors?_
 8. **Ignore-rule management (R32)**: ignore rules live in `.cdkrd/ignore.yaml` and
    can be hand-edited or appended by the `cdkrd ignore` verb (comment-preserving,
    append-only). _Open question: add a `cdkrd ignore --list` view to inspect the

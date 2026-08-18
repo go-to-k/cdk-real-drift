@@ -5,8 +5,9 @@ AWS CDK / CloudFormation — including the **undeclared** properties that `cdk d
 and CloudFormation drift detection miss. See [README.md](README.md) for an overview
 and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full design.
 
-> **Status:** pre-release / experimental. Developed solo on `main` for now; a
-> public GitHub remote (and PR workflow) lands at Phase 4.
+> **Status:** pre-release / experimental. Developed solo, but every change lands
+> through a pull request on the GitHub remote — never committed directly to
+> `main`.
 
 ## Prerequisites
 
@@ -84,3 +85,14 @@ Run the markgate companion skills (they back the pre-commit gate):
 
 A `check-gate` hook blocks `git commit` unless both markers are fresh. Run the
 relevant skill, then commit.
+
+## Before you open a PR
+
+Work on a branch — `branch-gate` blocks commits and pushes on `main`.
+
+- `/verify-pr` — the PR readiness checklist; sets the `verify-pr` marker that
+  `verify-pr-gate` requires for `gh pr create` / `gh pr merge`. A PR whose diff
+  touches no `src/**` (docs / tooling only) is exempt: `check` + `docs` already
+  cover it.
+- CI (`.github/workflows/ci.yml`) must be green before merging — `ci-green-gate`
+  blocks `gh pr merge` on a red or still-pending run.

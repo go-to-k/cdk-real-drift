@@ -7,10 +7,12 @@ description: Run local quality checks (typecheck, lint, build, tests). Quick che
 
 Run all local quality checks. Use during development to verify the current state quickly.
 
-cdk-real-drift (cdkrd) is a solo, local-only repo: there is no GitHub remote, no
-PR workflow, and no real-AWS deploy/destroy in this gate. This skill mirrors the
-CI workflow (`.github/workflows/ci.yml`), which runs typecheck / lint+format /
-build / unit tests on every push.
+cdk-real-drift (cdkrd) is developed solo, but on a GitHub remote and through
+PRs: work lands via `wt-*` worktree branches, and `.claude/hooks/verify-pr-gate.sh`
+gates `gh pr create` / `gh pr merge`. This skill is the LOCAL half of that flow —
+it runs no real-AWS deploy/destroy — and mirrors the CI workflow
+(`.github/workflows/ci.yml`), which runs typecheck / lint+format / build / unit
+tests on every push.
 
 ## Steps
 
