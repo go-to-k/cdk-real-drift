@@ -29,6 +29,29 @@
 #               remains, and it has no companion /run-integ skill yet. 14d TTL
 #               (AWS-side wire-format + Cloud Control behavior drift over time).
 #
+#               This is the ONE gate on `hash: diff` (markgate 0.4+, #1756). Its
+#               digest is the working-tree delta against `merge-base(origin/main,
+#               HEAD)` restricted to the include set, so a merge arriving from
+#               `main` that moves an UNRELATED in-scope file no longer invalidates
+#               the marker — while a change to a file this branch also touched, and
+#               any in-scope edit on this branch (committed or not), still do. On
+#               the last 250 merged PRs here, 69 of the 83 cross-PR invalidations
+#               (83%) carried no information about the branch being gated. `base:`
+#               is mandatory for a diff gate and is pinned to `origin/main`
+#               explicitly: markgate has no `origin/HEAD` fallback, and that ref is
+#               commonly unset in CI clones, which would make the same gate mean
+#               different things locally and in CI. Accepted cost: cross-FILE
+#               interaction goes unseen (branch changes A, `main` changes B, the
+#               deltas never overlap) — 14 of the 83 cases; the 14d TTL still
+#               forces a periodic real run. On a clean `main` the delta is empty
+#               and markgate ERRORS (exit 2) rather than silently passing.
+#
+#               `check` / `docs` deliberately STAY on `hash: files`: it is the
+#               stricter mode, and strictness is only worth trading away where the
+#               re-verification it forces is expensive — re-running typecheck /
+#               lint / build / unit tests is not. `pr-review` is bound to a
+#               sentinel file, so a pull cannot invalidate it either way.
+#
 # Bug-hunt cleanup is NOT a markgate gate — it is a sentinel-file gate
 # (.markgate-bughunt-pending + .claude/hooks/bughunt-clean-gate.sh), armed by
 # /hunt-bugs's bughunt-track.sh BEFORE any deploy and released only after every
@@ -71,7 +94,8 @@ gates:
       - '.markgate-pr-review-sha'
 
   integ:
-    hash: files
+    hash: diff
+    base: origin/main
     ttl: 14d
     include:
       - 'src/**'

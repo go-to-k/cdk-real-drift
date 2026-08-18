@@ -236,6 +236,14 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
     live-test + retrospective; named `verify-pr` for layout parity with cdkd).
   - A `check-gate` PreToolUse hook blocks `git commit` unless both the `check` and
     `docs` markers are fresh. Run the relevant skill before committing.
+  - **Hash modes**: `check` / `docs` hash file CONTENT (`hash: files`) — the
+    stricter mode, kept because re-running them is cheap. The inert `integ` gate is
+    the ONE gate on `hash: diff` (markgate 0.4+, #1756): it digests this branch's
+    delta against `merge-base(origin/main, HEAD)` restricted to its include set, so
+    a merge from `main` touching an UNRELATED in-scope file no longer forces a
+    re-run of an expensive real-AWS verification, while a same-file change and any
+    local in-scope edit still stale it. A diff gate ERRORS (exit 2) when run from a
+    clean base branch. Rationale + accepted cost are in `.markgate.yml`.
   - `/hunt-bugs` is the (non-marker) skill that drives a periodic real-AWS bug-hunt:
     deploy UNCOVERED, high-frequency resource types / configs / CFn notations, then
     catch false positives (clean `record`→`check` must be CLEAN) and missed
