@@ -347,8 +347,8 @@ is where §9 and §10 live.
 - **Another skill**, but only one this run actually exercised (`/verify-pr`,
   `/sweep-resources`, `/check`, `/check-docs`). `/hunt-bugs` produced the backlog;
   this flow never runs it, so a lesson about it is not this run's evidence.
-- **`CLAUDE.md` / `DESIGN.md` / `docs/**`** when it applies to any work in this
-  repo, not just this flow (the last two are in the `docs` gate's scope).
+- **`CLAUDE.md`, `DESIGN.md`, or a file under `docs/`** when it applies to any work
+  in this repo, not just this flow (the last two are in the `docs` gate's scope).
 - **Memory** (`~/.claude/projects/.../memory/`) when the lesson is judgmental and
   cross-repo. Weakest enforcement — the landing spot when nothing above can hold the
   rule, not the default one.
@@ -409,13 +409,13 @@ pnpm install                  # worktrees have no node_modules
 - Do not let the small diff set the review depth. This repo has no reviewer ladder,
   so the depth IS your own read of the whole diff plus `/verify-pr`'s self-review —
   a wrong rule here propagates into every future session.
-- **Merge it before the wrap report, then remove the worktree** (`git worktree
-  remove .worktrees/<name> && git worktree prune` — §9 ends with "only the main
-  checkout should remain", and §10 must not undo that). This is `Session-fit: now`
-  on the criterion that deferring leaves main self-inconsistent: the skill would
-  keep telling the next run to do the thing this run just proved it gets wrong. Its
-  evidence also dies with this session's context. Leaving the PR open is an open PR
-  (NOT CLOSEABLE) as well.
+- **Merge it before the wrap report, then remove the worktree** — §9 ends with
+  "only the main checkout should remain" and §10 must not undo that, so finish with
+  `git worktree remove .worktrees/<name> && git worktree prune`. This is
+  `Session-fit: now` on the criterion that deferring leaves main self-inconsistent:
+  the skill would keep telling the next run to do the thing this run just proved it
+  gets wrong. Its evidence also dies with this session's context, and leaving the PR
+  open is an open PR (NOT CLOSEABLE) besides.
 
 Then report the outcome in one line of the wrap: what changed, in which step, and
 the run evidence behind it — or "no skill change" plus what held.
