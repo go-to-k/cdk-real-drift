@@ -106,6 +106,16 @@ parallelized — bundle them into ONE lane (one worktree, one PR) or defer one.
 **At most one lane per central table.** Map each candidate to its target file
 (grep the relevant table name; read the issue's "Fix direction") before choosing.
 
+- **Security issues come FIRST**, ahead of every other preference on this list. A
+  security defect is the one class whose cost grows while it waits: the vulnerable
+  behavior is already shipped and running, and the report may be public. It counts
+  as security when the issue reports credential / secret handling, redaction or
+  masking, a sensitive value persisted or logged (state, journal, events, reports),
+  IAM / role-assumption scope, auth or token verification, command injection, or
+  anything tied to a GHSA advisory. When in doubt, treat it as security — ranking a
+  normal bug first costs one position in a queue. Urgency changes ORDER only: a
+  security lane gets the same verification depth as any other, plus a deliberate
+  read of every place the sensitive value flows.
 - Same file, related class → **bundle** into a single lane/PR (e.g. two
   `revert/plan.ts` fixes → one PR "Subnet set-default + Lambda husk (#651, #650)").
 - Different files → separate parallel lanes.
