@@ -309,8 +309,9 @@ subject and a wider scope, and neither is covered by that one:
   missing twice, the same correction on lane A and again on lane C) that is
   invisible from inside a single lane;
 - it **applies** the fix instead of proposing it. Editing this repo's own agent
-  tooling is a routine call you make yourself (`CLAUDE.md` → "Decide routine calls
-  yourself"). Escalate through `AskUserQuestion` only when the edit would change
+  tooling is a routine call you make yourself — decide it, do not hand the
+  maintainer a proposal. Escalate through `AskUserQuestion` only when the edit
+  would change
   what the flow PROMISES — dropping a gate, lowering a verification tier, loosening
   §0 — never for wording, ordering, or a newly-learned trap.
 
@@ -344,9 +345,10 @@ is where §9 and §10 live.
 - **This SKILL.md** when the lesson is about running THIS flow (triage, claiming,
   fan-out, ship order).
 - **Another skill**, but only one this run actually exercised (`/verify-pr`,
-  `/sweep-resources`, `/check`, `/check-docs`, `/hunt-bugs`).
+  `/sweep-resources`, `/check`, `/check-docs`). `/hunt-bugs` produced the backlog;
+  this flow never runs it, so a lesson about it is not this run's evidence.
 - **`CLAUDE.md` / `DESIGN.md` / `docs/**`** when it applies to any work in this
-repo, not just this flow (the last two are in the `docs` gate's scope).
+  repo, not just this flow (the last two are in the `docs` gate's scope).
 - **Memory** (`~/.claude/projects/.../memory/`) when the lesson is judgmental and
   cross-repo. Weakest enforcement — the landing spot when nothing above can hold the
   rule, not the default one.
@@ -368,11 +370,14 @@ Every run appending one more bullet is exactly how a long skill becomes an unrea
 - Do not restate a rule that already lives in `CLAUDE.md` or in another step — point
   at it instead.
 - If the lesson is about the FLOW rather than about cdk-real-drift, mirror it into
-  the same-named `work-issues` skill in the sibling repos (`../cdkd`, `../cdk-local`)
-  in this same session. They run this flow with different gates
-  and different ship steps, so adapt the wording per repo instead of copying the
-  section verbatim — but a fix that lands in only one of the three is how the three
-  drift apart.
+  the same-named `work-issues` skill in the sibling repos (`../cdkd`,
+  `../cdk-local`). They run this flow with different gates and different ship steps,
+  so adapt the wording per repo rather than copying the section verbatim, and it is
+  one PR per repo under that repo's own worktree + gate flow (cdkd blocks
+  tracked-file edits in its main worktree, so it cannot be edited in place). Do them
+  in this session when it can pay for two more gate runs; otherwise file one issue
+  per repo carrying the `Session-fit` line. What is not an option is landing the fix
+  in only one of the three — that is how the three drift apart.
 
 ### 10-d. Ship it like any other change
 
@@ -380,9 +385,13 @@ Every worktree is gone by §9 and you are back on `main`, where `branch-gate` bl
 a commit. So the retro gets its own worktree:
 
 ```bash
-git worktree add .worktrees/chore-work-issues-retro \
-  -b chore/work-issues-retro origin/main
-cd .worktrees/chore-work-issues-retro && pnpm install
+# Date-suffix the branch: the previous run's branch was deleted on merge, so
+# reusing the name re-creates it as an orphan ref that no PR tracks.
+B=chore/work-issues-retro-$(date +%Y%m%d)
+git worktree add ".worktrees/${B##*/}" -b "$B" origin/main
+cd ".worktrees/${B##*/}"
+mise trust && mise install    # untrusted .mise.toml: vp / markgate will not resolve
+pnpm install                  # worktrees have no node_modules
 ```
 
 - `chore:` prefix — this is agent tooling, not `src/**`, and semantic-release turns
@@ -391,16 +400,22 @@ cd .worktrees/chore-work-issues-retro && pnpm install
 - English only in every committed line (`non-english-text-gate` enforces it at PR
   time).
 - A `work-issues`-only edit is outside BOTH the `check` and `docs` gate scopes, but
-  a fresh worktree carries no markers at all and `gh pr create` is gated on
-  `verify-pr` — so run `/check`, `/check-docs`, `/verify-pr` there anyway. No
-  `src/**` change means §8's live-test exemption applies: no deploy, so nothing for
-  `/sweep-resources` to tear down and no `deploy-autoarm-gate` token to release.
-- The review depth is not negotiable downward because the diff is small: a wrong
-  rule here propagates into every future session.
-- **Merge it before the wrap report.** By construction it is `Session-fit: now`: it
-  lands in the file this run just proved wrong, and its evidence dies with this
-  session's context. Leaving it open is both an open PR (NOT CLOSEABLE) and the one
-  deferral whose value decays to zero while it waits.
+  `check-gate` verifies both markers on every commit without computing scope, and a
+  fresh worktree starts with NONE — so run `/check` + `/check-docs` there before the
+  commit. `verify-pr-gate` exempts a diff with no `src/**` path, so `/verify-pr` is
+  not required for this one; CI still has to be green for `ci-green-gate`. No
+  `src/**` change also means no deploy: nothing for `/sweep-resources` to tear down
+  and no `deploy-autoarm-gate` token to release.
+- Do not let the small diff set the review depth. This repo has no reviewer ladder,
+  so the depth IS your own read of the whole diff plus `/verify-pr`'s self-review —
+  a wrong rule here propagates into every future session.
+- **Merge it before the wrap report, then remove the worktree** (`git worktree
+  remove .worktrees/<name> && git worktree prune` — §9 ends with "only the main
+  checkout should remain", and §10 must not undo that). This is `Session-fit: now`
+  on the criterion that deferring leaves main self-inconsistent: the skill would
+  keep telling the next run to do the thing this run just proved it gets wrong. Its
+  evidence also dies with this session's context. Leaving the PR open is an open PR
+  (NOT CLOSEABLE) as well.
 
 Then report the outcome in one line of the wrap: what changed, in which step, and
 the run evidence behind it — or "no skill change" plus what held.
