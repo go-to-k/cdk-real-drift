@@ -3,8 +3,8 @@
 #
 # PreToolUse hook. Blocks `git commit` and `git push` when the working
 # tree the command will actually act on is on `main` / `master`. All
-# changes to cdkd must land via PR from a feature branch — direct
-# commits/pushes to main are not allowed.
+# changes to cdk-real-drift must land via PR from a feature branch —
+# direct commits/pushes to main are not allowed.
 #
 # WHY the cwd-aware resolution matters: this repo is regularly worked
 # in via `git worktree`. The previous implementation derived the repo

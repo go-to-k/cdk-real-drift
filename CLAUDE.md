@@ -232,10 +232,13 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   its marker:
   - `/check` → `check` marker (typecheck / lint+format / build / unit tests).
   - `/check-docs` → `docs` marker (README / DESIGN / docs consistency with src).
-  - `/verify-pr` → `verify-pr` marker (pre-RELEASE superset of check + docs plus a
-    live-test + retrospective; named `verify-pr` for layout parity with cdkd).
+  - `/verify-pr` → `verify-pr` marker (pre-PR superset of check + docs plus a
+    live-test + retrospective).
   - A `check-gate` PreToolUse hook blocks `git commit` unless both the `check` and
-    `docs` markers are fresh. Run the relevant skill before committing.
+    `docs` markers are fresh, and a `verify-pr-gate` hook blocks `gh pr create` /
+    `gh pr merge` unless `verify-pr` is fresh — except for a docs/tooling-only PR
+    (no `src/**` in the diff), which the gate lets through on `check` + `docs`.
+    Run the relevant skill before committing or opening the PR.
   - **Hash modes**: `check` / `docs` hash file CONTENT (`hash: files`) — the
     stricter mode, kept because re-running them is cheap. The inert `integ` gate is
     the ONE gate on `hash: diff` (markgate 0.4+, #1756): it digests this branch's

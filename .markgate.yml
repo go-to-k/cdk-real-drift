@@ -9,9 +9,12 @@
 #               (set by /check and /verify-pr).
 #   docs      — README / DESIGN / docs consistency with src
 #               (set by /check-docs and /verify-pr).
-#   verify-pr — pre-release readiness checklist; AND of check + docs.
-#               (set by /verify-pr.) cdkrd is solo + local-only with no GitHub
-#               remote, so this is a pre-RELEASE gate, not a PR gate.
+#   verify-pr — PR readiness checklist; AND of check + docs. (set by
+#               /verify-pr.) This is a pre-PR gate: .claude/hooks/verify-pr-gate.sh
+#               blocks `gh pr create` / `gh pr merge` until the marker is fresh.
+#               Docs/tooling-only PRs (no `src/**` in the diff) are EXEMPT — the
+#               skill's heavy half is the live-test of changed runtime behavior,
+#               and check + docs already cover a PR that has none.
 #
 # The check / docs / verify-pr gates each have a companion skill under
 # .claude/skills/ that SETS their marker (/check, /check-docs, /verify-pr). Those
@@ -20,8 +23,10 @@
 # INERT gates (kept for layout parity with the sibling repos, but with NO
 # companion skill in cdkrd — do NOT wire a commit/merge hook to either until a
 # companion skill is ported, or it would become unsatisfiable and brick the flow):
-#   pr-review — `/review-pr` reviewer-dispatch verification (sha-bound). N/A:
-#               cdkrd has no GitHub remote / PR review flow. No companion skill.
+#   pr-review — `/review-pr` reviewer-dispatch verification (sha-bound). The repo
+#               does have a remote and a PR flow, but /review-pr dispatches
+#               multi-agent reviewers from `.claude/agents`, which cdkrd has not
+#               ported (CLAUDE.md R83). No companion skill.
 #   integ     — read-only real-AWS verification (gather/check/inject-drift). cdkrd
 #               is READ-ONLY against AWS (no deploy/destroy, no schema migration),
 #               so cdkd's destroy / broad / local / schema-migration integ gates

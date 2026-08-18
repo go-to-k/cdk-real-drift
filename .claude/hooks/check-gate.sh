@@ -7,10 +7,13 @@
 # and edits to docs-only invalidate only `docs`. The error message names the
 # skill to re-run.
 #
-# cdk-real-drift is a smaller, solo, local-only repo (no GitHub remote yet),
-# so this is the ONLY commit/merge gate wired up. Branch-protection,
-# verify-pr-merge, pr-review, and integ-* gates are deferred until Phase 4
-# (when the repo gets a remote). Adapted from cdkd's check-gate.sh; the
+# cdk-real-drift is a smaller repo than cdkd, so only a subset of cdkd's
+# gate suite is wired: this hook plus branch-gate, verify-pr-gate,
+# ci-green-gate, stale-base-gate, and non-english-text-gate (R83). The
+# pr-review and integ-* gates stay UNPORTED on purpose — pr-review needs the
+# multi-agent reviewers in `.claude/agents` cdkrd lacks, and integ-* depends
+# on cdkd's deploy/destroy paths cdkrd does not have (see .markgate.yml).
+# Adapted from cdkd's check-gate.sh; the
 # cwd-aware target-dir resolution is kept because work happens via
 # `git worktree` and markgate stores marker state per-worktree.
 

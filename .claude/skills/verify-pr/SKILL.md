@@ -1,15 +1,22 @@
 ---
 name: verify-pr
-description: Comprehensive pre-release verification. Run quality checks, docs consistency, a live-test of changed behavior, and a short retrospective before tagging a release.
+description: Comprehensive PR-readiness verification. Run quality checks, docs consistency, a live-test of changed behavior, and a short retrospective before opening or merging a PR.
 ---
 
-# Pre-Release Verification
+# PR-Readiness Verification
 
-Heavy verification gate — a **pre-release** readiness check, not a per-PR gate
-(per-PR verification is `/check` + `/check-docs` + CI on the pull request). Run
-it before cutting a release. This skill is a superset of `/check` +
+Heavy verification gate, and a **pre-PR** one:
+`.claude/hooks/verify-pr-gate.sh` blocks `gh pr create` and `gh pr merge` until
+this skill has set the `verify-pr` marker. This skill is a superset of `/check` +
 `/check-docs` plus the real-AWS integration fixtures, a live-test, and a
 retrospective.
+
+**Exemption:** a PR whose diff touches no `src/**` (docs / tooling only) carries
+no runtime behavior to live-test, and the gate lets it through on the `check` +
+`docs` markers alone — so `/check` + `/check-docs` + CI is the whole per-PR
+requirement there. The hook computes this from the branch's diff against
+`origin/main` and fails CLOSED — it exempts only when it can prove the diff is
+src-free, so run this skill whenever it does ask for it.
 
 ## Checklist
 
@@ -39,7 +46,8 @@ Run each check and report pass/fail:
 2. **Tests**
    - `vp test run` — all unit tests pass; report file + test counts. **Invoke
      `vp test run` DIRECTLY, not `vp run test`** (same cache-replay foot-gun).
-   - **Coverage of changes**: compare `git diff HEAD~5 --name-only` for `src/`
+   - **Coverage of changes**: compare
+     `git diff --name-only "$(git merge-base origin/main HEAD)"` for `src/`
      vs `tests/`. If logic was added/changed in `src/` with no corresponding test
      added/updated, flag as **fail** and add the missing tests before proceeding.
 
@@ -53,8 +61,8 @@ Run each check and report pass/fail:
      `SDK_WRITERS` map. Fix any discrepancy.
 
 5. **Code review**
-   - `git diff HEAD~5` — read the diff. For each change: is it correct? complete?
-     necessary?
+   - `git diff "$(git merge-base origin/main HEAD)"` — read the PR's whole diff.
+     For each change: is it correct? complete? necessary?
    - Check for logic errors / unhandled edge cases, unnecessary changes (dead
      code, unrelated edits), and inconsistencies between changed files.
    - If a shared helper changed, list its importers (`grep -rl` under `src`/
@@ -146,7 +154,7 @@ Present results as a table:
 | shared CORE suite (7)          | pass/deferred/skipped     |
 | retrospective + rule proposals | done/skipped              |
 
-If all pass, confirm "Ready to release."
+If all pass, confirm "Ready to open / merge the PR."
 If any fail, list the issues to fix.
 
 ## Final Step
