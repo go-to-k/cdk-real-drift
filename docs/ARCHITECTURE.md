@@ -1024,9 +1024,12 @@ a correctly-named file always matches, so it now only catches a file hand-copied
 renamed to the wrong account's path (exit 2). A pre-release file with no `accountId`
 field only warns and is stamped on the next `record`.
 
-> No legacy-path fallback: cdkrd is pre-release (unpublished), so the only old-style
-> `<stack>.<region>.json` files are local dogfood artifacts. They are simply not found
-> under the new path (→ "no baseline", run `record`); delete them after re-recording.
+> No legacy-path fallback: the accountId-in-filename layout (R21) landed 2026-06-11,
+> almost a month BEFORE the first npm release (`0.0.1`, 2026-07-06), so no published
+> version of cdkrd ever wrote an old-style `<stack>.<region>.json` file — the only
+> ones that exist are local dogfood artifacts from before that commit. They are
+> simply not found under the new path (→ "no baseline", run `record`); delete them
+> after re-recording.
 
 When a baseline already exists, the interactive `record` multiselect shows only the
 **delta** from it (`splitRecordedByBaseline`) — new/changed undeclared values, where
@@ -1449,10 +1452,13 @@ declared-only `--pre-deploy`, and selective `record`.
 
 Repo hygiene (CLAUDE.md, CONTRIBUTING.md, check-gate hook, CI) is in place too.
 
-REMAINING before the single public launch (GitHub + npm + blog), none of which is a
-code-correctness blocker:
+DONE since this section was written: the public GitHub repo exists and is pushed,
+and publishing is automated — semantic-release runs `npm publish` on every
+release-triggering merge to `main` (`cdk-real-drift` has been on npm since
+`0.0.1`, 2026-07-06).
+
+REMAINING, neither of which is a code-correctness blocker:
 
 - the design-review re-review of this fix pass → address any blocking findings.
-- create the public GitHub repo + push, then `npm publish`, then the blog announce.
-  These three are the deliberate, irreversible "single launch" event and are done
-  last, on explicit go.
+- the blog announce — the last of the three "single launch" steps, done on
+  explicit go.

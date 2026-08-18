@@ -131,10 +131,16 @@ NEW (cdkd does NOT have these):
   real drift); it only names the likely source in a readable trailing line.
 - **golden corpus** — recorded real pipeline inputs+findings, replayed offline in CI (R63)
 
-## Roadmap (private until Phase 4)
+## Roadmap
 
-- Phase 2: build MVP here (private repo). DONE.
+> The repo is already public and on npm — see the Phase 4 entry for what the
+> "single public launch" still refers to.
+
+- Phase 2: build MVP here (the repo was private then). DONE.
 - Phase 3 (current): dogfood broadly on varied real stacks; tune normalizers;
   land revert. See [redesign-notes.md](redesign-notes.md) for the
   check/record/ignore/revert model adopted before publication.
-- Phase 4: publish + blog announce (the single public launch).
+- Phase 4: publish + blog announce (the single public launch). The publish half
+  has HAPPENED — the repo is public and `cdk-real-drift` has been on npm since
+  `0.0.1` (2026-07-06). The blog announce is the part still outstanding; whether
+  that makes Phase 4 "reached" is a call this doc does not make.

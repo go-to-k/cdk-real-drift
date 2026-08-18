@@ -103,8 +103,13 @@ node dist/cli.js revert [<stack>...] [--all]   # write the desired value back to
 
 ## State of the Repo
 
-- **Pre-release / experimental.** Private until Phase 4; not yet published. Remote:
-  <https://github.com/go-to-k/cdk-real-drift> (developed solo, PR-based).
+- **Pre-release / experimental** (pre-1.0), but public and shipping: the repo is
+  public at <https://github.com/go-to-k/cdk-real-drift> (developed solo, PR-based)
+  and ships to npm as
+  [`cdk-real-drift`](https://www.npmjs.com/package/cdk-real-drift) — semantic-release
+  cuts a version on every `feat` / `fix` / `perf` / `revert` merge to `main`
+  (`docs` / `chore` merges do not release). Changes reach real users, so weigh
+  breaking ones accordingly.
 - Baseline files live at `.cdkrd/baselines/<stack>.<accountId>.<region>.json` — git-committed.
   A PR that changes a baseline is a visible, reviewable change to "what real state
   we record".
