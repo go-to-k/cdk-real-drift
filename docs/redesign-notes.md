@@ -1,7 +1,12 @@
 # Pre-publication redesign decisions (2026-06-11)
 
-The repo is not published yet, so breaking changes the final tool needs are made
-now. Target = "detect drift INCLUDING undeclared CloudFormation properties, AND
+> Historical record of decisions taken on 2026-06-11, kept for their rationale.
+> The window it describes is CLOSED: cdkrd has been published on npm since
+> `0.0.1` (2026-07-06), so breaking changes now affect real users and no longer
+> get made freely.
+
+At the time, the repo was not published yet, so breaking changes the final tool
+needed were made then. Target = "detect drift INCLUDING undeclared CloudFormation properties, AND
 revert it, as an effortless / friendly CLI."
 
 ## Decision 1 — three-verb model: check / record / revert
