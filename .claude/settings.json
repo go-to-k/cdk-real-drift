@@ -8,7 +8,7 @@
           {
             "type": "command",
             "command": ".claude/hooks/check-gate.sh",
-            "if": "Bash(git commit*) or Bash(git -C * commit*)",
+            "if": "Bash(git commit*) or Bash(git -C * commit*) or Bash(cd * && git commit*)",
             "timeout": 10,
             "statusMessage": "Checking /check + /check-docs markers..."
           },
@@ -36,7 +36,7 @@
           {
             "type": "command",
             "command": ".claude/hooks/verify-pr-gate.sh",
-            "if": "Bash(gh pr create*) or Bash(gh pr merge*) or Bash(gh -C * pr create*) or Bash(gh -C * pr merge*)",
+            "if": "Bash(gh pr create*) or Bash(gh pr merge*) or Bash(gh -C * pr create*) or Bash(gh -C * pr merge*) or Bash(cd * && gh pr create*) or Bash(cd * && gh pr merge*)",
             "timeout": 15,
             "statusMessage": "Checking /verify-pr marker is fresh..."
           },
@@ -50,7 +50,7 @@
           {
             "type": "command",
             "command": ".claude/hooks/non-english-text-gate.sh",
-            "if": "Bash(gh pr create*) or Bash(gh pr edit*) or Bash(gh pr merge*) or Bash(gh -C * pr create*) or Bash(gh -C * pr edit*) or Bash(gh -C * pr merge*)",
+            "if": "Bash(gh pr create*) or Bash(gh pr edit*) or Bash(gh pr merge*) or Bash(gh -C * pr create*) or Bash(gh -C * pr edit*) or Bash(gh -C * pr merge*) or Bash(cd * && gh pr create*) or Bash(cd * && gh pr edit*) or Bash(cd * && gh pr merge*)",
             "timeout": 20,
             "statusMessage": "Scanning PR diff for non-English text..."
           },
