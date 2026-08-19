@@ -142,3 +142,43 @@ describe('mirrored skill docs cite issues by fully-qualified reference', () => {
     }
   });
 });
+
+// `.claude/skills/work-issues/SKILL.md` §5 tells the next agent to run a hook
+// harness FROM `.claude/hooks/` and never from a copy parked elsewhere. That rule is
+// only true while every harness resolves its subject from its OWN script path with no
+// env override — the day one grows a `HOOK=` escape hatch, §5 becomes stale prose
+// that nothing re-checks. §10-b: a claim that must stay in sync with the repo is a
+// TEST, not a sentence asking the next reader to remember.
+//
+// The failure it guards is silent-looking: measured 2026-08-19
+// (go-to-k/cdk-real-drift#1777), `worktree-guard.test.sh` scores PASS=13 FAIL=0 run
+// in place and PASS=0 FAIL=13 copied out — every case failing on exit 127 because the
+// sibling `.sh` is not beside the copy — which reads as a regression the agent's own
+// change caused.
+describe('hook harnesses resolve their subject from their own script path', () => {
+  const HOOKS_DIR = path.join(ROOT, '.claude', 'hooks');
+  const harnesses = existsSync(HOOKS_DIR)
+    ? readdirSync(HOOKS_DIR)
+        .filter((f) => f.endsWith('.test.sh'))
+        .sort()
+    : [];
+
+  it('finds the harnesses to check (the extractor is not a no-op)', () => {
+    expect(harnesses.length).toBeGreaterThanOrEqual(9);
+  });
+
+  it.each(harnesses)('%s derives its subject from its own path', (file) => {
+    const assignment = readFileSync(path.join(HOOKS_DIR, file), 'utf8').match(/^HOOK=.*$/m)?.[0];
+    expect(assignment, `${file} has no HOOK= assignment to check`).toBeDefined();
+    // The two interchangeable spellings §5 names, and nothing else.
+    expect(
+      assignment,
+      `${file} must resolve its hook via $(dirname "$0") or $(dirname "\${BASH_SOURCE[0]}")`
+    ).toMatch(/\$\(dirname "(\$0|\$\{BASH_SOURCE\[0\]\})"\)/);
+    // No `${HOOK_OVERRIDE:-…}` escape hatch. If one is added deliberately, amend §5
+    // rather than deleting this — the instruction is what depends on it.
+    expect(assignment, `${file} gained an env override for its subject — amend §5`).not.toMatch(
+      /:-/
+    );
+  });
+});
