@@ -315,6 +315,14 @@ git log origin/main --oneline | grep -iE "<n>|<fix-keyword>"   # the peer's merg
 git show origin/main:<your-target-file> | grep -n "<marker>"   # main already carries the fix?
 ```
 
+**A CLEAN merge is not evidence that there was no collision.** Two lanes editing
+the SAME file merge without a conflict whenever they touch disjoint SECTIONS of it,
+so §3's one-lane-per-file rule fails SILENTLY rather than loudly — #1772 and #1773
+both rewrote `.claude/skills/work-issues/SKILL.md` within minutes of each other on
+2026-08-19 and both landed intact, which was luck, not design. After a merge that
+lands into a file another PR touched in the same window, `git pull` and grep `main`
+for a marker string from EACH side before believing both survived.
+
 If the issue is CLOSED (or main already carries an equivalent fix), **ABANDON the
 lane — do NOT resolve the conflict to re-apply a now-duplicate fix**: `git rebase
 --abort`, `gh pr close <pr> --delete-branch` (or never open one), comment the
@@ -465,8 +473,20 @@ residue of this flow):
 ```bash
 git worktree remove .worktrees/<name>        # --force if it refuses on artifacts
 git worktree prune
-git worktree list                            # only the main checkout should remain
+git worktree list                            # yours should be gone
 ```
+
+**Only the ones YOU created.** A worktree you did not create is a peer lane, and
+`git worktree list` cannot tell you whose it is — a leftover from a finished run
+and a session working right now look identical, including a branch whose last
+commit is already on `main`. On 2026-08-19 this run read
+`.worktrees/work-issues-fresh-issue-quarantine-20260819` as residue of the
+previous run; it was live, and it merged #1773 while this lane was still open. So
+the closing check is "every worktree I added is gone", never "only the main
+checkout remains". Before removing one you do not recognise, confirm it is
+finished — `git log --oneline -1` on its branch, then `gh pr list --state all
+--head <branch>` for an OPEN PR — and when in doubt leave it and say so in the
+wrap.
 
 Finally, comment the outcome on each issue if it was not auto-closed. Do NOT stop
 here: what the run taught you is still only in this session's context, so go on to
@@ -614,7 +634,7 @@ pnpm install                  # worktrees have no node_modules
   so the depth IS your own read of the whole diff plus `/verify-pr`'s self-review —
   a wrong rule here propagates into every future session.
 - **Merge it before the wrap report, then remove the worktree** — §9 ends with
-  "only the main checkout should remain" and §10 must not undo that, so finish with
+  every worktree this run added gone, and §10 must not undo that, so finish with
   `git worktree remove .worktrees/<name> && git worktree prune`. This is
   `Session-fit: now` on the criterion that deferring leaves main self-inconsistent:
   the skill would keep telling the next run to do the thing this run just proved it
