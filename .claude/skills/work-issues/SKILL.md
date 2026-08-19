@@ -276,6 +276,33 @@ behavior by standalone `.claude/hooks/*.test.sh` suites you run BY HAND (`bash
 invokes those, so a hook change resting on a green suite plus green CI is not
 verified at all. Extend the harness that exists before writing a new one beside it.
 
+**When the fix is a repo-wide SCANNER — a test that greps every committed file for
+a bad pattern — calibrate it against the PRE-FIX broken tree, and do not implement
+the issue's signature literally.** An issue describes the signature the way its
+author noticed it, which is a description of ONE instance, not a rule with a
+measured false-positive rate. Run the candidate rule over the unrepaired tree,
+classify every hit by hand, and let that split decide the rule. On 2026-08-19
+(go-to-k/cdk-real-drift#1771 -> go-to-k/cdk-real-drift#1782) the issue proposed "a code span immediately followed by an
+alphanumeric"; run literally it flagged ~30 spots, most of them idiomatic prose.
+Measuring split it cleanly by SIDE — a letter immediately BEFORE a code span gave
+5 hits and all 5 were genuine corruption, while the AFTER side gave 13 of which 6
+were the ordinary plural suffix (`` `remove`s ``) — so the shipped rule flags the
+before-side unconditionally and allows a short `s`/`es` after, catching all 12 real
+hits with zero false positives. Then drive the failure direction the same way the
+no-`src/**` tier in section 8 requires: `git stash push <the repaired file>`, watch
+the scan report the exact hits with their line numbers, and `git stash pop`.
+
+Two traps that cost most of the apparent false positives there, both worth checking
+in any markdown scanner: tokenize per PARAGRAPH, not per line, because a code span
+may WRAP a line break and a per-line scan pairs one span's closing backtick with the
+next one's opening backtick and invents findings in the prose between them; and
+report the line the HIT is on rather than the paragraph start, because a paragraph
+in `docs/ARCHITECTURE.md` can run 100+ lines and a start-of-paragraph number sends
+the reader hunting. When WRITING, keep each code span on one line for the same
+reason — a span that wraps a line break inside a list item also loses the
+continuation's indent to `vp fmt`, which is how this very paragraph's neighbour got
+re-flowed while being drafted.
+
 **When the issue reports a stale ENTRY in an enumerated list, audit the whole list,
 in BOTH directions, before fixing the named entry.** The defect class is "this list
 drifted from the repo", and drift almost never produces exactly the one instance
@@ -310,8 +337,32 @@ without it (they spawn the built CLI), so `vp pack` runs before the suite:
 vp run typecheck && vp check --fix && vp pack && vp test run
 ```
 
-All green, then commit (conventional-commit; `check`/`docs` markers must be fresh
-or the check-gate blocks the commit), push, and open the PR with `Closes #<n>`.
+All green, then commit (conventional-commit), push, and open the PR with
+`Closes #<n>`.
+
+**Set the `check` / `docs` markers in their OWN Bash call, from the WORKTREE, and
+after staging.** Three separate traps, all hit in one lane on 2026-08-19
+(go-to-k/cdk-real-drift#1782):
+
+- `check-gate` is a **PreToolUse** hook, so it judges the call BEFORE anything in
+  it runs. A single call of `markgate set check && markgate set docs && git commit`
+  is therefore blocked in FULL — including the `markgate set` that would have
+  satisfied it — and the message says "run /check first" when you just did. The
+  markers must already be recorded by the time the commit call is submitted.
+- Run `markgate set` from the **worktree**, not the main checkout. The marker store
+  is `.git/markgate`, which every worktree SHARES, but the hashes are taken from the
+  cwd's files — so setting from the main checkout records `main`'s content. Measured
+  2026-08-19: with the worktree dirty and the marker set from the main checkout,
+  a `markgate verify check` returns rc=1 from the worktree and rc=0 from main —
+  it fails CLOSED, so it costs a wasted cycle rather than a bad merge. But
+  `/check` and `/check-docs` both
+  say "run from the repo root", which in this flow's mandated worktree means the
+  WORKTREE root.
+- Stage new files first. A marker set while your new test is still untracked does not
+  cover it.
+
+This is the commit-time twin of the merge-time rule in Gotchas below; same hook
+mechanism, same fix.
 
 ## 7. If main advanced while you worked (parallel merges)
 
@@ -440,13 +491,14 @@ Run `/verify-pr`. Its live-test rules decide how each PR is verified:
     go-to-k/cdk-real-drift#1765 test above), or the standalone hook suite for a
     `.claude/hooks/` change — which §5 already notes you must run BY HAND.
 
-  Both arms end in writing, and `vp fmt` fights you there. A paragraph that uses
-  bold AND contains a double-star glob inside a code span comes back mangled —
-  spaces around later code spans eaten, continuation lines de-indented (reproduced
-  in isolation 2026-08-19; one-shot, stable after). It is what corrupted this very
-  passage when go-to-k/cdk-real-drift#1766 first added it. In a bold paragraph
-  write the plain directory (`src/`, `tests/`) instead of the glob, and re-read the
-  diff after `vp check --fix` (go-to-k/cdk-real-drift#1771).
+  Both arms end in writing, and `vp fmt` mangles a paragraph that uses bold AND
+  contains a double-star glob inside a code span — it is what corrupted this very
+  passage when go-to-k/cdk-real-drift#1766 first added it. That trap is now a GATE,
+  not a thing to remember: `tests/markdown-fmt-corruption-1771.test.ts` fails on
+  both the trigger construct and the damage it leaves, so write the plain directory
+  (`src/`, `tests/`) in a bold paragraph and let the test catch you otherwise. Root
+  cause and the toolchain bump that ends it: go-to-k/cdk-real-drift#1771 /
+  go-to-k/cdk-real-drift#1780.
 
 - **revert / read HOT-PATH fix** → live-verify with a MINIMAL, UNIQUE-named
   fixture: deploy → mutate out of band → `check` detects → `revert --yes`
