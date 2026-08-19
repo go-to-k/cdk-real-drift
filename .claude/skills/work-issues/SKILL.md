@@ -106,6 +106,18 @@ parallelized — bundle them into ONE lane (one worktree, one PR) or defer one.
 **At most one lane per central table.** Map each candidate to its target file
 (grep the relevant table name; read the issue's "Fix direction") before choosing.
 
+- **Security issues come FIRST**, ahead of every other preference on this list. A
+  security defect is the one class whose cost grows while it waits: the vulnerable
+  behavior is already shipped and running, and the report may be public. It counts
+  as security when the issue reports credential / secret handling, redaction or
+  masking, a sensitive value persisted or logged (the baseline file
+  `src/baseline/baseline-file.ts` or report output — `src/report/redact.ts` is the
+  file this rule is most often about), IAM / role-assumption scope, command
+  injection, or
+  anything tied to a GHSA advisory. When in doubt, treat it as security — ranking a
+  normal bug first costs one position in a queue. Urgency changes ORDER only: a
+  security lane gets the same verification depth as any other, plus a deliberate
+  read of every place the sensitive value flows.
 - Same file, related class → **bundle** into a single lane/PR (e.g. two
   `revert/plan.ts` fixes → one PR "Subnet set-default + Lambda husk (#651, #650)").
 - Different files → separate parallel lanes.
@@ -378,6 +390,18 @@ Every run appending one more bullet is exactly how a long skill becomes an unrea
   in this session when it can pay for two more gate runs; otherwise file one issue
   per repo carrying the `Session-fit` line. What is not an option is landing the fix
   in only one of the three — that is how the three drift apart.
+  **Verify the copy against the TARGET repo, claim by claim, before shipping it.**
+  Their gates, hooks and ship steps differ, so a sentence that is true here reads as
+  authoritative there while being false, and nothing lints instruction prose — the
+  next agent simply acts on it. On 2026-08-18 the first mirror of this section
+  carried four such claims: a `verify-pr` gate that exempts a non-`src/**` diff, a
+  review heuristic that still down-biases `.claude/**`, a `CLAUDE.md` rule the
+  sibling does not carry, and a hook it does not ship. A read-only reviewer per
+  target repo — its only job being to check each gate name, hook behavior, skill
+  name, path convention and cross-reference against that repo's own files — is what
+  caught them. Checking in the rule here rather than in agent memory is deliberate:
+  memory is per-project-path and per-machine, so it would not load in the very repos
+  this bullet sends you to.
 
 ### 10-d. Ship it like any other change
 
