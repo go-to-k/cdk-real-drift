@@ -419,25 +419,51 @@ All green, then commit (conventional-commit), push, and open the PR with
 after staging.** Three separate traps, all hit in one lane on 2026-08-19
 (go-to-k/cdk-real-drift#1782):
 
-- `check-gate` is a **PreToolUse** hook, so it judges the call BEFORE anything in
-  it runs. A single call of `markgate set check && markgate set docs && git commit`
-  is therefore blocked in FULL — including the `markgate set` that would have
-  satisfied it — and the message says "run /check first" when you just did. The
-  markers must already be recorded by the time the commit call is submitted.
-- Run `markgate set` from the **worktree**, not the main checkout. The marker store
-  is `.git/markgate`, which every worktree SHARES, but the hashes are taken from the
-  cwd's files — so setting from the main checkout records `main`'s content. Measured
-  2026-08-19: with the worktree dirty and the marker set from the main checkout,
-  a `markgate verify check` returns rc=1 from the worktree and rc=0 from main —
-  it fails CLOSED, so it costs a wasted cycle rather than a bad merge. But
-  `/check` and `/check-docs` both
-  say "run from the repo root", which in this flow's mandated worktree means the
-  WORKTREE root.
+- **A gated command must be the ONLY thing in its Bash call.** `check-gate` is a
+  **PreToolUse** hook, so it judges the call BEFORE anything in it runs: a single
+  call of `markgate set check && markgate set docs && git commit` is blocked in
+  FULL — including the `markgate set` that would have satisfied it — and the message
+  says "run /check first" when you just did. The trap is not confined to markers,
+  because a denial also discards every PREAMBLE SIDE EFFECT you assumed had already
+  happened. On 2026-08-19 in the sibling repo a heredoc body-file write chained onto
+  `gh pr create --body-file` was denied by its verify-pr gate, so the body file was
+  never written; the retry appended with `>>`, which CREATED the file as a fragment,
+  and go-to-k/cdk-local#525 opened carrying only its review section — no summary and
+  no `Closes` line. That silently cost the auto-close: its body had to be patched
+  after the merge and go-to-k/cdk-local#509 closed by hand. Every gated command here
+  is reachable the same way — `git commit` (`check-gate`, `branch-gate`,
+  `bughunt-clean-gate`), `git push` (`branch-gate`, `stale-base-gate`), and
+  `gh pr create` / `gh pr edit` / `gh pr merge` (`verify-pr-gate`, `ci-green-gate`,
+  `non-english-text-gate`). Write the body file in its own call, set markers in
+  theirs, then submit the gated command alone.
+- Run `markgate set` from the **worktree**, not the main checkout — and say so
+  EXPLICITLY, starting the call with `cd <worktree> &&` rather than relying on a
+  `cd` from an earlier call. The shell cwd does not reliably persist across tool
+  calls, which makes the wrong-cwd set the DEFAULT outcome rather than a slip; it
+  fired again while this very lane was written, when a relative `cd .worktrees/…`
+  failed because the cwd was ALREADY inside that worktree and the chained edit
+  silently did not run. The marker store is `.git/markgate`, which every worktree
+  SHARES, but the hashes are taken from the cwd's files — so setting from the main
+  checkout records `main`'s content. Measured 2026-08-19: with the worktree dirty
+  and the marker set from the main checkout, a `markgate verify check` returns rc=1
+  from the worktree and rc=0 from main — it fails CLOSED, so it costs a wasted cycle
+  rather than a bad merge. But `/check` and `/check-docs` both say "run from the
+  repo root", which in this flow's mandated worktree means the WORKTREE root. The
+  sibling repo shows the same symptom from a DIFFERENT mechanism (its stores are
+  per-worktree, so the marker reads as missing rather than wrong) — import the
+  advice, not its explanation.
+- That `cd <worktree> &&` form is safe on a GATED command only because this repo's
+  hook conditions now match it, and they did not until
+  go-to-k/cdk-real-drift#1786: `branch-gate`, `bughunt-clean-gate`,
+  `stale-base-gate` and `ci-green-gate` each carried a `Bash(cd * && …)`
+  alternative while `check-gate`, `verify-pr-gate` and `non-english-text-gate` did
+  not — so `cd <wt> && git commit` ran UNGATED, and `cd <wt> && gh pr create`
+  skipped both the verify-pr and the English-only gate. The bypass is silent: an
+  ungated command looks exactly like one that passed.
+  `tests/gate-cd-form-parity-1786.test.ts` now fails on any gate guarding a bare
+  command form without its `cd` twin, so it cannot quietly reopen.
 - Stage new files first. A marker set while your new test is still untracked does not
   cover it.
-
-This is the commit-time twin of the merge-time rule in Gotchas below; same hook
-mechanism, same fix.
 
 ## 7. If main advanced while you worked (parallel merges)
 
@@ -642,6 +668,27 @@ removal below clears it.) Merge each verified PR. If a later PR is behind, GitHu
 still merges it when the files are disjoint — but disjoint files are not the whole
 test: if the PR that landed first added a repo-wide check, rebase and run it over
 your diff first (§7).
+
+**When one lane fixes a full-suite flake, merge THAT lane first.** Every other
+lane's §6 gate run and its `/verify-pr` execute the same suite, so until the fix is
+on `main` each of them rolls the same dice — and the REBASE is what delivers it,
+since a lane branched before the merge keeps flaking on its own stale base. This
+repo has a standing instance, so the case is not hypothetical: the
+`json-empty-on-error` suite flakes even with `dist/` packed (§8 — three of its 13
+failed once, the identical re-run went 343/343), so a lane fixing it outranks the
+rest of the ship order. The sibling measured what skipping this costs: on 2026-08-19
+the go-to-k/cdk-local#509 lane hit the go-to-k/cdk-local#515 timeout 2/2 in its own
+worktree while the fix sat unmerged in a parallel lane, and the first run after
+merging go-to-k/cdk-local#522 and rebasing was green.
+
+**A PR's CI runs on the MERGE ref, not on your branch** — `.github/workflows/ci.yml`
+triggers on `pull_request`, so GitHub tests your branch combined with current
+`main`. A red check can therefore be caused by a PEER's just-merged content that
+your local green never saw, and here that red also blocks `ci-green-gate` on
+`gh pr merge`. The fix is fetch + rebase + re-run; do NOT start distrusting the
+peer's new test. On 2026-08-19 go-to-k/cdk-local#524's new reference harness failed
+CI on a line go-to-k/cdk-local#520 had merged in parallel. This is the CI-side face
+of §7's repo-wide-check collision — same cause, and the same rebase answers both.
 
 ```bash
 git checkout main && git pull origin main    # bring the merges local
