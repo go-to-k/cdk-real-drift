@@ -1257,7 +1257,7 @@ intended or an out-of-band change — Record to accept it, or Revert to
 remove it`) alongside any real `[CFn-Undeclared Drift]` section, are excluded from the verdict and the
 `--fail` exit. The `result:` "potential drift" count is every SHOWN live-only
 value — top-level AND nested (the R96 fold was removed: a nested undeclared value
-that survives the upstream atDefault/generated/KNOWN*DEFAULT_PATHS folds is a real
+that survives the upstream atDefault/generated/`KNOWN_DEFAULT_PATHS` folds is a real
 out-of-band setting, so it lists in `[Potential Drift]` like a top-level one). The
 `(+ M nested live-only to record)` tail and the neutral "to record" verdict survive
 in the code for a future re-fold but are inert in practice (M is 0). The "No
@@ -1295,18 +1295,18 @@ In `--json` the findings keep `tier: "undeclared"` (the documented enum) plus
 an `"unrecorded": true` field, and `drifted` excludes them. `--show-all`
 ignores the recorded baseline — it lists EVERY current undeclared value with no
 suppression — but still runs `applyBaseline(*, undefined)`, so those live-only
-values are tagged `unrecorded`(Potential Drift), not mislabeled confirmed drift:`--show-all --fail`does not exit 1 on a fresh deploy nobody has touched. Only`--declared-only`truly bypasses`applyBaseline`(the undeclared tier is filtered
+values are tagged `unrecorded` (Potential Drift), not mislabeled confirmed drift: `--show-all --fail` does not exit 1 on a fresh deploy nobody has touched. Only `--declared-only` truly bypasses `applyBaseline` (the undeclared tier is filtered
 out first, so its removal pass would misread every recorded entry).
 **Color (R43):** output is colorized via semantic helpers
 ([style.ts](../src/report/style.ts), picocolors) — green/red bold verdicts,
 yellow undeclared tier, a bold `result:` label framed by a horizontal rule —
-ONLY when stdout is a real TTY and`NO_COLOR`is unset. Explanatory prose that is
-MEANT TO BE READ (tier notes, the `↳`origin hint, the`info:`footer) uses the`note`helper = the terminal DEFAULT foreground, so it stays legible on any theme;`dim`(SGR 2) was removed there because on dark terminals it rendered unreadable
-and wore the same "don't read me" style as the picker chrome.`dim` (`infoTier`)
+ONLY when stdout is a real TTY and `NO_COLOR` is unset. Explanatory prose that is
+MEANT TO BE READ (tier notes, the `↳` origin hint, the `info:` footer) uses the `note` helper = the terminal DEFAULT foreground, so it stays legible on any theme; `dim` (SGR 2) was removed there because on dark terminals it rendered unreadable
+and wore the same "don't read me" style as the picker chrome. `dim` (`infoTier`)
 is now reserved for genuinely secondary UI you are NOT meant to read closely — the
-non-focused / skip picker rows. Piped / CI /`--json`output is byte-identical plain
+non-focused / skip picker rows. Piped / CI / `--json` output is byte-identical plain
 text (the helpers are the identity — the rule lines print in both, only color
-differs), so the greppable invariant holds;`FORCE_COLOR` is deliberately ignored.
+differs), so the greppable invariant holds; `FORCE_COLOR` is deliberately ignored.
 The pure formatters (`formatFinding`'s ids, `formatPlan`) stay plain; styling
 happens at the printing edge.
 
