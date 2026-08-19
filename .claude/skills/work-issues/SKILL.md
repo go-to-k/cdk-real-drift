@@ -110,8 +110,10 @@ parallelized — bundle them into ONE lane (one worktree, one PR) or defer one.
   security defect is the one class whose cost grows while it waits: the vulnerable
   behavior is already shipped and running, and the report may be public. It counts
   as security when the issue reports credential / secret handling, redaction or
-  masking, a sensitive value persisted or logged (state, journal, events, reports),
-  IAM / role-assumption scope, auth or token verification, command injection, or
+  masking, a sensitive value persisted or logged (the baseline file
+  `src/baseline/baseline-file.ts` or report output — `src/report/redact.ts` is the
+  file this rule is most often about), IAM / role-assumption scope, command
+  injection, or
   anything tied to a GHSA advisory. When in doubt, treat it as security — ranking a
   normal bug first costs one position in a queue. Urgency changes ORDER only: a
   security lane gets the same verification depth as any other, plus a deliberate
