@@ -1,5 +1,6 @@
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vite-plus/test';
@@ -29,9 +30,10 @@ import { describe, expect, it } from 'vite-plus/test';
 // green while the text an agent ACTS on has quietly lost its word boundaries.
 //
 // The real fix is a toolchain bump to `vite-plus` >= 0.2.5 (the first release
-// pinning an oxfmt whose Prettier is >= 3.9.4); see the follow-up issue. These
-// checks stay useful after that bump, because they assert the PROPERTY (prose is
-// not mangled) rather than the version.
+// pinning an oxfmt whose Prettier is >= 3.9.4), shipped as #1780. These checks
+// stay useful after that bump, because they assert the PROPERTY (prose is not
+// mangled) rather than the version — and the round-trip block at the bottom runs
+// the live formatter, so a future downgrade reds the tree before shipping damage.
 //
 // Every threshold below is calibrated against the real corrupt tree: measured on
 // the pre-repair `docs/ARCHITECTURE.md`, LEFT-glue found 5 hits and ALL 5 were
@@ -236,6 +238,30 @@ describe('vp fmt markdown corruption (#1771)', () => {
           'run BY HAND (`bash\n.claude/hooks/x.test.sh` from the root) — nothing in `vp test run` or CI'
         )
       ).toEqual([]);
+    });
+  });
+
+  // The two scans above only see COMMITTED damage — they fire one gate cycle
+  // AFTER a buggy formatter has already mangled and shipped a file. This block
+  // runs the formatter itself, so a downgrade below the fix boundary
+  // (`vite-plus` >= 0.2.5, the first release whose oxfmt bundles Prettier
+  // >= 3.9.4 — #1780) turns the tree red BEFORE any prose is touched.
+  describe('the formatter itself round-trips the trigger construct (#1780)', () => {
+    it('vp fmt is a no-op on the recorded repro line, twice in a row', () => {
+      const repro = '- **bold (`src/**` here)** then `tests/**` and `word` after.\n';
+      const dir = mkdtempSync(path.join(tmpdir(), 'cdkrd-fmt-1780-'));
+      const file = path.join(dir, 'repro.md');
+      try {
+        writeFileSync(file, repro);
+        // Twice: the corruption is ONE-SHOT (pass 2 leaves mangled text alone),
+        // so a single no-op pass could in principle be the quiet second pass.
+        for (let pass = 0; pass < 2; pass++) {
+          execSync(`vp fmt ${JSON.stringify(file)}`, { cwd: ROOT, stdio: 'pipe' });
+          expect(readFileSync(file, 'utf8')).toBe(repro);
+        }
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
     });
   });
 });

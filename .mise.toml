@@ -5,7 +5,7 @@
 "ubi:go-to-k/delstack" = "2.11.1"
 
 [tools."http:vp"]
-version = "0.1.20"
+version = "0.2.9"
 strip_components = 1
 
 [tools."http:vp".platforms]
