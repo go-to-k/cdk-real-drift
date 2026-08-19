@@ -3,7 +3,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vite-plus/test';
 
-// Guard against a skill doc citing a repo path that does not exist.
+// Guard against a skill doc making a citation that does not resolve — a repo PATH
+// that is not there, or an issue reference that resolves to the WRONG repository.
 //
 // `.claude/skills/**/SKILL.md` is instruction prose an agent ACTS on, and nothing
 // lints it: a stale `src/…` path or a `tests/unit/**` that this repo never had
@@ -25,6 +26,33 @@ const SKILLS_DIR = path.join(ROOT, '.claude', 'skills');
 const PATH_ROOTS = ['src', 'tests', 'docs', '.claude', '.github'];
 
 const PATH_LIKE = /^[A-Za-z0-9_.@-]+(\/[A-Za-z0-9_.*@-]+)+$/;
+
+// Skill docs that §10-c of `.claude/skills/work-issues/SKILL.md` mirrors into the
+// sibling repos (`../cdkd`, `../cdk-local`). Only these owe fully-qualified issue
+// references: a bare `#N` renders against whichever repo is READING it, so the
+// mirror silently rewrites a correct citation into a wrong one. Both failure
+// shapes were live on 2026-08-19 (go-to-k/cdk-real-drift#1774) — this repo's
+// `#1761` resolves in cdkd to an unrelated EC2 security-group-rule issue, and its
+// `#1765` does not exist in cdk-local at all, which already shipped a bare `#1765`
+// meaning this repo's. `hunt-bugs` is deliberately NOT listed: §10-b records that
+// this flow never mirrors it, and it carries ~99 bare refs that are correct where
+// they are.
+const MIRRORED_DOCS = [path.join('.claude', 'skills', 'work-issues', 'SKILL.md')];
+
+// A reference is qualified when `owner/repo` immediately precedes the `#`. Matches
+// deliberately skip inline-code spans and fenced blocks, so a paragraph can still
+// SHOW a bare `#N` as its own counter-example, and skip YAML frontmatter, where
+// `argument-hint` demonstrates what a user types rather than citing anything.
+const BARE_REF = /(?<![\w/-])#\d+/g;
+
+function prose(text: string): string {
+  const withoutFrontmatter = text.startsWith('---\n')
+    ? text.slice(text.indexOf('\n---\n', 3) + 5)
+    : text;
+  return withoutFrontmatter
+    .replace(/^```[\s\S]*?^```/gm, '') // fenced code blocks
+    .replace(/`[^`\n]*`/g, ''); // inline code spans
+}
 
 function skillDocs(): string[] {
   if (!existsSync(SKILLS_DIR)) return [];
@@ -89,5 +117,28 @@ describe('skill docs cite real repo paths', () => {
   it('actually inspects a meaningful number of citations (the extractor is not a no-op)', () => {
     const total = docs.reduce((n, rel) => n + citations(rel).length, 0);
     expect(total).toBeGreaterThanOrEqual(20);
+  });
+});
+
+describe('mirrored skill docs cite issues by fully-qualified reference', () => {
+  it.each(MIRRORED_DOCS)('%s uses owner/repo#N, never a bare #N', (rel) => {
+    const text = prose(readFileSync(path.join(ROOT, rel), 'utf8'));
+    const bare = [...text.matchAll(BARE_REF)].map((m) => m[0]);
+    expect(
+      bare,
+      `unqualified issue reference(s) in ${rel} — write go-to-k/<repo>#N so the ` +
+        `reference survives being mirrored into a sibling repo:\n${bare.join(', ')}`
+    ).toEqual([]);
+  });
+
+  it('the qualified references it should be finding are actually there', () => {
+    for (const rel of MIRRORED_DOCS) {
+      const text = prose(readFileSync(path.join(ROOT, rel), 'utf8'));
+      const qualified = [...text.matchAll(/[\w-]+\/[\w-]+#\d+/g)];
+      expect(
+        qualified.length,
+        `${rel} has no qualified refs — extractor is a no-op`
+      ).toBeGreaterThanOrEqual(10);
+    }
   });
 });

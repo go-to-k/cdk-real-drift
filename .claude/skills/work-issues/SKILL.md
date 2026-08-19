@@ -123,7 +123,8 @@ three exemptions it names.
   the same depth as any other, plus a deliberate read of every place the sensitive
   value flows.
 - Same file, related class → **bundle** into a single lane/PR (e.g. two
-  `revert/plan.ts` fixes → one PR "Subnet set-default + Lambda husk (#651, #650)").
+  `revert/plan.ts` fixes → one PR "Subnet set-default + Lambda husk
+  (go-to-k/cdk-real-drift#651, go-to-k/cdk-real-drift#650)").
 - Different files → separate parallel lanes.
 - Prefer surgical, deterministic, live-proven issues (a table entry + a regression
   test) for auto-merge; hold complex detection redesigns (novel mechanism, needs
@@ -263,9 +264,10 @@ audit found a second dead path (stale since an unrelated directory rename) plus 
 live authn / credential / exec surfaces never added, so the list under-protected
 considerably more than it over-claimed. Then ask what makes the recurrence
 mechanical: a list that must stay in sync with the repo is a TEST, not a sentence
-asking the next reader to remember. Both audits above are that shape, and #1767 —
-the mirror of this very lesson, whose source wording pointed at a unit-test
-directory this repo does not have — added `tests/skill-doc-paths.test.ts`, which
+asking the next reader to remember. Both audits above are that shape, and
+go-to-k/cdk-real-drift#1767 — the mirror of this very lesson, whose source wording
+pointed at a unit-test directory this repo does not have — added
+`tests/skill-doc-paths.test.ts`, which
 asserts every repo path a SKILL.md cites still resolves. It caught that class on
 its first run, against this paragraph's own draft.
 
@@ -317,8 +319,9 @@ git show origin/main:<your-target-file> | grep -n "<marker>"   # main already ca
 
 **A CLEAN merge is not evidence that there was no collision.** Two lanes editing
 the SAME file merge without a conflict whenever they touch disjoint SECTIONS of it,
-so §3's one-lane-per-file rule fails SILENTLY rather than loudly — #1772 and #1773
-both rewrote `.claude/skills/work-issues/SKILL.md` within minutes of each other on
+so §3's one-lane-per-file rule fails SILENTLY rather than loudly —
+go-to-k/cdk-real-drift#1772 and go-to-k/cdk-real-drift#1773 both rewrote
+`.claude/skills/work-issues/SKILL.md` within minutes of each other on
 2026-08-19 and both landed intact, which was luck, not design. After a merge that
 lands into a file another PR touched in the same window, `git pull` and grep `main`
 for a marker string from EACH side before believing both survived.
@@ -327,8 +330,9 @@ If the issue is CLOSED (or main already carries an equivalent fix), **ABANDON th
 lane — do NOT resolve the conflict to re-apply a now-duplicate fix**: `git rebase
 --abort`, `gh pr close <pr> --delete-branch` (or never open one), comment the
 collision on the issue, `git worktree remove`. This is the merge-time twin of
-"check the FIX FILE, not the issue tag" — it happened on both #726 and #742, each
-after a full lane (implement + test + live-verify) was already done. The claim
+"check the FIX FILE, not the issue tag" — it happened on both
+go-to-k/cdk-real-drift#726 and go-to-k/cdk-real-drift#742, each after a full lane
+(implement + test + live-verify) was already done. The claim
 comment reduces collisions but cannot eliminate them; the rebase/merge conflict is
 your last, authoritative signal to stop and check before spending more.
 
@@ -341,20 +345,43 @@ Run `/verify-pr`. Its live-test rules decide how each PR is verified:
   its originating hunt (the issue carries the real repro), that IS the live
   evidence — no fresh deploy. State the deferral explicitly.
 - **toolchain / CI / skill fix (nothing under `src/` in the diff)** → there is no
-  live-test tier and no corpus, so the verification IS the broken command itself:
-  run it REPEATEDLY (3–5×) both BEFORE and AFTER, and drive the FAILURE direction
-  too by injecting a real error — a change that swallows an exit code looks exactly
-  like one that fixes the gate. `verify-pr-gate` exempts a diff with no `src/`
+  live-test tier and no corpus. `verify-pr-gate` exempts a diff with no `src/`
   files, so `/verify-pr` is not required; that is an exemption from the LIVE test,
-  not from verifying. What to measure, all of it confirmed on this repo on
-  2026-08-19 (#1768):
+  not from verifying. WHICH verification you owe then depends on what the diff
+  CHANGES, and a diff that does both owes both arms:
+  - **It changes what a command or gate DOES** (a `vite.config.ts` task, lint or
+    typecheck config, `.github/workflows/ci.yml`, `.claude/hooks/` logic) → the
+    verification IS that command, run REPEATEDLY (3–5×) both BEFORE and AFTER, with
+    the FAILURE direction driven too. Run _the command your own diff changes_: the
+    hook's own `.claude/hooks/<name>.test.sh` for a hook, the workflow step's own
+    command for CI, the changed task for `vite.config.ts`. `vp run check` is not
+    the universal answer — it format-checks `ci.yml` as text and never EXECUTES a
+    workflow step or a hook, so pointing it at either diff is a probe that cannot
+    fail (confirmed here 2026-08-19: `vp fmt --check .github/workflows/ci.yml`
+    passes on any semantic change). Measure it as recorded below.
+  - **It changes PROSE only** (a skill, a rule, a doc — including this file) →
+    there is no command to re-run, so the CLAIMS are the artifact and repeating
+    some adjacent command 5× measures nothing about them. Resolve every gate, hook,
+    skill, path, task and command the new text names against this repo's own files,
+    and RUN each command the text will send the next agent to run, confirming its
+    output matches what the text promises. That is §10-c's claim-by-claim pass,
+    owed whether or not the text arrived from a sibling repo;
+    `tests/skill-doc-paths.test.ts` mechanizes the path and issue-ref halves of it.
+    Splitting the arms is go-to-k/cdk-real-drift#1774: undivided, this tier sent a
+    pure prose diff — that issue's own fix — to run a command 3–5×, which for a
+    SKILL.md edit is not a thing that exists.
+
+  What to measure in the command arm, all of it confirmed on this repo on
+  2026-08-19 (go-to-k/cdk-real-drift#1768):
   - **An exit code can lie in EITHER direction, so drive both.** _Non-zero that
-    means nothing_: #1761 / #1765 — `vp run check` exited **134** on a clean tree
-    while finding **0 errors** (the Vite+ stdout `EAGAIN` panic), and it was
+    means nothing_: go-to-k/cdk-real-drift#1761 / go-to-k/cdk-real-drift#1765 —
+    `vp run check` exited **134** on a clean tree while finding **0 errors** (the
+    Vite+ stdout `EAGAIN` panic), and it was
     DETERMINISTIC, not a flap: "Confirmed identical on unmodified `main`", measured
     3/3 in each state (134 before the fix, 0 after). The hazard there is the
     OPPOSITE of a flake — the fix is one line of build config, and a redirect that
-    swallows the exit code turns a RED tree green, which is why #1765 shipped
+    swallows the exit code turns a RED tree green, which is why
+    go-to-k/cdk-real-drift#1765 shipped
     `tests/vp-run-check-redirect-1761.test.ts` asserting the `exit 1` survives.
     _Zero that means nothing_ is just as real, but this repo has no measured case;
     the sibling does — go-to-k/cdk-local#504 recorded `vp test run` returning
@@ -370,8 +397,9 @@ Run `/verify-pr`. Its live-test rules decide how each PR is verified:
   - **Repeating a `vp run <task>` DOES re-execute here** — `check` (5/5) and `test`
     (3/3) both reported `not cached because it modified its input`, so the repeat
     measures something. Do not carry the sibling's cache-hit warning over; the
-    local cache trap is the one `vite.config.ts` records (PR #438: a cached GREEN
-    `typecheck` masked a real TS1117) and it is already handled there by
+    local cache trap is the one `vite.config.ts` records (PR
+    go-to-k/cdk-real-drift#438: a cached GREEN `typecheck` masked a real TS1117)
+    and it is already handled there by
     `cache: false`.
   - **Inject the failure anywhere LINTED — here that includes the tests tree.** A
     non-underscore-prefixed unused variable fails `vp run check` rc=1 from a `src/`
@@ -381,15 +409,17 @@ Run `/verify-pr`. Its live-test rules decide how each PR is verified:
     here — exactly the drift §10-c's per-repo check exists to catch.
   - **Then guard the SHAPE of the fix**, since nothing else re-checks a config or
     hook line: a unit test on the config object for a build-config change (the
-    #1765 test above), or the standalone hook suite for a `.claude/hooks/` change —
-    which §5 already notes you must run BY HAND.
-  - **Writing the result down is part of the fix, and `vp fmt` fights you.** A
-    paragraph that uses bold AND contains a double-star glob inside a code span
-    comes back mangled — spaces around later code spans eaten, continuation lines
-    de-indented (reproduced in isolation 2026-08-19; one-shot, stable after). It is
-    what corrupted this very bullet when #1766 first added it. In a bold paragraph
-    write the plain directory (`src/`, `tests/`) instead of the glob, and re-read
-    the diff after `vp check --fix` (#1771).
+    go-to-k/cdk-real-drift#1765 test above), or the standalone hook suite for a
+    `.claude/hooks/` change — which §5 already notes you must run BY HAND.
+
+  Both arms end in writing, and `vp fmt` fights you there. A paragraph that uses
+  bold AND contains a double-star glob inside a code span comes back mangled —
+  spaces around later code spans eaten, continuation lines de-indented (reproduced
+  in isolation 2026-08-19; one-shot, stable after). It is what corrupted this very
+  passage when go-to-k/cdk-real-drift#1766 first added it. In a bold paragraph
+  write the plain directory (`src/`, `tests/`) instead of the glob, and re-read the
+  diff after `vp check --fix` (go-to-k/cdk-real-drift#1771).
+
 - **revert / read HOT-PATH fix** → live-verify with a MINIMAL, UNIQUE-named
   fixture: deploy → mutate out of band → `check` detects → `revert --yes`
   converges → confirm the live value. A throwaway CDK app works:
@@ -419,8 +449,9 @@ releases the gate (`bughunt-track verify` + `clear`, incl. this session's
 If you also `bughunt-track add` your live-test stacks explicitly (clearer gate
 message than the autoarm backstop), **scope the `add` to this session** —
 `CDKRD_BUGHUNT_OWNER="session-$CLAUDE_CODE_SESSION_ID" … add <stacks>` — so a
-parallel agent's stacks never mix into the shared main-root owner (#1409). An
-unscoped `add` run from the main checkout shares ONE owner file with every other
+parallel agent's stacks never mix into the shared main-root owner
+(go-to-k/cdk-real-drift#1409). An unscoped `add` run from the main checkout shares
+ONE owner file with every other
 session, and a `clear` empties the whole file — dropping a peer's still-pending
 tracking. If you inadvertently shared it, NEVER `clear` the shared owner while it
 lists a peer's stacks; release only your `autoarm-<session>` token and merge from a
@@ -464,8 +495,9 @@ vp i -g cdk-real-drift
 of the Repo), so skip both steps above rather than polling: the bump you are waiting
 for is never coming, and the installed binary is already current. Say so in the wrap
 instead of reporting a release. This is the ordinary case for a §10 retro lane and
-for a tooling-only backlog — on 2026-08-19 the #1767 lane (a skill edit plus a test)
-merged as `chore:` and this text still sent the run looking for a bump commit.
+for a tooling-only backlog — on 2026-08-19 the go-to-k/cdk-real-drift#1767 lane (a
+skill edit plus a test) merged as `chore:` and this text still sent the run looking
+for a bump commit.
 
 **Remove every worktree you created** (a left-behind worktree is the silent
 residue of this flow):
@@ -481,8 +513,9 @@ git worktree list                            # yours should be gone
 and a session working right now look identical, including a branch whose last
 commit is already on `main`. On 2026-08-19 this run read
 `.worktrees/work-issues-fresh-issue-quarantine-20260819` as residue of the
-previous run; it was live, and it merged #1773 while this lane was still open. So
-the closing check is "every worktree I added is gone", never "only the main
+previous run; it was live, and it merged go-to-k/cdk-real-drift#1773 while this
+lane was still open. So the closing check is "every worktree I added is gone",
+never "only the main
 checkout remains". Before removing one you do not recognise, confirm it is
 finished — `git log --oneline -1` on its branch, then `gh pr list --state all
 --head <branch>` for an OPEN PR — and when in doubt leave it and say so in the
@@ -595,13 +628,26 @@ Every run appending one more bullet is exactly how a long skill becomes an unrea
   or PR the sentence names and confirm it says what the sentence claims.** The nouns
   fail when wording TRAVELS; wrong evidence is wrong where it was WRITTEN and then
   travels intact, so a per-repo noun check passes it straight through. This file
-  claimed for a day that "on #1761 the `check` gate flipped rc=0/rc=1 across
-  identical runs (the tsgolint budget-cascade artifact)". #1761 records a
-  DETERMINISTIC exit 134 from a Vite+ stdout `EAGAIN` panic — "Confirmed identical
-  on unmodified `main`", 3/3 in each state per #1765's table — and neither record
+  claimed for a day that "on go-to-k/cdk-real-drift#1761 the `check` gate flipped
+  rc=0/rc=1 across identical runs (the tsgolint budget-cascade artifact)".
+  go-to-k/cdk-real-drift#1761 records a DETERMINISTIC exit 134 from a Vite+ stdout
+  `EAGAIN` panic — "Confirmed identical on unmodified `main`", 3/3 in each state per
+  go-to-k/cdk-real-drift#1765's table — and neither record
   mentions tsgolint at all. It had already been mirrored into go-to-k/cdk-local#504,
-  quoted verbatim, before a reviewer asked to check the records caught it (#1768).
-  Reading the two records cost one command each.
+  quoted verbatim, before a reviewer asked to check the records caught it
+  (go-to-k/cdk-real-drift#1768). Reading the two records cost one command each.
+  **Write every issue / PR reference FULLY QUALIFIED — the `owner/repo#N` form,
+  never a bare `#N` — everywhere in this file, this section's own refs included.**
+  A bare `#N` renders against whichever repo is READING it, so mirroring silently
+  rewrites a correct citation into a wrong one, in both of the shapes available:
+  an unqualified `#1761` here lands on go-to-k/cdkd#1761, a real but unrelated EC2
+  security-group-rule issue, and an unqualified `#1765` lands on
+  go-to-k/cdk-local#1765, which does not exist at all. Neither is hypothetical —
+  both were resolved on 2026-08-19, and cdk-local's already-mirrored copy carried a
+  bare `#1765` that meant this repo's. The rule is mechanically detectable, so per
+  §10-b it is a TEST rather than a sentence: `tests/skill-doc-paths.test.ts` fails
+  on any unqualified reference in this file. It reads plain prose only, which is
+  why the counter-examples in this paragraph can stay written as code spans.
 
 ### 10-d. Ship it like any other change
 
@@ -664,8 +710,9 @@ the run evidence behind it — or "no skill change" plus what held.
   a real deploy account may hold PROD stacks — unique names only.
 - **`vp pack` before any `vp test run` / live-test in a fresh worktree** — with no
   `dist/`, 13 CLI-spawning tests fail on a clean `main` (measured 2026-08-19,
-  #1768). The stale-cache worry that used to sit here is handled in
-  `vite.config.ts`: `build` is `cache: false`, and `check` / `test` report a cache
+  go-to-k/cdk-real-drift#1768). The stale-cache worry that used to sit here is
+  handled in `vite.config.ts`: `build` is `cache: false`, and `check` / `test`
+  report a cache
   MISS on every run.
 - **Earn the `verify-pr` marker via `/verify-pr`, never hand-set it.** A `src/**` PR
   merge needs a fresh `verify-pr` marker, but `mise exec -- markgate set verify-pr`
