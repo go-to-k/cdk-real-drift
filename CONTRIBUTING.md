@@ -29,6 +29,13 @@ vp check --fix     # lint + format (oxc), with auto-fix
 vp run check       # lint + format check (what CI runs)
 ```
 
+`vp run check` captures the checker's output to `node_modules/.cache/vpcheck.log`
+and prints it only when the check FAILS, so a quiet run means **0 errors** — run
+`vp check` directly to read the advisory warning list. The redirect works around an
+upstream Vite+ panic that otherwise aborted the task with exit 134 on a clean tree
+([#1761](https://github.com/go-to-k/cdk-real-drift/issues/1761)); CI applies the same
+workaround.
+
 `node dist/cli.js` runs the built CLI, so **run `vp run build` after source
 changes** before testing manually. Integration tests (real AWS, self-cleaning)
 live under `tests/integration/` — see
