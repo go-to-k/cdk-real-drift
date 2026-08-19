@@ -139,11 +139,32 @@ reading lane was itself about to edit. A false collision on one file and silence
 the two real ones, from the step whose entire job is to find them. It read correctly
 only once that lane committed, which is exactly when it had stopped mattering.
 
-Read any "working on this" comments on candidate issues too, but treat them as the
-WEAKEST signal: a claim is written once, before the work, and goes stale as the lane's
-scope grows — the go-to-k/cdk-real-drift#1771 claim above named a new `tests/`
-file and never named `docs/ARCHITECTURE.md`. Where a dirty tree and a claim
-disagree, the dirty tree wins.
+Read the "working on this" comments on candidate issues too — to the END of each
+thread, and then on every issue that thread NAMES (`gh issue view <n> --comments`
+prints the whole thread in one call). A lane that works an issue and cannot close
+it files the REMAINDER as a child issue, says so in its closing comment, and leaves
+the parent open on purpose, so the parent's live work can be owned by a claim that
+never appears on the parent. Measured in cdkd on 2026-08-19 (go-to-k/cdkd#2035):
+go-to-k/cdkd#2018's 08:14:47Z closing comment named go-to-k/cdkd#2026 as one of its
+two conditions for closing; that child was claimed at 08:30:39Z, a second run
+claimed the PARENT at 08:32:33Z, and two of the parent's three admissible remedies
+land in exactly the files the child's claim declared — so that run stood down at
+08:46Z and re-picked the work inside the child's lane. Treat the claim itself as
+the WEAKEST signal for WHICH FILES a lane owns: it is written once, before the
+work, and goes stale as the lane's scope grows — the go-to-k/cdk-real-drift#1771
+claim above named a new `tests/` file and never named `docs/ARCHITECTURE.md`.
+Where a dirty tree and a claim disagree, the dirty tree wins.
+
+That ranking answers which FILES a live lane owns, and it has one bounded blind
+spot: whether a lane exists AT ALL. Between `git worktree add` and the lane's first
+write, every probe above reads clean — no pushed branch, no PR, a worktree sitting
+at `main`'s exact tip with no commits, and a working tree with nothing in it — and
+the claim comment is the only artifact that exists. The cdkd child lane above had
+exactly that profile at 80 seconds old. So an EMPTY dirty tree is not the absence
+of a lane: it is either no lane or one younger than its first write, and only the
+claim tells those apart (§9 states the general form — every ownership signal
+establishes LIFE, never absence). After that first write the ranking above applies
+unchanged.
 
 **A file another agent is editing is OFF-LIMITS.** In practice the contested files are
 the central tables:
@@ -221,7 +242,9 @@ signal. Use the cheap conservative one and accept its false positives:
 lane filing a deferral and coming back to it, and comfortably longer than the window
 in which nothing LINKS a live lane to the issue it just filed: `git worktree list` /
 `git branch -a` show the lane but not its deferral, `gh pr list` shows nothing until
-it pushes, and §4's claim comment is never posted for an issue merely FILED.
+it pushes, and §4 posts a claim at filing time only for a deferral the filing run
+means to take ITSELF — never for one it hands off, which is the case this window
+protects.
 
 ```bash
 CUT=$(date -u -v-60M +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d '60 min ago' +%Y-%m-%dT%H:%M:%SZ)
@@ -515,13 +538,23 @@ Three things make that check misreport, and all three read as LOST CONTENT:
   its marker read back out of what is now the tip, so two hits are one confirmation
   plus one freebie. The load-bearing arm is the EARLIER-merged lane's — if you only
   have budget to think about one, think about that one.
-- **Use `grep -cF`, and do not chain the two greps with `&&`.** Prose markers are
-  full of regex metacharacters, so an unanchored `grep -c` silently fails to match
-  and produces exactly the false alarm this check exists to prevent — measured here
-  2026-08-19: a marker containing `[` and `.` scored 0 without `-F` and 1 with it.
-  `grep -c` also exits 1 on zero matches, which is the very case being hunted, so a
-  chained second grep never runs. (Double quotes, not `-F`, are what survive an
-  apostrophe.)
+- **Use `grep -cF`, keep the marker on ONE LINE of the merged file, and do not
+  chain the two greps with `&&`.** Prose markers are full of regex metacharacters,
+  so an unanchored `grep -c` silently fails to match and produces exactly the false
+  alarm this check exists to prevent — measured here 2026-08-19: a marker
+  containing `[` and `.` scored 0 without `-F` and 1 with it. `grep` is LINE-based
+  while these files are hard-wrapped, so a perfectly verbatim phrase that spans the
+  wrap scores 0 the same way: measured here 2026-08-19 against
+  go-to-k/cdk-real-drift#1790's merge commit, `Two lanes editing the SAME file`
+  scored 0 / rc=1 while the very next words on one line,
+  `the SAME file merge without a conflict`, scored 1 / rc=0. Pick the phrase from
+  the merged file you are about to grep rather than reusing a sibling repo's —
+  the wrap column moves with the wording, so go-to-k/cdk-local#532's marker for
+  this same rule is not the phrase that wraps here — and settle a 0 with
+  `git show origin/main:<file> | grep -n "<one short word of it>"`, which prints
+  the whole line and shows where it breaks. `grep -c` also exits 1 on zero matches,
+  which is the very case being hunted, so a chained second grep never runs. (Double
+  quotes, not `-F`, are what survive an apostrophe.)
 
 When a marker genuinely does come back 0, settle it from your lane worktree with
 `diff <(git show origin/main:<file>) <file>`: the lines YOUR commit removed should
@@ -856,15 +889,37 @@ Every run appending one more bullet is exactly how a long skill becomes an unrea
   growth is not.
 - Do not restate a rule that already lives in `CLAUDE.md` or in another step — point
   at it instead.
-- If the lesson is about the FLOW rather than about cdk-real-drift, mirror it into
-  the same-named `work-issues` skill in the sibling repos (`../cdkd`,
-  `../cdk-local`). They run this flow with different gates and different ship steps,
-  so adapt the wording per repo rather than copying the section verbatim, and it is
-  one PR per repo under that repo's own worktree + gate flow (cdkd blocks
-  tracked-file edits in its main worktree, so it cannot be edited in place). Do them
-  in this session when it can pay for two more gate runs; otherwise file one issue
-  per repo carrying the `Session-fit` line. What is not an option is landing the fix
-  in only one of the three — that is how the three drift apart.
+- If the lesson is about the FLOW rather than about cdk-real-drift, ONE session
+  lands it in all three repos — this file plus the same-named `work-issues` skill
+  in the sibling repos, checked out beside this one as `../cdkd` and `../cdk-local`
+  RELATIVE TO THE REPO ROOT (from a `.worktrees/<lane>` cwd — where this flow puts
+  you — neither resolves; measured 2026-08-19). They run this flow with
+  different gates and different ship steps, so adapt the wording per repo rather
+  than copying the section verbatim: three worktrees, three PRs, three gate cycles,
+  each under its own repo's rules (cdkd blocks tracked-file edits in its main
+  worktree, so it cannot be edited in place). Landing all three is the DEFAULT, not
+  the affordable option, because the alternative makes this bullet a duplicate
+  GENERATOR: a lesson that hops one repo at a time has every landing session run
+  its own §10 retro, which files again into the other two. Measured 2026-08-19:
+  twelve open `chore(work-issues)` issues across the three repos were one change,
+  and two of them — go-to-k/cdkd#2011 and go-to-k/cdkd#2016, filed twenty minutes
+  apart by two different hops, neither seeing the other — were the SAME three
+  cdk-local lessons.
+  **Filing instead is a WHOLE-REMAINDER exception.** When the session genuinely
+  cannot pay for the remaining gate cycles, it files into EVERY repo it has not
+  landed in, in ONE turn, and each filed issue names the other filings plus the repo
+  the lesson already landed in — so a reader sees the set is complete instead of
+  re-deriving it. Partial filing is what produced the pair above. Carry §4's
+  `Session-fit` line in every one of them, in English.
+  **A lane WORKING a mirror issue does not mirror onward.** The originating session
+  already owns all three landings, so re-filing the received lesson into the
+  siblings only adds a second and a third copy of it. What IS new is whatever the
+  ADAPTATION itself teaches — a gate name that differs, a probe that reads
+  differently here — and that is subject to this bullet in turn.
+  **Batch a run's lessons into ONE PR per repo**, not one PR per lesson: the gate
+  cycle is the per-PR cost, so a run that learned five things ships three PRs. The
+  batch that shipped this bullet is that shape — go-to-k/cdk-real-drift#1791 and
+  go-to-k/cdk-real-drift#1792 landed in one lane, one PR.
   **Verify the copy against the TARGET repo, claim by claim, before shipping it.**
   Their gates, hooks and ship steps differ, so a sentence that is true here reads as
   authoritative there while being false, and nothing lints instruction prose — the
