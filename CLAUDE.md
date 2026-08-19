@@ -146,6 +146,18 @@ source changes before telling the user to test.
   invoked via `vp run <task>` — prefer this over ad-hoc `node` invocations or
   `package.json` "scripts".
 
+- **Test files import from `vite-plus/test`, not `vitest`** — all 342 of them do.
+  `vitest` is not a dependency and is not present in `node_modules` at all (Vite+
+  aliases it at test RUNTIME, so the suite still passes), but the type-aware oxc
+  lint resolves it against `tests/tsconfig.json` and fails the `check` gate with
+  `TS2307: Cannot find module 'vitest'`. A new test written the habitual way looks
+  green under `vp test run` and only breaks a gate cycle later (PR #1765):
+
+  ```typescript
+  import { describe, expect, it, vi } from 'vite-plus/test'; // correct
+  import { describe, expect, it, vi } from 'vitest'; // wrong — TS2307 at lint time
+  ```
+
 ## Architecture (src layout)
 
 Terse per-dir map — defer to [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the
