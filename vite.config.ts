@@ -10,6 +10,30 @@ const pkg = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf8'))
 };
 const sourceOnlyIgnorePatterns = ['**/*', '!src', '!src/**'];
 
+// `vp run check` sends `vp check`'s output to a redirect FILE instead of letting it
+// write straight to the run-task pipe, and prints it only when the check FAILS.
+// The Rust oxc binary PANICS mid-write once its output gets large — "failed printing
+// to stdout: Resource temporarily unavailable" (os error 11 on Linux, 35 on macOS) —
+// aborting the task with exit 134 even though the check itself finds 0 ERRORS. `vp run`
+// hands a task a NON-BLOCKING stdout pipe, so a large write hits EAGAIN; a regular file
+// is blocking I/O and never does. #1761: reproduced 3/3 on a clean `main` at ~117
+// warnings, while `vp run lint` (longer output, but not the combined lint+format path)
+// did NOT panic — hence the workaround is scoped to `check`.
+// `.github/workflows/ci.yml` applies the same trick for the same reason; keep the two in
+// sync. The `exit 1` is unconditional, so a real lint/format ERROR still surfaces (with
+// the full captured output) and still exits non-zero. On success nothing is printed —
+// run `vp check` directly to read the advisory warning list.
+// The log lives under `node_modules/` so it can never be swept into a commit by
+// `git add -A`; the task does not cache either way (vite's own
+// `node_modules/.vite-temp/vite.config.ts.timestamp-*.mjs` already makes every `vp run`
+// task here a cache miss).
+const checkLogDir = 'node_modules/.cache';
+const checkLog = `${checkLogDir}/vpcheck.log`;
+const checkCommand = [
+  `mkdir -p ${checkLogDir}`,
+  `vp check >${checkLog} 2>&1 || { cat ${checkLog}; exit 1; }`,
+].join(' && ');
+
 export default defineConfig({
   staged: {
     '*': 'vp check --fix',
@@ -118,7 +142,7 @@ export default defineConfig({
     tasks: {
       build: { command: 'vp pack', cache: false },
       dev: { command: 'vp pack --watch', cache: false },
-      check: { command: 'vp check' },
+      check: { command: checkCommand },
       test: { command: 'vp test run' },
       'test:watch': { command: 'vp test watch', cache: false },
       'test:coverage': { command: 'vp test run --coverage', cache: false },
