@@ -73,8 +73,19 @@ gate's scope (`src/**`, `tests/**`, `package.json`, `pnpm-lock.yaml`,
 `tsconfig*.json`, `vite.config.ts` — see `.markgate.yml`); any subsequent edit
 in that scope invalidates it and requires re-running `/check`.
 
-Run from the repo root (cdkrd pins markgate via mise, so use `mise exec` to
-avoid PATH issues when shims aren't active):
+Run from the root of the tree you are WORKING in — the worktree, not the main
+checkout, whenever the lane lives in one. The marker store is `.git/markgate`,
+shared by every worktree, but the hashes come from the cwd's files, so setting it
+from the main checkout records `main`'s content instead of yours: measured
+2026-08-19, with the worktree dirty and the marker set from the main checkout,
+`markgate verify check` returns rc=1 from the worktree and rc=0 from main. It fails
+CLOSED, so the cost is a wasted gate cycle plus a "run /check first" message right
+after you ran it. Also set it in its OWN command, separate from the `git commit` —
+`check-gate` is a PreToolUse hook and judges the call before anything in it runs, so
+a `markgate set … && git commit` one-liner is blocked in full.
+
+cdkrd pins markgate via mise, so use `mise exec` to avoid PATH issues when shims
+aren't active:
 
 ```bash
 mise exec -- markgate set check
