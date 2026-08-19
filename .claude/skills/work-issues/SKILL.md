@@ -191,8 +191,8 @@ enforce quality yourself; you (the orchestrator) still gate the MERGE.
 
 ## 6. Gates + PR (per lane)
 
-From inside the worktree — a fresh worktree has no `dist/`, and 13 tests spawn the
-built CLI, so `vp pack` has to run before the suite or it fails on nothing:
+From inside the worktree — a fresh worktree has no `dist/`, and 13 tests fail
+without it (they spawn the built CLI), so `vp pack` runs before the suite:
 
 ```bash
 vp run typecheck && vp check --fix && vp pack && vp test run

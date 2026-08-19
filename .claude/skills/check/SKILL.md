@@ -24,7 +24,8 @@ Run these sequentially and report results:
    `lint:fix` does NOT touch formatting — so a `lint:fix`-only run can pass
    locally while CI fails with formatting issues on the same branch.
 3. `vp pack` (tsdown ESM bundle to `dist/`) — and run it BEFORE step 4, because a
-   fresh worktree has no `dist/` and 13 tests spawn the built CLI. Either
+   fresh worktree has no `dist/` and 13 tests fail without it (they spawn the built
+   CLI). Either
    invocation rebuilds: `build` is `cache: false` in `vite.config.ts` and has been
    since the toolchain landed, so `vp run build` cannot serve a stale `dist/`. What
    HAS caused a false-negative live-test is a `dist/` nobody rebuilt: a stale
