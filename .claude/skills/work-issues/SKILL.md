@@ -157,6 +157,30 @@ Do the fix in the worktree (match the existing table/entry pattern exactly; ESM
 relative imports need the `.js` extension). **Always add a unit test that fails
 without the fix and passes with it** — for a fold/FP fix use the issue's exact
 harvested live model; for revert, assert the update document / patch op.
+**Check first whether the artifact already has a harness**, because the obvious
+place is usually the wrong one: fold-table entries are already covered generically
+(`tests/classify.test.ts`, "EVERY entry FOLDS its exact default value"), and hook
+behavior by standalone `.claude/hooks/*.test.sh` suites you run BY HAND (`bash
+.claude/hooks/<name>.test.sh` from the repo root) — nothing in `vp test run` or CI
+invokes those, so a hook change resting on a green suite plus green CI is not
+verified at all. Extend the harness that exists before writing a new one beside it.
+
+**When the issue reports a stale ENTRY in an enumerated list, audit the whole list,
+in BOTH directions, before fixing the named entry.** The defect class is "this list
+drifted from the repo", and drift almost never produces exactly the one instance
+someone happened to notice. Check both that every entry still resolves to something
+real AND that everything that belongs is present — the second half is the one that
+gets skipped, because the issue only names the first. The evidence is cross-repo:
+on 2026-08-19 cdkd#1972 reported one dead path in a security-surface path list; the
+audit found a second dead path (stale since an unrelated directory rename) plus four
+live authn / credential / exec surfaces never added, so the list under-protected
+considerably more than it over-claimed. Then ask what makes the recurrence
+mechanical: a list that must stay in sync with the repo is a TEST, not a sentence
+asking the next reader to remember. Both audits above are that shape, and #1767 —
+the mirror of this very lesson, whose source wording pointed at a unit-test
+directory this repo does not have — added `tests/skill-doc-paths.test.ts`, which
+asserts every repo path a SKILL.md cites still resolves. It caught that class on
+its first run, against this paragraph's own draft.
 
 You may fan out **one subagent per lane** (disjoint files) to run them
 concurrently — give each agent its worktree path, its allowed files, and an
