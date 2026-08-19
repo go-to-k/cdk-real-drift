@@ -311,9 +311,10 @@ still merges it when the files are disjoint.
 git checkout main && git pull origin main    # bring the merges local
 ```
 
-**Release** is automated (`.github/workflows/release.yml`) — merging to `main`
-produces a `chore(release): <ver> [skip ci]` bump commit on `main` a minute or two
-later. Poll for it before installing:
+**Release** is automated (`.github/workflows/release.yml`) — merging a `feat:` /
+`fix:` / `perf:` / `revert:` commit to `main` produces a `chore(release): <ver>
+[skip ci]` bump commit on `main` a minute or two later. Poll for it before
+installing:
 
 ```bash
 git fetch origin && git log origin/main --oneline -3   # look for chore(release)
@@ -324,6 +325,13 @@ Once released, **global install by NAME** (published npm package):
 ```bash
 vp i -g cdk-real-drift
 ```
+
+**A run whose lanes are all `chore:` / `docs:` releases NOTHING** (CLAUDE.md → State
+of the Repo), so skip both steps above rather than polling: the bump you are waiting
+for is never coming, and the installed binary is already current. Say so in the wrap
+instead of reporting a release. This is the ordinary case for a §10 retro lane and
+for a tooling-only backlog — on 2026-08-19 the #1767 lane (a skill edit plus a test)
+merged as `chore:` and this text still sent the run looking for a bump commit.
 
 **Remove every worktree you created** (a left-behind worktree is the silent
 residue of this flow):
