@@ -501,6 +501,32 @@ go-to-k/cdk-real-drift#1772 and go-to-k/cdk-real-drift#1773 both rewrote
 lands into a file another PR touched in the same window, `git pull` and grep `main`
 for a marker string from EACH side before believing both survived.
 
+Three things make that check misreport, and all three read as LOST CONTENT:
+
+- **Source each marker from the MERGED text, never from a draft you read earlier.**
+  A lane routinely rewords a sentence between the draft you saw and the commit it
+  merges, so a draft-sourced marker returns 0 and looks like a clobber. Take THEIR
+  marker out of THEIR merge commit —
+  `git show "$(gh pr view <n> --json mergeCommit -q .mergeCommit.oid):<file>"`. In
+  cdkd on 2026-08-19 a bullet drafted as "A mirror issue can duplicate an open PR"
+  merged as "A mirror issue is a duplicate more often than it looks"
+  (go-to-k/cdkd#2000): nothing was lost, the marker was stale.
+- **One arm of the check is always tautological.** Whichever lane merged LAST has
+  its marker read back out of what is now the tip, so two hits are one confirmation
+  plus one freebie. The load-bearing arm is the EARLIER-merged lane's — if you only
+  have budget to think about one, think about that one.
+- **Use `grep -cF`, and do not chain the two greps with `&&`.** Prose markers are
+  full of regex metacharacters, so an unanchored `grep -c` silently fails to match
+  and produces exactly the false alarm this check exists to prevent — measured here
+  2026-08-19: a marker containing `[` and `.` scored 0 without `-F` and 1 with it.
+  `grep -c` also exits 1 on zero matches, which is the very case being hunted, so a
+  chained second grep never runs. (Double quotes, not `-F`, are what survive an
+  apostrophe.)
+
+When a marker genuinely does come back 0, settle it from your lane worktree with
+`diff <(git show origin/main:<file>) <file>`: the lines YOUR commit removed should
+be exactly the ones you meant to replace.
+
 **And the two lanes need not touch one file at all: a peer that adds a REPO-WIDE
 check gains jurisdiction over YOUR content.** File-disjointness says nothing here,
 because the collision is their TEST against your CONTENT, and neither PR's CI
@@ -734,9 +760,18 @@ commit is already on `main`. On 2026-08-19 this run read
 previous run; it was live, and it merged go-to-k/cdk-real-drift#1773 while this
 lane was still open. So the closing check is "every worktree I added is gone",
 never "only the main
-checkout remains". Before removing one you do not recognise, confirm it is
-finished — `git log --oneline -1` on its branch, then `gh pr list --state all
---head <branch>` for an OPEN PR — and when in doubt leave it and say so in the
+checkout remains". Before removing one you do not recognise, know what the probes
+can and cannot say: **every ownership signal establishes LIFE, never absence.** A
+dirty tree or an open PR proves a lane is live; the ABSENCE of either proves
+nothing at all. A branch tip already on `main` is not death — its owner may still
+be inside the ship or retro steps — and a claim comment carries CLAIM time, not
+last activity, so an old stamp is equally what a long-running live session looks
+like. This run measured both "finished" signals failing at once: at triage
+`.worktrees/vp-bump-1780` sat on `f6e0373`, which was `main`'s own tip, and
+`gh pr list --state open` returned nothing — yet it was live, and it merged
+go-to-k/cdk-real-drift#1787 twenty minutes later. So run `git log --oneline -1`
+and `gh pr list --state all --head <branch>` to find a reason to LEAVE a worktree;
+they can never license removing one. When in doubt leave it and say so in the
 wrap.
 
 Finally, comment the outcome on each issue if it was not auto-closed. Do NOT stop
