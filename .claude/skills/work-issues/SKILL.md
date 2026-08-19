@@ -221,6 +221,17 @@ Run `/verify-pr`. Its live-test rules decide how each PR is verified:
   live data. If it is pinned by `vp test run corpus-replay` AND was live-proven in
   its originating hunt (the issue carries the real repro), that IS the live
   evidence — no fresh deploy. State the deferral explicitly.
+- **toolchain / CI / skill fix (no `src/**`in the diff)** → there is no live-test
+tier and no corpus, so the verification IS the broken command itself: run it
+REPEATEDLY (3–5×) both BEFORE and AFTER, and drive the FAILURE direction too by
+injecting a real error (e.g. an unused variable for a`no-unused-vars`gate) to
+prove the fix did not turn a red tree green. One run is not evidence — on #1761
+the`check`gate flipped rc=0/rc=1 across identical runs (the tsgolint
+budget-cascade artifact), so a single green would have "proved" either verdict.
+Then guard the SHAPE of the fix with a unit test on the config object, since
+nothing else re-checks a build-config line.`verify-pr-gate`exempts a diff with
+no`src/\*\*`, so `/verify-pr` is not required — that is an exemption from the LIVE
+  test, not from verifying.
 - **revert / read HOT-PATH fix** → live-verify with a MINIMAL, UNIQUE-named
   fixture: deploy → mutate out of band → `check` detects → `revert --yes`
   converges → confirm the live value. A throwaway CDK app works:
