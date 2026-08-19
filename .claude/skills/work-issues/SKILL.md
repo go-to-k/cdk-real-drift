@@ -191,8 +191,8 @@ enforce quality yourself; you (the orchestrator) still gate the MERGE.
 
 ## 6. Gates + PR (per lane)
 
-From inside the worktree — invoke pack/test DIRECTLY (the `run`-task wrapper can
-replay a stale cache):
+From inside the worktree — a fresh worktree has no `dist/`, and 13 tests spawn the
+built CLI, so `vp pack` has to run before the suite or it fails on nothing:
 
 ```bash
 vp run typecheck && vp check --fix && vp pack && vp test run
@@ -245,17 +245,56 @@ Run `/verify-pr`. Its live-test rules decide how each PR is verified:
   live data. If it is pinned by `vp test run corpus-replay` AND was live-proven in
   its originating hunt (the issue carries the real repro), that IS the live
   evidence — no fresh deploy. State the deferral explicitly.
-- **toolchain / CI / skill fix (no `src/**`in the diff)** → there is no live-test
-tier and no corpus, so the verification IS the broken command itself: run it
-REPEATEDLY (3–5×) both BEFORE and AFTER, and drive the FAILURE direction too by
-injecting a real error (e.g. an unused variable for a`no-unused-vars`gate) to
-prove the fix did not turn a red tree green. One run is not evidence — on #1761
-the`check`gate flipped rc=0/rc=1 across identical runs (the tsgolint
-budget-cascade artifact), so a single green would have "proved" either verdict.
-Then guard the SHAPE of the fix with a unit test on the config object, since
-nothing else re-checks a build-config line.`verify-pr-gate`exempts a diff with
-no`src/\*\*`, so `/verify-pr` is not required — that is an exemption from the LIVE
-  test, not from verifying.
+- **toolchain / CI / skill fix (nothing under `src/` in the diff)** → there is no
+  live-test tier and no corpus, so the verification IS the broken command itself:
+  run it REPEATEDLY (3–5×) both BEFORE and AFTER, and drive the FAILURE direction
+  too by injecting a real error — a change that swallows an exit code looks exactly
+  like one that fixes the gate. `verify-pr-gate` exempts a diff with no `src/`
+  files, so `/verify-pr` is not required; that is an exemption from the LIVE test,
+  not from verifying. What to measure, all of it confirmed on this repo on
+  2026-08-19 (#1768):
+  - **An exit code can lie in EITHER direction, so drive both.** _Non-zero that
+    means nothing_: #1761 / #1765 — `vp run check` exited **134** on a clean tree
+    while finding **0 errors** (the Vite+ stdout `EAGAIN` panic), and it was
+    DETERMINISTIC, not a flap: "Confirmed identical on unmodified `main`", measured
+    3/3 in each state (134 before the fix, 0 after). The hazard there is the
+    OPPOSITE of a flake — the fix is one line of build config, and a redirect that
+    swallows the exit code turns a RED tree green, which is why #1765 shipped
+    `tests/vp-run-check-redirect-1761.test.ts` asserting the `exit 1` survives.
+    _Zero that means nothing_ is just as real, but this repo has no measured case;
+    the sibling does — go-to-k/cdk-local#504 recorded `vp test run` returning
+    rc=0,0,1,0,1 across five identical runs with every test passing (its
+    forks-worker exit, which kills a reused worker AFTER its assertions pass).
+    Cite that one as the sibling's, and measure the command YOU changed rather
+    than assuming either shape.
+  - **`vp pack` BEFORE reading any `vp run test` verdict in a fresh worktree.** A
+    worktree with no `dist/` fails 13 tests of `tests/json-empty-on-error.test.ts`
+    deterministically (rc=1, 2/2) because they spawn the built CLI — a red that
+    means nothing, and one that reads as "main is broken". After `vp pack`: 343/343
+    files, rc=0 3/3.
+  - **Repeating a `vp run <task>` DOES re-execute here** — `check` (5/5) and `test`
+    (3/3) both reported `not cached because it modified its input`, so the repeat
+    measures something. Do not carry the sibling's cache-hit warning over; the
+    local cache trap is the one `vite.config.ts` records (PR #438: a cached GREEN
+    `typecheck` masked a real TS1117) and it is already handled there by
+    `cache: false`.
+  - **Inject the failure anywhere LINTED — here that includes the tests tree.** A
+    non-underscore-prefixed unused variable fails `vp run check` rc=1 from a `src/`
+    file (2/2) and from a `tests/` file (1/1), because `lint.ignorePatterns`
+    re-includes the tests tree and excludes only `tests/integration/`. cdk-local's
+    lint is source-only, so its "never inject into the tests tree" clause is FALSE
+    here — exactly the drift §10-c's per-repo check exists to catch.
+  - **Then guard the SHAPE of the fix**, since nothing else re-checks a config or
+    hook line: a unit test on the config object for a build-config change (the
+    #1765 test above), or the standalone hook suite for a `.claude/hooks/` change —
+    which §5 already notes you must run BY HAND.
+  - **Writing the result down is part of the fix, and `vp fmt` fights you.** A
+    paragraph that uses bold AND contains a double-star glob inside a code span
+    comes back mangled — spaces around later code spans eaten, continuation lines
+    de-indented (reproduced in isolation 2026-08-19; one-shot, stable after). It is
+    what corrupted this very bullet when #1766 first added it. In a bold paragraph
+    write the plain directory (`src/`, `tests/`) instead of the glob, and re-read
+    the diff after `vp check --fix` (#1771).
 - **revert / read HOT-PATH fix** → live-verify with a MINIMAL, UNIQUE-named
   fixture: deploy → mutate out of band → `check` detects → `revert --yes`
   converges → confirm the live value. A throwaway CDK app works:
@@ -445,6 +484,17 @@ Every run appending one more bullet is exactly how a long skill becomes an unrea
   caught them. Checking in the rule here rather than in agent memory is deliberate:
   memory is per-project-path and per-machine, so it would not load in the very repos
   this bullet sends you to.
+  **Verify the cited EVIDENCE too, not only the repo-specific nouns — open the issue
+  or PR the sentence names and confirm it says what the sentence claims.** The nouns
+  fail when wording TRAVELS; wrong evidence is wrong where it was WRITTEN and then
+  travels intact, so a per-repo noun check passes it straight through. This file
+  claimed for a day that "on #1761 the `check` gate flipped rc=0/rc=1 across
+  identical runs (the tsgolint budget-cascade artifact)". #1761 records a
+  DETERMINISTIC exit 134 from a Vite+ stdout `EAGAIN` panic — "Confirmed identical
+  on unmodified `main`", 3/3 in each state per #1765's table — and neither record
+  mentions tsgolint at all. It had already been mirrored into go-to-k/cdk-local#504,
+  quoted verbatim, before a reviewer asked to check the records caught it (#1768).
+  Reading the two records cost one command each.
 
 ### 10-d. Ship it like any other change
 
@@ -502,8 +552,11 @@ the run evidence behind it — or "no skill change" plus what held.
   `git diff main` appears to have removed; rebase instead.
 - **`delstack`, not `cdk destroy`** — plain deletion orphans blocking members. And
   a real deploy account may hold PROD stacks — unique names only.
-- **`vp pack` / `vp test run` DIRECTLY**, not `vp run build` / `vp run test`, when
-  the result feeds a live-test — the run-task cache can replay a stale `dist/`.
+- **`vp pack` before any `vp test run` / live-test in a fresh worktree** — with no
+  `dist/`, 13 CLI-spawning tests fail on a clean `main` (measured 2026-08-19,
+  #1768). The stale-cache worry that used to sit here is handled in
+  `vite.config.ts`: `build` is `cache: false`, and `check` / `test` report a cache
+  MISS on every run.
 - **Earn the `verify-pr` marker via `/verify-pr`, never hand-set it.** A `src/**` PR
   merge needs a fresh `verify-pr` marker, but `mise exec -- markgate set verify-pr`
   from a shell is rejected by BOTH the `verify-pr-gate` PreToolUse hook AND the

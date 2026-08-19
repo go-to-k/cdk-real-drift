@@ -23,14 +23,18 @@ Run these sequentially and report results:
    `vp run lint:fix`**: CI runs `vp check` (which includes formatting), and
    `lint:fix` does NOT touch formatting — so a `lint:fix`-only run can pass
    locally while CI fails with formatting issues on the same branch.
-3. `vp pack` (tsdown ESM bundle to `dist/`). **Invoke `vp pack` DIRECTLY, not
-   `vp run build`**: the `run`-task wrapper caches and can REPLAY a stale `dist/`
-   that does not reflect the current `src/` — a fresh `vp pack` always rebuilds.
-   A stale `dist/` has caused a false-negative live-test (a `cdkrd check` ran an
-   old binary that lacked the change under test).
+3. `vp pack` (tsdown ESM bundle to `dist/`) — and run it BEFORE step 4, because a
+   fresh worktree has no `dist/` and 13 tests spawn the built CLI. Either
+   invocation rebuilds: `build` is `cache: false` in `vite.config.ts` and has been
+   since the toolchain landed, so `vp run build` cannot serve a stale `dist/`. What
+   HAS caused a false-negative live-test is a `dist/` nobody rebuilt: a stale
+   binary that lacked the change under test.
 4. `vp test run` (Vitest unit tests; `tests/integration/**` is excluded by
-   `vite.config.ts`). **Invoke `vp test run` DIRECTLY, not `vp run test`** — same
-   cache-replay foot-gun: `vp run test` can replay a stale pass.
+   `vite.config.ts`). The run-task cache is a real foot-gun — PR #438's duplicate
+   object key passed a CACHED `vp run typecheck` and reached `main`, which is why
+   `typecheck` is now `cache: false` — but `test` reported a cache MISS on every
+   run measured on 2026-08-19 (#1768). Prefer the direct form; do not treat a
+   `vp run test` result as suspect on cache grounds alone.
 
 When piping any of the above to `tail` / `head` / `grep`, **check the actual
 output content** for `Error` / `Command failed` markers — `$?` after a pipeline
