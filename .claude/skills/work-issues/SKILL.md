@@ -70,6 +70,26 @@ Skim titles: most cdkrd issues are `fix(noise)` (first-run FP fold gaps),
 `fix(diff)` (classify), `fix(revert)` (revert convergence), `fix(read)` (read gap /
 CC adapter). If everything is maintainer-authored, proceed; otherwise apply §0.
 
+**Pull `main` first — the backlog and your checkout can BOTH be behind.** An issue
+is a snapshot of what its filer could see, and a FRESH one is the most likely to be
+stale, not the least: the session that filed it was reading a `main` it had already
+left behind, and issues get filed at the end of a lane, right when that gap is
+widest. On 2026-08-19 go-to-k/cdk-real-drift#1774 was filed at 04:29Z listing five
+asks, three of which had shipped in go-to-k/cdk-real-drift#1772 at 04:26Z — three
+minutes earlier, by a session in a sibling repo that never saw the merge.
+
+```bash
+git fetch origin && git checkout main && git pull origin main --ff-only
+```
+
+Then, per issue you shortlist, **check the FIX FILE rather than the issue's claim**
+before claiming it in §4 — `git show origin/main:<target-file> | grep -n "<marker>"`,
+plus `git log origin/main --oneline` for the fix keyword. §7 runs the same check at
+merge time, when a whole lane has already been paid for; here it costs one command,
+and it can turn a five-ask issue into a two-ask one rather than a duplicate. §3-a
+holds a fresh issue back for the lane that filed it; this is the other half of the
+same fact about freshness, and it still applies to the issues §3-a EXEMPTS.
+
 ## 2. Map the collision landscape (parallel agents may already own files)
 
 ```bash
@@ -185,7 +205,10 @@ gate and §4's claim-then-re-check still apply unchanged:
   an issue you filed FOR A LATER SESSION no claim, and taking one back minutes after
   handing it off contradicts the handoff rather than being exempted by it.
 - **The maintainer named the issue in the invocation** (`/work-issues #<n>`) — an
-  explicit instruction outranks a heuristic about who else might want it.
+  explicit instruction outranks a heuristic about who else might want it. It lifts
+  this gate only, never §1's already-shipped check: a named issue is a FRESH issue,
+  so it is more likely than average to have been written against a stale `main`.
+  go-to-k/cdk-real-drift#1774 arrived exactly this way.
 - **A security issue** (the security-first rule above) — an extra hour of a shipped
   vulnerability costs more than a duplicated context. Take it, and say in the claim
   (§4) that you took it inside the window and why.
@@ -330,9 +353,9 @@ If the issue is CLOSED (or main already carries an equivalent fix), **ABANDON th
 lane — do NOT resolve the conflict to re-apply a now-duplicate fix**: `git rebase
 --abort`, `gh pr close <pr> --delete-branch` (or never open one), comment the
 collision on the issue, `git worktree remove`. This is the merge-time twin of
-"check the FIX FILE, not the issue tag" — it happened on both
-go-to-k/cdk-real-drift#726 and go-to-k/cdk-real-drift#742, each after a full lane
-(implement + test + live-verify) was already done. The claim
+§1's already-shipped check, and the expensive place to run it: on both
+go-to-k/cdk-real-drift#726 and go-to-k/cdk-real-drift#742 it fired here, after a
+full lane (implement + test + live-verify) was already done. The claim
 comment reduces collisions but cannot eliminate them; the rebase/merge conflict is
 your last, authoritative signal to stop and check before spending more.
 
@@ -389,11 +412,16 @@ Run `/verify-pr`. Its live-test rules decide how each PR is verified:
     forks-worker exit, which kills a reused worker AFTER its assertions pass).
     Cite that one as the sibling's, and measure the command YOU changed rather
     than assuming either shape.
-  - **`vp pack` BEFORE reading any `vp run test` verdict in a fresh worktree.** A
-    worktree with no `dist/` fails 13 tests of `tests/json-empty-on-error.test.ts`
-    deterministically (rc=1, 2/2) because they spawn the built CLI — a red that
-    means nothing, and one that reads as "main is broken". After `vp pack`: 343/343
-    files, rc=0 3/3.
+  - **`vp pack` BEFORE reading any `vp run test` verdict in a fresh worktree — and
+    re-run a red from that one file before believing it.** A worktree with no
+    `dist/` fails 13 tests of `tests/json-empty-on-error.test.ts` deterministically
+    (rc=1, 2/2) because they spawn the built CLI — a red that means nothing, and one
+    that reads as "main is broken". `vp pack` fixes that red but not the file's
+    OTHER one: on 2026-08-19, with `dist/` freshly packed, THREE of its 13 failed
+    once and the identical re-run went 343/343 rc=0, the file itself 13/13 in
+    isolation. So a `vp test run` rc DOES flap here. Tell the two apart by the
+    COUNT — 13 failures means no `dist/`, fewer means the flake — and never let a
+    single red run stand as the verdict.
   - **Repeating a `vp run <task>` DOES re-execute here** — `check` (5/5) and `test`
     (3/3) both reported `not cached because it modified its input`, so the repeat
     measures something. Do not carry the sibling's cache-hit warning over; the
