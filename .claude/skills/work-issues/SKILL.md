@@ -475,6 +475,20 @@ go-to-k/cdk-real-drift#1772 and go-to-k/cdk-real-drift#1773 both rewrote
 lands into a file another PR touched in the same window, `git pull` and grep `main`
 for a marker string from EACH side before believing both survived.
 
+**And the two lanes need not touch one file at all: a peer that adds a REPO-WIDE
+check gains jurisdiction over YOUR content.** File-disjointness says nothing here,
+because the collision is their TEST against your CONTENT, and neither PR's CI
+necessarily exercised the pair — yours ran before their check existed, theirs ran
+before your content did. So when a peer merges, look at WHAT it added, not only at
+which files it touched: a test that globs the tree (`git ls-files`, a `readdirSync`
+over a directory, a lint rule) applies to everything you are about to land. Rebase
+and RUN it over your own diff before merging. Measured here 2026-08-19
+(go-to-k/cdk-real-drift#1782 into go-to-k/cdk-real-drift#1783): the first added a
+scanner over every committed `.md` while the second was adding ~100 lines of new
+markdown to a file the first never touched. Rebasing and running that scanner scored
+21/21, so nothing broke — but the check cost one command, and the gate that would
+have caught a failure only existed once the two were combined.
+
 If the issue is CLOSED (or main already carries an equivalent fix), **ABANDON the
 lane — do NOT resolve the conflict to re-apply a now-duplicate fix**: `git rebase
 --abort`, `gh pr close <pr> --delete-branch` (or never open one), comment the
@@ -625,7 +639,9 @@ gh pr merge <n> --squash --delete-branch     # squash is the repo's only method
 
 (Local branch delete fails while its worktree exists — expected; the worktree
 removal below clears it.) Merge each verified PR. If a later PR is behind, GitHub
-still merges it when the files are disjoint.
+still merges it when the files are disjoint — but disjoint files are not the whole
+test: if the PR that landed first added a repo-wide check, rebase and run it over
+your diff first (§7).
 
 ```bash
 git checkout main && git pull origin main    # bring the merges local
