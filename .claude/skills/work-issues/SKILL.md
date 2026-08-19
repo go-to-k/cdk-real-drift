@@ -977,6 +977,29 @@ pnpm install                  # worktrees have no node_modules
   that never happened.
 - English only in every committed line (`non-english-text-gate` enforces it at PR
   time).
+- **`vp fmt` REWRITES this file's indentation, and that can change what a
+  paragraph belongs to.** This repo's formatter covers markdown (the siblings' does
+  not -- measured 2026-08-19: the same probe file is rewritten here and reported as
+  "excluded by ignore rules" in cdkd and cdk-local), and it re-indents a paragraph
+  that follows a nested list item from 2 spaces to 4, which re-parents it under that
+  sub-bullet:
+
+  ```text
+  before                                    after `vp fmt`
+  - A bullet.                               - A bullet.
+    - A sub bullet that is new.               - A sub bullet that is new.
+    **A bold lead paragraph.**                  **A bold lead paragraph.**
+  ```
+
+  Nothing fails and no gate objects -- the file still renders, just saying something
+  else. It bit the go-to-k/cdk-real-drift#1793 lane, whose three verification
+  paragraphs in section 10-c were silently absorbed into the last clause above them.
+  The fix that survives the formatter is to write such a paragraph as a **bold lead
+  paragraph at the parent bullet's own indent** rather than as prose trailing a
+  sub-bullet, then run `vp fmt` TWICE and confirm the second run is a no-op. Read
+  the reformatted diff before committing; the damage is invisible in the source you
+  typed.
+
 - A `work-issues`-only edit is outside BOTH the `check` and `docs` gate scopes, but
   `check-gate` verifies both markers on every commit without computing scope, and a
   fresh worktree starts with NONE — so run `/check` + `/check-docs` there before the
