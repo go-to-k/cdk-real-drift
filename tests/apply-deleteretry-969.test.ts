@@ -203,18 +203,16 @@ describe('applyRevertDeletes — the PASS LOOP resolves the dependency the fast-
 
     let sleeps = 0;
     const client = cc as unknown as CloudControlClient;
-    const outcomes = await applyRevertDeletes(
-      [integration, route],
-      (item): Promise<ApplyResult> =>
-        applyRevertDelete(client, item, item.physicalId, {
-          // A generous in-item budget — if the Integration wrongly spun it, integrationSends
-          // would be > 2 (maxAttempts on pass 1 alone).
-          maxAttempts: 5,
-          sleep: () => {
-            sleeps++;
-            return Promise.resolve();
-          },
-        })
+    const outcomes = await applyRevertDeletes([integration, route], (item): Promise<ApplyResult> =>
+      applyRevertDelete(client, item, item.physicalId, {
+        // A generous in-item budget — if the Integration wrongly spun it, integrationSends
+        // would be > 2 (maxAttempts on pass 1 alone).
+        maxAttempts: 5,
+        sleep: () => {
+          sleeps++;
+          return Promise.resolve();
+        },
+      })
     );
 
     // Both deletes converged.
@@ -254,18 +252,16 @@ describe('applyRevertDeletes — the PASS LOOP resolves the dependency the fast-
     let now = 0;
     let sleeps = 0;
     const client = cc as unknown as CloudControlClient;
-    const outcomes = await applyRevertDeletes(
-      [integration, route],
-      (item): Promise<ApplyResult> =>
-        applyRevertDelete(client, item, item.physicalId, {
-          deadlineMs: now + 600_000, // a fresh 10-min `--wait` budget (as buildRetryOpts hands it)
-          now: () => now,
-          sleep: (ms) => {
-            sleeps++;
-            now += ms;
-            return Promise.resolve();
-          },
-        })
+    const outcomes = await applyRevertDeletes([integration, route], (item): Promise<ApplyResult> =>
+      applyRevertDelete(client, item, item.physicalId, {
+        deadlineMs: now + 600_000, // a fresh 10-min `--wait` budget (as buildRetryOpts hands it)
+        now: () => now,
+        sleep: (ms) => {
+          sleeps++;
+          now += ms;
+          return Promise.resolve();
+        },
+      })
     );
     expect(outcomes.every((o) => o.result.ok)).toBe(true);
     expect(sleeps).toBe(0);
