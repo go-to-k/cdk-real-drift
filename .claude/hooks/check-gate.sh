@@ -30,7 +30,11 @@ hook_cwd=$(printf '%s' "$input" | jq -r '.cwd // ""' 2>/dev/null || echo "")
 # so a `git commit` substring inside a quoted argument body does not
 # false-positive. Tolerates `git -C <path> commit` / `git -c k=v commit` and
 # an optional leading `cd <path> &&` worktree prefix.
-. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_command-match.sh"
+# Fail OPEN if the shared matcher is missing: a hook that cannot decide must not
+# break every Bash call with a `command not found` (go-to-k/cdk-local#542 review).
+_gate_lib="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_command-match.sh"
+[ -r "$_gate_lib" ] || exit 0
+. "$_gate_lib"
 
 # Which commands this gate applies to. The segment matcher sees a gated verb
 # in ANY position — `git add -A && git commit` used to run ungated
@@ -41,6 +45,19 @@ gate_matches "$cmd" "$GATE_RE" || exit 0
 # Resolve where the command will actually run: a `-C <path>` in the matched
 # segment wins, else the last `cd <path>` segment before it, else the payload cwd.
 target_dir=$(gate_target_dir "$cmd" "${hook_cwd:-$PWD}" "$GATE_RE")
+
+# Repo opt-in scope, mirroring branch-gate (go-to-k/cdkd#1259): this gate belongs
+# to repos that follow the markgate convention. A session rooted in one of them
+# still runs git against OTHER repos — a dotfiles checkout, a scratch clone —
+# where committing to main is the normal workflow and no marker exists to be
+# fresh. Without this the gate blocked those commits with a message naming skills
+# that repo does not have (hit on 2026-08-20 committing to `dotfiles` from a
+# cdk-real-drift session). Opt-in signal: a `.markgate.yml` at the target repo's
+# top level.
+target_top=$(git -C "$target_dir" rev-parse --show-toplevel 2>/dev/null || echo "")
+if [ -z "$target_top" ] || [ ! -f "$target_top/.markgate.yml" ]; then
+  exit 0
+fi
 
 # If the resolved target dir is not a git repo, silently pass.
 if ! git -C "$target_dir" rev-parse --git-dir >/dev/null 2>&1; then

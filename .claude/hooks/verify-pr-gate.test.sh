@@ -202,6 +202,16 @@ gx checkout -q feature/docs
 run_case "non-src (docs-only) PR exempt from verify-pr" 0 stale "" \
   "$(printf '{"cwd":"%s","tool_input":{"command":"gh pr create --title docs"}}' "$exempt_repo")"
 
+# 14b. The exemption must read the RESOLVED TARGET DIR, not the hook's own cwd.
+#      Payload cwd is a tree whose HEAD == origin/main (empty diff, so the
+#      exemption cannot fire there); the command `cd`s to the docs-only branch,
+#      which is what the PR actually is. Before go-to-k/cdk-real-drift#1805 the
+#      hook read its own cwd: docs-only PRs were told to run /verify-pr, and a
+#      cwd in an unrelated tree with a non-src diff would have EXEMPTED a src PR.
+gx checkout -q feature/docs
+run_case "exemption reads the cd target, not the hook cwd" 0 stale "" \
+  "$(printf '{"cwd":"%s","tool_input":{"command":"cd %s && gh pr merge 42 --squash"}}' "$main_repo" "$exempt_repo")"
+
 # 15. feature/src (src/ diff vs origin/main) → still gated, exit 2 when stale.
 gx checkout -q feature/src
 run_case "src-touching PR still gated" 2 stale "$exempt_repo" \

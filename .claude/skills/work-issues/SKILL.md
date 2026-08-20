@@ -988,7 +988,9 @@ fields are being used as an excuse. On 2026-08-20 this run consolidated one less
 into cdkd, cdk-local and go-to-k/cdk-real-drift, found every PreToolUse gate in the
 siblings inert, fixed the matchers in all three — and then filed the remaining
 script-level gap as three separate issues, recreating the per-repo split the
-request existed to end. It went into the same three PRs after the user objected.
+request existed to end. It took the user objecting to get it done in the same
+SESSION, as a follow-up PR per repo — "same session" is the bar, "same PR" only
+when the work is small enough to review together.
 
 ### 10-c. How to edit: amend, do not append
 
