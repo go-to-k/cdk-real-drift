@@ -326,8 +326,10 @@ session that has decided not to do it — but this says nothing about the LATER 
 that takes it: that run claims it normally, per the mandatory rule above.
 
 **English-only covers the issue BODIES this flow files, not just the comment above.**
-Write the `Session-fit` gloss in English too — `Session-fit: next (not this session)`
-/ `Effort: ~1-3 h` — never in the session's chat language. Nothing enforces this
+Write the classification lines in English too — `Session-fit` / `Severity` /
+`Effort` / `Estimate`, one field per line (see `CLAUDE.md` → "The four TODO
+fields"), glosses included: `Session-fit: next (not this session)`,
+`Estimate: ~1-3 h — one live run` — never in the session's chat language. Nothing enforces this
 half: `non-english-text-gate` fires only on `gh pr create` / `gh pr edit` /
 `gh pr merge` (its `"if"` clause in `.claude/settings.json`), and it identifies its
 target by resolving a PR NUMBER and scanning `gh pr diff`, so it structurally cannot
@@ -338,6 +340,29 @@ go-to-k/cdk-local filed its follow-up on 2026-08-19 with both halves of the
 after creation (go-to-k/cdk-real-drift#1777).
 
 ## 5. One worktree per lane, then implement
+
+**Before fixing, ask whether the defect has SIBLING SITES — and if it does, sweep
+them in THIS lane rather than filing them.** Most defects here are a CLASS, not an
+instance: one command factory mishandling a flag, one resolver arm missing a case,
+one caller of a shared helper assuming the old contract. Once the root cause is
+named, grep for the same shape across `src/` before writing the fix.
+
+**N sites of one root cause is ONE issue and ONE PR, never N issues.** This is the
+single largest source of unbounded backlog growth: split into N, each site pays the
+full fixed cost — triage, claim, worktree, review tier, integ run, merge — for a fix
+that is the same edit N times. Swept together, that cost is paid once, and the
+reviewer sees the whole class instead of one instance whose generality is invisible.
+It also removes the failure mode where sites 2..N sit open long enough for the fix
+at site 1 to drift away from them.
+
+Two boundaries, so this does not become a licence for unbounded lanes:
+
+- **A sweep that would make the PR unreviewable is a genuine `next`** — file it as
+  an explicit umbrella naming every site, and say which sites this lane DID close,
+  so the residue is unambiguous rather than "the rest, somewhere".
+- **Sweep the same ROOT CAUSE, not the same AREA.** Two unrelated bugs in one file
+  are two issues; one wrong assumption at five call sites is one. The test is
+  whether a single sentence describes the fix at every site.
 
 Never edit in the main checkout. Per lane:
 
@@ -834,6 +859,30 @@ subject and a wider scope, and neither is covered by that one:
   would change
   what the flow PROMISES — dropping a gate, lowering a verification tier, loosening
   §0 — never for wording, ordering, or a newly-learned trap.
+
+### 10-0. Measure the run's net effect on the backlog
+
+Before anything else in this step, count what the run did to the issue list and put
+both numbers in the wrap report — `closed N / filed M` — and **when M > N, give the
+reason in one more line**. It is almost always one of three, and only the first is
+healthy:
+
+- **the code really does have that many independent defects** — the run walked into
+  an untested area. Fine; say which area, so the next hunt aims there.
+- **one root cause was split into many issues** — §5's sweep rule should have folded
+  them. This is the failure mode to catch; fold what is still open into an umbrella
+  now rather than next time.
+- **discoveries were deferred that had session-only evidence** — re-read the `now`
+  criteria in `CLAUDE.md`; a discovery whose repro dies with this session is not a
+  residual, and deferring it means the next session re-derives it.
+
+**M <= N is NOT a target, and must never become one.** The purpose of the system is
+a correct codebase, not a short list: an unfiled finding is strictly worse than a
+filed one, because it removes the defect from the record while leaving it in the
+product. This count exists to make growth VISIBLE and route it to the right cause —
+never to justify not writing a finding down, softening one, or merging two genuinely
+independent defects into one vague issue to make the number smaller. If you ever
+find yourself weighing whether to file, file.
 
 ### 10-a. Evidence: only what this run actually produced
 
