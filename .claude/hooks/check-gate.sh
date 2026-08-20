@@ -30,39 +30,17 @@ hook_cwd=$(printf '%s' "$input" | jq -r '.cwd // ""' 2>/dev/null || echo "")
 # so a `git commit` substring inside a quoted argument body does not
 # false-positive. Tolerates `git -C <path> commit` / `git -c k=v commit` and
 # an optional leading `cd <path> &&` worktree prefix.
-if ! printf '%s' "$cmd" | grep -qE '^[[:space:]]*(cd[[:space:]]+[^[:space:]]+[[:space:]]*&&[[:space:]]*)?git([[:space:]]+(-[^[:space:]]+([[:space:]]+[^[:space:]-][^[:space:]]*)?))*[[:space:]]+commit([[:space:]]|$|[|;&`)])'; then
-  exit 0
-fi
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_command-match.sh"
 
-# Resolve where the git command will actually run (cwd-aware).
-target_dir="${hook_cwd:-$PWD}"
+# Which commands this gate applies to. The segment matcher sees a gated verb
+# in ANY position — `git add -A && git commit` used to run ungated
+# (go-to-k/cdk-real-drift#1803).
+GATE_RE="$GATE_RE_GIT_COMMIT"
+gate_matches "$cmd" "$GATE_RE" || exit 0
 
-# `cd <path>` at the start of the command shifts the target dir.
-if [[ "$cmd" =~ ^[[:space:]]*cd[[:space:]]+([^[:space:]\&\;\|]+) ]]; then
-  cd_target="${BASH_REMATCH[1]}"
-  cd_target="${cd_target%\"}"; cd_target="${cd_target#\"}"
-  cd_target="${cd_target%\'}"; cd_target="${cd_target#\'}"
-  if [[ "$cd_target" != /* ]]; then
-    cd_target="$target_dir/$cd_target"
-  fi
-  target_dir="$cd_target"
-fi
-
-# `git -C <path>` beats any earlier cd; pick the LAST occurrence.
-if [[ "$cmd" =~ git[[:space:]]+-C[[:space:]]+([^[:space:]]+) ]]; then
-  c_target=""
-  remaining="$cmd"
-  while [[ "$remaining" =~ git[[:space:]]+-C[[:space:]]+([^[:space:]]+) ]]; do
-    c_target="${BASH_REMATCH[1]}"
-    remaining="${remaining#*"${BASH_REMATCH[0]}"}"
-  done
-  c_target="${c_target%\"}"; c_target="${c_target#\"}"
-  c_target="${c_target%\'}"; c_target="${c_target#\'}"
-  if [[ "$c_target" != /* ]]; then
-    c_target="$target_dir/$c_target"
-  fi
-  target_dir="$c_target"
-fi
+# Resolve where the command will actually run: a `-C <path>` in the matched
+# segment wins, else the last `cd <path>` segment before it, else the payload cwd.
+target_dir=$(gate_target_dir "$cmd" "${hook_cwd:-$PWD}" "$GATE_RE")
 
 # If the resolved target dir is not a git repo, silently pass.
 if ! git -C "$target_dir" rev-parse --git-dir >/dev/null 2>&1; then

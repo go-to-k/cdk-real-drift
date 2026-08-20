@@ -244,8 +244,13 @@ describe('hook harnesses resolve their subject from their own script path', () =
   });
 
   it.each(harnesses)('%s derives its subject from its own path', (file) => {
-    const assignment = readFileSync(path.join(HOOKS_DIR, file), 'utf8').match(/^HOOK=.*$/m)?.[0];
-    expect(assignment, `${file} has no HOOK= assignment to check`).toBeDefined();
+    const text = readFileSync(path.join(HOOKS_DIR, file), 'utf8');
+    // Two shapes, both self-relative: a `HOOK=` assignment naming the gate under
+    // test, or a `.`-source of a sibling LIBRARY (`_command-match.sh` is exercised
+    // by sourcing it, so it has no single subject to assign).
+    const assignment =
+      text.match(/^HOOK=.*$/m)?.[0] ?? text.match(/^\.\s+"\$\(cd .*_[a-z-]+\.sh"$/m)?.[0];
+    expect(assignment, `${file} has no self-relative subject to check`).toBeDefined();
     // The two interchangeable spellings §5 names, and nothing else.
     expect(
       assignment,

@@ -153,21 +153,29 @@ run_case "cd <main> && git commit from feature-cwd blocked" 2 \
 run_case "git -C <main> commit blocked" 2 \
   "$(printf '{"cwd":"%s","tool_input":{"command":"git -C %s commit -m oops"}}' "$feature_repo" "$main_repo")"
 
-# 11. Single-line `git -C <a> status; git -C <b> commit` — chained
-#     shape where the second `git` is NOT at line-start. With the
-#     line-start anchored matcher (per memory rule
-#     feedback_hook_command_match_line_start.md, issue #563), the
-#     matcher fires on the FIRST `git -C <feature> status` token
-#     (the line-start one), which is not a commit/push subcommand,
-#     so the hook short-circuits at the matcher (exit 0). This is
-#     an ACCEPTED FALSE-NEGATIVE of the line-start tightening — the
-#     trade-off we make to eliminate quoted-body false-positives
-#     (see Part C false-positive cases below). For the agent
-#     workflow this is fine: chained-on-one-line commits to main
-#     are rare; the dominant shape is `cd <repo> && git commit ...`,
-#     which IS line-start matched.
-run_case "single-line chained git -C status; git -C commit (accepted false-negative)" 0 \
+# 11. Single-line `git -C <a> status; git -C <b> commit` — the commit is NOT at
+#     line-start. This used to be an ACCEPTED FALSE-NEGATIVE: the matcher was
+#     anchored at line start, saw `git -C <feature> status` (not a commit), and
+#     short-circuited, so a commit to main in the second segment ran ungated.
+#     go-to-k/cdk-real-drift#1803 replaced the anchor with the shared segment
+#     matcher in `_command-match.sh`, which splits the command list and matches
+#     each segment — the quoted-body false positives that motivated the anchor
+#     are handled by blanking quoted spans instead. The case is now a true
+#     positive, and its target dir resolves to the SECOND `-C`.
+run_case "single-line chained git -C status; git -C commit is caught" 2 \
   "$(printf '{"cwd":"%s","tool_input":{"command":"git -C %s status; git -C %s commit -m oops"}}' "$feature_repo" "$feature_repo" "$main_repo")"
+
+# 11a. The spellings go-to-k/cdk-real-drift#1803 measured running UNGATED against
+#      the old line-start anchor. Each must now block, and a mention inside a
+#      quoted argument must still not.
+run_case "git add -A && git commit on main is caught" 2 \
+  "$(printf '{"cwd":"%s","tool_input":{"command":"git add -A && git -C %s commit -m oops"}}' "$main_repo" "$main_repo")"
+run_case "leading env assignment is caught" 2 \
+  "$(printf '{"cwd":"%s","tool_input":{"command":"GIT_EDITOR=true git -C %s commit -m oops"}}' "$main_repo" "$main_repo")"
+run_case "subshell is caught" 2 \
+  "$(printf '{"cwd":"%s","tool_input":{"command":"(cd %s && git commit -m oops)"}}' "$main_repo" "$main_repo")"
+run_case "commit named inside a quoted argument is not a commit" 0 \
+  "$(printf '{"cwd":"%s","tool_input":{"command":"echo \\"next: git commit -m x\\""}}' "$main_repo")"
 
 # 11b. `git -c <key>=<val> commit` — global `-c` flag before commit
 #      subcommand. The tightened regex must not get confused by the

@@ -37,30 +37,17 @@ hook_cwd=$(printf '%s' "$input" | jq -r '.cwd // ""' 2>/dev/null || echo "")
 
 # Only gate `git push` (subcommand position, line-start anchored — same shape
 # as branch-gate.sh so quoted "git push" substrings don't false-positive).
-if ! printf '%s' "$cmd" | grep -qE '^[[:space:]]*(cd[[:space:]]+[^[:space:]]+[[:space:]]*&&[[:space:]]*)?git([[:space:]]+(-[^[:space:]]+([[:space:]]+[^[:space:]-][^[:space:]]*)?))*[[:space:]]+push([[:space:]]|$|[|;&`)])'; then
-  exit 0
-fi
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_command-match.sh"
 
-# Resolve where the git command actually runs.
-target_dir="${hook_cwd:-$PWD}"
-if [[ "$cmd" =~ ^[[:space:]]*cd[[:space:]]+([^[:space:]\&\;\|]+) ]]; then
-  cd_target="${BASH_REMATCH[1]}"
-  cd_target="${cd_target%\"}"; cd_target="${cd_target#\"}"
-  cd_target="${cd_target%\'}"; cd_target="${cd_target#\'}"
-  [[ "$cd_target" != /* ]] && cd_target="$target_dir/$cd_target"
-  target_dir="$cd_target"
-fi
-if [[ "$cmd" =~ git[[:space:]]+-C[[:space:]]+([^[:space:]]+) ]]; then
-  c_target=""; remaining="$cmd"
-  while [[ "$remaining" =~ git[[:space:]]+-C[[:space:]]+([^[:space:]]+) ]]; do
-    c_target="${BASH_REMATCH[1]}"
-    remaining="${remaining#*"${BASH_REMATCH[0]}"}"
-  done
-  c_target="${c_target%\"}"; c_target="${c_target#\"}"
-  c_target="${c_target%\'}"; c_target="${c_target#\'}"
-  [[ "$c_target" != /* ]] && c_target="$target_dir/$c_target"
-  target_dir="$c_target"
-fi
+# Which commands this gate applies to. The segment matcher sees a gated verb
+# in ANY position — `git add -A && git commit` used to run ungated
+# (go-to-k/cdk-real-drift#1803).
+GATE_RE="$GATE_RE_GIT_PUSH"
+gate_matches "$cmd" "$GATE_RE" || exit 0
+
+# Resolve where the command will actually run: a `-C <path>` in the matched
+# segment wins, else the last `cd <path>` segment before it, else the payload cwd.
+target_dir=$(gate_target_dir "$cmd" "${hook_cwd:-$PWD}" "$GATE_RE")
 
 g() { git -C "$target_dir" "$@" 2>/dev/null; }
 

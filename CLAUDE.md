@@ -394,6 +394,24 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   all review of a larger diff, which grows superlinearly because a reviewer reads
   the whole thing and cross-file interactions multiply. Defer on those.
 
+  **`Session-fit: next` is NOT available for work discovered inside a scope the
+  user framed as "do this across the repos in one session".** Three tells that
+  force `now`: (a) you are about to file the SAME issue body in more than one
+  repo — that is the split the framing exists to end, not triage; (b) the fix is
+  mechanical and its evidence is live right now (the repro is built, the files are
+  open, a gate cycle is already running); (c) the user already said "finish it
+  here" for the surrounding task, and a discovery inside that task inherits the
+  instruction rather than getting its own budget. The four fields exist to make a
+  deferral HONEST, not to make one available — a defensible-looking `Effort` /
+  `Estimate` written for work the session is already positioned to do is the tell
+  that the classification is being used as an excuse. On 2026-08-20 a session
+  asked to consolidate one `/work-issues` lesson across cdkd, cdk-local and this
+  repo discovered that every PreToolUse gate here was inert, fixed the matchers in
+  all three, and then filed the remaining script-level gap as three separate
+  issues — reproducing exactly the per-repo split the request existed to end. The
+  fix belonged in the same three PRs, which is where it landed after the user
+  objected.
+
   **A newly DISCOVERED bug is not a residual.** A residual (deferred polish, a
   nit, a parity gap) is fully describable, so writing it down loses nothing. A
   discovery's expensive part is the EVIDENCE behind it — the repro you built,

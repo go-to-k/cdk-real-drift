@@ -974,6 +974,22 @@ is where §9 and §10 live.
   cross-repo. Weakest enforcement — the landing spot when nothing above can hold the
   rule, not the default one.
 
+**A cross-repo request outranks your own triage.** When the ask was "handle this
+across the repos in one session", a discovery made INSIDE that scope cannot be
+classified `Session-fit: next` — three tells, any one of which forces `now`: you
+are about to file the SAME issue body in more than one repo (that is the split the
+request exists to end, not triage); the fix is mechanical and its evidence is live
+right now (repro built, files open, a gate cycle already running); or the user
+already said "finish it here" for the surrounding task, which a discovery inside it
+inherits rather than getting its own budget. The classification fields exist to
+make a deferral honest, not to make one available — writing a tidy `Effort` /
+`Estimate` for work the session is already positioned to do is the tell that the
+fields are being used as an excuse. On 2026-08-20 this run consolidated one lesson
+into cdkd, cdk-local and go-to-k/cdk-real-drift, found every PreToolUse gate in the
+siblings inert, fixed the matchers in all three — and then filed the remaining
+script-level gap as three separate issues, recreating the per-repo split the
+request existed to end. It went into the same three PRs after the user objected.
+
 ### 10-c. How to edit: amend, do not append
 
 Every run appending one more bullet is exactly how a long skill becomes an unread one.

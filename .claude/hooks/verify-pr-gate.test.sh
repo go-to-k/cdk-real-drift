@@ -126,6 +126,17 @@ run_case "gh pr view passes through" 0 stale "" \
 run_case "gh pr edit passes through" 0 stale "" \
   "$(printf '{"cwd":"%s","tool_input":{"command":"gh pr edit 42"}}' "$side_repo")"
 
+# 3b. The spellings go-to-k/cdk-real-drift#1803 measured running UNGATED against
+#      the old line-start anchor: the verb after another command, in a subshell,
+#      or behind an env assignment. Each must now be gated (stale marker → block).
+run_case "git push && gh pr create is gated" 2 stale "" \
+  "$(printf '{"cwd":"%s","tool_input":{"command":"git push && gh pr create --title x"}}' "$side_repo")"
+run_case "subshell gh pr merge is gated" 2 stale "" \
+  "$(printf '{"cwd":"%s","tool_input":{"command":"(cd %s && gh pr merge 42 --squash)"}}' "$side_repo" "$side_repo")"
+# A mention inside a quoted argument is still not an invocation.
+run_case "quoted mention passes through" 0 stale "" \
+  "$(printf '{"cwd":"%s","tool_input":{"command":"echo \\"then gh pr create --title x\\""}}' "$side_repo")"
+
 # 4. Non-git target dir → silent pass.
 run_case "non-git target dir allowed" 0 stale "" \
   "$(printf '{"cwd":"%s","tool_input":{"command":"gh pr create --title x"}}' "$TMPDIR")"
