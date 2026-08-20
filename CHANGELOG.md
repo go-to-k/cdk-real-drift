@@ -1,3 +1,10 @@
+## [0.26.5](https://github.com/go-to-k/cdk-real-drift/compare/v0.26.4...v0.26.5) (2026-08-20)
+
+
+### Bug Fixes
+
+* **hooks:** see a gated verb behind if/while/sudo/xargs/case and process substitution, and stop corrupting a path containing `&` ([#1809](https://github.com/go-to-k/cdk-real-drift/issues/1809)) ([73fe7bf](https://github.com/go-to-k/cdk-real-drift/commit/73fe7bff09410ab5044c1c9d74e0fb6ecee07c80))
+
 ## [0.26.4](https://github.com/go-to-k/cdk-real-drift/compare/v0.26.3...v0.26.4) (2026-08-20)
 
 
