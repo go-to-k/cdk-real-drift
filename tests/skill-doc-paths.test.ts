@@ -53,19 +53,37 @@ const PATH_LIKE = /^[A-Za-z0-9_.@-]+(\/[A-Za-z0-9_.*@-]+)+$/;
 // (assigned after skillDocs is declared — see below)
 let MIRRORED_DOCS: string[] = [];
 
-// A reference is qualified when `owner/repo` immediately precedes the `#`. Matches
-// deliberately skip inline-code spans and fenced blocks, so a paragraph can still
-// SHOW a bare `#N` as its own counter-example, and skip YAML frontmatter, where
-// `argument-hint` demonstrates what a user types rather than citing anything.
-const BARE_REF = /(?<![\w/-])#\d+/g;
+// A reference is qualified only when a WHOLE `owner/repo` immediately precedes
+// the `#`. The first version asked for "not a word, slash or dash character
+// before the `#`", which accepts both HALF-qualified spellings — `cdk-real-drift#5`
+// (owner dropped) and `go-to-k#5` (repo dropped) — and GitHub autolinks neither,
+// so the likeliest typo in a file full of `go-to-k/cdk-real-drift#…` was the one
+// the fence could not see (probed 2026-08-20, go-to-k/cdk-real-drift#1797).
+// Matches deliberately skip inline-code spans and fenced blocks, so a paragraph
+// can still SHOW a bare `#N` as its own counter-example, and skip YAML
+// frontmatter, where `argument-hint` demonstrates what a user types.
+const ANY_REF = /([A-Za-z0-9._/-]*)#(\d+)/g;
+const QUALIFIER = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
+
+function unqualifiedRefs(text: string): string[] {
+  return [...text.matchAll(ANY_REF)]
+    .filter((m) => !QUALIFIER.test(m[1]!))
+    .map((m) => `${m[1]}#${m[2]}`);
+}
 
 function prose(text: string): string {
   const withoutFrontmatter = text.startsWith('---\n')
     ? text.slice(text.indexOf('\n---\n', 3) + 5)
     : text;
-  return withoutFrontmatter
-    .replace(/^```[\s\S]*?^```/gm, '') // fenced code blocks
-    .replace(/`[^`\n]*`/g, ''); // inline code spans
+  return (
+    withoutFrontmatter
+      .replace(/^```[\s\S]*?^```/gm, '') // fenced code blocks
+      // DOUBLE-backtick spans first: that is how a counter-example containing a
+      // backtick is written, and a single-span-only strip leaves its contents
+      // exposed as prose, which the fence then reports as a violation.
+      .replace(/``.*?``/g, '')
+      .replace(/`[^`\n]*`/g, '') // inline code spans
+  );
 }
 
 function skillDocs(): string[] {
@@ -92,25 +110,38 @@ function citations(rel: string): string[] {
 }
 
 /**
- * Resolve a citation against the repo. Globs are satisfied by ONE match:
- * a trailing `**` only requires its prefix directory, and a `*`-bearing final
- * segment requires at least one sibling entry matching it.
+ * Resolve a citation against the repo. Globs are satisfied by ONE match: a
+ * trailing `**` only requires its prefix directory, and a `*`-bearing segment
+ * requires at least one entry matching it — in ANY position, not only the last
+ * one. The first version handled a wildcard in the final segment only, so a
+ * perfectly real `.claude/skills/*\/SKILL.md` citation was reported as stale
+ * (go-to-k/cdk-real-drift#1797).
  */
 function resolves(citation: string): boolean {
-  if (!citation.includes('*')) return existsSync(path.join(ROOT, citation));
+  const segmentRe = (segment: string) =>
+    new RegExp(`^${segment.replace(/\./g, '\\.').replace(/\*/g, '.*')}$`);
 
-  const segments = citation.split('/');
-  const wildcardAt = segments.findIndex((s) => s.includes('*'));
-  const prefix = path.join(ROOT, ...segments.slice(0, wildcardAt));
-  if (!existsSync(prefix) || !statSync(prefix).isDirectory()) return false;
+  const walk = (dir: string, segments: string[]): boolean => {
+    if (segments.length === 0) return true;
+    const [head, ...rest] = segments as [string, ...string[]];
+    if (head === '**') return true; // `dir/**` and `dir/**/*.sh`: the prefix is the assertion
+    const here = path.join(dir, head);
+    if (!head.includes('*')) {
+      if (!existsSync(here)) return false;
+      if (rest.length === 0) return true;
+      return statSync(here).isDirectory() && walk(here, rest);
+    }
+    if (!existsSync(dir) || !statSync(dir).isDirectory()) return false;
+    const re = segmentRe(head);
+    return readdirSync(dir).some((entry) => {
+      if (!re.test(entry)) return false;
+      if (rest.length === 0) return true;
+      const next = path.join(dir, entry);
+      return statSync(next).isDirectory() && walk(next, rest);
+    });
+  };
 
-  const segment = segments[wildcardAt];
-  // `dir/**` (and `dir/**/*.sh`): the prefix directory existing is the assertion.
-  if (segment === '**') return true;
-  // `dir/*.json`: at least one entry must match, and nothing may follow it.
-  if (wildcardAt !== segments.length - 1) return false;
-  const re = new RegExp(`^${segment.replace(/\./g, '\\.').replace(/\*/g, '.*')}$`);
-  return readdirSync(prefix).some((entry) => re.test(entry));
+  return walk(ROOT, citation.split('/'));
 }
 
 describe('skill docs cite real repo paths', () => {
@@ -139,12 +170,25 @@ describe('skill docs cite real repo paths', () => {
 describe('mirrored skill docs cite issues by fully-qualified reference', () => {
   it.each(MIRRORED_DOCS)('%s uses owner/repo#N, never a bare #N', (rel) => {
     const text = prose(readFileSync(path.join(ROOT, rel), 'utf8'));
-    const bare = [...text.matchAll(BARE_REF)].map((m) => m[0]);
+    const bare = unqualifiedRefs(text);
     expect(
       bare,
       `unqualified issue reference(s) in ${rel} — write go-to-k/<repo>#N so the ` +
-        `reference survives being mirrored into a sibling repo:\n${bare.join(', ')}`
+        `reference survives being mirrored into a sibling repo (a half-qualified ` +
+        `cdk-real-drift#N or go-to-k#N autolinks nowhere):\n${bare.join(', ')}`
     ).toEqual([]);
+  });
+
+  it('flags every unqualified spelling and exempts the backtick forms (spelling probe)', () => {
+    expect(unqualifiedRefs(prose('A bare #601 ref.'))).toEqual(['#601']);
+    expect(unqualifiedRefs(prose('A repo-only cdk-real-drift#602 ref.'))).toEqual([
+      'cdk-real-drift#602',
+    ]);
+    expect(unqualifiedRefs(prose('An owner-only go-to-k#603 ref.'))).toEqual(['go-to-k#603']);
+    expect(unqualifiedRefs(prose('A parenthesised (PR #604) ref.'))).toEqual(['#604']);
+    expect(unqualifiedRefs(prose('A qualified go-to-k/cdk-real-drift#605 ref.'))).toEqual([]);
+    expect(unqualifiedRefs(prose('A span `#606` is exempt.'))).toEqual([]);
+    expect(unqualifiedRefs(prose('A span ``#607 with `ticks` `` is exempt too.'))).toEqual([]);
   });
 
   // Anti-no-op guard on the TOTAL, not per doc: a skill that cites nothing is
