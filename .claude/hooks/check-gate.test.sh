@@ -26,6 +26,14 @@ trap 'rm -rf "$TMPDIR"' EXIT
 repo="$TMPDIR/repo"
 git init -q -b main "$repo"
 git -C "$repo" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
+# Opt-in marker: the gate only guards repos that follow the markgate convention.
+: > "$repo/.markgate.yml"
+
+# A git repo that does NOT opt in — someone else's workflow (a dotfiles
+# checkout), where committing to main is normal and no marker exists.
+noopt="$TMPDIR/noopt"
+git init -q -b main "$noopt"
+git -C "$noopt" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
 
 notrepo="$TMPDIR/plain"
 mkdir -p "$notrepo"
@@ -107,6 +115,8 @@ run_case "cd <path> reads the target tree, not cwd" 2 "cd $repo && git commit -m
 
 # --- fail-open / fail-loud paths ---------------------------------------------
 run_case "non-git target fails open" 0 "git commit -m x" "$notrepo" "$SHIM_DIR" 1 1
+# A git repo that does not opt in (no .markgate.yml) is someone else's workflow.
+run_case "repo without .markgate.yml passes through" 0 "git commit -m x" "$noopt" "$SHIM_DIR" 1 1
 run_case "cd to a non-git path fails open" 0 "cd $notrepo && git commit -m x" \
   "$repo" "$SHIM_DIR" 1 1
 run_case "missing markgate fails LOUD" 2 "git commit -m x" "$repo" "$BARE_DIR" 0 0

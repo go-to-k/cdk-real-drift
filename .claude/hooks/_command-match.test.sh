@@ -75,5 +75,41 @@ want_dir "/w/t"       "git -C beats cd"        'cd /other && git -C /w/t commit 
 want_dir "/w/t"       "gh -C on a merge"       'gh -C /w/t pr merge 1 --squash' /fallback "$M"
 want_dir "/fallback"  "cd AFTER the verb does not count" 'git commit -m x && cd /w/t' /fallback "$C"
 
+# --- the review findings from go-to-k/cdk-local#542 --------------------------
+# Every one of these was measured WRONG in the first version of this helper.
+want_match 0 "bare & separator"              'sleep 0 & git commit -m x' "$C"
+want_match 0 "command substitution"          'echo $(git commit -m x)' "$C"
+want_match 0 "substitution into a variable"  'SHA=$(git commit -m x)' "$C"
+want_match 0 "backtick substitution"         'echo `git commit -m x`' "$C"
+want_match 0 "bash -c wrapper"               'bash -c "git commit -m x"' "$C"
+want_match 0 "if/then compound"              'if true; then git commit -m x; fi' "$C"
+want_match 0 "for/do compound"               'for f in a; do git commit -m x; done' "$C"
+want_match 0 "timeout wrapper"               'timeout 60 git commit -m x' "$C"
+want_match 0 "time wrapper"                  'time git commit -m x' "$C"
+want_match 0 "nested subshells"              '( ( git commit -m x ) )' "$C"
+want_match 0 "backslash continuation"        'git \
+  commit -m x' "$C"
+want_match 0 "quoted -C path with a space"   'git -C "/w t" commit -m x' "$C"
+
+# The quote machinery only earns its keep on a separator INSIDE a string: without
+# it these match, and the gates start blocking ordinary `echo`s.
+want_match 1 "&& inside a quoted string"     'echo "step && git commit -m x"' "$C"
+want_match 1 "; inside a quoted string"      "echo 'step ; git commit -m x'" "$C"
+want_match 1 "| inside a quoted string"      'echo "step | git commit -m x"' "$C"
+# A quoted span survives a NEWLINE: a `--body "…"` argument is one span, and this
+# repo writes PR bodies that quote shell examples.
+want_match 1 "multi-line quoted body" 'gh pr create --body "line one
+line two && git commit -m x
+line three"' "$C"
+want_match 1 "CRLF heredoc terminator" 'cat <<EOF
+body
+EOF
+echo done' "$C"
+
+want_dir "/w t"   "quoted cd path"   'cd "/w t" && git commit -m x' /fb "$C"
+want_dir "/w t"   "quoted -C path"   'git -C "/w t" commit -m x' /fb "$C"
+want_dir "/fb"    "-C in a NON-matched segment is ignored" \
+  'git -C /elsewhere status && git commit -m x' /fb "$C"
+
 printf '\npass: %s  fail: %s\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

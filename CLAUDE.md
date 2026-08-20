@@ -408,9 +408,10 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   asked to consolidate one `/work-issues` lesson across cdkd, cdk-local and this
   repo discovered that every PreToolUse gate here was inert, fixed the matchers in
   all three, and then filed the remaining script-level gap as three separate
-  issues — reproducing exactly the per-repo split the request existed to end. The
-  fix belonged in the same three PRs, which is where it landed after the user
-  objected.
+  issues — reproducing exactly the per-repo split the request existed to end. It
+  took the user objecting to get the fix done in the same SESSION, as a follow-up
+  PR per repo. "Same session" is the bar; "same PR" is only the bar when the work
+  is small enough to review together.
 
   **A newly DISCOVERED bug is not a residual.** A residual (deferred polish, a
   nit, a parity gap) is fully describable, so writing it down loses nothing. A
