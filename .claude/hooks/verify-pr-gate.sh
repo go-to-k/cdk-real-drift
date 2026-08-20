@@ -62,6 +62,33 @@ gate_matches "$cmd" "$GATE_RE_PR_CREATE_OR_MERGE" || exit 0
 # segment wins, else the last `cd <path>` segment before it, else the payload cwd.
 target_dir=$(gate_target_dir "$cmd" "${hook_cwd:-$PWD}" "$GATE_RE_PR_CREATE_OR_MERGE")
 
+# Fails CLOSED (keeps gating) if the changed-file set can't be computed — we
+# only skip the gate when we can PROVE the diff is src-free.
+#
+# Read the diff from the RESOLVED TARGET DIR, never the hook's own cwd. The hook
+# process runs wherever the client launched it (usually the main checkout), where
+# HEAD == origin/main and the diff is EMPTY, so the exemption could not fire and
+# a docs-only PR was told to run /verify-pr. The mirror case is worse: a cwd
+# sitting in some OTHER tree with a non-src diff would have EXEMPTED a PR that
+# does touch `src/**` — a fail-open. Measured 2026-08-21 while merging
+# go-to-k/cdk-real-drift#1805.
+base=""
+for ref in origin/main origin/master main master; do
+  if git -C "$target_dir" rev-parse --verify --quiet "$ref" >/dev/null 2>&1; then base="$ref"; break; fi
+done
+if [ -n "$base" ]; then
+  mb=$(git -C "$target_dir" merge-base "$base" HEAD 2>/dev/null || echo "")
+  if [ -n "$mb" ]; then
+    changed=$(git -C "$target_dir" diff --name-only "$mb" HEAD 2>/dev/null || echo "__ERR__")
+    if [ "$changed" != "__ERR__" ] && [ -n "$changed" ] \
+       && ! printf '%s\n' "$changed" | grep -qE '^src/'; then
+      echo "verify-pr-gate: PR diff touches no src/** (docs/tooling-only) — exempt from /verify-pr (check + docs cover it)." >&2
+      exit 0
+    fi
+  fi
+fi
+
+
 # If the resolved target dir is not a git repo, silently pass — we
 # can't audit what we can't see.
 if ! git -C "$target_dir" rev-parse --git-dir >/dev/null 2>&1; then
@@ -79,24 +106,6 @@ cd "$target_dir" 2>/dev/null || exit 0
 # (which needs AWS credentials it doesn't exercise) is pure friction. So: if the
 # PR's diff vs the base contains NO `src/**` path, let it through.
 #
-# Fails CLOSED (keeps gating) if the changed-file set can't be computed — we
-# only skip the gate when we can PROVE the diff is src-free.
-base=""
-for ref in origin/main origin/master main master; do
-  if git rev-parse --verify --quiet "$ref" >/dev/null 2>&1; then base="$ref"; break; fi
-done
-if [ -n "$base" ]; then
-  mb=$(git merge-base "$base" HEAD 2>/dev/null || echo "")
-  if [ -n "$mb" ]; then
-    changed=$(git diff --name-only "$mb" HEAD 2>/dev/null || echo "__ERR__")
-    if [ "$changed" != "__ERR__" ] && [ -n "$changed" ] \
-       && ! printf '%s\n' "$changed" | grep -qE '^src/'; then
-      echo "verify-pr-gate: PR diff touches no src/** (docs/tooling-only) — exempt from /verify-pr (check + docs cover it)." >&2
-      exit 0
-    fi
-  fi
-fi
-
 # Prefer the `.mise.toml`-pinned version via `mise exec --` so the repo's
 # canonical markgate wins over an older PATH binary; see check-gate.sh for
 # the schema-bump rationale (0.3.0 markers are silently invisible to 0.3.1).
