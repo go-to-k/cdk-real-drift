@@ -496,6 +496,23 @@ enforce quality yourself; you (the orchestrator) still gate the MERGE.
 
 ## 6. Gates + PR (per lane)
 
+**Before the session's FIRST commit, prove the gates are ALIVE.** Registration is
+not execution: on 2026-08-20 every PreToolUse gate in this repo was registered and
+INERT for a day (go-to-k/cdk-real-drift#1801 — an `if` holding `A or B` matches
+nothing), and the failure is silent in the worst direction, because an ungated
+commit looks exactly like one that passed. `/hooks` shows what is REGISTERED, so
+it cannot see this. One command does:
+
+```bash
+git commit --dry-run -m "gate liveness probe"   # from the repo root, on main
+```
+
+`--dry-run` commits nothing whatever the tree looks like. Expected: `Blocked by
+branch-gate` (the root is on `main`) or `Blocked by check-gate` (markers stale).
+**Git's own output instead — `On branch main`, `nothing to commit` — means the
+gates are not firing at all**, and everything below is then self-enforced: run
+each gate's own check by hand and say so in the report, because nothing else will.
+
 From inside the worktree — a fresh worktree has no `dist/`, and 13 tests fail
 without it (they spawn the built CLI), so `vp pack` runs before the suite:
 

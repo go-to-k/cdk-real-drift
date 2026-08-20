@@ -284,6 +284,14 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
     deploy-shaped command, and the `stop-cleanup-warn` Stop hook warns at session
     end if the sentinel is still armed. Run **`/sweep-resources`** to do the
     cleanup + release the gate.
+- **Registration is not execution — prove the gates are ALIVE before the first
+  commit of a session**: `git commit --dry-run -m "gate liveness probe"` from the
+  repo root. `--dry-run` commits nothing regardless of the tree; a `Blocked by
+branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
+  output means they do NOT, and every gate below is then unenforced. On
+  2026-08-20 all eight were registered and inert for a day (go-to-k/cdk-real-drift#1801:
+  an `if` holding `A or B` matches nothing), which `/hooks` cannot show because it
+  lists registration, not firing.
 - **ALWAYS develop in a git worktree — never edit or branch in the main
   checkout, even for a single "sequential" session.** Sessions that believed
   they were alone have collided twice: a README clobber, and a branch created in
