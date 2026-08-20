@@ -37,11 +37,23 @@ hook_cwd=$(printf '%s' "$input" | jq -r '.cwd // ""' 2>/dev/null || echo "")
 
 # Only gate `gh pr merge` (with optional leading `cd <path> &&` and optional
 # `gh -C <path>`). Anything else passes through.
-# Fail OPEN if the shared matcher is missing: a hook that cannot decide must not
-# break every Bash call with a `command not found` (go-to-k/cdk-local#542 review).
+# Fail CLOSED if the shared matcher is missing or does not load: a gate that
+# cannot decide must not wave the command through. `[ -r … ] || exit 0` was the
+# first shape here, and it silently disabled the gate whenever the library was
+# unreadable or truncated — with the sibling gates' own comments claiming the
+# opposite (go-to-k/cdkd#2130 review). The `declare -F` check catches a partial
+# source, where `.` succeeds but the function is missing.
 _gate_lib="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_command-match.sh"
-[ -r "$_gate_lib" ] || exit 0
+if [ ! -r "$_gate_lib" ]; then
+  echo "Blocked: .claude/hooks/_command-match.sh is missing or unreadable, so this gate cannot evaluate the command." >&2
+  exit 2
+fi
+# shellcheck source=/dev/null
 . "$_gate_lib"
+if ! declare -F gate_matches >/dev/null 2>&1; then
+  echo "Blocked: .claude/hooks/_command-match.sh loaded but gate_matches is undefined (truncated file?)." >&2
+  exit 2
+fi
 
 # Which commands this gate applies to. The segment matcher sees a gated verb
 # in ANY position — `git add -A && git commit` used to run ungated
