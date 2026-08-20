@@ -1,3 +1,10 @@
+## [0.26.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.26.1...v0.26.2) (2026-08-20)
+
+
+### Bug Fixes
+
+* **hooks:** stop the segment matcher losing quoted paths, and see the spellings it still missed ([#1805](https://github.com/go-to-k/cdk-real-drift/issues/1805)) ([7bbc5a3](https://github.com/go-to-k/cdk-real-drift/commit/7bbc5a3c0209d93f0d1706cb77f7e809a136c514))
+
 ## [0.26.1](https://github.com/go-to-k/cdk-real-drift/compare/v0.26.0...v0.26.1) (2026-08-10)
 
 
