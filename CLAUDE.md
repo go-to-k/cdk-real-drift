@@ -124,6 +124,7 @@ same as `cdk-local`. `vp` and `markgate` are pinned by `.mise.toml` (run
 vp run build       # vp pack — tsdown ESM bundle to dist/ (bin: cdkrd)
 vp run dev         # vp pack --watch
 vp run test        # vp test run — Vitest unit tests (tests/integration/** excluded)
+vp run test:hooks  # the .claude/hooks/*.test.sh gate harnesses (shell; vitest never sees them)
 vp run typecheck   # tsc --project tsconfig.json --noEmit
 vp check --fix     # lint + format (oxc), with auto-fix
 vp run check       # lint + format check (what CI runs)

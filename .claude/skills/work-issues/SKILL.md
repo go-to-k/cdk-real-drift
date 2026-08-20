@@ -415,6 +415,48 @@ hits with zero false positives. Then drive the failure direction the same way th
 no-`src/**` tier in section 8 requires: `git stash push <the repaired file>`, watch
 the scan report the exact hits with their line numbers, and `git stash pop`.
 
+**Calibration and that stash-pop drive read the SAME instances, so between them
+they never show the rule catching a defect written a DIFFERENT way.** Running the
+candidate over the unrepaired tree buys PRECISION (are the hits real?) plus recall
+over the instances that HAPPEN TO EXIST; stashing the repaired file back in then
+replays exactly those. Neither touches the SHAPE — the spellings the tree does not
+use today, and the contexts that defeat the exemption logic. Follow them with two
+more probes, both run against the real tree rather than reasoned about. Every
+fence in this repo was put through them on 2026-08-20
+(go-to-k/cdk-real-drift#1797) and four of the eight were dead:
+
+- **Write the defect in EVERY spelling the language allows, and confirm each one
+  is flagged.** `tests/no-direct-tty.test.ts` asserted `not.toContain('stdin.isTTY')`,
+  so `process.stdin['isTTY']`, a destructured `const { isTTY } = process.stdin`
+  and `isatty(0)` from `node:tty` all read the same state past a green fence. In
+  source the same shape is go-to-k/cdkd#2111: a scanner calibrated at 19 hits /
+  zero false positives matched `||` only while the tree already used `??` at four
+  sites, and widening it surfaced a real bug nobody had filed.
+- **Delete the thing the fence REQUIRES, and watch it fail.** This is the probe
+  that finds a wrong POPULATION, and a population derived from the DEFECT is the
+  worst kind: `tests/gate-cd-form-parity-1786.test.ts` selected its gates with
+  `filter(h => h.condition.includes('Bash(git commit*)'))`, so deleting the bare
+  form dropped a gate OUT of the population instead of failing it — and disarming
+  `stale-base-gate` and `ci-green-gate` outright (`if` replaced by a pattern that
+  matches nothing) left it green at 7/7. The same day, three more here: the TTY
+  fence listed 4 of the 14 files in `src/commands/` and so never looked at
+  `ignore.ts`; `tests/skill-doc-paths.test.ts` enumerated `.claude/hooks/*.test.sh`
+  and asserted a COUNT, which measures the harnesses that exist and can never
+  report the hook that has none (`check-gate.sh`, the one every commit passes
+  through); and `tests/releaserc-header-pattern.test.ts` looked ONE plugin up by
+  name while `@semantic-release/release-notes-generator` sat there with no
+  `parserOpts` at all — which is why all 13 `type!:` merges in this repo's history
+  released a version and left no CHANGELOG entry behind.
+
+And ask the dumbest question last: **is anything RUNNING it?** The nine
+`.claude/hooks/*.test.sh` harnesses had no `vp run` task and no CI step — they are
+shell, so `vp test run` never saw them — and had been exercised only by hand since
+the day each was written (`vp run test:hooks` now runs them, in CI too).
+
+The general shape: **a fence is not evidence until you have watched it go red on
+something you had not already counted.** Calibration says it is not noisy; only
+the spelling and deletion probes say it is load-bearing.
+
 Two traps that cost most of the apparent false positives there, both worth checking
 in any markdown scanner: tokenize per PARAGRAPH, not per line, because a code span
 may WRAP a line break and a per-line scan pairs one span's closing backtick with the

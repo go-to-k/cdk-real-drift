@@ -22,22 +22,36 @@ import { describe, expect, it } from 'vite-plus/test';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKILLS_DIR = path.join(ROOT, '.claude', 'skills');
 
-// Only these roots make a backticked token a PATH citation rather than prose.
-const PATH_ROOTS = ['src', 'tests', 'docs', '.claude', '.github'];
+// A backticked token is a PATH citation when its first segment is a real
+// top-level entry of this repo. DERIVED, not listed: the hand-kept list said
+// `src tests docs .claude .github` while `scripts/` and `demo/` are equally real
+// top-level directories, so a stale `scripts/…` citation was invisible to the
+// scan (measured 2026-08-20, go-to-k/cdk-real-drift#1797). Build outputs and
+// dependency trees are excluded — nothing in a skill doc should cite them.
+const NON_CITABLE_ROOTS = new Set(['node_modules', 'dist', 'coverage', '.git', '.worktrees']);
+const PATH_ROOTS = readdirSync(ROOT, { withFileTypes: true })
+  .filter((e) => e.isDirectory() && !NON_CITABLE_ROOTS.has(e.name))
+  .map((e) => e.name);
 
 const PATH_LIKE = /^[A-Za-z0-9_.@-]+(\/[A-Za-z0-9_.*@-]+)+$/;
 
-// Skill docs that §10-c of `.claude/skills/work-issues/SKILL.md` mirrors into the
-// sibling repos (`../cdkd`, `../cdk-local`). Only these owe fully-qualified issue
-// references: a bare `#N` renders against whichever repo is READING it, so the
-// mirror silently rewrites a correct citation into a wrong one. Both failure
-// shapes were live on 2026-08-19 (go-to-k/cdk-real-drift#1774) — this repo's
-// `#1761` resolves in cdkd to an unrelated EC2 security-group-rule issue, and its
-// `#1765` does not exist in cdk-local at all, which already shipped a bare `#1765`
-// meaning this repo's. `hunt-bugs` is deliberately NOT listed: §10-b records that
-// this flow never mirrors it, and it carries ~99 bare refs that are correct where
-// they are.
-const MIRRORED_DOCS = [path.join('.claude', 'skills', 'work-issues', 'SKILL.md')];
+// EVERY skill doc owes fully-qualified issue references: a bare `#N` renders
+// against whichever repo is READING it, so mirroring a sentence into a sibling
+// repo silently rewrites a correct citation into a wrong one. Both failure shapes
+// were live on 2026-08-19 (go-to-k/cdk-real-drift#1774) — this repo's `#1761`
+// resolves in cdkd to an unrelated EC2 security-group-rule issue, and its `#1765`
+// does not exist in cdk-local at all, which already shipped a bare `#1765` meaning
+// this repo's.
+//
+// The population used to be the ONE file this flow mirrors wholesale, on the
+// reasoning that `hunt-bugs` never travels. That stopped being true the day
+// go-to-k/cdk-real-drift#1796 and its cdk-local twin landed the same `hunt-bugs`
+// change in both repos, and the exclusion was hiding 98 bare refs in exactly the
+// file the rule had stopped covering. A doc is in scope because a SENTENCE of it
+// can travel, which is true of all of them — so the population is derived, not
+// listed (2026-08-20, go-to-k/cdk-real-drift#1797).
+// (assigned after skillDocs is declared — see below)
+let MIRRORED_DOCS: string[] = [];
 
 // A reference is qualified when `owner/repo` immediately precedes the `#`. Matches
 // deliberately skip inline-code spans and fenced blocks, so a paragraph can still
@@ -61,6 +75,8 @@ function skillDocs(): string[] {
     .map((e) => path.join('.claude', 'skills', e.name, 'SKILL.md'))
     .filter((rel) => existsSync(path.join(ROOT, rel)));
 }
+
+MIRRORED_DOCS = skillDocs();
 
 function citations(rel: string): string[] {
   const text = readFileSync(path.join(ROOT, rel), 'utf8');
@@ -131,15 +147,18 @@ describe('mirrored skill docs cite issues by fully-qualified reference', () => {
     ).toEqual([]);
   });
 
+  // Anti-no-op guard on the TOTAL, not per doc: a skill that cites nothing is
+  // legitimate (`check-docs` has no refs at all), so a per-doc floor would only
+  // measure how chatty each file is. What must never happen is the extractor
+  // matching nothing anywhere.
   it('the qualified references it should be finding are actually there', () => {
-    for (const rel of MIRRORED_DOCS) {
+    const qualified = MIRRORED_DOCS.reduce((n, rel) => {
       const text = prose(readFileSync(path.join(ROOT, rel), 'utf8'));
-      const qualified = [...text.matchAll(/[\w-]+\/[\w-]+#\d+/g)];
-      expect(
-        qualified.length,
-        `${rel} has no qualified refs — extractor is a no-op`
-      ).toBeGreaterThanOrEqual(10);
-    }
+      return n + [...text.matchAll(/[\w-]+\/[\w-]+#\d+/g)].length;
+    }, 0);
+    expect(qualified, 'no qualified refs anywhere — extractor is a no-op').toBeGreaterThanOrEqual(
+      50
+    );
   });
 });
 
@@ -157,14 +176,27 @@ describe('mirrored skill docs cite issues by fully-qualified reference', () => {
 // change caused.
 describe('hook harnesses resolve their subject from their own script path', () => {
   const HOOKS_DIR = path.join(ROOT, '.claude', 'hooks');
-  const harnesses = existsSync(HOOKS_DIR)
-    ? readdirSync(HOOKS_DIR)
-        .filter((f) => f.endsWith('.test.sh'))
-        .sort()
-    : [];
+  const entries = existsSync(HOOKS_DIR) ? readdirSync(HOOKS_DIR).sort() : [];
+  // The population is the HOOKS, not the harnesses. Deriving it from
+  // `*.test.sh` counted the harnesses that exist and so could never report the
+  // one that does not: on 2026-08-20 `check-gate.sh` — the hook every commit
+  // passes through — was the only hook in the directory with no harness beside
+  // it, and this block was green at 9/9 (go-to-k/cdk-real-drift#1797).
+  const hooks = entries.filter((f) => f.endsWith('.sh') && !f.endsWith('.test.sh'));
+  const harnesses = entries.filter((f) => f.endsWith('.test.sh'));
 
-  it('finds the harnesses to check (the extractor is not a no-op)', () => {
-    expect(harnesses.length).toBeGreaterThanOrEqual(9);
+  it('finds the hooks to check (the extractor is not a no-op)', () => {
+    expect(hooks.length).toBeGreaterThanOrEqual(9);
+    expect(hooks).toContain('check-gate.sh');
+  });
+
+  it('every hook has a harness beside it', () => {
+    const unharnessed = hooks.filter((f) => !harnesses.includes(f.replace(/\.sh$/, '.test.sh')));
+    expect(
+      unharnessed,
+      `hook(s) with no .test.sh beside them — a gate nothing exercises is a gate ` +
+        `nobody has watched go red:\n${unharnessed.join('\n')}`
+    ).toEqual([]);
   });
 
   it.each(harnesses)('%s derives its subject from its own path', (file) => {
