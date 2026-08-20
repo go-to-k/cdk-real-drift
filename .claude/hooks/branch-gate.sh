@@ -75,50 +75,17 @@ hook_cwd=$(printf '%s' "$input" | jq -r '.cwd // ""' 2>/dev/null || echo "")
 #                               forms are an accepted false-negative
 #                               of the line-start tightening (per the
 #                               memory rule's trade-off).
-if ! printf '%s' "$cmd" | grep -qE '^[[:space:]]*(cd[[:space:]]+[^[:space:]]+[[:space:]]*&&[[:space:]]*)?git([[:space:]]+(-[^[:space:]]+([[:space:]]+[^[:space:]-][^[:space:]]*)?))*[[:space:]]+(commit|push)([[:space:]]|$|[|;&`)])'; then
-  exit 0
-fi
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_command-match.sh"
 
-# Start from the Bash session's persisted cwd; fall back to the hook
-# process's own cwd if the payload did not include a `cwd` field.
-target_dir="${hook_cwd:-$PWD}"
+# Which commands this gate applies to. The segment matcher sees a gated verb in
+# ANY position — `git add -A && git commit` used to run ungated
+# (go-to-k/cdk-real-drift#1803).
+GATE_RE_COMMIT_OR_PUSH='^git([[:space:]]+-[^[:space:]]+([[:space:]]+[^[:space:]-][^[:space:]]*)?)*[[:space:]]+(commit|push)([[:space:]]|$)'
+gate_matches "$cmd" "$GATE_RE_COMMIT_OR_PUSH" || exit 0
 
-# `cd <path>` at the start of the command shifts the target dir. We
-# look at the FIRST `cd` and stop — chained `cd` patterns are rare
-# enough that handling only the leading one covers the realistic
-# foot-gun (the "cd into parent for tooling" case) without parsing
-# arbitrary shell.
-if [[ "$cmd" =~ ^[[:space:]]*cd[[:space:]]+([^[:space:]\&\;\|]+) ]]; then
-  cd_target="${BASH_REMATCH[1]}"
-  # Strip surrounding single or double quotes if present.
-  cd_target="${cd_target%\"}"; cd_target="${cd_target#\"}"
-  cd_target="${cd_target%\'}"; cd_target="${cd_target#\'}"
-  # Resolve relative paths against the inherited cwd.
-  if [[ "$cd_target" != /* ]]; then
-    cd_target="$target_dir/$cd_target"
-  fi
-  target_dir="$cd_target"
-fi
-
-# `git -C <path>` is git's own "run as if from <path>" flag and beats
-# any earlier cd. Find the LAST occurrence so a chained
-# `git -C /a foo && git -C /b commit` resolves to /b.
-if [[ "$cmd" =~ git[[:space:]]+-C[[:space:]]+([^[:space:]]+) ]]; then
-  # Use a pattern that captures the last occurrence by greedy-skipping.
-  # bash regex doesn't support lookbehind, so re-scan from the end.
-  c_target=""
-  remaining="$cmd"
-  while [[ "$remaining" =~ git[[:space:]]+-C[[:space:]]+([^[:space:]]+) ]]; do
-    c_target="${BASH_REMATCH[1]}"
-    remaining="${remaining#*"${BASH_REMATCH[0]}"}"
-  done
-  c_target="${c_target%\"}"; c_target="${c_target#\"}"
-  c_target="${c_target%\'}"; c_target="${c_target#\'}"
-  if [[ "$c_target" != /* ]]; then
-    c_target="$target_dir/$c_target"
-  fi
-  target_dir="$c_target"
-fi
+# Resolve where the command will actually run: a `-C <path>` in the matched
+# segment wins, else the last `cd <path>` segment before it, else the payload cwd.
+target_dir=$(gate_target_dir "$cmd" "${hook_cwd:-$PWD}" "$GATE_RE_COMMIT_OR_PUSH")
 
 # Repo opt-in scope (cdkd#1259): this gate protects repos that follow
 # the feature-branch + PR + markgate convention. A session rooted in

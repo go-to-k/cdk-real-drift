@@ -37,26 +37,18 @@ input=$(cat 2>/dev/null || true)
 cmd=$(printf '%s' "$input" | jq -r '.tool_input.command // ""' 2>/dev/null || echo "")
 hook_cwd=$(printf '%s' "$input" | jq -r '.cwd // ""' 2>/dev/null || echo "")
 
-# Gate only `git commit`, `gh pr create`, and `gh pr merge`. Line-start anchored
-# (tolerating an optional `cd <path> &&` prefix and `gh -C <path>`) so the command
-# words inside a quoted argument body do NOT false-positive.
-git_commit_re='^[[:space:]]*(cd[[:space:]]+[^[:space:]]+[[:space:]]*&&[[:space:]]*)?git([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+commit([[:space:]]|$)'
-gh_pr_re='^[[:space:]]*(cd[[:space:]]+[^[:space:]]+[[:space:]]*&&[[:space:]]*)?gh([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+pr[[:space:]]+(create|merge)([[:space:]]|$|[|;&`)])'
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_command-match.sh"
 
-if ! printf '%s' "$cmd" | grep -qE "$git_commit_re" \
-  && ! printf '%s' "$cmd" | grep -qE "$gh_pr_re"; then
-  exit 0
-fi
+# Gate only `git commit`, `gh pr create` and `gh pr merge`. The shared segment
+# matcher sees the verb in ANY position — `git add -A && git commit` used to run
+# ungated (go-to-k/cdk-real-drift#1803) — while a mention inside a quoted argument
+# body still does not count, because quoted spans are blanked before splitting.
+GATE_RE_COMMIT_OR_PR='^(git([[:space:]]+-[^[:space:]]+([[:space:]]+[^[:space:]-][^[:space:]]*)?)*[[:space:]]+commit|gh([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+pr[[:space:]]+(create|merge))([[:space:]]|$)'
+gate_matches "$cmd" "$GATE_RE_COMMIT_OR_PR" || exit 0
 
-# Resolve where the command runs (cwd-aware; mirrors the other gates).
-target_dir="${hook_cwd:-$PWD}"
-if [[ "$cmd" =~ ^[[:space:]]*cd[[:space:]]+([^[:space:]\&\;\|]+) ]]; then
-  cd_target="${BASH_REMATCH[1]}"
-  cd_target="${cd_target%\"}"; cd_target="${cd_target#\"}"
-  cd_target="${cd_target%\'}"; cd_target="${cd_target#\'}"
-  [[ "$cd_target" != /* ]] && cd_target="$target_dir/$cd_target"
-  target_dir="$cd_target"
-fi
+# Resolve where the command will actually run: a `-C <path>` in the matched
+# segment wins, else the last `cd <path>` segment before it, else the payload cwd.
+target_dir=$(gate_target_dir "$cmd" "${hook_cwd:-$PWD}" "$GATE_RE_COMMIT_OR_PR")
 
 # Not a git repo (or git unavailable) → nothing to gate.
 git -C "$target_dir" rev-parse --git-dir >/dev/null 2>&1 || exit 0

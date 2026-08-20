@@ -88,7 +88,14 @@ run_case "git commit is gated" 2 "git commit -m x" "$repo" "$SHIM_DIR" 1 1
 run_case "git -C <path> commit is gated" 2 "git -C $repo commit -m x" "$repo" "$SHIM_DIR" 1 1
 run_case "cd <path> && git commit is gated" 2 "cd $repo && git commit -m x" "$repo" "$SHIM_DIR" 1 1
 run_case "git -c k=v commit is gated" 2 "git -c user.name=t commit -m x" "$repo" "$SHIM_DIR" 1 1
-# A quoted mention is not an invocation: the match is line-start anchored.
+# The spellings go-to-k/cdk-real-drift#1803 measured running UNGATED against the
+# old line-start anchor. Each must now be gated.
+run_case "git add -A && git commit is gated" 2 "git add -A && git commit -m x" "$repo" "$SHIM_DIR" 1 1
+run_case "cd <path>; git commit is gated" 2 "cd $repo; git commit -m x" "$repo" "$SHIM_DIR" 1 1
+run_case "subshell is gated" 2 "(cd $repo && git commit -m x)" "$repo" "$SHIM_DIR" 1 1
+run_case "leading env assignment is gated" 2 "GIT_EDITOR=true git commit -m x" "$repo" "$SHIM_DIR" 1 1
+# A quoted mention is still not an invocation: quoted spans are blanked before
+# the command list is split.
 run_case "quoted mention is not gated" 0 "echo \\\"run git commit next\\\"" "$repo" "$SHIM_DIR" 1 1
 
 # --- the verdict is read from the resolved working tree ----------------------

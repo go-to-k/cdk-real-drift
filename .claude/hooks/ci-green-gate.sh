@@ -37,9 +37,13 @@ hook_cwd=$(printf '%s' "$input" | jq -r '.cwd // ""' 2>/dev/null || echo "")
 
 # Only gate `gh pr merge` (with optional leading `cd <path> &&` and optional
 # `gh -C <path>`). Anything else passes through.
-if ! printf '%s' "$cmd" | grep -qE '^[[:space:]]*(cd[[:space:]]+[^[:space:]]+[[:space:]]*&&[[:space:]]*)?gh([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+pr[[:space:]]+merge([[:space:]]|$|[|;&`)])'; then
-  exit 0
-fi
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_command-match.sh"
+
+# Which commands this gate applies to. The segment matcher sees a gated verb
+# in ANY position — `git add -A && git commit` used to run ungated
+# (go-to-k/cdk-real-drift#1803).
+GATE_RE="$GATE_RE_GH_PR_MERGE"
+gate_matches "$cmd" "$GATE_RE" || exit 0
 
 # Human emergency override.
 if printf '%s' "$cmd" | grep -qE '(^|[[:space:]])--admin([[:space:]]|=|$)'; then
@@ -47,35 +51,10 @@ if printf '%s' "$cmd" | grep -qE '(^|[[:space:]])--admin([[:space:]]|=|$)'; then
   exit 0
 fi
 
-# Resolve where the gh command will actually run (cwd + leading cd + gh -C).
-target_dir="${hook_cwd:-$PWD}"
+# Resolve where the command will actually run: a `-C <path>` in the matched
+# segment wins, else the last `cd <path>` segment before it, else the payload cwd.
+target_dir=$(gate_target_dir "$cmd" "${hook_cwd:-$PWD}" "$GATE_RE")
 
-if [[ "$cmd" =~ ^[[:space:]]*cd[[:space:]]+([^[:space:]\&\;\|]+) ]]; then
-  cd_target="${BASH_REMATCH[1]}"
-  cd_target="${cd_target%\"}"; cd_target="${cd_target#\"}"
-  cd_target="${cd_target%\'}"; cd_target="${cd_target#\'}"
-  if [[ "$cd_target" != /* ]]; then
-    cd_target="$target_dir/$cd_target"
-  fi
-  target_dir="$cd_target"
-fi
-
-if [[ "$cmd" =~ gh[[:space:]]+-C[[:space:]]+([^[:space:]]+) ]]; then
-  c_target=""
-  remaining="$cmd"
-  while [[ "$remaining" =~ gh[[:space:]]+-C[[:space:]]+([^[:space:]]+) ]]; do
-    c_target="${BASH_REMATCH[1]}"
-    remaining="${remaining#*"${BASH_REMATCH[0]}"}"
-  done
-  c_target="${c_target%\"}"; c_target="${c_target#\"}"
-  c_target="${c_target%\'}"; c_target="${c_target#\'}"
-  if [[ "$c_target" != /* ]]; then
-    c_target="$target_dir/$c_target"
-  fi
-  target_dir="$c_target"
-fi
-
-# Can't audit what we can't see — pass.
 if ! git -C "$target_dir" rev-parse --git-dir >/dev/null 2>&1; then
   exit 0
 fi
