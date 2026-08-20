@@ -1,3 +1,10 @@
+## [0.26.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.26.2...v0.26.3) (2026-08-20)
+
+
+### Bug Fixes
+
+* **hooks:** an unterminated heredoc opener is not a heredoc, and never let `set -e` eat a segment ([#1807](https://github.com/go-to-k/cdk-real-drift/issues/1807)) ([d9424fb](https://github.com/go-to-k/cdk-real-drift/commit/d9424fb884f6946ffa203e46b12db98f9ed8845c))
+
 ## [0.26.2](https://github.com/go-to-k/cdk-real-drift/compare/v0.26.1...v0.26.2) (2026-08-20)
 
 
