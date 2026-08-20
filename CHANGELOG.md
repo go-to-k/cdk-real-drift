@@ -1,3 +1,10 @@
+## [0.26.6](https://github.com/go-to-k/cdk-real-drift/compare/v0.26.5...v0.26.6) (2026-08-20)
+
+
+### Bug Fixes
+
+* **hooks:** re-segment a `bash -c` body, and stop splitting on an escaped separator ([#1810](https://github.com/go-to-k/cdk-real-drift/issues/1810)) ([ce6057d](https://github.com/go-to-k/cdk-real-drift/commit/ce6057d07146c6fb8af4641ce69e47e599c912f4))
+
 ## [0.26.5](https://github.com/go-to-k/cdk-real-drift/compare/v0.26.4...v0.26.5) (2026-08-20)
 
 
