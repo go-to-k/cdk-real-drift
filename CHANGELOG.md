@@ -1,3 +1,10 @@
+## [0.26.4](https://github.com/go-to-k/cdk-real-drift/compare/v0.26.3...v0.26.4) (2026-08-20)
+
+
+### Bug Fixes
+
+* **hooks:** an apostrophe is not a quote, and a quoted `<<X` is not a heredoc ([#1808](https://github.com/go-to-k/cdk-real-drift/issues/1808)) ([10342ef](https://github.com/go-to-k/cdk-real-drift/commit/10342ef01bcca26ce464a1a27a7cc8b36babc663))
+
 ## [0.26.3](https://github.com/go-to-k/cdk-real-drift/compare/v0.26.2...v0.26.3) (2026-08-20)
 
 
