@@ -696,6 +696,44 @@ Run `/verify-pr`. Its live-test rules decide how each PR is verified:
     pure prose diff — that issue's own fix — to run a command 3–5×, which for a
     SKILL.md edit is not a thing that exists.
 
+- **A fixture that establishes the fix's PRECONDITION on the happy path cannot
+  test the arm where the FAILING path creates it.** The most expensive shape this
+  flow produces, because every signal says pass. In cdkd (go-to-k/cdkd#2125) a fix
+  keyed on state that only the SUCCESS path persisted shipped past unit tests, a
+  real-AWS fixture, and four reviewers; the fifth found it by tracing the evidence
+  rather than the code. Here the state is the BASELINE file that `record` writes
+  under `.cdkrd/baselines/`, and the ignore rules the `ignore` verb appends:
+  a `verify.sh` that runs `record` and only THEN mutates has established the
+  precondition with a successful run, so it can never exercise the case where the
+  FIRST `check` is what both creates the situation and has to handle it — which is
+  exactly the `record`-less first-run path the core invariant is about. When a fix
+  keys on state an earlier step wrote, ask **which step writes it in the fixture,
+  and which step writes it in the reachable case**; if the answers differ, add the
+  arm where one operation does both, and prove the new arm DISCRIMINATES by
+  mutating the fix and confirming the ORIGINAL arm still passes while the new one
+  fails. An arm that fails alongside the old one has shown nothing new.
+- **A `cleanup` that ALSO runs before the run must not destroy anything the run
+  then needs.** A `WORKDIR="$(mktemp -d …)"` at load time, an `rm -rf "$WORKDIR"`
+  inside `cleanup`, and a pre-run `cleanup` call are each correct alone; together
+  the directory is gone before its first write and the symptom is a bare
+  `No such file or directory` from a redirect hundreds of lines from the cause. It
+  cost a real-AWS cycle in cdkd. AWS resources are safe from this because creating
+  them IS a phase, so a pre-run sweep can only remove a PREVIOUS run's leftovers —
+  a local scratch path computed at variable-definition time is not. Anything
+  `cleanup` removes must either be re-created by a phase or be created after the
+  pre-run call. This repo's `verify.sh` fixtures arm `trap cleanup EXIT` without a
+  pre-run call, which is why it has not bitten here; the moment one adds a pre-run
+  sweep, run the fixture end to end against stubs first — two seconds of a dry run
+  catches it.
+- **When two reviewers CONTRADICT each other, settle it in the code YOURSELF
+  before forwarding either.** Forwarding both hands the implementing agent a
+  contradiction to adjudicate with LESS context than you have; forwarding only the
+  reassuring one is how a blocker ships. Read the disputed lines, then say which
+  reviewer was right and why. This repo has no standing reviewer ladder, so the
+  rule fires exactly when a lane DISPATCHES read-only reviewers of its own — which
+  it should for a diff big enough to warrant them, and which this file's own §6
+  depth rule does not otherwise cover.
+
   What to measure in the command arm, all of it confirmed on this repo on
   2026-08-19 (go-to-k/cdk-real-drift#1768):
   - **An exit code can lie in EITHER direction, so drive both.** _Non-zero that
