@@ -168,5 +168,17 @@ EOF" "$C"
 want_dir "/tmp/a&b" "quoted path containing an ampersand" \
   'cd "/tmp/a&b" && git commit -m x' /fb "$C"
 
+# --- unexpanded paths (go-to-k/cdkd#2130 spec review) -------------------------
+# `cd "$WT" && …` is the spelling this flow MANDATES. Resolving it literally gave
+# `<cwd>/$WT`, which no `git -C` can read, so the gate could not resolve a tree
+# and exited 0. Falling back to the payload cwd fails CLOSED instead.
+want_dir "/base" "cd with an unexpanded variable falls back" 'cd "$WT" && git commit -m x' /base "$C"
+want_dir "/base" "cd with a command substitution falls back" 'cd "$(pwd)" && git commit -m x' /base "$C"
+want_dir "/base" "-C with an unexpanded variable falls back" 'git -C "$WT" commit -m x' /base "$C"
+want_dir "/real/path" "a real quoted path still resolves" 'cd "/real/path" && git commit -m x' /base "$C"
+# The verb is still SEEN in all of those — only the directory falls back.
+want_match 0 "unexpanded cd still matches the verb" 'cd "$WT" && git commit -m x' "$C"
+want_match 0 "xargs behind a pipe" 'echo f | xargs git commit -m x' "$C"
+
 printf '\npass: %s  fail: %s\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

@@ -263,6 +263,12 @@ gate_target_dir() {
   while IFS= read -r segment; do
     if [[ "$segment" =~ ^cd[[:space:]]+$GATE_PATH_TOKEN ]]; then
       cd_target=$(gate_unquote "${BASH_REMATCH[1]}")
+      # An UNEXPANDED path is not a path. `cd "$WT" && …` is the spelling this
+      # flow mandates, and resolving it literally produced `<cwd>/$WT`, which no
+      # `git -C` can read — so the gate could not resolve a tree and exited 0.
+      # Skipping it falls back to the payload cwd, which fails CLOSED
+      # (go-to-k/cdkd#2130 review).
+      case "$cd_target" in *'$'*|*'`'*) continue ;; esac
       [ -z "$cd_target" ] && continue
       [[ "$cd_target" != /* ]] && cd_target="$target/$cd_target"
       target="$cd_target"
@@ -278,6 +284,7 @@ gate_target_dir() {
         remaining="${remaining#*"${BASH_REMATCH[0]}"}"
       done
       c_target=$(gate_unquote "$c_target")
+      case "$c_target" in *'$'*|*'`'*) c_target="" ;; esac
       if [ -n "$c_target" ]; then
         [[ "$c_target" != /* ]] && c_target="$target/$c_target"
         target="$c_target"
