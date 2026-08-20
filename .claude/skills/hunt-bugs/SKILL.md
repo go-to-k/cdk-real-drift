@@ -350,7 +350,7 @@ band and asserts the LIVE value after revert is the only reliable test — the A
 is not a predictor. The `revert-toggle-converge` fixture is the reference (one fixed
 case + converge-via-remove controls). Batch 2 (2026-07-14, `revconv-hunt` fixture):
 **`ECR::Repository` `ImageTagMutability` no-oped** (independently found+fixed the
-same day as go-to-k/cdk-real-drift#1580/#1581 — check upstream before pushing a same-table fix); Lambda
+same day as go-to-k/cdk-real-drift#1580 / go-to-k/cdk-real-drift#1581 — check upstream before pushing a same-table fix); Lambda
 `TracingConfig`, SQS `DelaySeconds`, KMS Key `Enabled` all converged via bare
 `remove` — again ~1-in-4, unpredictable from the API shape. Batch 3 (2026-07-14,
 `revconv2-hunt` fixture): **`ECR::Repository` `ImageScanningConfiguration` no-oped**
@@ -403,7 +403,7 @@ hunt's NEW folds rather than a dedicated fixture): **VpcLattice ResourceConfigur
 `StartWindowHours` AND `ScheduleExpressionTimezone`** (same handler, both proven
 individually), and **EC2 TransitGatewayAttachment `Options`** ALL no-oped — 4-in-4
 for this batch's new folds (streaks run hot too); every one converged via an explicit
-CC `add` patch → plain RSDP entries (go-to-k/cdk-real-drift#1639/#1640/#1642).
+CC `add` patch → plain RSDP entries (go-to-k/cdk-real-drift#1639 / go-to-k/cdk-real-drift#1640 / go-to-k/cdk-real-drift#1642).
 Batch 9 (2026-07-22 hunt): **RUM `AppMonitorConfiguration`** (go-to-k/cdk-real-drift#1684, sibling of
 CustomEvents), **GuardDuty Filter `Action`** (go-to-k/cdk-real-drift#1687), and **Cognito UserPoolClient
 `EnableTokenRevocation` + `AuthSessionValidity`** (go-to-k/cdk-real-drift#1689 — the RefreshTokenValidity
@@ -438,7 +438,7 @@ risk is only the go-to-k/cdk-real-drift#763 explicit-write-ignored class, low), 
 `SupportedIpAddressTypes` (needs a dualstack NLB in IPv6 subnets), Synthetics Canary
 `Schedule.DurationInSeconds` + Firehose `HttpEndpointDestinationConfiguration.*`
 (nested pins — same auto-`add` note as OpenSearch, low residual).
-Batch 11 (2026-08-02 hunt, go-to-k/cdk-real-drift#1709/#1710) found the CLASS behind several of these:
+Batch 11 (2026-08-02 hunt, go-to-k/cdk-real-drift#1709 / go-to-k/cdk-real-drift#1710) found the CLASS behind several of these:
 **DERIVED (tier-2) folds had NO revert-side value source at all** — classify builds
 them into its LOCAL knownDef/knownDefPaths, so the RSDP branch sourced the (wrong)
 static value and the nested explicit-`add` branch missed entirely. Live-proven:
@@ -780,7 +780,7 @@ Recorded]` breakdown with `--verbose`.
   AWS default folds `atDefault` and is NOT recorded, so a later OOB change to it is caught
   ONLY by the R62 "appeared since record" mechanism — which fires ONLY when the resource is
   `complete`. A resource that DECLARES a write-only property (RDS `MasterUserPassword`, any
-  secret/token/key) surfaced a write-only `readGap` that (pre-#1582) marked it NOT complete,
+  secret/token/key) surfaced a write-only `readGap` that (before go-to-k/cdk-real-drift#1582) marked it NOT complete,
   silently disabling that detection — so mutating an undeclared-atDefault prop on it read
   `[Not Recorded]`, `check --fail` exited 0, and it looked like a fold bug when it was a
   completeness gap. When an undeclared-prop FN detect-test on a resource that declares a
@@ -1096,7 +1096,7 @@ Endpoint}]` (raw CFn / L1) creates live subscriptions with no AWS::SNS::Subscrip
 - **A NEW all-boolean pin family can arrive via a READER-projection fix — re-run the
   off-flip audit over the diff window, not just the historical tables.** The go-to-k/cdk-real-drift#1658
   Budgets reader fix (projecting the full 11-boolean `CostTypes`) necessarily added a
-  whole-object + per-leaf all-`true` pin family, silently re-opening the go-to-k/cdk-real-drift#1092/#1635
+  whole-object + per-leaf all-`true` pin family, silently re-opening the go-to-k/cdk-real-drift#1092 / go-to-k/cdk-real-drift#1635
   all-boolean-object class: an out-of-band `update-budget` disabling ALL nine
   `Include*` cost types read back an all-false object that `isTrivialEmpty` swallowed
   — check stayed CLEAN while the budget was gutted (live-proven + fixed with a
@@ -1149,10 +1149,10 @@ grep ': true'` and pair every new truthy pin with its off-state gate. A SINGLE
   a regression. TWO STALENESS TRAPS in this determination (both hit 2026-07-20): (a)
   the gap may have been CLOSED since the note you're reading was written — Route53
   RecordSet was this gotcha's original example and has been fully revertable since
-  go-to-k/cdk-real-drift#1312/#1431 — so grep `SDK_WRITERS[type]` before planning around "not revertable";
+  go-to-k/cdk-real-drift#1312 / go-to-k/cdk-real-drift#1431 — so grep `SDK_WRITERS[type]` before planning around "not revertable";
   (b) the not-revertable RATIONALE can go stale in the other direction: writers.ts
   justified Budgets by "the reader returns only the scalar identity subset", but
-  go-to-k/cdk-real-drift#1647/#1658 later grew the reader to the full NewBudget surface, making a writer
+  go-to-k/cdk-real-drift#1647 / go-to-k/cdk-real-drift#1658 later grew the reader to the full NewBudget surface, making a writer
   feasible (go-to-k/cdk-real-drift#1676) — when a reader gains projection, re-read the not-revertable list
   for entries whose justification was that reader's thinness.
 - **Read the revert's convergence REPORT text, not just the live value — the report
@@ -1279,7 +1279,7 @@ tests/integration/sweep-orphans.sh` to restore main to HEAD — the committed
   masks it as "No baseline yet".** The R62 mechanism only fires on snapshot-COMPLETE
   resources; a declared prop the reader never projects (DLM's shorthand
   `DefaultPolicy`, go-to-k/cdk-real-drift#1665) keeps the resource incomplete forever, so every undeclared
-  OOB change stays [Potential Drift] and `check --fail` exits 0 — and (pre-#1665) the
+  OOB change stays [Potential Drift] and `check --fail` exits 0 — and (before go-to-k/cdk-real-drift#1665) the
   preamble printed "No baseline yet" right after a successful `record`, sending you
   to re-record instead of at the readGap. When a detect probe unexpectedly misses:
   check the target resource's `readGap=` in the info: footer FIRST, and either close
@@ -1328,7 +1328,7 @@ tests/integration/sweep-orphans.sh` to restore main to HEAD — the committed
   probe, and expect plain `revert --yes` to delete it.** Before go-to-k/cdk-real-drift#1737, an OOB child
   created AFTER `record` surfaced only as `[Potential Drift]` (`check --fail` exit 0 —
   the 2026-08-09 enumrev2-hunt's live find), so older verify scripts never asserted the
-  exit code on the added step. A post-#1737 probe MUST assert `check --fail` exits 1
+  exit code on the added step. A probe written after go-to-k/cdk-real-drift#1737 MUST assert `check --fail` exits 1
   and the output carries `appeared since record`; the delete then plans WITHOUT
   `--remove-unrecorded` (the flag still gates unrecorded/pre-record inventory and the
   go-to-k/cdk-real-drift#764 recorded-changed state). Note the marker is stamped at `record` time — a

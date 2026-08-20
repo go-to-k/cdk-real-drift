@@ -293,7 +293,7 @@ grounds rather than this one.
 What the gate accepts in exchange: an issue filed by a session that has since ended
 waits up to an hour. That is the cheap side — the backlog is not going anywhere,
 while the expensive side is two agents deriving one fix from scratch. Mirrored from
-cdkd on 2026-08-19, where the window was watched live the same morning: cdkd#1973 was
+cdkd on 2026-08-19, where the window was watched live the same morning: go-to-k/cdkd#1973 was
 filed at 03:14Z, claimed by its filing lane at 03:30Z, and that lane's branch reached
 `origin` only at 04:06Z. For 16 minutes the issue had no branch, no PR and no comment,
 so every probe in §2 reported it free; for 52 minutes nothing but a time-based gate
@@ -474,7 +474,7 @@ drifted from the repo", and drift almost never produces exactly the one instance
 someone happened to notice. Check both that every entry still resolves to something
 real AND that everything that belongs is present — the second half is the one that
 gets skipped, because the issue only names the first. The evidence is cross-repo:
-on 2026-08-19 cdkd#1972 reported one dead path in a security-surface path list; the
+on 2026-08-19 go-to-k/cdkd#1972 reported one dead path in a security-surface path list; the
 audit found a second dead path (stale since an unrelated directory rename) plus four
 live authn / credential / exec surfaces never added, so the list under-protected
 considerably more than it over-claimed. Then ask what makes the recurrence
@@ -1036,7 +1036,8 @@ Every run appending one more bullet is exactly how a long skill becomes an unrea
   quoted verbatim, before a reviewer asked to check the records caught it
   (go-to-k/cdk-real-drift#1768). Reading the two records cost one command each.
   **Write every issue / PR reference FULLY QUALIFIED — the `owner/repo#N` form,
-  never a bare `#N` — everywhere in this file, this section's own refs included.**
+  never a bare `#N` and never a half-qualified `cdkd#N` — everywhere in every
+  skill doc, this section's own refs included.**
   A bare `#N` renders against whichever repo is READING it, so mirroring silently
   rewrites a correct citation into a wrong one, in both of the shapes available:
   an unqualified `#1761` here lands on go-to-k/cdkd#1761, a real but unrelated EC2
@@ -1045,8 +1046,11 @@ Every run appending one more bullet is exactly how a long skill becomes an unrea
   both were resolved on 2026-08-19, and cdk-local's already-mirrored copy carried a
   bare `#1765` that meant this repo's. The rule is mechanically detectable, so per
   §10-b it is a TEST rather than a sentence: `tests/skill-doc-paths.test.ts` fails
-  on any unqualified reference in this file. It reads plain prose only, which is
-  why the counter-examples in this paragraph can stay written as code spans.
+  on any unqualified reference in ANY `.claude/skills/*/SKILL.md` — not just this
+  one, because a sentence can travel out of any of them, and `hunt-bugs` already does
+  (go-to-k/cdk-real-drift#1796 landed the same change here and in cdk-local). It
+  reads plain prose only, which is why the counter-examples in this paragraph can
+  stay written as code spans.
 
 ### 10-d. Ship it like any other change
 
