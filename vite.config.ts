@@ -150,13 +150,19 @@ export default defineConfig({
       'lint:fix': { command: 'vp lint --fix', cache: false },
       format: { command: 'vp fmt', cache: false },
       'format:check': { command: 'vp fmt --check' },
+      // The `.claude/hooks/*.test.sh` harnesses assert the gates' BLOCK / ALLOW
+      // contracts. Nothing ran them until 2026-08-20
+      // (go-to-k/cdk-real-drift#1797) — they are shell, so `vp test run` never
+      // saw them, and CI had no step. cache:false: their subjects are hook
+      // scripts and settings.json, which the task hash does not cover.
+      'test:hooks': { command: 'bash scripts/run-hook-tests.sh', cache: false },
       // cache:false — the run-task cache can REPLAY a stale pass even though the
       // current tree has a real type error, masking it. This bit us live: PR #438
       // introduced a duplicate object-literal key (tsgo TS1117) that `vp run
       // typecheck` reported GREEN from cache, so the gate marker was set on a red
       // tree and the break reached main. Typecheck is ~1s; correctness > the cache.
       typecheck: { command: 'tsc --project tsconfig.json --noEmit', cache: false },
-      verify: { command: 'vp run check && vp run test && vp run build' },
+      verify: { command: 'vp run check && vp run test && vp run test:hooks && vp run build' },
       'runtime:smoke': {
         command: 'node dist/cli.js --version',
         dependsOn: ['build'],

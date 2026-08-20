@@ -19,7 +19,17 @@
         ]
       }
     ],
-    "@semantic-release/release-notes-generator",
+    [
+      "@semantic-release/release-notes-generator",
+      {
+        "preset": "angular",
+        "parserOpts": {
+          "headerPattern": "^(\\w*)(?:\\((.+?)\\))?(!)?: (.+)$",
+          "headerCorrespondence": ["type", "scope", "breaking", "subject"],
+          "noteKeywords": ["BREAKING CHANGE", "BREAKING CHANGES", "BREAKING"]
+        }
+      }
+    ],
     "@semantic-release/changelog",
     [
       "@semantic-release/npm",

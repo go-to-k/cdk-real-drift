@@ -31,10 +31,10 @@ Run these sequentially and report results:
    HAS caused a false-negative live-test is a `dist/` nobody rebuilt: a stale
    binary that lacked the change under test.
 4. `vp test run` (Vitest unit tests; `tests/integration/**` is excluded by
-   `vite.config.ts`). The run-task cache is a real foot-gun — PR #438's duplicate
+   `vite.config.ts`). The run-task cache is a real foot-gun — PR go-to-k/cdk-real-drift#438's duplicate
    object key passed a CACHED `vp run typecheck` and reached `main`, which is why
    `typecheck` is now `cache: false` — but `test` reported a cache MISS on every
-   run measured on 2026-08-19 (#1768). Prefer the direct form; do not treat a
+   run measured on 2026-08-19 (go-to-k/cdk-real-drift#1768). Prefer the direct form; do not treat a
    `vp run test` result as suspect on cache grounds alone.
 
 When piping any of the above to `tail` / `head` / `grep`, **check the actual

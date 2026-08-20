@@ -40,6 +40,9 @@ jobs:
       # this always rebuilds — no stale-dist replay.
       - run: vp run build
       - run: vp run test
+      # The gate harnesses are shell, so `vp run test` (vitest) never sees them.
+      # They went unrun by anything until go-to-k/cdk-real-drift#1797.
+      - run: vp run test:hooks
 
       # go-to-k/cdk-local#402 diagnostics (upstream Vite+ forks-pool crash, NOT a
       # cdk-real-drift issue): if a forks worker crashed ("Worker exited
