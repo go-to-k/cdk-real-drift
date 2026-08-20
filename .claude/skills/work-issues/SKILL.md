@@ -434,7 +434,8 @@ fence in this repo was put through them on 2026-08-20
   sites, and widening it surfaced a real bug nobody had filed.
 - **Delete the thing the fence REQUIRES, and watch it fail.** This is the probe
   that finds a wrong POPULATION, and a population derived from the DEFECT is the
-  worst kind: `tests/gate-cd-form-parity-1786.test.ts` selected its gates with
+  worst kind: `tests/gate-if-matchers-1801.test.ts` (then named for
+  go-to-k/cdk-real-drift#1786) selected its gates with
   `filter(h => h.condition.includes('Bash(git commit*)'))`, so deleting the bare
   form dropped a gate OUT of the population instead of failing it — and disarming
   `stale-base-gate` and `ci-green-gate` outright (`if` replaced by a pattern that
@@ -542,16 +543,25 @@ after staging.** Three separate traps, all hit in one lane on 2026-08-19
   sibling repo shows the same symptom from a DIFFERENT mechanism (its stores are
   per-worktree, so the marker reads as missing rather than wrong) — import the
   advice, not its explanation.
-- That `cd <worktree> &&` form is safe on a GATED command only because this repo's
-  hook conditions now match it, and they did not until
-  go-to-k/cdk-real-drift#1786: `branch-gate`, `bughunt-clean-gate`,
-  `stale-base-gate` and `ci-green-gate` each carried a `Bash(cd * && …)`
-  alternative while `check-gate`, `verify-pr-gate` and `non-english-text-gate` did
-  not — so `cd <wt> && git commit` ran UNGATED, and `cd <wt> && gh pr create`
-  skipped both the verify-pr and the English-only gate. The bypass is silent: an
-  ungated command looks exactly like one that passed.
-  `tests/gate-cd-form-parity-1786.test.ts` now fails on any gate guarding a bare
-  command form without its `cd` twin, so it cannot quietly reopen.
+- That `cd <worktree> &&` form is safe on a GATED command only because the hook
+  conditions match it, and twice they did not. On go-to-k/cdk-real-drift#1786 three
+  gates lacked the `cd` alternative, so `cd <wt> && git commit` ran UNGATED. The fix
+  added the missing spellings joined with `or` — and on
+  go-to-k/cdk-real-drift#1801 that join turned out **not to be a supported
+  expression**: an `if` holding `A or B` matches NOTHING, so for a day ALL EIGHT
+  gates were inert. `git commit` on `main` with no markers reached git in two
+  different clients while `branch-gate.sh` run by hand on the same payload blocked
+  with exit 2. Proved with three throwaway hooks: an `if`-less one fired,
+  `if: "Bash(git status*)"` fired, the `or` one never did. **An `if` carries ONE
+  pattern; a gate guarding two verbs gets two ENTRIES**, and the pattern is written
+  UNANCHORED (`Bash(*git commit*)`) because the matcher's only job is to hand the
+  script every candidate — the script re-matches precisely. cdkd, whose gates have
+  always fired, carries no `if` at all for exactly this reason.
+  `tests/gate-if-matchers-1801.test.ts` now fails on an `or`, on an anchored verb
+  pattern, and on a gate missing an entry for a command it guards. The bypass in
+  both incidents was silent: an ungated command looks exactly like one that passed,
+  which is why a gate is worth watching go RED once, by hand, after any change to
+  how it is selected.
 - Stage new files first. A marker set while your new test is still untracked does not
   cover it.
 

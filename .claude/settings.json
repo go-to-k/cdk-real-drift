@@ -1,5 +1,5 @@
 {
-  "//": "PreToolUse hooks for cdk-real-drift. The repo now has a GitHub remote and a PR-based flow, so the cdkd-derived branch-protection and verify-pr-merge gates are active (R83). Wired (per .markgate.yml, ONLY to gates with companion skills): check-gate blocks `git commit` unless check+docs markers are fresh; branch-gate blocks commit/push directly on main; bughunt-clean-gate blocks `git commit`/`gh pr create`/`gh pr merge` while the COMMITTING owner's bughunt sentinel is non-empty — per-owner, so a peer session's live hunt does not block an unrelated commit; deploy-autoarm arms a PER-SESSION token (not a global one) so your own deploy blocks your own commit but not a peer's (the legacy flat .markgate-bughunt-pending stays a global block); armed by /hunt-bugs via bughunt-track.sh add before any integ deploy; released by bughunt-track.sh clear only after every tracked stack is deleted + SWEEP CLEAN; stale-base-gate blocks `git push` of a branch that sits on origin/main yet reverts recent main work (the stale-base soft-reset clobber); verify-pr-gate blocks `gh pr create`/`gh pr merge` unless the verify-pr marker is fresh (EXEMPT for docs/tooling-only diffs touching no src/**); non-english-text-gate blocks `gh pr create`/`edit`/`merge` when the PR diff contains non-English text (the OSS English-only rule); deploy-autoarm-gate ARMS a PER-SESSION `autoarm-<session>` token the moment a deploy-shaped command (`aws cloudformation deploy`/`create-stack`/`update-stack`, `cdk deploy`, `sam deploy`) runs, so THIS session's commit/PR gate then blocks until the account is verified clean via /sweep-resources — this closes the 'deployed a throwaway live-test but never called bughunt-track.sh add' hole; worktree-guard (matcher Edit|Write|NotebookEdit) blocks an Edit/Write to the MAIN checkout's `src/**`/`tests/**` while a `.worktrees/` worktree exists (CLAUDE.md: main is integration-only; direct main edits have caused cross-session collisions — the #408 contamination). Stop hook: stop-cleanup-warn warns at session end if THIS session/owner's sentinel is still armed (per-session, mirrors bughunt-clean-gate — a peer's live hunt does not trigger a false reminder; deployed but not cleaned up — closes the 'deploy then end without committing' hole; warn-only so /hunt-bugs can keep resources live between turns). NOT wired: pr-review and the read-only integ gate — they have no companion skill in cdkrd (pr-review is multi-agent; cdkrd has no providers/state/destroy integ), so wiring them would brick the flow.",
+  "//": "PreToolUse hooks for cdk-real-drift. The repo now has a GitHub remote and a PR-based flow, so the cdkd-derived branch-protection and verify-pr-merge gates are active (R83). Wired (per .markgate.yml, ONLY to gates with companion skills): check-gate blocks `git commit` unless check+docs markers are fresh; branch-gate blocks commit/push directly on main; bughunt-clean-gate blocks `git commit`/`gh pr create`/`gh pr merge` while the COMMITTING owner's bughunt sentinel is non-empty \u2014 per-owner, so a peer session's live hunt does not block an unrelated commit; deploy-autoarm arms a PER-SESSION token (not a global one) so your own deploy blocks your own commit but not a peer's (the legacy flat .markgate-bughunt-pending stays a global block); armed by /hunt-bugs via bughunt-track.sh add before any integ deploy; released by bughunt-track.sh clear only after every tracked stack is deleted + SWEEP CLEAN; stale-base-gate blocks `git push` of a branch that sits on origin/main yet reverts recent main work (the stale-base soft-reset clobber); verify-pr-gate blocks `gh pr create`/`gh pr merge` unless the verify-pr marker is fresh (EXEMPT for docs/tooling-only diffs touching no src/**); non-english-text-gate blocks `gh pr create`/`edit`/`merge` when the PR diff contains non-English text (the OSS English-only rule); deploy-autoarm-gate ARMS a PER-SESSION `autoarm-<session>` token the moment a deploy-shaped command (`aws cloudformation deploy`/`create-stack`/`update-stack`, `cdk deploy`, `sam deploy`) runs, so THIS session's commit/PR gate then blocks until the account is verified clean via /sweep-resources \u2014 this closes the 'deployed a throwaway live-test but never called bughunt-track.sh add' hole; worktree-guard (matcher Edit|Write|NotebookEdit) blocks an Edit/Write to the MAIN checkout's `src/**`/`tests/**` while a `.worktrees/` worktree exists (CLAUDE.md: main is integration-only; direct main edits have caused cross-session collisions \u2014 the #408 contamination). Stop hook: stop-cleanup-warn warns at session end if THIS session/owner's sentinel is still armed (per-session, mirrors bughunt-clean-gate \u2014 a peer's live hunt does not trigger a false reminder; deployed but not cleaned up \u2014 closes the 'deploy then end without committing' hole; warn-only so /hunt-bugs can keep resources live between turns). NOT wired: pr-review and the read-only integ gate \u2014 they have no companion skill in cdkrd (pr-review is multi-agent; cdkrd has no providers/state/destroy integ), so wiring them would brick the flow.",
   "hooks": {
     "PreToolUse": [
       {
@@ -8,56 +8,112 @@
           {
             "type": "command",
             "command": ".claude/hooks/check-gate.sh",
-            "if": "Bash(git commit*) or Bash(git -C * commit*) or Bash(cd * && git commit*)",
+            "if": "Bash(*git commit*)",
             "timeout": 10,
             "statusMessage": "Checking /check + /check-docs markers..."
           },
           {
             "type": "command",
             "command": ".claude/hooks/branch-gate.sh",
-            "if": "Bash(git commit*) or Bash(git push*) or Bash(git -C * commit*) or Bash(git -C * push*) or Bash(cd * && git commit*) or Bash(cd * && git push*)",
+            "if": "Bash(*git commit*)",
+            "timeout": 10,
+            "statusMessage": "Checking target branch is not main..."
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/branch-gate.sh",
+            "if": "Bash(*git push*)",
             "timeout": 10,
             "statusMessage": "Checking target branch is not main..."
           },
           {
             "type": "command",
             "command": ".claude/hooks/bughunt-clean-gate.sh",
-            "if": "Bash(git commit*) or Bash(git -C * commit*) or Bash(cd * && git commit*) or Bash(gh pr create*) or Bash(gh pr merge*) or Bash(gh -C * pr create*) or Bash(gh -C * pr merge*) or Bash(cd * && gh pr create*) or Bash(cd * && gh pr merge*)",
+            "if": "Bash(*git commit*)",
+            "timeout": 10,
+            "statusMessage": "Checking for un-deleted bug-hunt resources..."
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/bughunt-clean-gate.sh",
+            "if": "Bash(*gh pr create*)",
+            "timeout": 10,
+            "statusMessage": "Checking for un-deleted bug-hunt resources..."
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/bughunt-clean-gate.sh",
+            "if": "Bash(*gh pr merge*)",
             "timeout": 10,
             "statusMessage": "Checking for un-deleted bug-hunt resources..."
           },
           {
             "type": "command",
             "command": ".claude/hooks/stale-base-gate.sh",
-            "if": "Bash(git push*) or Bash(git -C * push*) or Bash(cd * && git push*)",
+            "if": "Bash(*git push*)",
             "timeout": 10,
             "statusMessage": "Checking branch does not stale-base-clobber main..."
           },
           {
             "type": "command",
             "command": ".claude/hooks/verify-pr-gate.sh",
-            "if": "Bash(gh pr create*) or Bash(gh pr merge*) or Bash(gh -C * pr create*) or Bash(gh -C * pr merge*) or Bash(cd * && gh pr create*) or Bash(cd * && gh pr merge*)",
+            "if": "Bash(*gh pr create*)",
+            "timeout": 15,
+            "statusMessage": "Checking /verify-pr marker is fresh..."
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/verify-pr-gate.sh",
+            "if": "Bash(*gh pr merge*)",
             "timeout": 15,
             "statusMessage": "Checking /verify-pr marker is fresh..."
           },
           {
             "type": "command",
             "command": ".claude/hooks/ci-green-gate.sh",
-            "if": "Bash(gh pr merge*) or Bash(gh -C * pr merge*) or Bash(cd * && gh pr merge*)",
+            "if": "Bash(*gh pr merge*)",
             "timeout": 30,
             "statusMessage": "Checking the PR's CI is all-green before merge..."
           },
           {
             "type": "command",
             "command": ".claude/hooks/non-english-text-gate.sh",
-            "if": "Bash(gh pr create*) or Bash(gh pr edit*) or Bash(gh pr merge*) or Bash(gh -C * pr create*) or Bash(gh -C * pr edit*) or Bash(gh -C * pr merge*) or Bash(cd * && gh pr create*) or Bash(cd * && gh pr edit*) or Bash(cd * && gh pr merge*)",
+            "if": "Bash(*gh pr create*)",
+            "timeout": 20,
+            "statusMessage": "Scanning PR diff for non-English text..."
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/non-english-text-gate.sh",
+            "if": "Bash(*gh pr edit*)",
+            "timeout": 20,
+            "statusMessage": "Scanning PR diff for non-English text..."
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/non-english-text-gate.sh",
+            "if": "Bash(*gh pr merge*)",
             "timeout": 20,
             "statusMessage": "Scanning PR diff for non-English text..."
           },
           {
             "type": "command",
             "command": ".claude/hooks/deploy-autoarm-gate.sh",
-            "if": "Bash(*deploy*) or Bash(*create-stack*) or Bash(*update-stack*)",
+            "if": "Bash(*deploy*)",
+            "timeout": 10,
+            "statusMessage": "Auto-arming the cleanup gate on deploy..."
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/deploy-autoarm-gate.sh",
+            "if": "Bash(*create-stack*)",
+            "timeout": 10,
+            "statusMessage": "Auto-arming the cleanup gate on deploy..."
+          },
+          {
+            "type": "command",
+            "command": ".claude/hooks/deploy-autoarm-gate.sh",
+            "if": "Bash(*update-stack*)",
             "timeout": 10,
             "statusMessage": "Auto-arming the cleanup gate on deploy..."
           }
