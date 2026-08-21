@@ -458,6 +458,38 @@ The general shape: **a fence is not evidence until you have watched it go red on
 something you had not already counted.** Calibration says it is not noisy; only
 the spelling and deletion probes say it is load-bearing.
 
+**Those two probes test the RULE; a third is needed when the subject is a
+CLASSIFIER, because there the weak part is the POPULATION.** A classifier is any
+function deciding which of several shapes an input is — `classifyTransient` and
+`isDependencyViolation` (`src/revert/transient.ts`, `src/revert/apply.ts`),
+`classifyStackStatus` and `isResourceNotFoundError` (`src/aws-errors.ts`),
+`isNestedUndeclared` (`src/revert/plan.ts`). Its defects live in the shapes
+nobody thought to write down, so a suite of hand-picked cases goes green on
+exactly the regressions that matter, and no amount of probing the CASES you
+have reaches the ones you do not. Cross-repo evidence, 2026-08-21
+(go-to-k/cdkd#2001): a region-vs-stack-name predicate shipped THREE green
+revisions, each fixing the case the previous review named and breaking a
+neighbouring one, every revision passing a suite that had grown a case per
+round.
+
+The fence that ends it is a differential walk: enumerate the input space, run
+BOTH the new implementation and a transcription of the old one, and fail on any
+difference outside an explicitly enumerated set of intended classes. That
+inverts the burden — a shape nobody imagined is a failure by default rather than
+a silent pass. Get the old implementation from `git show origin/main:<path>`
+rather than from memory, and confirm the two agree where they SHOULD before
+trusting the cells where they differ. Two ways it goes inert, both measured on
+that lane and both siblings of the four dead fences above:
+
+- **Classify by the resulting VALUE, not by the input's shape.** The first cut
+  bucketed a differing cell by which input it was, so mutating the fix into a
+  total regression left every cell inside the "intended repair" bucket and the
+  fence stayed GREEN, while nine ordinary cases caught it.
+- **Carry a floor per class.** The walk reaches a class only if the input pool
+  contains it; one class there was real, intended and never reached, so a pool
+  that quietly stops covering one passes as "no regressions" — the same
+  "measures the harnesses that exist" failure as the COUNT assertion above.
+
 Two traps that cost most of the apparent false positives there, both worth checking
 in any markdown scanner: tokenize per PARAGRAPH, not per line, because a code span
 may WRAP a line break and a per-line scan pairs one span's closing backtick with the
@@ -543,7 +575,15 @@ after staging.** Three separate traps, all hit in one lane on 2026-08-19
   never written; the retry appended with `>>`, which CREATED the file as a fragment,
   and go-to-k/cdk-local#525 opened carrying only its review section — no summary and
   no `Closes` line. That silently cost the auto-close: its body had to be patched
-  after the merge and go-to-k/cdk-local#509 closed by hand. Every gated command here
+  after the merge and go-to-k/cdk-local#509 closed by hand. **The worse
+  signature is not that ABSENT file but a STALE one from an EARLIER session**,
+  since these paths are conventional (`/tmp/pr-body.md`) and shared: the gate
+  then inspects that file and reports violations from content this session never
+  wrote. Measured 2026-08-21 in cdkd, where a `gh pr create` whose heredoc had
+  not run was refused for four bare `#N` refs belonging to a lane days old, none
+  of them in the draft on screen. If a gate names text you do not recognise,
+  check the file's mtime before hunting for the text, and give body files a
+  per-session name. Every gated command here
   is reachable the same way — `git commit` (`check-gate`, `branch-gate`,
   `bughunt-clean-gate`), `git push` (`branch-gate`, `stale-base-gate`), and
   `gh pr create` / `gh pr edit` / `gh pr merge` (`verify-pr-gate`, `ci-green-gate`,
