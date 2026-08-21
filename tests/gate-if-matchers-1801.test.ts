@@ -35,13 +35,13 @@ const SETTINGS = path.join(ROOT, '.claude', 'settings.json');
 
 /** What each gate must be selected for. `deploy-autoarm` matches a command SHAPE. */
 const REQUIRED: Record<string, string[]> = {
-  'check-gate.sh': ['Bash(*git commit*)'],
-  'branch-gate.sh': ['Bash(*git commit*)', 'Bash(*git push*)'],
-  'bughunt-clean-gate.sh': ['Bash(*git commit*)', 'Bash(*gh pr create*)', 'Bash(*gh pr merge*)'],
-  'stale-base-gate.sh': ['Bash(*git push*)'],
-  'verify-pr-gate.sh': ['Bash(*gh pr create*)', 'Bash(*gh pr merge*)'],
-  'ci-green-gate.sh': ['Bash(*gh pr merge*)'],
-  'non-english-text-gate.sh': ['Bash(*gh pr create*)', 'Bash(*gh pr edit*)', 'Bash(*gh pr merge*)'],
+  'check-gate.sh': ['Bash(*git*commit*)'],
+  'branch-gate.sh': ['Bash(*git*commit*)', 'Bash(*git*push*)'],
+  'bughunt-clean-gate.sh': ['Bash(*git*commit*)', 'Bash(*gh*pr*create*)', 'Bash(*gh*pr*merge*)'],
+  'stale-base-gate.sh': ['Bash(*git*push*)'],
+  'verify-pr-gate.sh': ['Bash(*gh*pr*create*)', 'Bash(*gh*pr*merge*)'],
+  'ci-green-gate.sh': ['Bash(*gh*pr*merge*)'],
+  'non-english-text-gate.sh': ['Bash(*gh*pr*create*)', 'Bash(*gh*pr*edit*)', 'Bash(*gh*pr*merge*)'],
   'deploy-autoarm-gate.sh': ['Bash(*deploy*)', 'Bash(*create-stack*)', 'Bash(*update-stack*)'],
 };
 
@@ -121,6 +121,45 @@ describe('PreToolUse gate matchers (go-to-k/cdk-real-drift#1786, go-to-k/cdk-rea
 
   // The matcher is a glob over the WHOLE command string, so an anchored pattern
   // cannot see a gated verb that follows another command. Keep them unanchored.
+  // `git -C <path> commit` and `gh -R <owner/repo> pr create` put a FLAG between
+  // the command and its verb, so a pattern demanding them adjacent
+  // (`Bash(*git commit*)`) never selects those spellings — and this repo's own
+  // memory rule tells an agent to use `git -C` in multi-repo sessions, so the
+  // gap was being actively steered into (found 2026-08-21, the same class as
+  // go-to-k/cdk-real-drift#1801). Simulate the glob to keep it closed.
+  it('a flag between the command and its verb still selects the gate', () => {
+    const globToRe = (pattern: string) =>
+      new RegExp(
+        `^${pattern
+          .replace(/^Bash\(/, '')
+          .replace(/\)$/, '')
+          .split('*')
+          .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+          .join('.*')}$`
+      );
+    const spellings = [
+      'git commit -m x',
+      'git -C /w/t commit -m x',
+      'git -c user.name=t commit -m x',
+      'cd /w/t && git commit -m x',
+      'git add -A && git commit -m x',
+    ];
+    const commitPatterns = hooks.filter((h) => h.name === 'check-gate.sh').map((h) => h.condition);
+    for (const spelling of spellings) {
+      expect(
+        commitPatterns.some((p) => globToRe(p).test(spelling)),
+        `no check-gate pattern selects: ${spelling}`
+      ).toBe(true);
+    }
+    const ghPatterns = hooks.filter((h) => h.name === 'verify-pr-gate.sh').map((h) => h.condition);
+    for (const spelling of ['gh pr create --fill', 'gh -R go-to-k/x pr create --fill']) {
+      expect(
+        ghPatterns.some((p) => globToRe(p).test(spelling)),
+        `no verify-pr-gate pattern selects: ${spelling}`
+      ).toBe(true);
+    }
+  });
+
   it('the guarded-verb patterns are unanchored, so a compound command still selects', () => {
     const anchored = hooks
       .filter((h) => /^Bash\((git|gh)\b/.test(h.condition))
