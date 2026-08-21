@@ -285,8 +285,10 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
     end if the sentinel is still armed. Run **`/sweep-resources`** to do the
     cleanup + release the gate.
 - **Registration is not execution — prove the gates are ALIVE before the first
-  commit of a session**: `git commit --dry-run -m "gate liveness probe"` from the
-  repo root. `--dry-run` commits nothing regardless of the tree; a `Blocked by
+  commit of a session**: run `git commit --dry-run -m "gate liveness probe"` from
+  the repo root **as a Bash TOOL CALL**. PreToolUse hooks gate the AGENT's tool
+  calls only: the same line typed by a human into a terminal never passes through
+  them, so it proves nothing and will always look "unblocked". `--dry-run` commits nothing regardless of the tree; a `Blocked by
 branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   output means they do NOT, and every gate below is then unenforced. On
   2026-08-20 all eight were registered and inert for a day (go-to-k/cdk-real-drift#1801:
