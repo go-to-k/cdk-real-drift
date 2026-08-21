@@ -1,3 +1,10 @@
+## [0.26.7](https://github.com/go-to-k/cdk-real-drift/compare/v0.26.6...v0.26.7) (2026-08-21)
+
+
+### Bug Fixes
+
+* **hooks:** a flag between the command and its verb no longer skips the gate, and the liveness probe says who runs it ([#1812](https://github.com/go-to-k/cdk-real-drift/issues/1812)) ([f74db44](https://github.com/go-to-k/cdk-real-drift/commit/f74db445549002ab355b4348d3d7a5c0bfea8d45))
+
 ## [0.26.6](https://github.com/go-to-k/cdk-real-drift/compare/v0.26.5...v0.26.6) (2026-08-20)
 
 
