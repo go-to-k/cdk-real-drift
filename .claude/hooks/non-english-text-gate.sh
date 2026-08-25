@@ -29,7 +29,8 @@
 #
 # Scope:
 #   - Triggers on `gh pr create` / `gh pr edit` / `gh pr merge` (and
-#     their `gh -C <path> ...` forms). Everything else passes through.
+#     their `gh -C <path> ...` forms -- tolerated in the command TEXT only;
+#     `gh` itself has no such flag). Everything else passes through.
 #   - Detects the PR by `gh pr view --json number` from the resolved
 #     target working tree (same cwd-resolution shape as branch-gate.sh
 #     / internal-pr-labels-gate.sh).
@@ -102,12 +103,32 @@ if ! git -C "$target_dir" rev-parse --git-dir >/dev/null 2>&1; then
   exit 0
 fi
 
+# `gh` HAS NO `-C` FLAG. Every `gh` call below used to pass `-C "$target_dir"`,
+# and `gh` rejects an unknown shorthand before it does anything -- so
+# `gh -C <dir> auth status` returned 1 in EVERY environment, the "unauthenticated,
+# fail open" arm fired unconditionally, and this gate exited 0 on every command
+# it was ever handed. Measured 2026-08-25 against gh 2.89.0:
+#
+#   gh auth status              rc=0
+#   gh -C /tmp auth status      rc=1   "unknown shorthand flag: 'C' in -C"
+#
+# The gate was registered, its harness was green (it drives the hook, and an
+# inert hook returns the 0 that the PASS cases expect), and it enforced nothing.
+# Same shape as go-to-k/cdk-real-drift#1801: registration is not execution.
+#
+# `gh` takes its repo from the CWD, so `cd` into the resolved tree the way
+# ci-green-gate.sh and verify-pr-gate.sh already do, and call `gh` plainly. The
+# COMMAND-MATCHING regexes keep tolerating a `-C` spelling: those read command
+# TEXT and over-approximating the trigger is free, whereas invoking a flag that
+# does not exist is not.
+cd "$target_dir" 2>/dev/null || exit 0
+
 # gh missing or unauthenticated — fail open.
 if ! command -v "${GH_BIN:-gh}" >/dev/null 2>&1; then
   exit 0
 fi
 GH="${GH_BIN:-gh}"
-if ! "$GH" -C "$target_dir" auth status >/dev/null 2>&1; then
+if ! "$GH" auth status >/dev/null 2>&1; then
   exit 0
 fi
 
@@ -121,7 +142,7 @@ if [[ "$cmd" =~ gh([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+pr[[:spa
 fi
 
 if [[ -z "$pr_number" ]]; then
-  pr_number=$("$GH" -C "$target_dir" pr view --json number -q .number 2>/dev/null || true)
+  pr_number=$("$GH" pr view --json number -q .number 2>/dev/null || true)
 fi
 
 # No PR yet (typical `gh pr create` on a fresh branch) — fall back to
@@ -142,7 +163,7 @@ if [[ "$use_local_diff" -eq 1 ]]; then
   fi
   changed_files=$(git -C "$target_dir" diff "$merge_base..HEAD" --name-only --diff-filter=AM 2>/dev/null || true)
 else
-  changed_files=$("$GH" -C "$target_dir" pr diff "$pr_number" --name-only 2>/dev/null || true)
+  changed_files=$("$GH" pr diff "$pr_number" --name-only 2>/dev/null || true)
 fi
 
 if [[ -z "$changed_files" ]]; then
@@ -176,7 +197,7 @@ MAX_REPORT=20
 # sha once.
 pr_head_sha=""
 if [[ "$use_local_diff" -eq 0 ]]; then
-  pr_head_sha=$("$GH" -C "$target_dir" pr view "$pr_number" --json headRefOid -q .headRefOid 2>/dev/null || true)
+  pr_head_sha=$("$GH" pr view "$pr_number" --json headRefOid -q .headRefOid 2>/dev/null || true)
 fi
 
 read_file_content() {
@@ -190,7 +211,7 @@ read_file_content() {
       git -C "$target_dir" show "$pr_head_sha:$f" 2>/dev/null && return 0
     fi
     # Fall back to fetching from the API.
-    "$GH" -C "$target_dir" api "repos/{owner}/{repo}/contents/$f?ref=${pr_head_sha:-HEAD}" -q .content 2>/dev/null | base64 -d 2>/dev/null
+    "$GH" api "repos/{owner}/{repo}/contents/$f?ref=${pr_head_sha:-HEAD}" -q .content 2>/dev/null | base64 -d 2>/dev/null
   fi
 }
 

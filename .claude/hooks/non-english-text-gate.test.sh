@@ -39,29 +39,36 @@ commit_all() {
   git -C "$dir" -c user.email=t@t -c user.name=t commit -q -m wip
 }
 
-# Stub `gh`. The hook calls:
-#   gh -C <dir> auth status            -> rc 0 = authed
-#   gh -C <dir> pr view --json number  -> "" (no PR; local-diff fallback)
-#   gh -C <dir> pr view <N> --json...  -> rejects (we use local-diff)
-#   gh -C <dir> pr diff <N> --name-only -> N/A here
+# Stub `gh`. The hook calls (from inside the resolved tree, `gh` taking its repo
+# from the CWD):
+#   gh auth status            -> rc 0 = authed
+#   gh pr view --json number  -> "" (no PR; local-diff fallback)
+#
+# THE STUB REJECTS `-C`, BECAUSE THE REAL BINARY DOES. It used to STRIP a
+# leading `-C <dir>` instead, which made the mock strictly more permissive than
+# production and hid a total outage: `gh` has no `-C` flag, so every real
+# `gh -C <dir> auth status` returned 1, the hook's "unauthenticated, fail open"
+# arm fired unconditionally, and the gate exited 0 on every command while this
+# harness sat green at 15/15. Measured against gh 2.89.0:
+#
+#   gh auth status           rc=0
+#   gh -C /tmp auth status   rc=1   "unknown shorthand flag: 'C' in -C"
+#
+# A mock that cannot fail the way production fails cannot detect production
+# failing. If `-C` is ever reintroduced into a `gh` CALL, every block case below
+# now goes red instead of silently passing.
 make_gh_stub() {
   local out="$TMPDIR/gh-stub"
   cat > "$out" <<'EOF'
 #!/usr/bin/env bash
-# Strip optional `-C <dir>` so we can pattern-match against the
-# remaining args.
-args=()
-i=1
-while [[ $i -le $# ]]; do
-  if [[ "${!i}" == "-C" ]]; then
-    i=$((i + 2))
-    continue
-  fi
-  args+=("${!i}")
-  i=$((i + 1))
+# Mirror the real binary: an unknown shorthand is rejected before anything runs.
+for a in "$@"; do
+  case "$a" in
+    -C) echo "unknown shorthand flag: 'C' in -C" >&2; exit 1 ;;
+  esac
 done
 
-case "${args[*]}" in
+case "$*" in
   "auth status") exit 0 ;;
   "pr view --json number -q .number") echo "" ;;
   *) echo "" ;;
