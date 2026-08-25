@@ -100,6 +100,26 @@ gate_matches "$cmd" "$GATE_RE_PR_WRITE" || exit 0
 # segment wins, else the last `cd <path>` segment before it, else the payload cwd.
 target_dir=$(gate_target_dir "$cmd" "${hook_cwd:-$PWD}" "$GATE_RE_PR_WRITE")
 
+# A FOREIGN `-R` is refused rather than audited. Every probe below runs against
+# the RESOLVED CWD, so `gh -R foreign/repo pr create` would have this gate inspect
+# THIS repo's state and then permit an action in a repo it never looked at. `-R`
+# was matched by the flag absorber and then discarded.
+foreign_repo=$(gate_foreign_repo "$cmd" "$GATE_RE_PR_WRITE" "$target_dir")
+if [ -n "$foreign_repo" ]; then
+  {
+    echo "Blocked by non-english-text-gate: this command targets \`$foreign_repo\`, but every"
+    echo "check this gate makes reads the repository at:"
+    echo ""
+    echo "  $target_dir"
+    echo ""
+    echo "so passing it would mean approving an action in a repo that was never"
+    echo "inspected. Run the command from a checkout of \`$foreign_repo\` instead,"
+    echo "where that repo's own gates apply."
+  } >&2
+  exit 2
+fi
+
+
 # If the resolved target dir is not a git repo, silently pass.
 if ! git -C "$target_dir" rev-parse --git-dir >/dev/null 2>&1; then
   exit 0
@@ -139,14 +159,28 @@ fi
 #   `gh pr merge <N>` / `gh pr edit <N>` — N is the explicit arg.
 #   `gh pr create` / `gh pr merge` (no arg) — current branch's PR.
 pr_number=""
-# Match from `pr <verb> <N>` rather than from `gh` + a flag prefix. The prefix
-# form was `-C`-only, so `gh -R o/r pr merge 5` extracted NO number and silently
-# fell back to the current branch's PR — scanning the wrong diff rather than
-# refusing. Anchoring on the verb makes this independent of however many global
-# flags precede it, and keeps the capture index stable when `GATE_GH_C` changes.
-if [[ "$cmd" =~ (^|[[:space:]])pr[[:space:]]+(merge|edit)[[:space:]]+([0-9]+) ]]; then
-  pr_number="${BASH_REMATCH[3]}"
-fi
+# The PR number, from the MATCHED SEGMENT and independent of token order.
+#
+# The original read `gh` plus a `-C`-only flag prefix, so `gh -R o/r pr merge 5`
+# extracted nothing and silently fell back to the current branch's PR. Anchoring
+# on the verb fixed that but left a worse hole: the scan ran over the WHOLE
+# command, so a quoted mention in another segment donated its number --
+#
+#   gh pr create --body "later: gh pr merge 42 --squash"   ->  42
+#
+# which scanned PR 42's diff instead of the branch being created. That is the
+# same segment-scoping rule issue-dup-check-gate documents as load-bearing, and
+# this gate did not have it.
+#
+# `gate_pr_selector` returns the first non-flag token after the matched verb in
+# the matching segment; a `merge` / `edit` selector may legitimately be a branch
+# name, so only a NUMERIC one is taken as a PR number (anything else falls
+# through to `gh pr view`, exactly as `gh pr create` does).
+pr_sel=$(gate_pr_selector "$cmd" "$(gate_re_any "$GATE_RE_GH_PR_EDIT" "$GATE_RE_GH_PR_MERGE")")
+case "$pr_sel" in
+  ''|*[!0-9]*) ;;
+  *) pr_number="$pr_sel" ;;
+esac
 
 if [[ -z "$pr_number" ]]; then
   pr_number=$("$GH" pr view --json number -q .number 2>/dev/null || true)

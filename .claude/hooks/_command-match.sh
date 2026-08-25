@@ -346,6 +346,128 @@ gate_re_any() {
   printf '^(%s)' "$out"
 }
 
+# gate_pr_selector <command> <verb-ere>
+#
+# The first non-flag token AFTER the matched verb, taken from THE SEGMENT THAT
+# MATCHED. Empty when there is none.
+#
+# TWO DEFECTS THIS EXISTS TO END, both measured 2026-08-25 against the shipped
+# hooks, and both survived the `GATE_GH_C` widening -- widening the absorber was
+# necessary and NOT sufficient, it moved each bypass one step later.
+#
+# 1. THE SELECTOR MUST NOT DEPEND ON TOKEN ORDER. ci-green-gate first stripped
+#    the literal `gh pr merge` (so any global flag made the strip fail and it
+#    read back the command name `gh`), and its replacement anchored the number
+#    IMMEDIATELY after the verb -- which `gh` does not require:
+#
+#      gh pr merge 1 --squash          -> 1     ok
+#      gh pr merge --squash 1          -> ""    <- red-CI bypass
+#      gh -R o/r pr merge --squash 1   -> ""    <- red-CI bypass
+#
+#    Skipping leading `-...` tokens handles both orders. A flag VALUE that is
+#    itself numeric is skipped with its flag only when glued or `=`-joined; a
+#    space-separated value would be read as the selector, which is why callers
+#    validate the shape they expect.
+#
+# 2. THE SELECTOR MUST COME FROM THE MATCHED SEGMENT, NOT THE WHOLE COMMAND. A
+#    quoted mention in ANOTHER segment donated its number:
+#
+#      gh pr create --body "later: gh pr merge 42 --squash"   -> 42
+#
+#    so non-english-text-gate scanned PR 42's diff instead of the branch being
+#    created, and ci-green-gate checked an unrelated PR's CI. Iterating
+#    `gate_segments` and reading only the matching one closes it -- the same
+#    segment scoping issue-dup-check-gate already documents as load-bearing.
+#
+# The verb regexes are anchored at `^`, so the match starts at offset 0 and its
+# LENGTH is a safe strip. `${segment#${BASH_REMATCH[0]}}` is NOT safe: the
+# matched text would be treated as a glob pattern.
+#
+# `read -ra` rather than `set -- $rest`: word-splitting without filesystem
+# globbing, so a token containing `*` or `?` cannot expand against the cwd.
+gate_pr_selector() {
+  local cmd="$1" re="$2" segment rest tok
+  local -a toks
+  while IFS= read -r segment; do
+    [[ "$segment" =~ $re ]] || continue
+    rest="${segment:${#BASH_REMATCH[0]}}"
+    toks=()
+    read -ra toks <<< "$rest"
+    for tok in ${toks+"${toks[@]}"}; do
+      case "$tok" in -*) continue ;; esac
+      printf '%s' "$(gate_unquote "$tok")"
+      return 0
+    done
+    return 0
+  done < <(gate_segments "$cmd")
+  return 0
+}
+
+# gate_repo_flag <command> <verb-ere>
+# The `-R` / `--repo` value carried by the MATCHED segment, in any spelling gh
+# accepts (space, `=`, glued). Empty when the command names no repo.
+gate_repo_flag() {
+  local cmd="$1" re="$2" segment tok
+  local -a toks
+  while IFS= read -r segment; do
+    [[ "$segment" =~ $re ]] || continue
+    toks=()
+    read -ra toks <<< "$segment"
+    local i=0 n
+    n=${#toks[@]}
+    while [ "$i" -lt "$n" ]; do
+      tok="${toks[$i]}"
+      case "$tok" in
+        -R|--repo) i=$((i + 1)); [ "$i" -lt "$n" ] && { printf '%s' "$(gate_unquote "${toks[$i]}")"; return 0; } ;;
+        -R=*)      printf '%s' "$(gate_unquote "${tok#-R=}")"; return 0 ;;
+        --repo=*)  printf '%s' "$(gate_unquote "${tok#--repo=}")"; return 0 ;;
+        -R?*)      printf '%s' "$(gate_unquote "${tok#-R}")"; return 0 ;;
+      esac
+      i=$((i + 1))
+    done
+    return 0
+  done < <(gate_segments "$cmd")
+  return 0
+}
+
+# gate_local_repo_slug <dir>
+# `owner/repo` from the git remote, WITHOUT calling gh — no network, no auth, so
+# a gate can use it on a runner. Empty when there is no usable remote.
+gate_local_repo_slug() {
+  local dir="$1" url
+  url=$(git -C "$dir" remote get-url origin 2>/dev/null) || return 0
+  url="${url%.git}"
+  case "$url" in
+    *:*//*) ;;
+  esac
+  # git@host:owner/repo  |  https://host/owner/repo  |  ssh://git@host/owner/repo
+  url="${url##*:}"
+  url="${url##*/[a-z]/}"
+  printf '%s' "$(printf '%s' "$url" | awk -F/ '{ if (NF>=2) printf "%s/%s", $(NF-1), $NF }')"
+}
+
+# gate_foreign_repo <command> <verb-ere> <target-dir>
+# The repo named on the command line when it is NOT the repo the command would
+# otherwise be audited against. Empty when the command names none, or names this
+# one.
+#
+# WHY GATES CARE. `-R` was matched by the absorber and then DISCARDED: every gate
+# runs its `gh`/`git`/`markgate` probes from the RESOLVED CWD, so
+# `gh -R foreign/repo pr merge 5` made each gate audit THIS repo's PR 5 and then
+# permit a merge in a repo it never looked at. The parity harness could not see
+# it, because it splices in this repo's own slug.
+#
+# Unresolvable local slug counts as FOREIGN: if the gate cannot prove the named
+# repo is the one it just audited, it has not audited the right thing.
+gate_foreign_repo() {
+  local named local_slug
+  named=$(gate_repo_flag "$1" "$2")
+  [ -n "$named" ] || return 0
+  local_slug=$(gate_local_repo_slug "$3")
+  [ "$named" = "$local_slug" ] && return 0
+  printf '%s' "$named"
+}
+
 # Strip one layer of surrounding quotes from a path token.
 gate_unquote() {
   local p="$1"

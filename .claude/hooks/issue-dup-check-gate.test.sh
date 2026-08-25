@@ -208,6 +208,22 @@ run "gh api issues POST, no marker" "gh api repos/go-to-k/cdk-real-drift/issues 
 run "gh api issues POST, marker"    "gh api repos/go-to-k/cdk-real-drift/issues -f title=t -f 'body=x Dup-check: none'" "$TMPROOT" 0
 run "gh api comments is not a mint" "gh api repos/go-to-k/cdk-real-drift/issues/5/comments -f body=x"                   "$TMPROOT" 0
 run "gh api issue edit is not a mint" "gh api -X PATCH repos/go-to-k/cdk-real-drift/issues/5 -f body=x"                 "$TMPROOT" 0
+# The collection path is also the LIST endpoint, so the TRIGGER over-approximates
+# and `seg_is_api_mint` decides. Refusing a read was pure friction with no
+# duplicate in sight (verified rc=2 before this).
+run "gh api GET issues is a READ"    "gh api -X GET repos/go-to-k/cdk-real-drift/issues --paginate"      "$TMPROOT" 0
+run "gh api list with -f state"      "gh api repos/go-to-k/cdk-real-drift/issues -f state=open"          "$TMPROOT" 0
+run "gh api --method get is a READ"  "gh api --method get repos/go-to-k/cdk-real-drift/issues"           "$TMPROOT" 0
+run "gh api explicit POST is a mint" "gh api -X POST repos/go-to-k/cdk-real-drift/issues -f title=t -f body=x" "$TMPROOT" 2
+run "gh api DELETE is not a mint"    "gh api -X DELETE repos/go-to-k/cdk-real-drift/issues"              "$TMPROOT" 0
+
+# --- a TITLE is not a record of having searched -----------------------------
+# The loose inline scan ran over the whole SEGMENT, so the marker could sit
+# anywhere in the command. Verified rc=0 before this: the body carried no marker
+# at all.
+run "marker in --title only blocks"  "gh issue create --title 'Dup-check: yes' --body 'no marker here'"  "$TMPROOT" 2
+run "marker in --body still passes"  "gh issue create --title 'A bug' --body 'Dup-check: none found'"    "$TMPROOT" 0
+run "marker in --title AND --body"   "gh issue create --title 'Dup-check: x' --body 'Dup-check: none'"   "$TMPROOT" 0
 
 # --- more body-file spellings ----------------------------------------------
 run "--body-file=<p> form"          "gh issue create --body-file=$WITH"        "$TMPROOT" 0

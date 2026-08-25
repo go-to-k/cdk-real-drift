@@ -79,6 +79,26 @@ gate_matches "$cmd" "$GATE_RE_PR_CREATE_OR_MERGE" || exit 0
 # segment wins, else the last `cd <path>` segment before it, else the payload cwd.
 target_dir=$(gate_target_dir "$cmd" "${hook_cwd:-$PWD}" "$GATE_RE_PR_CREATE_OR_MERGE")
 
+# A FOREIGN `-R` is refused rather than audited. Every probe below runs against
+# the RESOLVED CWD, so `gh -R foreign/repo pr merge` would have this gate inspect
+# THIS repo's state and then permit an action in a repo it never looked at. `-R`
+# was matched by the flag absorber and then discarded.
+foreign_repo=$(gate_foreign_repo "$cmd" "$GATE_RE_PR_CREATE_OR_MERGE" "$target_dir")
+if [ -n "$foreign_repo" ]; then
+  {
+    echo "Blocked by verify-pr-gate: this command targets \`$foreign_repo\`, but every"
+    echo "check this gate makes reads the repository at:"
+    echo ""
+    echo "  $target_dir"
+    echo ""
+    echo "so passing it would mean approving an action in a repo that was never"
+    echo "inspected. Run the command from a checkout of \`$foreign_repo\` instead,"
+    echo "where that repo's own gates apply."
+  } >&2
+  exit 2
+fi
+
+
 # Fails CLOSED (keeps gating) if the changed-file set can't be computed — we
 # only skip the gate when we can PROVE the diff is src-free.
 #

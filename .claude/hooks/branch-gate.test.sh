@@ -33,6 +33,15 @@ touch "$main_repo/.markgate.yml" "$feature_repo/.markgate.yml"
 optout_repo="$TMPDIR/optout-repo"
 git init -q -b main "$optout_repo"
 git -C "$optout_repo" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
+# A main-branch repo whose path contains a SPACE. The gate's verb regex was a
+# hand-rolled copy frozen at the pre-`GATE_FLAGS` token — its flag-value
+# alternative had no quoted form — so `git -C "<path with space>" commit` matched
+# NOTHING and committed straight to main. Measured 2026-08-25: rc=0 quoted vs
+# rc=2 unquoted on the same repo.
+spaced_repo="$TMPDIR/main repo with spaces"
+git init -q -b main "$spaced_repo"
+touch "$spaced_repo/.markgate.yml"
+git -C "$spaced_repo" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
 
 pass=0
 fail=0
@@ -233,6 +242,17 @@ run_case "gh issue body quoting 'git commit' on main allowed" 0 \
 #     but the command starts with `echo`. MUST pass through.
 run_case "echo body quoting 'git push' on main allowed" 0 \
   "$(printf '{"cwd":"%s","tool_input":{"command":"echo \"reminder: git push origin main later\""}}' "$main_repo")"
+
+# 16. A QUOTED `-C` path containing a space, on main. The quoted alternative
+#     lives in `GATE_FLAGS`; the hand-rolled copy this gate used never received
+#     the go-to-k/cdk-local#542 fix that added it.
+run_case "git -C \"<main with spaces>\" commit blocked" 2 \
+  "$(printf '{"cwd":"%s","tool_input":{"command":"git -C \\"%s\\" commit -m oops"}}' "$feature_repo" "$spaced_repo")"
+
+# 17. Same path reached by `cd` instead of `-C` — the control that shows case 16
+#     is about the FLAG parsing and not about the path being unusable.
+run_case "cd \"<main with spaces>\" && git commit blocked" 2 \
+  "$(printf '{"cwd":"%s","tool_input":{"command":"cd \\"%s\\" && git commit -m oops"}}' "$feature_repo" "$spaced_repo")"
 
 echo
 echo "Pass: $pass  Fail: $fail"

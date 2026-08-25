@@ -96,7 +96,21 @@ fi
 # Which commands this gate applies to. The segment matcher sees a gated verb in
 # ANY position — `git add -A && git commit` used to run ungated
 # (go-to-k/cdk-real-drift#1803).
-GATE_RE_COMMIT_OR_PUSH='^git([[:space:]]+-[^[:space:]]+([[:space:]]+[^[:space:]-][^[:space:]]*)?)*[[:space:]]+(commit|push)([[:space:]]|$)'
+# DERIVED from the shared constants, never hand-rolled. This was the FOURTH
+# local copy of a shared pattern, and it had frozen at the PRE-`GATE_FLAGS`
+# token: its flag-value alternative was a bare `[^[:space:]-][^[:space:]]*`, with
+# no quoted alternative, so a `-C` path containing a SPACE made the verb
+# unreachable. Measured 2026-08-25 on an opted-in fixture repo sitting on `main`:
+#
+#   git -C /tmp/nospace commit -m x        rc=2
+#   git -C "/tmp/bg fix" commit -m x       rc=0   <- commits straight to main
+#   cd "/tmp/bg fix" && git commit -m x    rc=2
+#
+# `GATE_FLAGS` carries both quote characters as value alternatives, which is
+# exactly the go-to-k/cdk-local#542 fix that this copy never received. A local
+# copy of a shared pattern does not inherit its fixes -- the same lesson as the
+# three `gh pr` gates in the previous commit.
+GATE_RE_COMMIT_OR_PUSH=$(gate_re_any "$GATE_RE_GIT_COMMIT" "$GATE_RE_GIT_PUSH")
 gate_matches "$cmd" "$GATE_RE_COMMIT_OR_PUSH" || exit 0
 
 # Resolve where the command will actually run: a `-C <path>` in the matched

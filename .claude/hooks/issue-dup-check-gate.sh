@@ -217,11 +217,68 @@ MARKER_RE_LOOSE='dup-check:'
 #
 # Every matching segment must carry the marker: a command opening two issues
 # must record the search for both.
+# Is this `gh api …/issues` segment a MINT, or a READ?
+#
+# `GATE_RE_GH_API_ISSUE_CREATE` matches the issue COLLECTION path, and the
+# collection is also the LIST endpoint — `gh api repos/<o>/<r>/issues` and
+# `gh api -X GET … -f state=open` are READS, and this gate refused them (verified
+# rc=2 with the issue-create message). That is pure friction with no duplicate
+# anywhere in sight, and it contradicted the constant's own "over-approximate the
+# TRIGGER, be strict on RESOLUTION" note: resolution never checked the method.
+#
+# gh sends GET unless told otherwise or unless fields imply a body, so:
+#   explicit POST                   -> mint
+#   any other explicit method       -> read (GET / PATCH / DELETE …)
+#   no method, but a `title=` field -> mint (gh implies POST from fields)
+#   otherwise                       -> read
+seg_is_api_mint() {
+  local seg="$1" method
+  if [[ "$seg" =~ (-X|--method)[[:space:]=]+([A-Za-z]+) ]]; then
+    method=$(printf '%s' "${BASH_REMATCH[2]}" | tr '[:lower:]' '[:upper:]')
+    [ "$method" = "POST" ] && return 0
+    return 1
+  fi
+  printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-f|-F|--field|--raw-field)[[:space:]=]+.?title=' && return 0
+  return 1
+}
+
+# The inline BODY values a segment carries, one per line.
+#
+# The loose scan used to run over the whole SEGMENT, so any part of the command
+# could satisfy it — including the TITLE:
+#
+#   gh issue create --title 'Dup-check: yes' --body '<no marker>'   -> rc=0
+#
+# A title is not a record of having searched anything. Scanning only the body
+# values closes it. (Found by reading cdk-local's port of this gate, which hit
+# the same thing; it is not covered by the review that prompted this commit.)
+seg_inline_bodies() {
+  printf '%s' "$1" | perl -0777 -ne '
+      my $Q = "\x27";
+      # --body <v> / --body=<v>, quoted either way or bare. `--body-file` does
+      # NOT match: `[=\s]` after `--body` cannot consume the `-` of `-file`.
+      while (/--body[=\s]+("([^"]*)"|${Q}([^${Q}]*)${Q}|([^\s]+))/g) {
+        print((defined($2) ? $2 : defined($3) ? $3 : $4), "\n");
+      }
+      while (/(?:^|\s)-b[=\s]+("([^"]*)"|${Q}([^${Q}]*)${Q}|([^\s]+))/g) {
+        print((defined($2) ? $2 : defined($3) ? $3 : $4), "\n");
+      }
+      # `-f body=<v>` and friends. The QUOTED forms come first and may contain
+      # spaces — a single-quoted `body=x Dup-check: none` is ONE value, and a
+      # bare-token pattern truncates it at the first space and loses the marker.
+      # `body=@file` is excluded: that is a body FILE, and the file scan owns it.
+      while (/(?:--field|--raw-field|-f|-F)[=\s]+${Q}body=([^${Q}]*)${Q}/g) { print "$1\n"; }
+      while (/(?:--field|--raw-field|-f|-F)[=\s]+"body=([^"]*)"/g)          { print "$1\n"; }
+      while (/(?:--field|--raw-field|-f|-F)[=\s]+body=([^\@\s][^\s]*)/g)    { print "$1\n"; }
+    ' 2>/dev/null
+}
+
 seg_has_marker() {
   local seg="$1" f
 
-  # inline `--body '…'`: the marker is in the segment text itself.
-  if printf '%s' "$seg" | grep -qiE "$MARKER_RE_LOOSE"; then
+  # inline `--body '…'`: the marker must be in a BODY VALUE, not just anywhere
+  # in the segment (see seg_inline_bodies).
+  if seg_inline_bodies "$seg" | grep -qiE "$MARKER_RE_LOOSE"; then
     return 0
   fi
 
@@ -271,7 +328,13 @@ seg_has_marker() {
   done < <(printf '%s' "$seg" | perl -0777 -ne '
       while (/--body-file[=\s]+(["\x27]?)([^"\x27\s]+)\1/g) { print "$2\n"; }
       while (/(?:--field|--raw-field|-F)[=\s]+(["\x27]?)body=\@([^"\x27\s]+)\1/g) { print "$2\n"; }
-      while (/(?:^|\s)-F[=\s]+(["\x27]?)([^"\x27\s=]+)\1(?=\s|$)/g) { print "$2\n"; }
+      # `-F <file>` with no `=`. NOT dead code, despite looking like `git commit -F`
+    # after the segment scoping: for `gh issue create`, `-F` IS `--body-file`
+    # (`gh issue create --help`: `-F, --body-file file`), so this is the short
+    # spelling of a real body file. Deleting it would false-BLOCK
+    # `gh issue create -F body.md`. The `[^"\x27\s=]+` excludes `body=@x`, which
+    # the `--field` alternative above owns.
+    while (/(?:^|\s)-F[=\s]+(["\x27]?)([^"\x27\s=]+)\1(?=\s|$)/g) { print "$2\n"; }
     ' 2>/dev/null)
   return 1
 }
@@ -280,7 +343,13 @@ found_body_file=0
 unresolvable_path=""
 offending=""
 while IFS= read -r seg; do
-  [[ "$seg" =~ $GATE_RE_GH_ISSUE_CREATE ]] || [[ "$seg" =~ $GATE_RE_GH_API_ISSUE_CREATE ]] || continue
+  if [[ "$seg" =~ $GATE_RE_GH_API_ISSUE_CREATE ]]; then
+    # The trigger over-approximates (the collection path is also the LIST
+    # endpoint); resolution is where a READ is let through.
+    seg_is_api_mint "$seg" || continue
+  elif ! [[ "$seg" =~ $GATE_RE_GH_ISSUE_CREATE ]]; then
+    continue
+  fi
   if ! seg_has_marker "$seg"; then
     offending="$seg"
     break

@@ -236,5 +236,44 @@ want_match 0 "glued gh -R<repo> pr merge"       'gh -Ro/r pr merge 1 --squash'  
 want_match 1 "quoted -R merge in prose"         "echo 'gh -R o/r pr merge 1'"           "$M"
 want_match 1 "gh -R <repo> pr view is not merge" 'gh -R o/r pr view 1'                  "$M"
 
+# --- gate_pr_selector: the selector comes from the MATCHED verb + SEGMENT ----
+#
+# Two blockers, and the second was introduced by the fix for the first. A
+# literal `.*gh( -C <p>)? pr merge` strip failed to apply under any other global
+# flag and returned the command name `gh`; its replacement anchored the number
+# IMMEDIATELY after the verb, which `gh` does not require, so a flag-first
+# spelling lost it -- a red-CI bypass that did not exist before that change. And
+# both scanned the WHOLE command, so a quoted mention in another segment donated
+# its number.
+want_sel() {
+  local expect="$1" name="$2" cmd="$3" got
+  got=$(gate_pr_selector "$cmd" "$GATE_RE_GH_PR_MERGE")
+  if [ "$got" = "$expect" ]; then
+    pass=$((pass + 1)); printf 'OK   sel %s\n' "$name"
+  else
+    fail=$((fail + 1)); printf 'FAIL sel %s (got %s, want %s)\n' "$name" "${got:-<empty>}" "${expect:-<empty>}"
+  fi
+}
+
+want_sel 2195 "plain"                    'gh pr merge 2195 --squash'
+want_sel 2195 "-R space"                 'gh -R go-to-k/x pr merge 2195 --squash'
+want_sel 2195 "--repo space"             'gh --repo go-to-k/x pr merge 2195 --squash'
+want_sel 2195 "--repo="                  'gh --repo=go-to-k/x pr merge 2195 --squash'
+want_sel 2195 "-R="                      'gh -R=go-to-k/x pr merge 2195 --squash'
+want_sel 2195 "-R glued"                 'gh -Rgo-to-k/x pr merge 2195 --squash'
+want_sel 2195 "-C then -R"               'gh -C /tmp -R go-to-k/x pr merge 2195 --squash'
+# BLOCKER 1: gh accepts the selector after the flags, in either order.
+want_sel 1    "FLAG FIRST: --squash then 1"        'gh pr merge --squash 1'
+want_sel 1    "FLAG FIRST under -R"                'gh -R go-to-k/x pr merge --squash 1'
+want_sel 2195 "two flags then the number"          'gh pr merge --delete-branch --squash 2195'
+# A numeric token belonging to an EARLIER command must not win.
+want_sel 2195 "leading sleep 30 does not win"      'sleep 30 && gh -R go-to-k/x pr merge 2195 --squash'
+# BLOCKER 2: the selector comes from the MATCHED SEGMENT only.
+want_sel ""   "quoted mention in a --body"         'gh pr create --body "later: gh pr merge 42 --squash"'
+want_sel ""   "quoted mention cannot donate to a bare merge" \
+  'gh pr create --body "then run gh pr merge 9 --squash" && gh pr merge'
+want_sel ""   "no number given"                    'gh pr merge --squash'
+want_sel ""   "quoted mention only"                'echo "gh pr merge 5"'
+
 printf '\npass: %s  fail: %s\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

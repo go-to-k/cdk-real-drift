@@ -65,6 +65,10 @@ FAIL=0
 FIX=$(mktemp -d)
 trap 'rm -rf "$FIX"' EXIT
 git -C "$FIX" init -q -b main
+# A real origin, so `-R go-to-k/cdk-real-drift` reads as THIS repo and the
+# spellings below exercise each gate's actual logic rather than the
+# foreign-repo refusal added alongside it.
+git -C "$FIX" remote add origin https://github.com/go-to-k/cdk-real-drift.git
 printf 'gates: {}\n' > "$FIX/.markgate.yml"
 mkdir -p "$FIX/src"
 printf 'export const a = 1;\n' > "$FIX/src/x.ts"
@@ -166,6 +170,49 @@ parity non-english-text-gate.sh "gh pr create --title t"
 # The issue-mint gate is not a `pr` verb, but it reads the same flag absorber and
 # `-R` is the cross-repo mirror flow's own spelling — its primary shape.
 parity issue-dup-check-gate.sh  "gh issue create --title t --body 'no marker here'"
+
+# --- a FOREIGN `-R` must be REFUSED, not audited -----------------------------
+# The absorber matched `-R` and then discarded it: every probe runs against the
+# resolved CWD, so `gh -R foreign/repo pr merge 5` had each gate inspect THIS
+# repo and then permit a merge in a repo it never looked at. The parity cases
+# above structurally cannot see this — they splice in this repo's own slug — so
+# it needs its own assertion.
+#
+# issue-dup-check-gate is deliberately EXCLUDED: filing into a sibling repo with
+# `-R` from this worktree is the cross-repo mirror flow, and that gate documents
+# that the CWD decides the policy while `-R` only decides where the issue lands.
+# It audits nothing repo-specific, so a foreign `-R` is correct there.
+# The MESSAGE is asserted, not just the exit code. Every gate in this fixture
+# already blocks for its own reasons, so `rc=2` alone is satisfied whether the
+# foreign refusal fired or not — verified: deleting verify-pr-gate's refusal left
+# an exit-code-only check green at 34/34. Naming the repo in the assertion is what
+# makes it discriminate.
+foreign() { # <hook.sh> <plain command>
+  local hook="$1" out rc
+  out=$(jq -n --arg c "${2/gh /gh -R foreign/evil }" --arg d "$FIX" \
+        '{tool_name:"Bash", tool_input:{command:$c}, cwd:$d}' \
+        | PATH="$FIX/bin:$PATH" GH_BIN="$GH_STUB" bash "$HOOKS_DIR/$hook" 2>&1) && rc=0 || rc=$?
+  if [ "$rc" = "2" ] && printf '%s' "$out" | grep -qF 'foreign/evil'; then
+    echo "PASS: $hook refuses a foreign -R by name (exit 2)"
+    PASS=$((PASS + 1))
+  else
+    echo "FAIL: $hook did not refuse \`-R foreign/evil\` by name (exit $rc) — it audited THIS repo"
+    FAIL=$((FAIL + 1))
+  fi
+}
+foreign verify-pr-gate.sh        "gh pr merge 1 --squash"
+foreign ci-green-gate.sh         "gh pr merge 1 --squash"
+foreign non-english-text-gate.sh "gh pr create --title t"
+# The control: the mirror flow's foreign `-R` must still reach the issue gate's
+# own logic rather than being refused outright.
+if [ "$(drive issue-dup-check-gate.sh "gh -R go-to-k/cdk-local issue create --body 'no marker'")" = "2" ] \
+   && [ "$(drive issue-dup-check-gate.sh "gh -R go-to-k/cdk-local issue create --body 'x Dup-check: none'")" = "0" ]; then
+  echo "PASS: issue-dup-check-gate still judges a foreign -R by its BODY (mirror flow)"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL: issue-dup-check-gate no longer judges a foreign -R by its body"
+  FAIL=$((FAIL + 1))
+fi
 
 echo ""
 echo "Pass: $PASS  Fail: $FAIL"

@@ -457,7 +457,17 @@ that gate a reader will otherwise discover the hard way:
   other, which is the right outcome: §10-c's own three-window check is exactly what the
   line records. The shared `GATE_GH_C` absorbs the repo flags in every spelling `gh`
   accepts — space, `=`, and glued (`-Ro/r`) — after the `-C`-only form was measured
-  letting `gh -R … pr merge` walk past three other gates.
+  letting `gh -R … pr merge` walk past three other gates. Unlike the `pr` gates,
+  this one does NOT refuse a foreign `-R`: filing into a sibling is the whole point
+  here, and the gate audits nothing repo-specific.
+- **A `Dup-check:` line in the `--title` does not count** — the marker must appear in
+  a BODY value. The scan used to run over the whole command, so
+  `--title 'Dup-check: yes' --body '<no marker>'` satisfied it. A title is not a
+  record of having searched anything.
+- **`gh api …/issues` reads are not gated.** The collection path is also the LIST
+  endpoint, so `gh api -X GET repos/<o>/<r>/issues --paginate` and
+  `gh api repos/<o>/<r>/issues -f state=open` pass; only an explicit `POST`, or a
+  `title=` field with no method (gh infers POST), counts as a mint.
 
 Never edit in the main checkout. Per lane:
 

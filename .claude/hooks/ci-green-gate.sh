@@ -71,6 +71,26 @@ fi
 # segment wins, else the last `cd <path>` segment before it, else the payload cwd.
 target_dir=$(gate_target_dir "$cmd" "${hook_cwd:-$PWD}" "$GATE_RE")
 
+# A FOREIGN `-R` is refused rather than audited. Every probe below runs against
+# the RESOLVED CWD, so `gh -R foreign/repo pr merge` would have this gate inspect
+# THIS repo's state and then permit an action in a repo it never looked at. `-R`
+# was matched by the flag absorber and then discarded.
+foreign_repo=$(gate_foreign_repo "$cmd" "$GATE_RE" "$target_dir")
+if [ -n "$foreign_repo" ]; then
+  {
+    echo "Blocked by ci-green-gate: this command targets \`$foreign_repo\`, but every"
+    echo "check this gate makes reads the repository at:"
+    echo ""
+    echo "  $target_dir"
+    echo ""
+    echo "so passing it would mean approving an action in a repo that was never"
+    echo "inspected. Run the command from a checkout of \`$foreign_repo\` instead,"
+    echo "where that repo's own gates apply."
+  } >&2
+  exit 2
+fi
+
+
 if ! git -C "$target_dir" rev-parse --git-dir >/dev/null 2>&1; then
   exit 0
 fi
@@ -79,32 +99,29 @@ cd "$target_dir" 2>/dev/null || exit 0
 # gh is required to check; if absent we cannot audit — pass.
 command -v gh >/dev/null 2>&1 || exit 0
 
-# Extract the first non-flag token after `pr merge` as the PR selector
-# (number / URL / branch). Empty => gh resolves the current branch's PR.
+# The PR selector: the first non-flag token after the MATCHED verb, from the
+# MATCHED SEGMENT. Empty => gh resolves the current branch's PR.
 #
-# ANCHORED ON `pr merge`, NOT ON `gh` PLUS A FLAG PREFIX. The previous form led
-# with `.*gh([[:space:]]+-C[[:space:]]+[^[:space:]]+)?`, so any global flag other
-# than `-C` made the whole substitution fail to apply -- and the awk fallback then
-# returned the first non-flag token of the UNTOUCHED command, which is the literal
-# string `gh`:
+# Two defects lived here, and the second was introduced by the fix for the first
+# (both measured 2026-08-25):
 #
-#   gh pr merge 1 --squash                 -> prsel=1
-#   gh -R go-to-k/x pr merge 1 --squash    -> prsel=gh     <-- wrong
-#   gh -Rgo-to-k/x pr merge 7 --squash     -> prsel=gh     <-- wrong
+#   - a literal `.*gh( -C <p>)? pr merge` strip, which any other global flag made
+#     fail to apply, so the awk fallback returned the command name `gh`. And
+#     `gh pr checks gh` prints `no pull requests found for branch "gh"`, which the
+#     fail-open grep below reads as "no CI to check" and PASSES.
+#   - its replacement anchored the selector IMMEDIATELY after the verb, so a
+#     flag-first spelling lost it -- `gh pr merge --squash 1` gave an empty
+#     selector, a red-CI bypass that did NOT exist before that change:
 #
-# That is not a cosmetic mis-parse, it is the SAME BYPASS arriving one step later.
-# `gh pr checks gh` prints `no pull requests found for branch "gh"` (measured
-# against gh 2.89.0), which this gate's fail-open grep below treats as "no CI to
-# check" and PASSES. So widening `GATE_GH_C` made the gate fire on
-# `gh -R o/r pr merge` and it still exited 0 in any repo with a remote. The parity
-# harness did not catch it because its fixture had no remote, so `gh` failed with
-# a different message -- the fixture could not contain the feature under test.
-# Its `gh` stub now answers a non-numeric selector with the real fail-open
-# wording, so this arm is fenced.
-prsel=""
-if [[ "$cmd" =~ (^|[[:space:]])pr[[:space:]]+merge([[:space:]]+([^-][^[:space:]]*))? ]]; then
-  prsel="${BASH_REMATCH[3]}"
-fi
+#       gh pr merge 1 --squash          rc=2
+#       gh pr merge --squash 1          rc=0   <- regression
+#       gh -R o/r pr merge --squash 1   rc=0   <- regression
+#
+# `gate_pr_selector` skips leading flags (order-independent) and reads only the
+# matching segment, so a quoted `gh pr merge 9` in a --body cannot donate its
+# number to a later bare `gh pr merge`. Fenced in _command-match.test.sh and by
+# this gate's own harness, whose stub now answers PER SELECTOR.
+prsel=$(gate_pr_selector "$cmd" "$GATE_RE")
 
 checks_out=$(gh pr checks $prsel 2>&1)
 rc=$?

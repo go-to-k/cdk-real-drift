@@ -313,12 +313,28 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   would not have inherited a fix to the shared one anyway. Both are closed —
   `GATE_GH_C` is now `GATE_FLAGS`-style tokenisation (covering space, `=`, and the
   glued `-Ro/r` that a hand-written flag list misses), and every gate derives its
-  trigger from the shared constants via `gate_re_any`. Fenced by
+  trigger from the shared constants via `gate_re_any` — `branch-gate` was a FOURTH
+  hand-rolled copy, frozen at the pre-`GATE_FLAGS` token, so
+  `git -C "<path with a space>" commit` committed straight to main (rc=0 quoted
+  vs rc=2 unquoted). Two follow-on rules the same audit produced: **matching a
+  flag is not the same as honouring it** — `-R` was absorbed and then discarded,
+  so `gh -R foreign/repo pr merge 5` had each gate inspect THIS repo and permit a
+  merge in one it never looked at, and the three gates that audit repo-specific
+  state now REFUSE a foreign `-R` by name (issue-dup-check is exempt: for the
+  cross-repo mirror flow the cwd decides policy and `-R` only decides where the
+  issue lands). And **the selector must come from the matched verb in the matched
+  segment**: `gh` accepts `gh pr merge --squash 1` as readily as
+  `gh pr merge 1 --squash`, and a quoted `gh pr merge 9` inside a `--body` must
+  not donate its number to a later bare merge — both are `gate_pr_selector`'s job
+  now. Fenced by
   `.claude/hooks/gh-repo-flag-parity.test.sh`, which asserts across every gate that
   the flagged spellings return the SAME exit code as the plain one **and** that the
   plain one actually blocks — parity alone is satisfied by a gate inert in both
   directions, which is the state `non-english-text-gate` was in (it invoked
-  `gh -C`, a flag `gh` does not have, so it failed open on every command).
+  `gh -C`, a flag `gh` does not have, so it failed open on every command). The
+  foreign-`-R` half asserts the refusal MESSAGE, not just the exit code: every
+  gate in that fixture already blocks for its own reasons, so an exit-code-only
+  check stayed green with the refusal deleted.
 - **Registration is not execution — prove the gates are ALIVE before the first
   commit of a session**: run `git commit --dry-run -m "gate liveness probe"` from
   the repo root **as a Bash TOOL CALL**. PreToolUse hooks gate the AGENT's tool
