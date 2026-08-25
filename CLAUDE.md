@@ -326,7 +326,13 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   segment**: `gh` accepts `gh pr merge --squash 1` as readily as
   `gh pr merge 1 --squash`, and a quoted `gh pr merge 9` inside a `--body` must
   not donate its number to a later bare merge — both are `gate_pr_selector`'s job
-  now. Fenced by
+  now, along with consuming flag VALUES (`gh pr merge -t msg 2195` resolved `msg`,
+  and `--body-file 7 2195` audited PR 7). Two rules came out of that one, both
+  reusable: **enumerate the VALUELESS flags, never the value-takers** — the list
+  goes stale either way, and the safe direction is an unlisted flag eating the
+  number (empty selector, caller falls back) rather than leaving its value in
+  place (wrong PR); and **put a type guard at the end**, so a non-number can never
+  be handed on whatever the flag list does. Fenced by
   `.claude/hooks/gh-repo-flag-parity.test.sh`, which asserts across every gate that
   the flagged spellings return the SAME exit code as the plain one **and** that the
   plain one actually blocks — parity alone is satisfied by a gate inert in both

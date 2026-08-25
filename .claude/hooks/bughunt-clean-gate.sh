@@ -63,6 +63,16 @@ fi
 # for the `-R` bypass this closes (here it let a merge through with live AWS
 # resources still standing).
 GATE_RE_COMMIT_OR_PR=$(gate_re_any "$GATE_RE_GIT_COMMIT" "$GATE_RE_GH_PR_CREATE" "$GATE_RE_GH_PR_MERGE")
+
+# NO foreign-`-R` refusal here, deliberately, and recorded because this is the
+# fourth gate on `gh pr merge` and the omission would otherwise read as an
+# oversight. The other three refuse a foreign `-R` because they audit
+# REPO-SPECIFIC state (this repo's markers, this repo's CI, this repo's diff) and
+# would otherwise approve an action in a repo they never inspected. This gate
+# asks a SESSION-LOCAL question — does the committing owner still have bug-hunt
+# stacks standing in AWS — whose answer does not depend on which repository the
+# PR lives in. Refusing a foreign `-R` here would add friction and protect
+# nothing.
 gate_matches "$cmd" "$GATE_RE_COMMIT_OR_PR" || exit 0
 
 # Resolve where the command will actually run: a `-C <path>` in the matched

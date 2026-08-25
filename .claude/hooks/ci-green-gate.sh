@@ -90,7 +90,6 @@ if [ -n "$foreign_repo" ]; then
   exit 2
 fi
 
-
 if ! git -C "$target_dir" rev-parse --git-dir >/dev/null 2>&1; then
   exit 0
 fi
@@ -122,6 +121,16 @@ command -v gh >/dev/null 2>&1 || exit 0
 # number to a later bare `gh pr merge`. Fenced in _command-match.test.sh and by
 # this gate's own harness, whose stub now answers PER SELECTOR.
 prsel=$(gate_pr_selector "$cmd" "$GATE_RE")
+# A SECOND, INDEPENDENT shape guard, mirroring non-english-text-gate's. Two
+# guards beat one here specifically: this is the gate whose fail-open arm turns a
+# bad selector into a merge past red CI — `gh pr checks <not-a-pr>` prints
+# `no pull requests found for branch "…"`, which the grep below reads as "no CI
+# to check". `gate_pr_selector` already refuses a non-numeric token; if a future
+# change relaxes that, this keeps the damage to a fall-back rather than a wrong
+# PR.
+case "$prsel" in
+  ''|*[!0-9]*) prsel="" ;;
+esac
 
 checks_out=$(gh pr checks $prsel 2>&1)
 rc=$?

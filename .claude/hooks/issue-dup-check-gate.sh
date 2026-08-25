@@ -232,13 +232,47 @@ MARKER_RE_LOOSE='dup-check:'
 #   no method, but a `title=` field -> mint (gh implies POST from fields)
 #   otherwise                       -> read
 seg_is_api_mint() {
-  local seg="$1" method
-  if [[ "$seg" =~ (-X|--method)[[:space:]=]+([A-Za-z]+) ]]; then
-    method=$(printf '%s' "${BASH_REMATCH[2]}" | tr '[:lower:]' '[:upper:]')
-    [ "$method" = "POST" ] && return 0
+  local seg="$1" tok method="" has_title=0 want_method=0 want_field=0 v
+  # TOKENISED, and every test runs on a TOKEN rather than on the segment text.
+  # The method used to be read with a regex over the whole segment, so a method
+  # quoted inside a BODY decided it:
+  #
+  #   gh api …/issues -f title=t -f 'body=see gh api -X GET repos/o/r/issues'
+  #
+  # returned rc=0 — a mint let through because its body mentioned a read. That is
+  # the same class `seg_inline_bodies` closed for the marker scan in the very
+  # commit that added this function; it was applied to one scan and not its
+  # neighbour. A quoted value is ONE token, and a token that starts with a quote
+  # is never read as a flag, so the body can say anything.
+  while IFS= read -r tok; do
+    [ -n "$tok" ] || continue
+    if [ "$want_method" = "1" ]; then method=$(gate_unquote "$tok"); want_method=0; continue; fi
+    if [ "$want_field" = "1" ]; then
+      want_field=0
+      case "$(gate_unquote "$tok")" in title=*) has_title=1 ;; esac
+      continue
+    fi
+    case "$tok" in
+      -X|--method) want_method=1 ;;
+      --method=*)  method=$(gate_unquote "${tok#--method=}") ;;
+      # GLUED `-XPOST`: pflag accepts it, and the old `[[:space:]=]+` required a
+      # separator, so it read as no method at all.
+      -X?*)        method=$(gate_unquote "${tok#-X}") ;;
+      -f|-F|--field|--raw-field) want_field=1 ;;
+      --field=*|--raw-field=*)
+        case "$(gate_unquote "${tok#*=}")" in title=*) has_title=1 ;; esac ;;
+      -f?*|-F?*)
+        case "$(gate_unquote "${tok#-?}")" in title=*) has_title=1 ;; esac ;;
+    esac
+  done < <(gate_tokens "$seg")
+
+  # An EXPLICIT method is authoritative; `title=` only decides when there is none
+  # (gh infers POST from fields).
+  if [ -n "$method" ]; then
+    [ "$(printf '%s' "$method" | tr '[:lower:]' '[:upper:]')" = "POST" ] && return 0
     return 1
   fi
-  printf '%s' "$seg" | grep -qE '(^|[[:space:]])(-f|-F|--field|--raw-field)[[:space:]=]+.?title=' && return 0
+  [ "$has_title" = "1" ] && return 0
   return 1
 }
 

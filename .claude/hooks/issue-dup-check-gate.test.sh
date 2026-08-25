@@ -216,6 +216,14 @@ run "gh api list with -f state"      "gh api repos/go-to-k/cdk-real-drift/issues
 run "gh api --method get is a READ"  "gh api --method get repos/go-to-k/cdk-real-drift/issues"           "$TMPROOT" 0
 run "gh api explicit POST is a mint" "gh api -X POST repos/go-to-k/cdk-real-drift/issues -f title=t -f body=x" "$TMPROOT" 2
 run "gh api DELETE is not a mint"    "gh api -X DELETE repos/go-to-k/cdk-real-drift/issues"              "$TMPROOT" 0
+# The method must come from a TOKEN, not from body TEXT. A mint whose body quoted
+# a read was let through (verified rc=0): the same class `seg_inline_bodies`
+# closed for the marker scan, applied to one scan and not its neighbour.
+run "method quoted in a body is not the method" \
+  "gh api repos/go-to-k/cdk-real-drift/issues -f title=t -f 'body=see gh api -X GET repos/o/r/issues'" "$TMPROOT" 2
+run "glued -XPOST is a mint"         "gh api -XPOST repos/go-to-k/cdk-real-drift/issues -f title=t"     "$TMPROOT" 2
+run "--method=get is a READ"         "gh api --method=get repos/go-to-k/cdk-real-drift/issues"          "$TMPROOT" 0
+run "quoted title= field is a mint"  "gh api repos/go-to-k/cdk-real-drift/issues -f 'title=t' -f body=x" "$TMPROOT" 2
 
 # --- a TITLE is not a record of having searched -----------------------------
 # The loose inline scan ran over the whole SEGMENT, so the marker could sit

@@ -98,7 +98,6 @@ if [ -n "$foreign_repo" ]; then
   exit 2
 fi
 
-
 # Fails CLOSED (keeps gating) if the changed-file set can't be computed — we
 # only skip the gate when we can PROVE the diff is src-free.
 #
@@ -124,7 +123,6 @@ if [ -n "$base" ]; then
     fi
   fi
 fi
-
 
 # If the resolved target dir is not a git repo, silently pass — we
 # can't audit what we can't see.

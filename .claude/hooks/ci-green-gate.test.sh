@@ -112,6 +112,48 @@ sel_check ""   "no selector given"             'gh pr merge --squash'
 # actually runs has no selector, and must not borrow it.
 sel_check ""   "quoted mention cannot donate"  'gh pr create --body "then run gh pr merge 9 --squash" && gh pr merge'
 
+# FLAG VALUES ARE NOT SELECTORS. Before this, `-t msg 2195` resolved `msg` and
+# `gh pr checks msg` fails open — a merge past red CI that the previous shape
+# (empty selector -> current branch -> BLOCK) did not have.
+sel_check 2195 "short flag value skipped"        'gh pr merge -t msg 2195 --squash'
+sel_check 2195 "quoted flag value skipped"       'gh pr merge --subject "chore: x" 2195 --squash'
+sel_check 2195 "numeric flag value skipped"      'gh pr merge --body-file 7 2195 --squash'
+sel_check ""   "branch name yields no number"    'gh pr merge feature-branch --squash'
+sel_check ""   "unknown flag eats the number"    'gh pr merge --future-flag 552'
+
+# The rc-level twin: a lost or bogus selector must not become a merge past red CI.
+run 2 "flag-value shape still blocks red CI" 'gh pr merge -t msg 5 --squash' \
+  GH_MOCK_RC=1 GH_MOCK_OUT="check fail" GH_MOCK_STRICT_SEL=1
+
+# gh's own spellings of THIS repo must not trip the foreign refusal — the fixture
+# origin is github.com/go-to-k/x.
+#
+# THESE ASSERT THE REASON, NOT THE EXIT CODE. Every one of them blocks either
+# way — on red CI if the spelling is recognised, on the foreign refusal if it is
+# not — so an rc-only check passes with the slug normaliser broken. Verified:
+# reverting the normaliser left an rc-only version green. The check is that the
+# refusal message is ABSENT.
+not_foreign() {
+  local label="$1" cmd="$2" payload out
+  payload=$(printf '{"tool_input":{"command":%s},"cwd":"%s"}' \
+    "$(printf '%s' "$cmd" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')" "$repo")
+  out=$(env GH_MOCK_RC=1 GH_MOCK_OUT="check fail" bash -c 'printf "%s" "$0" | '"$HOOK"' 2>&1' "$payload")
+  if printf '%s' "$out" | grep -q 'targets'; then
+    printf 'FAIL — %s (refused as FOREIGN; this repo was not recognised)\n' "$label"; fails=$((fails + 1))
+  else
+    printf 'ok   — %s (not refused as foreign)\n' "$label"
+  fi
+}
+not_foreign "-R plain slug this repo"      'gh -R go-to-k/x pr merge 5 --squash'
+not_foreign "-R host-qualified this repo"  'gh -R github.com/go-to-k/x pr merge 5 --squash'
+not_foreign "-R https URL this repo"       'gh -R https://github.com/go-to-k/x.git pr merge 5 --squash'
+not_foreign "-R scp-style this repo"       'gh -R git@github.com:go-to-k/x.git pr merge 5 --squash'
+not_foreign "-R differing case this repo"  'gh -R Go-To-K/X pr merge 5 --squash'
+not_foreign "-R inside a quoted value"     'gh pr merge --subject "compare with -R other/repo" 5 --squash'
+# The control: a genuinely foreign repo IS refused, so the above is not passing
+# because the refusal was deleted.
+run 2 "foreign -R still refused"     'gh -R foreign/evil pr merge 5 --squash'  GH_MOCK_RC=0
+
 # A lost selector must also change the VERDICT, not just the recorded value.
 run 2 "flag-first selector still resolves the PR" 'gh pr merge --squash 5' \
   GH_MOCK_RC=1 GH_MOCK_OUT="check fail" GH_MOCK_STRICT_SEL=1

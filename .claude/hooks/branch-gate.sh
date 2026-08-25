@@ -32,45 +32,20 @@ input=$(cat 2>/dev/null || true)
 cmd=$(printf '%s' "$input" | jq -r '.tool_input.command // ""' 2>/dev/null || echo "")
 hook_cwd=$(printf '%s' "$input" | jq -r '.cwd // ""' 2>/dev/null || echo "")
 
-# Only gate git commit / git push — any other command passes through.
-# The regex matches `git` + optional global flags (e.g. `-C <path>`,
-# `-c <key>=<value>`, `--no-pager`, `--git-dir=<path>`) + the literal
-# subcommand `commit` or `push`, anchored so that `commit` / `push`
-# must appear in the GIT SUBCOMMAND POSITION — not as a substring of
-# a refspec (`<sha>^{commit}`), a pathspec (`-- '*push*.md'`), or a
-# `--grep=push` query.
+# Only gate `git commit` / `git push` — any other command passes through.
 #
-# Anchors:
-#   `^[[:space:]]*(cd[[:space:]]+...&&[[:space:]]*)?git`
-#                             — line-start anchored (per memory rule
-#                               feedback_hook_command_match_line_start.md)
-#                               so `git commit` / `git push` substrings
-#                               inside quoted argument bodies
-#                               (`gh issue create --body "we should add
-#                               git commit hook later"`) do NOT
-#                               false-positive into a hard block. The
-#                               optional leading `cd <path> &&` prefix
-#                               preserves the worktree-aware
-#                               `cd <side> && git commit` chain shape —
-#                               `cd ... &&` at the literal line-start
-#                               cannot match inside a JSON literal
-#                               containing `&&` because the line-start
-#                               anchor requires no leading characters
-#                               except whitespace. Mirrors check-gate.sh
-#                               (PR #562 fix pattern).
-#   `([[:space:]]+(-[^[:space:]]+([[:space:]]+[^[:space:]-][^[:space:]]*)?))*`
-#                             — zero or more "flag tokens": each flag
-#                               (`-X` or `--foo[=val]`) optionally
-#                               followed by a separate non-flag value
-#                               token (covers `-C <path>` /
-#                               `-c <key>=<val>`).
-#   `[[:space:]]+(commit|push)` — the subcommand position.
-#   `([[:space:]]|$|[|;&`)])` — must end at a token boundary so
-#                               `commit.gpgSign=false` (a `-c` value)
-#                               is NOT counted as the subcommand;
-#                               also recognizes pipeline / subshell
-#                               separators so `git status; git commit`,
-#                               `` `git push` `` all match.
+# The trigger is DERIVED from the shared constants further down; this comment
+# used to describe a hand-rolled regex, character class by character class, and
+# that regex is gone. It also still advertised a limitation the shared matcher
+# had already closed: it claimed the pattern was LINE-START anchored so a verb
+# inside a quoted body could not false-positive, and that `` `git push` `` in a
+# substitution matched. `gate_segments` supersedes both — it splits a command
+# LIST and anchors each verb at a SEGMENT start, so `git add -A && git commit`
+# and `$(git push)` are caught while a quoted mention still is not.
+#
+# Keeping it was the exact hazard this lane's own thesis names: a stale local
+# COPY of a shared thing. A prose copy rots the same way a regex copy does, and
+# is harder to notice because nothing runs it.
 #                               `$(git commit)` / backtick-wrapped
 #                               forms are an accepted false-negative
 #                               of the line-start tightening (per the

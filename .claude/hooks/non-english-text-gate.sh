@@ -119,7 +119,6 @@ if [ -n "$foreign_repo" ]; then
   exit 2
 fi
 
-
 # If the resolved target dir is not a git repo, silently pass.
 if ! git -C "$target_dir" rev-parse --git-dir >/dev/null 2>&1; then
   exit 0

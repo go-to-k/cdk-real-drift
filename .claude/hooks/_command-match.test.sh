@@ -275,5 +275,73 @@ want_sel ""   "quoted mention cannot donate to a bare merge" \
 want_sel ""   "no number given"                    'gh pr merge --squash'
 want_sel ""   "quoted mention only"                'echo "gh pr merge 5"'
 
+# FLAG VALUES ARE NOT SELECTORS. Skipping tokens that start with `-` but not
+# their VALUES made the value the selector — strictly worse than the literal
+# strip it replaced, where a non-numeric selector came back empty and the caller
+# fell back to the current branch (which BLOCKED). Measured before the fix:
+# `-t msg 2195` -> msg, `--body-file 7 2195` -> 7 (audits PR 7).
+want_sel 2195 "short flag with a value"            'gh pr merge -t msg 2195 --squash'
+want_sel 2195 "long flag with a value"             'gh pr merge --match-head-commit abc 2195'
+want_sel 2195 "QUOTED flag value stays one token"  'gh pr merge --subject "chore: x" 2195 --squash'
+want_sel 2195 "numeric flag value is not the PR"   'gh pr merge --body-file 7 2195 --squash'
+want_sel 2195 "-F <file> then the number"          'gh pr merge -F notes.md 2195 --squash'
+want_sel 2195 "valueless flags are not consumed"   'gh pr merge --admin --delete-branch 2195'
+want_sel 2195 "-R glued before the verb"           'gh -Rgo-to-k/x pr merge 2195'
+# The staleness direction: an UNKNOWN flag is assumed to take a value, so it eats
+# the number and the selector comes back EMPTY. Callers then fall back or refuse.
+# The opposite polarity (enumerating value-takers) would leave the value in place
+# and audit the WRONG PR.
+want_sel ""   "unknown flag eats the number (SAFE)" 'gh pr merge --future-flag 552'
+# The numeric guard: anything that is not a PR number comes back empty.
+want_sel ""   "branch name is not a PR number"      'gh pr merge feature-branch --squash'
+want_sel ""   "URL is not a PR number"              'gh pr merge https://github.com/o/r/pull/5'
+
+# --- gate_repo_flag / slug normalisation ------------------------------------
+want_slug() {
+  local expect="$1" name="$2" cmd="$3" got
+  got=$(gate_repo_flag "$cmd" "$GATE_RE_GH_PR_MERGE")
+  got=$(gate_normalize_repo_slug "$got")
+  if [ "$got" = "$expect" ]; then pass=$((pass + 1)); printf 'OK   slug %s\n' "$name"
+  else fail=$((fail + 1)); printf 'FAIL slug %s (got %s, want %s)\n' "$name" "${got:-<empty>}" "${expect:-<empty>}"; fi
+}
+# Every spelling gh accepts for the SAME repo must normalise identically, or the
+# foreign-repo refusal fires on this repo's own name and tells you to run the
+# command from a checkout you are already in.
+want_slug o/r "plain slug"        'gh -R o/r pr merge 5'
+want_slug o/r "host-qualified"    'gh -R github.com/o/r pr merge 5'
+want_slug o/r "https URL"         'gh -R https://github.com/o/r pr merge 5'
+want_slug o/r "URL with .git"     'gh -R https://github.com/o/r.git pr merge 5'
+want_slug o/r "scp-style remote"  'gh -R git@github.com:o/r.git pr merge 5'
+want_slug o/r "case-insensitive"  'gh -R O/R pr merge 5'
+want_slug o/r "--repo= spelling"  'gh --repo=o/r pr merge 5'
+want_slug o/r "glued -R"          'gh -Ro/r pr merge 5'
+# A `-R` inside a QUOTED value is text, not a flag.
+want_slug ""  "-R inside a quoted value" 'gh pr merge --subject "compare with -R other/repo" 5'
+want_slug ""  "no repo named"     'gh pr merge 5 --squash'
+
+# gate_local_repo_slug against REAL remotes. This needs its own direct fence:
+# when the slug comes back empty, every `-R` reads as foreign and every gate
+# REFUSES — so the parity and ci-green suites stayed green over the bug, because
+# an assertion that a gate blocks is satisfied by a gate blocking for any reason.
+# (Measured: `url="${url##*/[a-z]/}"` ate the owner of
+# `https://github.com/a/b.git`, yielding an empty slug.)
+want_local_slug() {
+  local expect="$1" name="$2" url="$3" d got
+  d=$(mktemp -d)
+  git -C "$d" init -q 2>/dev/null
+  git -C "$d" remote add origin "$url" 2>/dev/null
+  got=$(gate_local_repo_slug "$d")
+  rm -rf "$d"
+  if [ "$got" = "$expect" ]; then pass=$((pass + 1)); printf 'OK   local-slug %s\n' "$name"
+  else fail=$((fail + 1)); printf 'FAIL local-slug %s (got %s, want %s)\n' "$name" "${got:-<empty>}" "${expect:-<empty>}"; fi
+}
+want_local_slug a/b "https remote with .git" 'https://github.com/a/b.git'
+want_local_slug a/b "https remote bare"      'https://github.com/a/b'
+want_local_slug a/b "scp-style remote"       'git@github.com:a/b.git'
+want_local_slug a/b "ssh:// remote"          'ssh://git@github.com/a/b.git'
+want_local_slug a/b "uppercase remote"       'https://github.com/A/B.git'
+
+
+
 printf '\npass: %s  fail: %s\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
