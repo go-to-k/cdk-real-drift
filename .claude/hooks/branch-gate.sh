@@ -32,49 +32,28 @@ input=$(cat 2>/dev/null || true)
 cmd=$(printf '%s' "$input" | jq -r '.tool_input.command // ""' 2>/dev/null || echo "")
 hook_cwd=$(printf '%s' "$input" | jq -r '.cwd // ""' 2>/dev/null || echo "")
 
-# Only gate git commit / git push — any other command passes through.
-# The regex matches `git` + optional global flags (e.g. `-C <path>`,
-# `-c <key>=<value>`, `--no-pager`, `--git-dir=<path>`) + the literal
-# subcommand `commit` or `push`, anchored so that `commit` / `push`
-# must appear in the GIT SUBCOMMAND POSITION — not as a substring of
-# a refspec (`<sha>^{commit}`), a pathspec (`-- '*push*.md'`), or a
-# `--grep=push` query.
+# Only gate `git commit` / `git push` — any other command passes through.
 #
-# Anchors:
-#   `^[[:space:]]*(cd[[:space:]]+...&&[[:space:]]*)?git`
-#                             — line-start anchored (per memory rule
-#                               feedback_hook_command_match_line_start.md)
-#                               so `git commit` / `git push` substrings
-#                               inside quoted argument bodies
-#                               (`gh issue create --body "we should add
-#                               git commit hook later"`) do NOT
-#                               false-positive into a hard block. The
-#                               optional leading `cd <path> &&` prefix
-#                               preserves the worktree-aware
-#                               `cd <side> && git commit` chain shape —
-#                               `cd ... &&` at the literal line-start
-#                               cannot match inside a JSON literal
-#                               containing `&&` because the line-start
-#                               anchor requires no leading characters
-#                               except whitespace. Mirrors check-gate.sh
-#                               (PR #562 fix pattern).
-#   `([[:space:]]+(-[^[:space:]]+([[:space:]]+[^[:space:]-][^[:space:]]*)?))*`
-#                             — zero or more "flag tokens": each flag
-#                               (`-X` or `--foo[=val]`) optionally
-#                               followed by a separate non-flag value
-#                               token (covers `-C <path>` /
-#                               `-c <key>=<val>`).
-#   `[[:space:]]+(commit|push)` — the subcommand position.
-#   `([[:space:]]|$|[|;&`)])` — must end at a token boundary so
-#                               `commit.gpgSign=false` (a `-c` value)
-#                               is NOT counted as the subcommand;
-#                               also recognizes pipeline / subshell
-#                               separators so `git status; git commit`,
-#                               `` `git push` `` all match.
-#                               `$(git commit)` / backtick-wrapped
-#                               forms are an accepted false-negative
-#                               of the line-start tightening (per the
-#                               memory rule's trade-off).
+# The trigger is DERIVED from the shared constants further down; this comment
+# used to describe a hand-rolled regex, character class by character class, and
+# that regex is gone. It also still advertised a limitation the shared matcher
+# had already closed: it claimed the pattern was LINE-START anchored so a verb
+# inside a quoted body could not false-positive, and that `` `git push` `` in a
+# substitution matched. `gate_segments` supersedes both — it splits a command
+# LIST and anchors each verb at a SEGMENT start, so `git add -A && git commit` is
+# caught while a quoted mention still is not.
+#
+# Substitutions, precisely -- the replaced comment was wrong in BOTH directions,
+# and so was its first replacement. Measured: `` echo `git push` `` matches and
+# `foo=$(git commit -m x)` matches, but `echo "$(git commit -m x)"` does NOT: a
+# `$(` inside a quoted span becomes the GATE_SEP_SUBST placeholder rather than a
+# split point. So the UNQUOTED substitution forms are caught; the quoted one is
+# the remaining false-negative.
+#
+# Keeping the old text was the exact hazard this lane's own thesis names: a stale
+# local COPY of a shared thing. A prose copy rots the same way a regex copy does,
+# and is harder to notice because nothing runs it -- which is why an orphaned tail
+# of it survived the first rewrite and contradicted the paragraph above it.
 # Fail CLOSED if the shared matcher is missing or does not load: a gate that
 # cannot decide must not wave the command through. `[ -r … ] || exit 0` was the
 # first shape here, and it silently disabled the gate whenever the library was
@@ -96,7 +75,21 @@ fi
 # Which commands this gate applies to. The segment matcher sees a gated verb in
 # ANY position — `git add -A && git commit` used to run ungated
 # (go-to-k/cdk-real-drift#1803).
-GATE_RE_COMMIT_OR_PUSH='^git([[:space:]]+-[^[:space:]]+([[:space:]]+[^[:space:]-][^[:space:]]*)?)*[[:space:]]+(commit|push)([[:space:]]|$)'
+# DERIVED from the shared constants, never hand-rolled. This was the FOURTH
+# local copy of a shared pattern, and it had frozen at the PRE-`GATE_FLAGS`
+# token: its flag-value alternative was a bare `[^[:space:]-][^[:space:]]*`, with
+# no quoted alternative, so a `-C` path containing a SPACE made the verb
+# unreachable. Measured 2026-08-25 on an opted-in fixture repo sitting on `main`:
+#
+#   git -C /tmp/nospace commit -m x        rc=2
+#   git -C "/tmp/bg fix" commit -m x       rc=0   <- commits straight to main
+#   cd "/tmp/bg fix" && git commit -m x    rc=2
+#
+# `GATE_FLAGS` carries both quote characters as value alternatives, which is
+# exactly the go-to-k/cdk-local#542 fix that this copy never received. A local
+# copy of a shared pattern does not inherit its fixes -- the same lesson as the
+# three `gh pr` gates in the previous commit.
+GATE_RE_COMMIT_OR_PUSH=$(gate_re_any "$GATE_RE_GIT_COMMIT" "$GATE_RE_GIT_PUSH")
 gate_matches "$cmd" "$GATE_RE_COMMIT_OR_PUSH" || exit 0
 
 # Resolve where the command will actually run: a `-C <path>` in the matched

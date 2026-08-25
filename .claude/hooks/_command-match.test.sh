@@ -196,5 +196,180 @@ want_match 1 "an ordinary task run"              'vp run test' "$C"
 # separator INSIDE the quotes, which is the only shape that can distinguish it.
 want_match 1 "separator inside a quoted body" 'gh issue create --body "run vp check && git commit -m x"' "$C"
 
+# --- the issue-mint verbs (issue-dup-check-gate) -----------------------------
+I="$GATE_RE_GH_ISSUE_CREATE"
+A="$GATE_RE_GH_API_ISSUE_CREATE"
+want_match 0 "gh issue create"                 'gh issue create --title t'              "$I"
+want_match 0 "gh issue create, chained"        'git push && gh issue create --title t'  "$I"
+want_match 1 "gh issue edit is not a mint"     'gh issue edit 12 --body x'              "$I"
+want_match 1 "gh issue comment is not a mint"  'gh issue comment 12 --body x'           "$I"
+want_match 1 "quoted mention is not a verb"    "echo 'run gh issue create'"             "$I"
+want_match 0 "gh api repos/o/r/issues"         'gh api repos/o/r/issues -f title=t'     "$A"
+want_match 1 "gh api .../issues/5/comments"    'gh api repos/o/r/issues/5/comments -f body=x' "$A"
+want_match 1 "gh api .../issues/5 (an edit)"   'gh api -X PATCH repos/o/r/issues/5 -f body=x' "$A"
+# The repo-selecting flags. `GATE_GH_C` was widened to `GATE_FLAGS`-style
+# tokenisation on 2026-08-25 after `gh -R <owner/repo> pr merge` was measured
+# walking past verify-pr-gate, ci-green-gate and bughunt-clean-gate. All three
+# separator spellings gh accepts are covered — space, `=`, and GLUED — the last
+# being the one a hand-written `(-C|-R|--repo)` alternation misses.
+want_match 0 "gh -R <repo> issue create"        'gh -R o/r issue create --title t'      "$I"
+want_match 0 "gh --repo <repo> issue create"    'gh --repo o/r issue create --title t'  "$I"
+want_match 0 "gh --repo=<repo> issue create"    'gh --repo=o/r issue create --title t'  "$I"
+want_match 0 "gh -R <repo> api issues"          'gh -R o/r api repos/o/r/issues -f t=1' "$A"
+want_match 0 "repeated -C then -R absorbed"     'gh -C /w -R o/r issue create --title t' "$I"
+want_match 0 "quoted -C path with spaces"       'gh -C "/a b" issue create --title t'   "$I"
+want_match 0 "glued -R<repo> issue create"       'gh -Ro/r issue create --title t'       "$I"
+want_match 0 "-R=<repo> issue create"           'gh -R=o/r issue create --title t'      "$I"
+want_match 0 "control: gh -C <dir> issue create" 'gh -C /w issue create --title t'      "$I"
+# THE BYPASS CASES. `gh -R o/r pr merge` used to match NOTHING, so it merged past
+# verify-pr-gate, ci-green-gate and bughunt-clean-gate (each measured plain rc=2,
+# `-R` rc=0 on 2026-08-25). This assertion was INVERTED from `want_match 1` — an
+# earlier revision of this lane pinned the old behaviour as intentional scoping,
+# which was wrong: those gates are SUPPOSED to match a `-R` merge.
+want_match 0 "gh -R <repo> pr merge"            'gh -R o/r pr merge 1 --squash'         "$M"
+want_match 0 "gh --repo <repo> pr merge"        'gh --repo o/r pr merge 1 --squash'     "$M"
+want_match 0 "gh --repo=<repo> pr merge"        'gh --repo=o/r pr merge 1 --squash'     "$M"
+want_match 0 "gh -R=<repo> pr merge"            'gh -R=o/r pr merge 1 --squash'         "$M"
+want_match 0 "glued gh -R<repo> pr merge"       'gh -Ro/r pr merge 1 --squash'          "$M"
+# Widening the flag absorber must not make prose match: the quoted-span and
+# command-position protections still carry the false-positive load.
+want_match 1 "quoted -R merge in prose"         "echo 'gh -R o/r pr merge 1'"           "$M"
+want_match 1 "gh -R <repo> pr view is not merge" 'gh -R o/r pr view 1'                  "$M"
+
+# --- gate_pr_selector: the selector comes from the MATCHED verb + SEGMENT ----
+#
+# Two blockers, and the second was introduced by the fix for the first. A
+# literal `.*gh( -C <p>)? pr merge` strip failed to apply under any other global
+# flag and returned the command name `gh`; its replacement anchored the number
+# IMMEDIATELY after the verb, which `gh` does not require, so a flag-first
+# spelling lost it -- a red-CI bypass that did not exist before that change. And
+# both scanned the WHOLE command, so a quoted mention in another segment donated
+# its number.
+want_sel() {
+  local expect="$1" name="$2" cmd="$3" got
+  got=$(gate_pr_selector "$cmd" "$GATE_RE_GH_PR_MERGE")
+  if [ "$got" = "$expect" ]; then
+    pass=$((pass + 1)); printf 'OK   sel %s\n' "$name"
+  else
+    fail=$((fail + 1)); printf 'FAIL sel %s (got %s, want %s)\n' "$name" "${got:-<empty>}" "${expect:-<empty>}"
+  fi
+}
+
+want_sel 2195 "plain"                    'gh pr merge 2195 --squash'
+want_sel 2195 "-R space"                 'gh -R go-to-k/x pr merge 2195 --squash'
+want_sel 2195 "--repo space"             'gh --repo go-to-k/x pr merge 2195 --squash'
+want_sel 2195 "--repo="                  'gh --repo=go-to-k/x pr merge 2195 --squash'
+want_sel 2195 "-R="                      'gh -R=go-to-k/x pr merge 2195 --squash'
+want_sel 2195 "-R glued"                 'gh -Rgo-to-k/x pr merge 2195 --squash'
+want_sel 2195 "-C then -R"               'gh -C /tmp -R go-to-k/x pr merge 2195 --squash'
+# BLOCKER 1: gh accepts the selector after the flags, in either order.
+want_sel 1    "FLAG FIRST: --squash then 1"        'gh pr merge --squash 1'
+want_sel 1    "FLAG FIRST under -R"                'gh -R go-to-k/x pr merge --squash 1'
+want_sel 2195 "two flags then the number"          'gh pr merge --delete-branch --squash 2195'
+# A numeric token belonging to an EARLIER command must not win.
+want_sel 2195 "leading sleep 30 does not win"      'sleep 30 && gh -R go-to-k/x pr merge 2195 --squash'
+# BLOCKER 2: the selector comes from the MATCHED SEGMENT only.
+want_sel ""   "quoted mention in a --body"         'gh pr create --body "later: gh pr merge 42 --squash"'
+want_sel ""   "quoted mention cannot donate to a bare merge" \
+  'gh pr create --body "then run gh pr merge 9 --squash" && gh pr merge'
+want_sel ""   "no number given"                    'gh pr merge --squash'
+want_sel ""   "quoted mention only"                'echo "gh pr merge 5"'
+
+# FLAG VALUES ARE NOT SELECTORS. Skipping tokens that start with `-` but not
+# their VALUES made the value the selector — strictly worse than the literal
+# strip it replaced, where a non-numeric selector came back empty and the caller
+# fell back to the current branch (which BLOCKED). Measured before the fix:
+# `-t msg 2195` -> msg, `--body-file 7 2195` -> 7 (audits PR 7).
+want_sel 2195 "short flag with a value"            'gh pr merge -t msg 2195 --squash'
+want_sel 2195 "long flag with a value"             'gh pr merge --match-head-commit abc 2195'
+want_sel 2195 "QUOTED flag value stays one token"  'gh pr merge --subject "chore: x" 2195 --squash'
+want_sel 2195 "numeric flag value is not the PR"   'gh pr merge --body-file 7 2195 --squash'
+want_sel 2195 "-F <file> then the number"          'gh pr merge -F notes.md 2195 --squash'
+want_sel 2195 "valueless flags are not consumed"   'gh pr merge --admin --delete-branch 2195'
+want_sel 2195 "-R glued before the verb"           'gh -Rgo-to-k/x pr merge 2195'
+# The staleness direction: an UNKNOWN flag is assumed to take a value, so it eats
+# the number and the selector comes back EMPTY. Callers then fall back or refuse.
+# The opposite polarity (enumerating value-takers) would leave the value in place
+# and audit the WRONG PR.
+want_sel ""   "unknown flag eats the number (SAFE)" 'gh pr merge --future-flag 552'
+# The numeric guard: anything that is not a PR number comes back empty.
+want_sel ""   "branch name is not a PR number"      'gh pr merge feature-branch --squash'
+want_sel ""   "URL is not a PR number"              'gh pr merge https://github.com/o/r/pull/5'
+
+# BOTH SPELLINGS. The list carried only the long forms, so every 2-char short
+# flag fell to the value-consuming arm and ATE the number. Taken from
+# `gh help pr merge`, which documents -s/--squash -m/--merge -r/--rebase
+# -d/--delete-branch.
+want_sel 2195 "short -s"                           'gh pr merge -s 2195'
+want_sel 2195 "short -d"                           'gh pr merge -d 2195'
+want_sel 2195 "short -m"                           'gh pr merge -m 2195'
+want_sel 2195 "short -r"                           'gh pr merge -r 2195'
+want_sel 2195 "long then short, both valueless"    'gh pr merge --squash -d 2195'
+want_sel 2195 "--admin --auto then the number"     'gh pr merge --admin --auto 2195'
+
+# gate_pr_selector_ate_number: "no selector given" vs "a flag swallowed one".
+# Reported identically as an empty selector, and ci-green-gate must treat them
+# differently — the first is a legitimate current-branch merge, the second audits
+# a PR the user never named.
+want_ate() {
+  local expect="$1" name="$2" cmd="$3" got=no
+  gate_pr_selector_ate_number "$cmd" "$GATE_RE_GH_PR_MERGE" && got=yes
+  if [ "$got" = "$expect" ]; then pass=$((pass + 1)); printf 'OK   ate %s\n' "$name"
+  else fail=$((fail + 1)); printf 'FAIL ate %s (got %s, want %s)\n' "$name" "$got" "$expect"; fi
+}
+want_ate yes "unknown flag swallowed the number" 'gh pr merge --future-flag 552'
+want_ate no  "no selector given at all"          'gh pr merge --squash'
+want_ate no  "selector present and resolved"     'gh pr merge -s 2195'
+want_ate no  "flag value is not numeric"         'gh pr merge -t msg 2195'
+
+
+# --- gate_repo_flag / slug normalisation ------------------------------------
+want_slug() {
+  local expect="$1" name="$2" cmd="$3" got
+  got=$(gate_repo_flag "$cmd" "$GATE_RE_GH_PR_MERGE")
+  got=$(gate_normalize_repo_slug "$got")
+  if [ "$got" = "$expect" ]; then pass=$((pass + 1)); printf 'OK   slug %s\n' "$name"
+  else fail=$((fail + 1)); printf 'FAIL slug %s (got %s, want %s)\n' "$name" "${got:-<empty>}" "${expect:-<empty>}"; fi
+}
+# Every spelling gh accepts for the SAME repo must normalise identically, or the
+# foreign-repo refusal fires on this repo's own name and tells you to run the
+# command from a checkout you are already in.
+want_slug o/r "plain slug"        'gh -R o/r pr merge 5'
+want_slug o/r "host-qualified"    'gh -R github.com/o/r pr merge 5'
+want_slug o/r "https URL"         'gh -R https://github.com/o/r pr merge 5'
+want_slug o/r "URL with .git"     'gh -R https://github.com/o/r.git pr merge 5'
+want_slug o/r "scp-style remote"  'gh -R git@github.com:o/r.git pr merge 5'
+want_slug o/r "case-insensitive"  'gh -R O/R pr merge 5'
+want_slug o/r "--repo= spelling"  'gh --repo=o/r pr merge 5'
+want_slug o/r "glued -R"          'gh -Ro/r pr merge 5'
+# A `-R` inside a QUOTED value is text, not a flag.
+want_slug ""  "-R inside a quoted value" 'gh pr merge --subject "compare with -R other/repo" 5'
+want_slug ""  "no repo named"     'gh pr merge 5 --squash'
+
+# gate_local_repo_slug against REAL remotes. This needs its own direct fence:
+# when the slug comes back empty, every `-R` reads as foreign and every gate
+# REFUSES — so the parity and ci-green suites stayed green over the bug, because
+# an assertion that a gate blocks is satisfied by a gate blocking for any reason.
+# (Measured: `url="${url##*/[a-z]/}"` ate the owner of
+# `https://github.com/a/b.git`, yielding an empty slug.)
+want_local_slug() {
+  local expect="$1" name="$2" url="$3" d got
+  d=$(mktemp -d)
+  git -C "$d" init -q 2>/dev/null
+  git -C "$d" remote add origin "$url" 2>/dev/null
+  got=$(gate_local_repo_slug "$d")
+  rm -rf "$d"
+  if [ "$got" = "$expect" ]; then pass=$((pass + 1)); printf 'OK   local-slug %s\n' "$name"
+  else fail=$((fail + 1)); printf 'FAIL local-slug %s (got %s, want %s)\n' "$name" "${got:-<empty>}" "${expect:-<empty>}"; fi
+}
+want_local_slug a/b "https remote with .git" 'https://github.com/a/b.git'
+want_local_slug a/b "https remote bare"      'https://github.com/a/b'
+want_local_slug a/b "scp-style remote"       'git@github.com:a/b.git'
+want_local_slug a/b "ssh:// remote"          'ssh://git@github.com/a/b.git'
+want_local_slug a/b "uppercase remote"       'https://github.com/A/B.git'
+want_local_slug a/b "trailing slash after .git" 'https://github.com/a/b.git/'
+
+
+
 printf '\npass: %s  fail: %s\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

@@ -29,7 +29,8 @@
 #
 # Scope:
 #   - Triggers on `gh pr create` / `gh pr edit` / `gh pr merge` (and
-#     their `gh -C <path> ...` forms). Everything else passes through.
+#     their `gh -C <path> ...` forms -- tolerated in the command TEXT only;
+#     `gh` itself has no such flag). Everything else passes through.
 #   - Detects the PR by `gh pr view --json number` from the resolved
 #     target working tree (same cwd-resolution shape as branch-gate.sh
 #     / internal-pr-labels-gate.sh).
@@ -90,24 +91,65 @@ fi
 # Which commands this gate applies to. The segment matcher sees a gated verb in
 # ANY position — `git add -A && git commit` used to run ungated
 # (go-to-k/cdk-real-drift#1803).
-GATE_RE_PR_WRITE='^gh([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+pr[[:space:]]+(create|edit|merge)([[:space:]]|$)'
+# DERIVED from the shared constants, never hand-rolled — see verify-pr-gate.sh
+# for the `-R` bypass this closes.
+GATE_RE_PR_WRITE=$(gate_re_any "$GATE_RE_GH_PR_CREATE" "$GATE_RE_GH_PR_EDIT" "$GATE_RE_GH_PR_MERGE")
 gate_matches "$cmd" "$GATE_RE_PR_WRITE" || exit 0
 
 # Resolve where the command will actually run: a `-C <path>` in the matched
 # segment wins, else the last `cd <path>` segment before it, else the payload cwd.
 target_dir=$(gate_target_dir "$cmd" "${hook_cwd:-$PWD}" "$GATE_RE_PR_WRITE")
 
+# A FOREIGN `-R` is refused rather than audited. Every probe below runs against
+# the RESOLVED CWD, so `gh -R foreign/repo pr create` would have this gate inspect
+# THIS repo's state and then permit an action in a repo it never looked at. `-R`
+# was matched by the flag absorber and then discarded.
+foreign_repo=$(gate_foreign_repo "$cmd" "$GATE_RE_PR_WRITE" "$target_dir")
+if [ -n "$foreign_repo" ]; then
+  {
+    echo "Blocked by non-english-text-gate: this command targets \`$foreign_repo\`, but every"
+    echo "check this gate makes reads the repository at:"
+    echo ""
+    echo "  $target_dir"
+    echo ""
+    echo "so passing it would mean approving an action in a repo that was never"
+    echo "inspected. Run the command from a checkout of \`$foreign_repo\` instead,"
+    echo "where that repo's own gates apply."
+  } >&2
+  exit 2
+fi
+
 # If the resolved target dir is not a git repo, silently pass.
 if ! git -C "$target_dir" rev-parse --git-dir >/dev/null 2>&1; then
   exit 0
 fi
+
+# `gh` HAS NO `-C` FLAG. Every `gh` call below used to pass `-C "$target_dir"`,
+# and `gh` rejects an unknown shorthand before it does anything -- so
+# `gh -C <dir> auth status` returned 1 in EVERY environment, the "unauthenticated,
+# fail open" arm fired unconditionally, and this gate exited 0 on every command
+# it was ever handed. Measured 2026-08-25 against gh 2.89.0:
+#
+#   gh auth status              rc=0
+#   gh -C /tmp auth status      rc=1   "unknown shorthand flag: 'C' in -C"
+#
+# The gate was registered, its harness was green (it drives the hook, and an
+# inert hook returns the 0 that the PASS cases expect), and it enforced nothing.
+# Same shape as go-to-k/cdk-real-drift#1801: registration is not execution.
+#
+# `gh` takes its repo from the CWD, so `cd` into the resolved tree the way
+# ci-green-gate.sh and verify-pr-gate.sh already do, and call `gh` plainly. The
+# COMMAND-MATCHING regexes keep tolerating a `-C` spelling: those read command
+# TEXT and over-approximating the trigger is free, whereas invoking a flag that
+# does not exist is not.
+cd "$target_dir" 2>/dev/null || exit 0
 
 # gh missing or unauthenticated — fail open.
 if ! command -v "${GH_BIN:-gh}" >/dev/null 2>&1; then
   exit 0
 fi
 GH="${GH_BIN:-gh}"
-if ! "$GH" -C "$target_dir" auth status >/dev/null 2>&1; then
+if ! "$GH" auth status >/dev/null 2>&1; then
   exit 0
 fi
 
@@ -116,12 +158,31 @@ fi
 #   `gh pr merge <N>` / `gh pr edit <N>` — N is the explicit arg.
 #   `gh pr create` / `gh pr merge` (no arg) — current branch's PR.
 pr_number=""
-if [[ "$cmd" =~ gh([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+pr[[:space:]]+(merge|edit)[[:space:]]+([0-9]+) ]]; then
-  pr_number="${BASH_REMATCH[3]}"
-fi
+# The PR number, from the MATCHED SEGMENT and independent of token order.
+#
+# The original read `gh` plus a `-C`-only flag prefix, so `gh -R o/r pr merge 5`
+# extracted nothing and silently fell back to the current branch's PR. Anchoring
+# on the verb fixed that but left a worse hole: the scan ran over the WHOLE
+# command, so a quoted mention in another segment donated its number --
+#
+#   gh pr create --body "later: gh pr merge 42 --squash"   ->  42
+#
+# which scanned PR 42's diff instead of the branch being created. That is the
+# same segment-scoping rule issue-dup-check-gate documents as load-bearing, and
+# this gate did not have it.
+#
+# `gate_pr_selector` returns the first non-flag token after the matched verb in
+# the matching segment; a `merge` / `edit` selector may legitimately be a branch
+# name, so only a NUMERIC one is taken as a PR number (anything else falls
+# through to `gh pr view`, exactly as `gh pr create` does).
+pr_sel=$(gate_pr_selector "$cmd" "$(gate_re_any "$GATE_RE_GH_PR_EDIT" "$GATE_RE_GH_PR_MERGE")")
+case "$pr_sel" in
+  ''|*[!0-9]*) ;;
+  *) pr_number="$pr_sel" ;;
+esac
 
 if [[ -z "$pr_number" ]]; then
-  pr_number=$("$GH" -C "$target_dir" pr view --json number -q .number 2>/dev/null || true)
+  pr_number=$("$GH" pr view --json number -q .number 2>/dev/null || true)
 fi
 
 # No PR yet (typical `gh pr create` on a fresh branch) — fall back to
@@ -142,7 +203,7 @@ if [[ "$use_local_diff" -eq 1 ]]; then
   fi
   changed_files=$(git -C "$target_dir" diff "$merge_base..HEAD" --name-only --diff-filter=AM 2>/dev/null || true)
 else
-  changed_files=$("$GH" -C "$target_dir" pr diff "$pr_number" --name-only 2>/dev/null || true)
+  changed_files=$("$GH" pr diff "$pr_number" --name-only 2>/dev/null || true)
 fi
 
 if [[ -z "$changed_files" ]]; then
@@ -176,7 +237,7 @@ MAX_REPORT=20
 # sha once.
 pr_head_sha=""
 if [[ "$use_local_diff" -eq 0 ]]; then
-  pr_head_sha=$("$GH" -C "$target_dir" pr view "$pr_number" --json headRefOid -q .headRefOid 2>/dev/null || true)
+  pr_head_sha=$("$GH" pr view "$pr_number" --json headRefOid -q .headRefOid 2>/dev/null || true)
 fi
 
 read_file_content() {
@@ -190,7 +251,7 @@ read_file_content() {
       git -C "$target_dir" show "$pr_head_sha:$f" 2>/dev/null && return 0
     fi
     # Fall back to fetching from the API.
-    "$GH" -C "$target_dir" api "repos/{owner}/{repo}/contents/$f?ref=${pr_head_sha:-HEAD}" -q .content 2>/dev/null | base64 -d 2>/dev/null
+    "$GH" api "repos/{owner}/{repo}/contents/$f?ref=${pr_head_sha:-HEAD}" -q .content 2>/dev/null | base64 -d 2>/dev/null
   fi
 }
 

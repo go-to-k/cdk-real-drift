@@ -284,6 +284,63 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
     deploy-shaped command, and the `stop-cleanup-warn` Stop hook warns at session
     end if the sentinel is still armed. Run **`/sweep-resources`** to do the
     cleanup + release the gate.
+- **`issue-dup-check-gate` — the one PreToolUse gate that is not a markgate gate.**
+  It blocks `gh issue create`, and the REST mint `gh api repos/<o>/<r>/issues`,
+  unless the body carries a `Dup-check:` line recording that the OPEN issue list was
+  searched for an issue already naming this root cause (`/work-issues` §5 has the
+  search + fold-into-a-checklist-row recipe). `gh issue edit` / `gh issue comment` are
+  deliberately NOT gated: folding a finding into the issue that already covers its
+  root cause is the outcome the gate steers toward, so taxing it would penalise the
+  cheap path and leave the costly one free. It never asks you to drop a finding — §10-0
+  is explicit that an unfiled finding is strictly worse than a filed one; it changes
+  only WHERE the finding is written. Scoped by repo opt-in (`.markgate.yml` at the
+  resolved cwd's repo root), so filing into an unrelated personal repo is not refused.
+  **The local case for it is prophylactic and weaker than either sibling's** — this
+  repo had ZERO open issues on 2026-08-25 and no verified duplicate filing, unlike
+  cdkd (a non-converging count) and cdk-local (two duplicates nine minutes apart,
+  go-to-k/cdk-local#528 / go-to-k/cdk-local#531) —
+  and the gate's own header says so rather than borrowing their numbers.
+  `gh -R <owner/repo> issue create` — the cross-repo mirror flow's own spelling, and
+  therefore this gate's primary shape — IS matched: the shared `GATE_GH_C` absorbs
+  the repo flags in every spelling `gh` accepts (space, `=`, and glued `-Ro/r`).
+- **Naming the repo must never change a gate's verdict, and twice it did.** On
+  2026-08-25, `gh -R <owner/repo> pr merge 1 --squash` matched NOTHING in
+  `verify-pr-gate`, `ci-green-gate` and `bughunt-clean-gate` — each measured at
+  exit 2 for the plain form and exit 0 for the `-R` form, i.e. a live bypass of
+  `/verify-pr`, of red CI, and of the un-deleted-AWS-resources check. Two causes,
+  both worth remembering: the shared `GATE_GH_C` absorbed only `-C <path>`, AND
+  those three gates each HAND-ROLLED their own copy of the verb regex, so they
+  would not have inherited a fix to the shared one anyway. Both are closed —
+  `GATE_GH_C` is now `GATE_FLAGS`-style tokenisation (covering space, `=`, and the
+  glued `-Ro/r` that a hand-written flag list misses), and every gate derives its
+  trigger from the shared constants via `gate_re_any` — `branch-gate` was a FOURTH
+  hand-rolled copy, frozen at the pre-`GATE_FLAGS` token, so
+  `git -C "<path with a space>" commit` committed straight to main (rc=0 quoted
+  vs rc=2 unquoted). Two follow-on rules the same audit produced: **matching a
+  flag is not the same as honouring it** — `-R` was absorbed and then discarded,
+  so `gh -R foreign/repo pr merge 5` had each gate inspect THIS repo and permit a
+  merge in one it never looked at, and the three gates that audit repo-specific
+  state now REFUSE a foreign `-R` by name (issue-dup-check is exempt: for the
+  cross-repo mirror flow the cwd decides policy and `-R` only decides where the
+  issue lands). And **the selector must come from the matched verb in the matched
+  segment**: `gh` accepts `gh pr merge --squash 1` as readily as
+  `gh pr merge 1 --squash`, and a quoted `gh pr merge 9` inside a `--body` must
+  not donate its number to a later bare merge — both are `gate_pr_selector`'s job
+  now, along with consuming flag VALUES (`gh pr merge -t msg 2195` resolved `msg`,
+  and `--body-file 7 2195` audited PR 7). Two rules came out of that one, both
+  reusable: **enumerate the VALUELESS flags, never the value-takers** — the list
+  goes stale either way, and the safe direction is an unlisted flag eating the
+  number (empty selector, caller falls back) rather than leaving its value in
+  place (wrong PR); and **put a type guard at the end**, so a non-number can never
+  be handed on whatever the flag list does. Fenced by
+  `.claude/hooks/gh-repo-flag-parity.test.sh`, which asserts across every gate that
+  the flagged spellings return the SAME exit code as the plain one **and** that the
+  plain one actually blocks — parity alone is satisfied by a gate inert in both
+  directions, which is the state `non-english-text-gate` was in (it invoked
+  `gh -C`, a flag `gh` does not have, so it failed open on every command). The
+  foreign-`-R` half asserts the refusal MESSAGE, not just the exit code: every
+  gate in that fixture already blocks for its own reasons, so an exit-code-only
+  check stayed green with the refusal deleted.
 - **Registration is not execution — prove the gates are ALIVE before the first
   commit of a session**: run `git commit --dry-run -m "gate liveness probe"` from
   the repo root **as a Bash TOOL CALL**. PreToolUse hooks gate the AGENT's tool
@@ -348,7 +405,9 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   verification cycle was already being paid for) is gone, and a retrospective
   guess is worth little. Record them **in the issue body** so they outlive the
   session. The issue body and the report use the SAME four lines, one field per
-  line:
+  line (an issue also carries a `Dup-check:` line — see `/work-issues` §5 — but that
+  is a filing-time record of the open-issue search, not a fifth classification
+  field):
 
   ```text
   Session-fit: now (do it in this session) | next (not this session) — <reason>
@@ -358,8 +417,10 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   ```
 
   A report adds a fifth line, **`Notes`**, for session-specific context (`none`
-  when there is nothing); the issue body stays at four, because what belongs
-  there is only the part that outlives the session.
+  when there is nothing); the issue body stays at four CLASSIFICATION lines, because
+  what belongs there is only the part that outlives the session. (`Dup-check:` sits
+  alongside them in the body and is not one of the four: it records that the open
+  issue list was searched at filing time, and nothing in the report re-states it.)
 
   **The four answer four DIFFERENT questions and none derives from another**:
   `Session-fit` is the decision, `Severity` the cost of leaving it undone,

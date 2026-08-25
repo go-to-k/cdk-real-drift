@@ -58,8 +58,26 @@ fi
 # Gate only `git commit`, `gh pr create` and `gh pr merge`. The shared segment
 # matcher sees the verb in ANY position — `git add -A && git commit` used to run
 # ungated (go-to-k/cdk-real-drift#1803) — while a mention inside a quoted argument
-# body still does not count, because quoted spans are blanked before splitting.
-GATE_RE_COMMIT_OR_PR='^(git([[:space:]]+-[^[:space:]]+([[:space:]]+[^[:space:]-][^[:space:]]*)?)*[[:space:]]+commit|gh([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+pr[[:space:]]+(create|merge))([[:space:]]|$)'
+# body still does not count. Not because quoted spans are BLANKED -- that was an
+# early shape, reverted because it also erased the PATH in `cd "<worktree>" &&
+# git commit` (go-to-k/cdk-local#542). Segments keep their original text; only the
+# separator CHARACTERS inside quotes are swapped for placeholders while splitting,
+# and a verb inside a string still fails to match because each verb regex is
+# anchored at the segment START.
+# DERIVED from the shared constants, never hand-rolled — see verify-pr-gate.sh
+# for the `-R` bypass this closes (here it let a merge through with live AWS
+# resources still standing).
+GATE_RE_COMMIT_OR_PR=$(gate_re_any "$GATE_RE_GIT_COMMIT" "$GATE_RE_GH_PR_CREATE" "$GATE_RE_GH_PR_MERGE")
+
+# NO foreign-`-R` refusal here, deliberately, and recorded because this is the
+# fourth gate on `gh pr merge` and the omission would otherwise read as an
+# oversight. The other three refuse a foreign `-R` because they audit
+# REPO-SPECIFIC state (this repo's markers, this repo's CI, this repo's diff) and
+# would otherwise approve an action in a repo they never inspected. This gate
+# asks a SESSION-LOCAL question — does the committing owner still have bug-hunt
+# stacks standing in AWS — whose answer does not depend on which repository the
+# PR lives in. Refusing a foreign `-R` here would add friction and protect
+# nothing.
 gate_matches "$cmd" "$GATE_RE_COMMIT_OR_PR" || exit 0
 
 # Resolve where the command will actually run: a `-C <path>` in the matched

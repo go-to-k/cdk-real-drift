@@ -255,12 +255,329 @@ GATE_PATH_TOKEN='("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+)'
 # an earlier version could not parse, so `git -C "/a b" commit` matched nothing
 # and ran ungated (go-to-k/cdk-local#542 review).
 GATE_FLAGS='([[:space:]]+-[^[:space:]]+([[:space:]]+("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]-][^[:space:]]*))?)*'
-GATE_GH_C='([[:space:]]+-C[[:space:]]+("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+))?'
+# Every gh GLOBAL FLAG that can sit before the subcommand, not just `-C`.
+#
+# WIDENED 2026-08-25 after measuring a LIVE BYPASS, not a coverage gap. With the
+# `-C`-only form, `-R <owner/repo>` before the verb made the verb unreachable, so
+# `gh -R go-to-k/cdk-real-drift pr merge 1 --squash` matched NOTHING and walked
+# past the merge gates while the identical command without `-R` was refused.
+# Driven directly against each hook on a fixture repo with a src/** diff, no
+# markers and an armed bug-hunt sentinel:
+#
+#   gate                    plain   -R form
+#   verify-pr-gate            2        0      <- merges past /verify-pr
+#   ci-green-gate             2        0      <- merges past red CI
+#   bughunt-clean-gate        2        0      <- merges with live AWS resources
+#
+# `-R` names where the PR LIVES; it changes nothing about what the command DOES,
+# so a gate that reads one verdict for `gh pr merge` and another for
+# `gh -R o/r pr merge` is simply wrong. cdkd hit the same measurement and widened
+# its copy first. `gh-repo-flag-parity.test.sh` now asserts the equality directly
+# against each gate, which is the assertion that would have caught this.
+#
+# Repeated and `=`-joined forms are absorbed (`gh -C /w -R o/r pr merge`,
+# `gh --repo=o/r pr merge`), and quoted values survive. `-C` is kept even though
+# `gh` HAS NO `-C` FLAG: this matches command TEXT, where over-approximating the
+# trigger is free. Same shape as GATE_FLAGS, and like it this contributes
+# multiple capture groups.
+#
+# IT IS `GATE_FLAGS`, NOT A HAND-WRITTEN `(-C|-R|--repo)` ALTERNATION, and the
+# reason is the GLUED spelling. `gh` accepts a flag value with a space, with `=`,
+# or with NO SEPARATOR AT ALL -- verified against gh 2.89.0, all three returning
+# the same PR number:
+#
+#   gh pr list --repo=go-to-k/cdkd   -> 2195
+#   gh pr list -R=go-to-k/cdkd       -> 2195
+#   gh pr list -Rgo-to-k/cdkd        -> 2195   <- no separator
+#
+# `GATE_FLAGS`' flag token is `-[^[:space:]]+`, which swallows `--repo=X`, `-R=X`
+# and `-RX` as ONE token, leaving the optional value group needed only for the
+# space form. An explicit alternation gets the first two and misses the third:
+# the first revision of this change used `(-C|-R|--repo)([[:space:]]+|=)` and
+# `gh -Rgo-to-k/x issue create` did NOT match. A flag list also has to be
+# maintained as gh grows global flags; a tokeniser does not.
+#
+# `-C` is still absorbed even though `gh` HAS NO `-C` FLAG: this matches command
+# TEXT, where over-approximating the trigger costs nothing. Contributes THREE
+# capture groups, like GATE_FLAGS -- no caller indexes BASH_REMATCH off these.
+GATE_GH_C="$GATE_FLAGS"
+
 GATE_RE_GIT_COMMIT="^git${GATE_FLAGS}[[:space:]]+commit([[:space:]]|$)"
 GATE_RE_GIT_PUSH="^git${GATE_FLAGS}[[:space:]]+push([[:space:]]|$)"
 GATE_RE_GH_PR_CREATE="^gh${GATE_GH_C}[[:space:]]+pr[[:space:]]+create([[:space:]]|$)"
 GATE_RE_GH_PR_EDIT="^gh${GATE_GH_C}[[:space:]]+pr[[:space:]]+edit([[:space:]]|$)"
 GATE_RE_GH_PR_MERGE="^gh${GATE_GH_C}[[:space:]]+pr[[:space:]]+merge([[:space:]]|$)"
+# issue-dup-check-gate: the one verb that MINTS a new issue. `edit` and
+# `comment` are deliberately absent — folding a finding into an issue that
+# already exists is the outcome that gate exists to steer toward, so gating it
+# would tax the cheap path and leave the expensive one untouched.
+#
+# `GATE_GH_C` absorbs `-R` / `--repo` as of 2026-08-25 (see its header), which
+# matters here beyond tidiness: the cross-repo mirror flow files with
+# `gh -R <owner/repo> issue create`, so a `-C`-only absorber would have left this
+# gate blind to its own primary shape. An earlier revision solved that with a
+# scoped `GATE_GH_CR` used only by these two regexes; the widening made it
+# redundant and it was DELETED rather than left beside its live twin.
+GATE_RE_GH_ISSUE_CREATE="^gh${GATE_GH_C}[[:space:]]+issue[[:space:]]+create([[:space:]]|$)"
+# The same mint through the REST verb. `gh api repos/<o>/<r>/issues` with a
+# `title=` field creates an issue; the path must NOT continue past `issues`,
+# which is what separates it from `/issues/<n>/comments` (a comment) and
+# `/issues/<n>` (an edit) — neither of which mints anything. Over-approximate
+# the TRIGGER, be strict on RESOLUTION: the gate re-reads the body itself.
+GATE_RE_GH_API_ISSUE_CREATE="^gh${GATE_GH_C}[[:space:]]+api([[:space:]]|$).*repos/[^[:space:]/]+/[^[:space:]/]+/issues([[:space:]]|$|\")"
+
+# gate_re_any <ere>... — combine several anchored segment regexes into ONE.
+#
+# Gates that guard more than one verb used to HAND-ROLL a combined regex, and
+# every hand-rolled copy drifted from the shared constants: on 2026-08-25
+# verify-pr-gate, non-english-text-gate and bughunt-clean-gate each carried their
+# own `gh([[:space:]]+-C[[:space:]]+[^[:space:]]+)?` and therefore missed
+# `gh -R <owner/repo> pr merge` even after `GATE_GH_C` was widened here. A local
+# copy of a shared pattern is a copy that stops being shared.
+#
+# Each input keeps its own `^`; they are stripped and re-anchored once so the
+# result still means "at the START of a segment".
+gate_re_any() {
+  local out="" re
+  for re in "$@"; do
+    re="${re#^}"
+    out="${out:+$out|}($re)"
+  done
+  printf '^(%s)' "$out"
+}
+
+# A token that keeps a QUOTED value whole. A plain word-split makes
+# `--subject "chore: x" 2195` three tokens, so a flag consumes `"chore:` and the
+# walk then reads `x"` — the same tokenisation defect as a `-C` inside a quoted
+# path. Held in a variable because a literal `[[ =~ ]]` pattern cannot carry both
+# quote characters inside one bracket expression.
+GATE_EMBEDDING_TOKEN='(("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]"'"'"'])+)'
+
+# gate_tokens <string>
+# One shell-ish token per line, quoted spans kept whole.
+gate_tokens() {
+  local s="$1"
+  while [[ "$s" =~ ^[[:space:]]*$GATE_EMBEDDING_TOKEN ]]; do
+    printf '%s\n' "${BASH_REMATCH[1]}"
+    s="${s:${#BASH_REMATCH[0]}}"
+  done
+}
+
+# `gh pr merge` / `gh pr edit` flags that take NO value. Everything else that
+# looks like a flag is assumed to consume the next token.
+#
+# BOTH SPELLINGS OF EVERY FLAG. The first version listed only the long forms, so
+# all four short ones fell to the value-consuming arm and ATE the PR number --
+# `gh pr merge -s 2195`, `-d`, `-m`, `-r` and `--squash -d 2195` all returned an
+# empty selector. Taken from `gh help pr merge` / `gh help pr edit` rather than
+# from memory:
+#
+#   pr merge, valueless: --admin --auto --disable-auto -d/--delete-branch
+#                        -m/--merge -r/--rebase -s/--squash --help
+#   pr merge, VALUE:     -A/--author-email -b/--body -F/--body-file
+#                        --match-head-commit -t/--subject -R/--repo
+#   pr edit,  valueless: --remove-milestone --help
+#
+# `-m` COLLIDES: it is `--merge` (valueless) for `pr merge` and `--milestone`
+# (value-taking) for `pr edit`, and this one list serves both. It is listed as
+# VALUELESS because of what each mistake costs. Read as valueless on `pr edit`,
+# `gh pr edit -m "Q3 milestone" 42` leaves a quoted non-numeric token that the
+# numeric guard drops, so the selector is EMPTY -- a fallback. Read as
+# value-taking on `pr merge`, `-s 2195` loses the number, which is the blocker
+# above. Only a milestone literally NAMED a number could mis-resolve, and it
+# would have to be the first token after the flag.
+#
+# ON THE STALENESS DIRECTION -- AND THE EARLIER VERSION OF THIS COMMENT WAS
+# OVERSTATED, SO THE CORRECTION MATTERS MORE THAN THE CLAIM. It said enumerating
+# valueless flags "goes stale the SAFE way: the selector comes back EMPTY and the
+# caller falls back or refuses". Measured: empty does NOT make ci-green-gate
+# refuse. It runs `gh pr checks` with no argument, which resolves the CURRENT
+# BRANCH's PR -- correct from that PR's own worktree, wrong anywhere else -- and
+# when nothing resolves at all the output matches its `no pull requests found`
+# fail-open and the merge PASSES. `gh pr merge -s 2195` merged past red CI that
+# way.
+#
+# The accurate statement: WRONG-PR IS SEVERE AND DETERMINISTIC; EMPTY-PR IS A
+# FALLBACK WHOSE SAFETY DEPENDS ON THE CALLER. The polarity argument is real but
+# BOUNDED, and it is not a substitute for listing both spellings of every flag.
+# So this list is now exhaustive against `gh help`, and ci-green-gate no longer
+# treats "empty" as automatically safe: `gate_pr_selector_ate_number` below tells
+# "no selector was given" apart from "a flag swallowed one", and the gate refuses
+# the second.
+GATE_GH_PR_VALUELESS_FLAGS='--squash|-s|--merge|-m|--rebase|-r|--delete-branch|-d|--auto|--disable-auto|--admin|--remove-milestone|--help'
+
+# gate_pr_selector <command> <verb-ere>
+#
+# The PR NUMBER after the matched verb, taken from the segment that matched.
+# Empty when there is none, or when what is there is not a number.
+#
+# FOURTH ITERATION of the same bug, so the history is worth keeping. Each fix
+# moved the bypass one step later rather than closing it:
+#
+#   1. a literal `${cmd##*gh pr merge}` strip — any global flag made it fail to
+#      apply, and the caller read back the command name `gh`.
+#   2. an anchor requiring the number IMMEDIATELY after the verb — `gh` does not
+#      require that order, so `gh pr merge --squash 1` lost the selector.
+#   3. skipping tokens that start with `-` but not their VALUES — so a flag value
+#      became the selector. Measured before this fix:
+#
+#        gh pr merge -t msg 2195 --squash                sel=msg
+#        gh pr merge --match-head-commit abc 2195        sel=abc
+#        gh pr merge --subject "chore: x" 2195 --squash  sel=chore:
+#        gh pr merge --body-file 7 2195 --squash         sel=7   <- audits PR 7
+#        gh pr merge -F notes.md 2195 --squash           sel=notes.md
+#
+#      strictly worse than (1), where a non-numeric selector left the value empty
+#      and gh fell back to the current branch, which BLOCKED.
+#
+# Three things close it, and all three are needed: consuming values for every
+# flag not known to be valueless (above), keeping a quoted value in ONE token
+# (GATE_EMBEDDING_TOKEN), and the final numeric guard below — the backstop that
+# makes the flag list's staleness harmless, since every caller wants a NUMBER and
+# anything else (branch, URL, slug, or a flag value that slipped through) must
+# come back empty rather than be handed on.
+#
+# The verb regexes are anchored at `^`, so the match starts at offset 0 and its
+# LENGTH is a safe strip; `${segment#${BASH_REMATCH[0]}}` is not, because the
+# matched text would be treated as a glob pattern.
+# _gate_pr_selector_walk <command> <verb-ere>
+# Two lines: the selector (possibly empty), then 1/0 for "a flag consumed a
+# purely NUMERIC token". One walk, two questions, so the two answers cannot drift
+# apart the way two copies of a walk would.
+_gate_pr_selector_walk() {
+  local cmd="$1" re="$2" segment rest tok skip=0 v ate=0
+  while IFS= read -r segment; do
+    [[ "$segment" =~ $re ]] || continue
+    rest="${segment:${#BASH_REMATCH[0]}}"
+    skip=0; ate=0
+    while IFS= read -r tok; do
+      [ -n "$tok" ] || continue
+      if [ "$skip" = "1" ]; then
+        skip=0
+        case "$(gate_unquote "$tok")" in
+          ''|*[!0-9]*) ;;
+          *) ate=1 ;;
+        esac
+        continue
+      fi
+      case "$tok" in
+        # `--flag=value` / `-R=value` carry their own value.
+        -*=*) continue ;;
+        # A single-dash flag longer than two characters is a GLUED value
+        # (`-Rowner/repo`), which pflag accepts and which is self-contained.
+        -[!-]?*) continue ;;
+        -*)
+          [[ "$tok" =~ ^($GATE_GH_PR_VALUELESS_FLAGS)$ ]] || skip=1
+          continue ;;
+      esac
+      v=$(gate_unquote "$tok")
+      # THE NUMERIC GUARD. Not a PR number -> empty, never handed on.
+      case "$v" in
+        ''|*[!0-9]*) printf '\n%s\n' "$ate"; return 0 ;;
+        *) printf '%s\n%s\n' "$v" "$ate"; return 0 ;;
+      esac
+    done < <(gate_tokens "$rest")
+    printf '\n%s\n' "$ate"
+    return 0
+  done < <(gate_segments "$cmd")
+  printf '\n0\n'
+  return 0
+}
+
+gate_pr_selector() {
+  _gate_pr_selector_walk "$1" "$2" | sed -n 1p
+}
+
+# gate_pr_selector_ate_number <command> <verb-ere>
+# 0 when a FLAG consumed a purely numeric token. Callers use it to tell
+# `gh pr merge --squash` (no selector given -- a legitimate current-branch
+# operation) from `gh pr merge --future-flag 552` (a selector was given and a
+# flag swallowed it), which the selector alone reports identically as empty.
+gate_pr_selector_ate_number() {
+  [ "$(_gate_pr_selector_walk "$1" "$2" | sed -n 2p)" = "1" ]
+}
+
+# gate_repo_flag <command> <verb-ere>
+# The `-R` / `--repo` value carried by the MATCHED segment, in any spelling gh
+# accepts (space, `=`, glued). Empty when the command names no repo.
+#
+# TOKENISED, so a `-R` inside a quoted value is not mistaken for the flag:
+# `gh pr merge --subject "compare with -R other/repo" 5` names no repo.
+gate_repo_flag() {
+  local cmd="$1" re="$2" segment tok want
+  while IFS= read -r segment; do
+    [[ "$segment" =~ $re ]] || continue
+    # Reset per segment: a dangling `want` from an earlier segment would make the
+    # next segment's first token look like a repo value. Benign today (the walk
+    # returns from the first matching segment) and one refactor away from not.
+    want=0
+    while IFS= read -r tok; do
+      [ -n "$tok" ] || continue
+      if [ "$want" = "1" ]; then printf '%s' "$(gate_unquote "$tok")"; return 0; fi
+      case "$tok" in
+        -R|--repo)  want=1 ;;
+        -R=*)       printf '%s' "$(gate_unquote "${tok#-R=}")"; return 0 ;;
+        --repo=*)   printf '%s' "$(gate_unquote "${tok#--repo=}")"; return 0 ;;
+        -R?*)       printf '%s' "$(gate_unquote "${tok#-R}")"; return 0 ;;
+      esac
+    done < <(gate_tokens "$segment")
+    return 0
+  done < <(gate_segments "$cmd")
+  return 0
+}
+
+# gate_normalize_repo_slug <value>
+# `owner/repo`, lowercased, from any spelling gh itself accepts for `-R` or that
+# a git remote can carry: `owner/repo`, `owner/repo.git`, `github.com/owner/repo`,
+# `https://github.com/owner/repo.git`, `ssh://git@github.com/owner/repo`,
+# `git@github.com:owner/repo.git`. Empty when there is no `owner/repo` in it.
+#
+# ONE normaliser for BOTH sides of the comparison, because the foreign-repo check
+# refused gh's own spellings of the CURRENT repo — `-R github.com/owner/repo` and
+# `-R Owner/Repo` (GitHub slugs are case-insensitive) were both reported foreign,
+# and the refusal then told you to run the command from a checkout you were
+# already standing in.
+gate_normalize_repo_slug() {
+  local v="$1"
+  v="${v#*://}"          # scheme
+  v="${v#*@}"            # user@
+  v="${v/:/\/}"          # scp-style `host:owner/repo`
+  v="${v%/}"
+  v="${v%.git}"
+  v="${v%/}"
+  printf '%s' "$v" | awk -F/ 'NF>=2 { printf "%s/%s", $(NF-1), $NF }' | tr '[:upper:]' '[:lower:]'
+}
+
+# gate_local_repo_slug <dir>
+# `owner/repo` from the git remote, WITHOUT calling gh — no network, no auth, so
+# a gate can use it on a runner. Empty when there is no usable remote.
+gate_local_repo_slug() {
+  local dir="$1" url
+  url=$(git -C "$dir" remote get-url origin 2>/dev/null) || return 0
+  gate_normalize_repo_slug "$url"
+}
+
+# gate_foreign_repo <command> <verb-ere> <target-dir>
+# The repo named on the command line when it is NOT the repo the command would
+# otherwise be audited against. Empty when the command names none, or names this
+# one. The NAMED value is printed unnormalised, so the refusal quotes what was
+# actually typed.
+#
+# WHY GATES CARE. `-R` was matched by the flag absorber and then DISCARDED: every
+# gate runs its probes from the RESOLVED CWD, so `gh -R foreign/repo pr merge 5`
+# made each gate audit THIS repo and then permit a merge in one it never looked
+# at.
+#
+# Unresolvable local slug counts as FOREIGN: if the gate cannot prove the named
+# repo is the one it just audited, it has not audited the right thing.
+gate_foreign_repo() {
+  local named local_slug
+  named=$(gate_repo_flag "$1" "$2")
+  [ -n "$named" ] || return 0
+  local_slug=$(gate_local_repo_slug "$3")
+  [ "$(gate_normalize_repo_slug "$named")" = "$local_slug" ] && [ -n "$local_slug" ] && return 0
+  printf '%s' "$named"
+}
 
 # Strip one layer of surrounding quotes from a path token.
 gate_unquote() {

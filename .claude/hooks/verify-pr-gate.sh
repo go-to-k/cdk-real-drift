@@ -67,12 +67,36 @@ fi
 # Which commands this gate applies to. The segment matcher sees a gated verb in
 # ANY position — `git add -A && git commit` used to run ungated
 # (go-to-k/cdk-real-drift#1803).
-GATE_RE_PR_CREATE_OR_MERGE='^gh([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+pr[[:space:]]+(create|merge)([[:space:]]|$)'
+# DERIVED from the shared constants, never hand-rolled. The local copy this
+# replaces absorbed only `-C <path>`, so `gh -R <owner/repo> pr merge 1 --squash`
+# matched nothing and merged past this gate while the same command without `-R`
+# was refused (measured 2026-08-25: plain rc=2, `-R` rc=0). A hand-rolled copy
+# also does not inherit a widening of `GATE_GH_C`, which is how it drifted.
+GATE_RE_PR_CREATE_OR_MERGE=$(gate_re_any "$GATE_RE_GH_PR_CREATE" "$GATE_RE_GH_PR_MERGE")
 gate_matches "$cmd" "$GATE_RE_PR_CREATE_OR_MERGE" || exit 0
 
 # Resolve where the command will actually run: a `-C <path>` in the matched
 # segment wins, else the last `cd <path>` segment before it, else the payload cwd.
 target_dir=$(gate_target_dir "$cmd" "${hook_cwd:-$PWD}" "$GATE_RE_PR_CREATE_OR_MERGE")
+
+# A FOREIGN `-R` is refused rather than audited. Every probe below runs against
+# the RESOLVED CWD, so `gh -R foreign/repo pr merge` would have this gate inspect
+# THIS repo's state and then permit an action in a repo it never looked at. `-R`
+# was matched by the flag absorber and then discarded.
+foreign_repo=$(gate_foreign_repo "$cmd" "$GATE_RE_PR_CREATE_OR_MERGE" "$target_dir")
+if [ -n "$foreign_repo" ]; then
+  {
+    echo "Blocked by verify-pr-gate: this command targets \`$foreign_repo\`, but every"
+    echo "check this gate makes reads the repository at:"
+    echo ""
+    echo "  $target_dir"
+    echo ""
+    echo "so passing it would mean approving an action in a repo that was never"
+    echo "inspected. Run the command from a checkout of \`$foreign_repo\` instead,"
+    echo "where that repo's own gates apply."
+  } >&2
+  exit 2
+fi
 
 # Fails CLOSED (keeps gating) if the changed-file set can't be computed — we
 # only skip the gate when we can PROVE the diff is src-free.
@@ -99,7 +123,6 @@ if [ -n "$base" ]; then
     fi
   fi
 fi
-
 
 # If the resolved target dir is not a git repo, silently pass — we
 # can't audit what we can't see.
