@@ -256,11 +256,52 @@ GATE_PATH_TOKEN='("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+)'
 # and ran ungated (go-to-k/cdk-local#542 review).
 GATE_FLAGS='([[:space:]]+-[^[:space:]]+([[:space:]]+("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]-][^[:space:]]*))?)*'
 GATE_GH_C='([[:space:]]+-C[[:space:]]+("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+))?'
+
+# GATE_GH_CR — `GATE_GH_C` PLUS the repo-selecting flags, and a SEPARATE constant
+# rather than a widening of `GATE_GH_C`, deliberately.
+#
+# `gh -R <owner/repo> issue create` is the CROSS-REPO MIRROR FLOW's own spelling
+# (/work-issues section 10-c: one issue body written once and filed into two
+# sibling repos), and that flow is the entire rationale for issue-dup-check-gate.
+# A gate that misses its primary shape is close to inert, so `-R` must be absorbed
+# — recording it as a known limit would have documented the hole, not closed it.
+#
+# But widening `GATE_GH_C` itself would change the trigger surface of FIVE other
+# gates at once — verify-pr-gate, ci-green-gate, non-english-text-gate,
+# bughunt-clean-gate and branch-gate all reach `gh` through
+# `GATE_RE_GH_PR_CREATE` / `_EDIT` / `_MERGE`, which keep referencing
+# `GATE_GH_C`. Widening theirs is a defensible change (cdkd made it, after
+# measuring `gh -R owner/repo pr merge` walk past every merge gate there), but it
+# is a change to five gates' behaviour and belongs in its own PR with its own
+# review. THIS constant is used by the two issue-mint regexes below and by
+# nothing else, so adding it cannot move any other gate.
+#
+# Repeated and `=`-joined forms are absorbed too (`gh -C /w -R o/r issue create`,
+# `gh --repo=o/r issue create`): over-approximate the TRIGGER, be strict on
+# RESOLUTION — each gate re-reads what it actually needs.
+GATE_GH_CR='([[:space:]]+(-C|-R|--repo)([[:space:]]+|=)("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+))*'
 GATE_RE_GIT_COMMIT="^git${GATE_FLAGS}[[:space:]]+commit([[:space:]]|$)"
 GATE_RE_GIT_PUSH="^git${GATE_FLAGS}[[:space:]]+push([[:space:]]|$)"
 GATE_RE_GH_PR_CREATE="^gh${GATE_GH_C}[[:space:]]+pr[[:space:]]+create([[:space:]]|$)"
 GATE_RE_GH_PR_EDIT="^gh${GATE_GH_C}[[:space:]]+pr[[:space:]]+edit([[:space:]]|$)"
 GATE_RE_GH_PR_MERGE="^gh${GATE_GH_C}[[:space:]]+pr[[:space:]]+merge([[:space:]]|$)"
+# issue-dup-check-gate: the one verb that MINTS a new issue. `edit` and
+# `comment` are deliberately absent — folding a finding into an issue that
+# already exists is the outcome that gate exists to steer toward, so gating it
+# would tax the cheap path and leave the expensive one untouched.
+#
+# `GATE_GH_CR`, not `GATE_GH_C`: the mirror flow files with `-R <owner/repo>`, so
+# a `-C`-only absorber would leave the gate blind to its own primary shape. See
+# that constant's header for why it is scoped to these two regexes instead of
+# widening the one five other gates share. Both harnesses pin the `-R` shape as
+# BLOCKING with a `-C` control beside it, so a revert to `GATE_GH_C` fails them.
+GATE_RE_GH_ISSUE_CREATE="^gh${GATE_GH_CR}[[:space:]]+issue[[:space:]]+create([[:space:]]|$)"
+# The same mint through the REST verb. `gh api repos/<o>/<r>/issues` with a
+# `title=` field creates an issue; the path must NOT continue past `issues`,
+# which is what separates it from `/issues/<n>/comments` (a comment) and
+# `/issues/<n>` (an edit) — neither of which mints anything. Over-approximate
+# the TRIGGER, be strict on RESOLUTION: the gate re-reads the body itself.
+GATE_RE_GH_API_ISSUE_CREATE="^gh${GATE_GH_CR}[[:space:]]+api([[:space:]]|$).*repos/[^[:space:]/]+/[^[:space:]/]+/issues([[:space:]]|$|\")"
 
 # Strip one layer of surrounding quotes from a path token.
 gate_unquote() {

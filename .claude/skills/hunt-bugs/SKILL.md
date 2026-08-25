@@ -598,7 +598,12 @@ fix-in-session round still files the issue, then closes it from the PR (`Closes
 fixer has the evidence.
 
 **Every issue this hunt files also carries the four classification lines**
-(`CLAUDE.md` -> "The four TODO fields"), in English, one field per line:
+(`CLAUDE.md` -> "The four TODO fields"), in English, one field per line. It also
+carries a `Dup-check:` line, which is a filing-time record of the open-issue search
+and NOT a fifth classification field -- `.claude/hooks/issue-dup-check-gate.sh`
+refuses `gh issue create` without it, and `/work-issues` section 5 has the search and
+the fold-into-a-checklist-row recipe for a HIT. A hunt is the highest-volume filer
+here, so it is the path where minting-by-default costs the most:
 
 ```text
 Session-fit: now (do it in this session) | next (not this session) - <reason>

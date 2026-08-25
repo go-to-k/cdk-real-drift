@@ -196,5 +196,33 @@ want_match 1 "an ordinary task run"              'vp run test' "$C"
 # separator INSIDE the quotes, which is the only shape that can distinguish it.
 want_match 1 "separator inside a quoted body" 'gh issue create --body "run vp check && git commit -m x"' "$C"
 
+# --- the issue-mint verbs (issue-dup-check-gate) -----------------------------
+I="$GATE_RE_GH_ISSUE_CREATE"
+A="$GATE_RE_GH_API_ISSUE_CREATE"
+want_match 0 "gh issue create"                 'gh issue create --title t'              "$I"
+want_match 0 "gh issue create, chained"        'git push && gh issue create --title t'  "$I"
+want_match 1 "gh issue edit is not a mint"     'gh issue edit 12 --body x'              "$I"
+want_match 1 "gh issue comment is not a mint"  'gh issue comment 12 --body x'           "$I"
+want_match 1 "quoted mention is not a verb"    "echo 'run gh issue create'"             "$I"
+want_match 0 "gh api repos/o/r/issues"         'gh api repos/o/r/issues -f title=t'     "$A"
+want_match 1 "gh api .../issues/5/comments"    'gh api repos/o/r/issues/5/comments -f body=x' "$A"
+want_match 1 "gh api .../issues/5 (an edit)"   'gh api -X PATCH repos/o/r/issues/5 -f body=x' "$A"
+# The repo-selecting flags, absorbed via the SCOPED `GATE_GH_CR` rather than by
+# widening the `-C`-only `GATE_GH_C` that five other gates share. `-R` is the
+# cross-repo mirror flow's own spelling and therefore issue-dup-check-gate's
+# primary shape, so a `-C`-only absorber would leave that gate close to inert.
+# IF THESE START FAILING, someone reverted the regexes to `GATE_GH_C`.
+want_match 0 "gh -R <repo> issue create"        'gh -R o/r issue create --title t'      "$I"
+want_match 0 "gh --repo <repo> issue create"    'gh --repo o/r issue create --title t'  "$I"
+want_match 0 "gh --repo=<repo> issue create"    'gh --repo=o/r issue create --title t'  "$I"
+want_match 0 "gh -R <repo> api issues"          'gh -R o/r api repos/o/r/issues -f t=1' "$A"
+want_match 0 "repeated -C then -R absorbed"     'gh -C /w -R o/r issue create --title t' "$I"
+want_match 0 "quoted -C path with spaces"       'gh -C "/a b" issue create --title t'   "$I"
+want_match 0 "control: gh -C <dir> issue create" 'gh -C /w issue create --title t'      "$I"
+# The scoping is the point: the five `GATE_RE_GH_PR_*` gates must be UNCHANGED, so
+# `-R` before a pr verb still does not match. If this flips, `GATE_GH_C` itself was
+# widened — a defensible change, but one that alters five gates and needs its own PR.
+want_match 1 "scope: gh -R <repo> pr merge unchanged" 'gh -R o/r pr merge 1 --squash' "$M"
+
 printf '\npass: %s  fail: %s\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

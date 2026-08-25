@@ -284,6 +284,31 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
     deploy-shaped command, and the `stop-cleanup-warn` Stop hook warns at session
     end if the sentinel is still armed. Run **`/sweep-resources`** to do the
     cleanup + release the gate.
+- **`issue-dup-check-gate` — the one PreToolUse gate that is not a markgate gate.**
+  It blocks `gh issue create`, and the REST mint `gh api repos/<o>/<r>/issues`,
+  unless the body carries a `Dup-check:` line recording that the OPEN issue list was
+  searched for an issue already naming this root cause (`/work-issues` §5 has the
+  search + fold-into-a-checklist-row recipe). `gh issue edit` / `gh issue comment` are
+  deliberately NOT gated: folding a finding into the issue that already covers its
+  root cause is the outcome the gate steers toward, so taxing it would penalise the
+  cheap path and leave the costly one free. It never asks you to drop a finding — §10-0
+  is explicit that an unfiled finding is strictly worse than a filed one; it changes
+  only WHERE the finding is written. Scoped by repo opt-in (`.markgate.yml` at the
+  resolved cwd's repo root), so filing into an unrelated personal repo is not refused.
+  **The local case for it is prophylactic and weaker than either sibling's** — this
+  repo had ZERO open issues on 2026-08-25 and no verified duplicate filing, unlike
+  cdkd (a non-converging count) and cdk-local (two duplicates nine minutes apart,
+  go-to-k/cdk-local#528 / go-to-k/cdk-local#531) —
+  and the gate's own header says so rather than borrowing their numbers. Its verb
+  regexes use a **scoped** flag absorber, `GATE_GH_CR` (`-C` plus `-R` / `--repo`),
+  rather than this repo's `-C`-only `GATE_GH_C`: `gh -R <owner/repo> issue create`
+  is the cross-repo mirror flow's own spelling and therefore the gate's primary
+  shape, so missing it would leave the gate close to inert. The constant is used by
+  the two issue-mint regexes and nothing else, so the five gates reaching `gh`
+  through `GATE_RE_GH_PR_*` — verify-pr, ci-green, non-english-text, bughunt-clean,
+  branch — keep their trigger surface exactly as it was; widening THAT one is a
+  separate change. Both hook harnesses pin the `-R` shape as blocking with a `-C`
+  control beside it.
 - **Registration is not execution — prove the gates are ALIVE before the first
   commit of a session**: run `git commit --dry-run -m "gate liveness probe"` from
   the repo root **as a Bash TOOL CALL**. PreToolUse hooks gate the AGENT's tool
@@ -348,7 +373,9 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   verification cycle was already being paid for) is gone, and a retrospective
   guess is worth little. Record them **in the issue body** so they outlive the
   session. The issue body and the report use the SAME four lines, one field per
-  line:
+  line (an issue also carries a `Dup-check:` line — see `/work-issues` §5 — but that
+  is a filing-time record of the open-issue search, not a fifth classification
+  field):
 
   ```text
   Session-fit: now (do it in this session) | next (not this session) — <reason>
@@ -358,8 +385,10 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   ```
 
   A report adds a fifth line, **`Notes`**, for session-specific context (`none`
-  when there is nothing); the issue body stays at four, because what belongs
-  there is only the part that outlives the session.
+  when there is nothing); the issue body stays at four CLASSIFICATION lines, because
+  what belongs there is only the part that outlives the session. (`Dup-check:` sits
+  alongside them in the body and is not one of the four: it records that the open
+  issue list was searched at filing time, and nothing in the report re-states it.)
 
   **The four answer four DIFFERENT questions and none derives from another**:
   `Session-fit` is the decision, `Severity` the cost of leaving it undone,

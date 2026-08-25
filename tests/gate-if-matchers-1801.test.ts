@@ -43,6 +43,11 @@ const REQUIRED: Record<string, string[]> = {
   'ci-green-gate.sh': ['Bash(*gh*pr*merge*)'],
   'non-english-text-gate.sh': ['Bash(*gh*pr*create*)', 'Bash(*gh*pr*edit*)', 'Bash(*gh*pr*merge*)'],
   'deploy-autoarm-gate.sh': ['Bash(*deploy*)', 'Bash(*create-stack*)', 'Bash(*update-stack*)'],
+  // Two entries, never one joined pattern: `gh issue create` and the REST mint
+  // `gh api repos/<o>/<r>/issues`. Both are deliberately UNANCHORED and broad —
+  // the gate re-matches the command precisely with `GATE_RE_GH_ISSUE_CREATE` /
+  // `GATE_RE_GH_API_ISSUE_CREATE` and re-derives its own target dir.
+  'issue-dup-check-gate.sh': ['Bash(*gh*issue*create*)', 'Bash(*gh*api*issues*)'],
 };
 
 interface GateHook {

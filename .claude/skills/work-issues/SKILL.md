@@ -333,8 +333,12 @@ fields"), glosses included: `Session-fit: next (not this session)`,
 half: `non-english-text-gate` fires only on `gh pr create` / `gh pr edit` /
 `gh pr merge` (its `"if"` clause in `.claude/settings.json`), and it identifies its
 target by resolving a PR NUMBER and scanning `gh pr diff`, so it structurally cannot
-see an issue at all — no `gh issue` command appears in any hook's `"if"` clause.
-Discipline is the only guard, and it has already failed once: a `/work-issues` run in
+see an issue at all. `issue-dup-check-gate` DOES now select on `gh issue create`
+(§5), so the sentence that used to stand here — "no `gh issue` command appears in
+any hook's `"if"` clause" — is no longer true; but that gate reads the body for one
+`Dup-check:` line and nothing else, so it says nothing about the LANGUAGE of the
+body and this half remains unenforced. Discipline is still the only guard here, and
+it has already failed once: a `/work-issues` run in
 go-to-k/cdk-local filed its follow-up on 2026-08-19 with both halves of the
 `Session-fit` line glossed in the session's chat language, and had to patch the body
 after creation (go-to-k/cdk-real-drift#1777).
@@ -363,6 +367,99 @@ Two boundaries, so this does not become a licence for unbounded lanes:
 - **Sweep the same ROOT CAUSE, not the same AREA.** Two unrelated bugs in one file
   are two issues; one wrong assumption at five call sites is one. The test is
   whether a single sentence describes the fix at every site.
+
+**And whatever you do file, resolve it against the issues ALREADY OPEN first.** The
+sweep above looks for sibling sites in the CODE. This looks for a sibling ISSUE, and
+it is a different search with a different answer: the issue that covers your finding
+was written from a DIFFERENT site, by a different lane, and names different symbols.
+§10-c already runs a rigorous version of this check — the merged file, then open PRs,
+then open issues — but its subject is a mirrored skill LESSON. The path that files a
+defect follow-up mid-lane, which is where the volume comes from, ran no such check at
+all.
+
+**Be honest about how weak the local evidence is.** Measured 2026-08-25, this repo
+had **zero open issues**. cdkd's version of this rule rests on a backlog whose count
+does not converge (115 open, 94 carrying `Session-fit: next`, all four of the oldest
+umbrella-shaped) and cdk-local's on two VERIFIED duplicate filings nine minutes apart
+on the mirror path (go-to-k/cdk-local#528 / go-to-k/cdk-local#531). Neither holds here, and the one candidate pair a
+title scan surfaces — go-to-k/cdk-real-drift#1786 and go-to-k/cdk-real-drift#1799 —
+is NOT a duplicate on reading: go-to-k/cdk-real-drift#1786 mirrors three lessons
+from cdk-local's 2026-08-19 run, go-to-k/cdk-real-drift#1799 three from cdkd's
+go-to-k/cdkd#2125. Different source repos,
+different lessons. So the case for the check here is PROPHYLACTIC: this repo sits on
+the same cross-repo mirror flow §10-c already documents as a duplicate GENERATOR, that
+flow demonstrably produced a duplicate pair in a sibling, and the check costs one
+search plus one line.
+
+```bash
+# Search the CONCEPT, not this instance's spelling — the same reason the code sweep
+# above greps for a SHAPE rather than a name.
+gh issue list --state open --limit 200 --search '<root-cause concept>' \
+  --json number,title
+# Then the body window, which the search index misses: an issue names its sites in
+# the body, not the title.
+gh issue list --state open --limit 200 --json number,title,body \
+  --jq '.[] | select((.body // "") | test("<shared symbol / call / assumption>";"i"))
+        | "\(.number)\t\(.title)"'
+# `(.body // "")`, not `.body`: an issue filed with no body makes `test` abort the
+# whole jq program with "null (null) cannot be matched", so one body-less issue
+# silently costs you the entire window.
+```
+
+On a HIT, the finding becomes a CHECKLIST ROW in that issue rather than a new issue
+number:
+
+```bash
+U=$(mktemp)   # NOT a fixed /tmp path — parallel lanes share the scratchpad
+gh issue view <hit> --json body -q .body > "$U" \
+  && [ -s "$U" ] \
+  && printf -- '- [ ] <site>: <one line, plus where the evidence is>\n' >> "$U" \
+  && gh issue edit <hit> --body-file "$U"
+```
+
+**The chaining and the `-s` test are load-bearing, not style.** The redirect truncates
+`$U` before `gh` runs, so an unchained recipe whose `view` fails — wrong number, a
+non-repo cwd, a transient error — leaves an empty file that the `printf` fills with
+the single new row, and the `edit` then replaces the issue's WHOLE body with it. Every
+previously folded finding would be destroyed by the very procedure that exists to
+preserve them, which is the one outcome §10-0 says must never happen. `mktemp` rather
+than a fixed path for the same reason at a different scale: parallel lanes share the
+scratchpad, and a read-modify-write with no concurrency control loses a row when two
+folds overlap — so do not run two folds against the same issue concurrently.
+
+On a MISS — with this repo's backlog at zero, the expected outcome for essentially
+every filing — file it, and record the search in the body so the next lane can see
+the window was checked:
+
+```text
+Dup-check: searched open issues for <terms> -- none covers this root cause
+```
+
+**This is not a filing threshold, and it must never be used as one.** §10-0 below is
+explicit that `filed <= closed` is not a target and that an unfiled finding is
+strictly worse than a filed one. Nothing here changes WHETHER a defect gets written
+down; it changes only WHERE. An open issue then counts one unresolved root cause
+instead of one unfixed site.
+
+Enforced by `.claude/hooks/issue-dup-check-gate.sh`, which refuses `gh issue create`
+without the `Dup-check:` line, and the same refusal covers
+`gh api repos/<o>/<r>/issues`, which mints an issue through the REST verb.
+`gh issue edit` and `gh issue comment` are deliberately NOT gated. Two things about
+that gate a reader will otherwise discover the hard way:
+
+- **Folding is not CHEAPER than minting.** After the same search, minting is one
+  command and folding is three (`view`, `printf`, `edit`). The gate makes minting
+  non-free while leaving folding untaxed — it removes minting's advantage rather than
+  creating one for folding.
+- **`gh -R <owner/repo> issue create` IS matched**, which matters because that is this
+  very flow's own spelling — §10-c files a mirrored issue into a sibling repo with `-R`,
+  from this repo's worktree. The gate's verb regexes use a scoped absorber,
+  `GATE_GH_CR` (`-C` plus `-R` / `--repo`), rather than this repo's `-C`-only
+  `GATE_GH_C`, precisely so its primary shape is not the one it misses. The scoping is
+  the point: `GATE_GH_CR` is used by the two issue-mint regexes and nothing else, so the
+  five gates reaching `gh` through `GATE_RE_GH_PR_*` keep their trigger surface
+  unchanged. So a mirrored filing needs the `Dup-check:` line like any other — which is
+  the right outcome, since §10-c's own three-window check is what the line records.
 
 Never edit in the main checkout. Per lane:
 
@@ -1065,9 +1162,31 @@ subject and a wider scope, and neither is covered by that one:
 ### 10-0. Measure the run's net effect on the backlog
 
 Before anything else in this step, count what the run did to the issue list and put
-both numbers in the wrap report — `closed N / filed M` — and **when M > N, give the
-reason in one more line**. It is almost always one of three, and only the first is
-healthy:
+both numbers in the wrap report. Then SPLIT the filed count by what §5's open-issue
+window did with each finding, because the aggregate cannot tell the two apart and
+they mean opposite things:
+
+```bash
+# Folded INTO an existing issue rather than filed as a new one. `updatedAt` alone
+# does NOT answer this: §4 makes every lane post a CLAIM comment on the issue it
+# takes, so a bare updatedAt sweep counts this run's own claims and can never read 0.
+# Count the issues whose BODY gained a checklist row instead.
+gh issue list --state open --limit 200 --json number,title,updatedAt \
+  --jq '.[] | select(.updatedAt > "<this run start ISO>") | .number' \
+| while read -r n; do
+    gh issue view "$n" --json body -q '.body' \
+      | grep -qE '^[[:space:]]*- \[ \]' && echo "$n"
+  done
+```
+
+Report it as one line — `closed N / filed M (new K / folded J)` — and **when M > N,
+give the reason in one more line**. `J` is the number §5's window exists to move, and
+it is the only one of the three that can be improved without either missing a defect
+or leaving one unfixed. With this repo's backlog at zero, `J = 0` is the HONEST answer
+for most runs and is not a finding; `J = 0` becomes a signal only once several
+findings in one area have already been filed, and then it says the window was searched
+by this instance's spelling rather than by the concept. The reason for `M > N` is
+almost always one of three, and only the first is healthy:
 
 - **the code really does have that many independent defects** — the run walked into
   an untested area. Fine; say which area, so the next hunt aims there.
