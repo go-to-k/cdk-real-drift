@@ -224,6 +224,14 @@ run "method quoted in a body is not the method" \
 run "glued -XPOST is a mint"         "gh api -XPOST repos/go-to-k/cdk-real-drift/issues -f title=t"     "$TMPROOT" 2
 run "--method=get is a READ"         "gh api --method=get repos/go-to-k/cdk-real-drift/issues"          "$TMPROOT" 0
 run "quoted title= field is a mint"  "gh api repos/go-to-k/cdk-real-drift/issues -f 'title=t' -f body=x" "$TMPROOT" 2
+# `-X=POST`: pflag accepts `=` after a SHORT flag (`gh pr list -L=abc` errors with
+# `invalid argument "abc" for "-L, --limit"`). Read as no method, it defaulted to
+# READ and the mint escaped.
+run "-X=POST is a mint"              "gh api -X=POST repos/go-to-k/cdk-real-drift/issues -f body=x"  "$TMPROOT" 2
+run "-X=GET is a READ"               "gh api -X=GET repos/go-to-k/cdk-real-drift/issues"             "$TMPROOT" 0
+# `--input <file>` sends a request body; gh infers POST from it.
+run "--input <file> is a mint"       "gh api --input body.json repos/go-to-k/cdk-real-drift/issues"  "$TMPROOT" 2
+run "--input=<file> is a mint"       "gh api --input=body.json repos/go-to-k/cdk-real-drift/issues"  "$TMPROOT" 2
 
 # --- a TITLE is not a record of having searched -----------------------------
 # The loose inline scan ran over the whole SEGMENT, so the marker could sit

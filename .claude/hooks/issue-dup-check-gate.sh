@@ -232,7 +232,7 @@ MARKER_RE_LOOSE='dup-check:'
 #   no method, but a `title=` field -> mint (gh implies POST from fields)
 #   otherwise                       -> read
 seg_is_api_mint() {
-  local seg="$1" tok method="" has_title=0 want_method=0 want_field=0 v
+  local seg="$1" tok method="" has_title=0 want_method=0 want_field=0 has_body_input=0 want_skip=0 v
   # TOKENISED, and every test runs on a TOKEN rather than on the segment text.
   # The method used to be read with a regex over the whole segment, so a method
   # quoted inside a BODY decided it:
@@ -246,6 +246,7 @@ seg_is_api_mint() {
   # is never read as a flag, so the body can say anything.
   while IFS= read -r tok; do
     [ -n "$tok" ] || continue
+    if [ "$want_skip" = "1" ]; then want_skip=0; continue; fi
     if [ "$want_method" = "1" ]; then method=$(gate_unquote "$tok"); want_method=0; continue; fi
     if [ "$want_field" = "1" ]; then
       want_field=0
@@ -255,9 +256,19 @@ seg_is_api_mint() {
     case "$tok" in
       -X|--method) want_method=1 ;;
       --method=*)  method=$(gate_unquote "${tok#--method=}") ;;
-      # GLUED `-XPOST`: pflag accepts it, and the old `[[:space:]=]+` required a
-      # separator, so it read as no method at all.
+      # `-X=POST`. pflag accepts `=` after a SHORT flag too, which the previous
+      # rewrite missed while citing pflag for the glued form: `gh pr list -L=abc`
+      # errors with `invalid argument "abc" for "-L, --limit"`, i.e. gh parsed
+      # `abc` as the value. Without this arm `-X=POST` read as NO method, and a
+      # no-method segment defaults to READ -- a mint escaping, which is the
+      # DANGEROUS polarity, the opposite of the one the selector comment argues
+      # for.
+      -X=*)        method=$(gate_unquote "${tok#-X=}") ;;
+      # GLUED `-XPOST`: same source, same reason.
       -X?*)        method=$(gate_unquote "${tok#-X}") ;;
+      # `--input <file>` / `--input=<file>` sends a request BODY, and gh infers
+      # POST from it exactly as it does from fields. Defaulted to read before.
+      --input|--input=*) has_body_input=1; case "$tok" in --input) want_skip=1 ;; esac ;;
       -f|-F|--field|--raw-field) want_field=1 ;;
       --field=*|--raw-field=*)
         case "$(gate_unquote "${tok#*=}")" in title=*) has_title=1 ;; esac ;;
@@ -273,6 +284,7 @@ seg_is_api_mint() {
     return 1
   fi
   [ "$has_title" = "1" ] && return 0
+  [ "$has_body_input" = "1" ] && return 0
   return 1
 }
 

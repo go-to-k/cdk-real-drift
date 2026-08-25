@@ -58,7 +58,12 @@ fi
 # Gate only `git commit`, `gh pr create` and `gh pr merge`. The shared segment
 # matcher sees the verb in ANY position — `git add -A && git commit` used to run
 # ungated (go-to-k/cdk-real-drift#1803) — while a mention inside a quoted argument
-# body still does not count, because quoted spans are blanked before splitting.
+# body still does not count. Not because quoted spans are BLANKED -- that was an
+# early shape, reverted because it also erased the PATH in `cd "<worktree>" &&
+# git commit` (go-to-k/cdk-local#542). Segments keep their original text; only the
+# separator CHARACTERS inside quotes are swapped for placeholders while splitting,
+# and a verb inside a string still fails to match because each verb regex is
+# anchored at the segment START.
 # DERIVED from the shared constants, never hand-rolled — see verify-pr-gate.sh
 # for the `-R` bypass this closes (here it let a merge through with live AWS
 # resources still standing).

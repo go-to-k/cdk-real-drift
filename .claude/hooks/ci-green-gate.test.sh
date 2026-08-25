@@ -154,6 +154,57 @@ not_foreign "-R inside a quoted value"     'gh pr merge --subject "compare with 
 # because the refusal was deleted.
 run 2 "foreign -R still refused"     'gh -R foreign/evil pr merge 5 --squash'  GH_MOCK_RC=0
 
+# Short valueless spellings must not eat the PR number. Before this,
+# `gh pr merge -s 2195` lost it, `gh pr checks` ran with NO argument, nothing
+# resolved, and the `no pull requests found` fail-open below PASSED a red CI.
+sel_check 2195 "short -s"                        'gh pr merge -s 2195'
+sel_check 2195 "short -d"                        'gh pr merge -d 2195'
+sel_check 2195 "long then short"                 'gh pr merge --squash -d 2195'
+run 2 "short -s still blocks red CI" 'gh pr merge -s 5' \
+  GH_MOCK_RC=1 GH_MOCK_OUT="check fail" GH_MOCK_STRICT_SEL=1
+
+# An EMPTY selector is not automatically safe. Distinguish the two ways it can be
+# empty: no selector given (legitimate current-branch merge, fall back) vs a flag
+# swallowed one (refuse — falling back would audit a PR the user never named).
+run 0 "no selector given falls back"  'gh pr merge --squash'          GH_MOCK_RC=0
+run 2 "a flag that ate the number is refused" 'gh pr merge --future-flag 552' GH_MOCK_RC=0
+
+# THE SECOND SHAPE GUARD needs a GUARD-THE-GUARD case, and no black-box case can
+# be one. `gate_pr_selector` already applies a numeric guard, so `$prsel` reaches
+# this gate numeric-or-empty whatever is typed — an earlier attempt here fed
+# `gh pr merge --admin feature-branch` and still could not tell the guard's
+# presence from its absence, because the library had already dropped the branch
+# name. The masking is one-directional and real: the library's guard hides the
+# gate's, never the reverse.
+#
+# So remove the MASK. Run the gate against a COPY of the library whose selector
+# is forced non-numeric — exactly the future in which the second guard earns its
+# place — and assert the gate still refuses to hand a branch name to
+# `gh pr checks`.
+second_guard_check() {
+  local tmp sel payload
+  tmp=$(mktemp -d)
+  cp "$HOOK" "$tmp/ci-green-gate.sh"
+  chmod +x "$tmp/ci-green-gate.sh"
+  {
+    cat "$(dirname "$HOOK")/_command-match.sh"
+    printf '\ngate_pr_selector() { printf "%%s" "feature-branch"; }\n'
+  } > "$tmp/_command-match.sh"
+  : > "$SELF"
+  payload=$(printf '{"tool_input":{"command":"gh pr merge 5 --squash"},"cwd":"%s"}' "$repo")
+  env GH_MOCK_RC=0 GH_SEL_FILE="$SELF" \
+    bash -c 'printf "%s" "$0" | '"$tmp"'/ci-green-gate.sh >/dev/null 2>&1' "$payload"
+  sel=$(cat "$SELF" 2>/dev/null || printf '')
+  rm -rf "$tmp"
+  if [ -z "$sel" ]; then
+    printf 'ok   — second shape guard drops a non-numeric selector (library guard removed)\n'
+  else
+    printf 'FAIL — second shape guard: gh received "%s" (library guard removed)\n' "$sel"
+    fails=$((fails + 1))
+  fi
+}
+second_guard_check
+
 # A lost selector must also change the VERDICT, not just the recorded value.
 run 2 "flag-first selector still resolves the PR" 'gh pr merge --squash 5' \
   GH_MOCK_RC=1 GH_MOCK_OUT="check fail" GH_MOCK_STRICT_SEL=1

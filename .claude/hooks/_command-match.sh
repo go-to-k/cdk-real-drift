@@ -366,13 +366,45 @@ gate_tokens() {
 # `gh pr merge` / `gh pr edit` flags that take NO value. Everything else that
 # looks like a flag is assumed to consume the next token.
 #
-# THE POLARITY IS THE WHOLE POINT, and it is the opposite of the obvious one.
-# Enumerating VALUE-TAKERS goes stale the DANGEROUS way: an unlisted flag leaves
-# its value in place, the value becomes the selector, and the gate audits the
-# WRONG PR. Enumerating VALUELESS flags goes stale the SAFE way: an unlisted one
-# eats the number, the selector comes back empty, and every caller either falls
-# back to the current branch or refuses. Wrong-PR is severe; no-PR is not.
-GATE_GH_PR_VALUELESS_FLAGS='--squash|--merge|--rebase|--auto|--disable-auto|--admin|--delete-branch'
+# BOTH SPELLINGS OF EVERY FLAG. The first version listed only the long forms, so
+# all four short ones fell to the value-consuming arm and ATE the PR number --
+# `gh pr merge -s 2195`, `-d`, `-m`, `-r` and `--squash -d 2195` all returned an
+# empty selector. Taken from `gh help pr merge` / `gh help pr edit` rather than
+# from memory:
+#
+#   pr merge, valueless: --admin --auto --disable-auto -d/--delete-branch
+#                        -m/--merge -r/--rebase -s/--squash --help
+#   pr merge, VALUE:     -A/--author-email -b/--body -F/--body-file
+#                        --match-head-commit -t/--subject -R/--repo
+#   pr edit,  valueless: --remove-milestone --help
+#
+# `-m` COLLIDES: it is `--merge` (valueless) for `pr merge` and `--milestone`
+# (value-taking) for `pr edit`, and this one list serves both. It is listed as
+# VALUELESS because of what each mistake costs. Read as valueless on `pr edit`,
+# `gh pr edit -m "Q3 milestone" 42` leaves a quoted non-numeric token that the
+# numeric guard drops, so the selector is EMPTY -- a fallback. Read as
+# value-taking on `pr merge`, `-s 2195` loses the number, which is the blocker
+# above. Only a milestone literally NAMED a number could mis-resolve, and it
+# would have to be the first token after the flag.
+#
+# ON THE STALENESS DIRECTION -- AND THE EARLIER VERSION OF THIS COMMENT WAS
+# OVERSTATED, SO THE CORRECTION MATTERS MORE THAN THE CLAIM. It said enumerating
+# valueless flags "goes stale the SAFE way: the selector comes back EMPTY and the
+# caller falls back or refuses". Measured: empty does NOT make ci-green-gate
+# refuse. It runs `gh pr checks` with no argument, which resolves the CURRENT
+# BRANCH's PR -- correct from that PR's own worktree, wrong anywhere else -- and
+# when nothing resolves at all the output matches its `no pull requests found`
+# fail-open and the merge PASSES. `gh pr merge -s 2195` merged past red CI that
+# way.
+#
+# The accurate statement: WRONG-PR IS SEVERE AND DETERMINISTIC; EMPTY-PR IS A
+# FALLBACK WHOSE SAFETY DEPENDS ON THE CALLER. The polarity argument is real but
+# BOUNDED, and it is not a substitute for listing both spellings of every flag.
+# So this list is now exhaustive against `gh help`, and ci-green-gate no longer
+# treats "empty" as automatically safe: `gate_pr_selector_ate_number` below tells
+# "no selector was given" apart from "a flag swallowed one", and the gate refuses
+# the second.
+GATE_GH_PR_VALUELESS_FLAGS='--squash|-s|--merge|-m|--rebase|-r|--delete-branch|-d|--auto|--disable-auto|--admin|--remove-milestone|--help'
 
 # gate_pr_selector <command> <verb-ere>
 #
@@ -408,15 +440,26 @@ GATE_GH_PR_VALUELESS_FLAGS='--squash|--merge|--rebase|--auto|--disable-auto|--ad
 # The verb regexes are anchored at `^`, so the match starts at offset 0 and its
 # LENGTH is a safe strip; `${segment#${BASH_REMATCH[0]}}` is not, because the
 # matched text would be treated as a glob pattern.
-gate_pr_selector() {
-  local cmd="$1" re="$2" segment rest tok skip=0 v
+# _gate_pr_selector_walk <command> <verb-ere>
+# Two lines: the selector (possibly empty), then 1/0 for "a flag consumed a
+# purely NUMERIC token". One walk, two questions, so the two answers cannot drift
+# apart the way two copies of a walk would.
+_gate_pr_selector_walk() {
+  local cmd="$1" re="$2" segment rest tok skip=0 v ate=0
   while IFS= read -r segment; do
     [[ "$segment" =~ $re ]] || continue
     rest="${segment:${#BASH_REMATCH[0]}}"
-    skip=0
+    skip=0; ate=0
     while IFS= read -r tok; do
       [ -n "$tok" ] || continue
-      if [ "$skip" = "1" ]; then skip=0; continue; fi
+      if [ "$skip" = "1" ]; then
+        skip=0
+        case "$(gate_unquote "$tok")" in
+          ''|*[!0-9]*) ;;
+          *) ate=1 ;;
+        esac
+        continue
+      fi
       case "$tok" in
         # `--flag=value` / `-R=value` carry their own value.
         -*=*) continue ;;
@@ -430,13 +473,28 @@ gate_pr_selector() {
       v=$(gate_unquote "$tok")
       # THE NUMERIC GUARD. Not a PR number -> empty, never handed on.
       case "$v" in
-        ''|*[!0-9]*) return 0 ;;
-        *) printf '%s' "$v"; return 0 ;;
+        ''|*[!0-9]*) printf '\n%s\n' "$ate"; return 0 ;;
+        *) printf '%s\n%s\n' "$v" "$ate"; return 0 ;;
       esac
     done < <(gate_tokens "$rest")
+    printf '\n%s\n' "$ate"
     return 0
   done < <(gate_segments "$cmd")
+  printf '\n0\n'
   return 0
+}
+
+gate_pr_selector() {
+  _gate_pr_selector_walk "$1" "$2" | sed -n 1p
+}
+
+# gate_pr_selector_ate_number <command> <verb-ere>
+# 0 when a FLAG consumed a purely numeric token. Callers use it to tell
+# `gh pr merge --squash` (no selector given -- a legitimate current-branch
+# operation) from `gh pr merge --future-flag 552` (a selector was given and a
+# flag swallowed it), which the selector alone reports identically as empty.
+gate_pr_selector_ate_number() {
+  [ "$(_gate_pr_selector_walk "$1" "$2" | sed -n 2p)" = "1" ]
 }
 
 # gate_repo_flag <command> <verb-ere>
@@ -446,9 +504,13 @@ gate_pr_selector() {
 # TOKENISED, so a `-R` inside a quoted value is not mistaken for the flag:
 # `gh pr merge --subject "compare with -R other/repo" 5` names no repo.
 gate_repo_flag() {
-  local cmd="$1" re="$2" segment tok want=0
+  local cmd="$1" re="$2" segment tok want
   while IFS= read -r segment; do
     [[ "$segment" =~ $re ]] || continue
+    # Reset per segment: a dangling `want` from an earlier segment would make the
+    # next segment's first token look like a repo value. Benign today (the walk
+    # returns from the first matching segment) and one refactor away from not.
+    want=0
     while IFS= read -r tok; do
       [ -n "$tok" ] || continue
       if [ "$want" = "1" ]; then printf '%s' "$(gate_unquote "$tok")"; return 0; fi
@@ -480,6 +542,7 @@ gate_normalize_repo_slug() {
   v="${v#*://}"          # scheme
   v="${v#*@}"            # user@
   v="${v/:/\/}"          # scp-style `host:owner/repo`
+  v="${v%/}"
   v="${v%.git}"
   v="${v%/}"
   printf '%s' "$v" | awk -F/ 'NF>=2 { printf "%s/%s", $(NF-1), $NF }' | tr '[:upper:]' '[:lower:]'

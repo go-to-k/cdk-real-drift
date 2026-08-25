@@ -296,6 +296,33 @@ want_sel ""   "unknown flag eats the number (SAFE)" 'gh pr merge --future-flag 5
 want_sel ""   "branch name is not a PR number"      'gh pr merge feature-branch --squash'
 want_sel ""   "URL is not a PR number"              'gh pr merge https://github.com/o/r/pull/5'
 
+# BOTH SPELLINGS. The list carried only the long forms, so every 2-char short
+# flag fell to the value-consuming arm and ATE the number. Taken from
+# `gh help pr merge`, which documents -s/--squash -m/--merge -r/--rebase
+# -d/--delete-branch.
+want_sel 2195 "short -s"                           'gh pr merge -s 2195'
+want_sel 2195 "short -d"                           'gh pr merge -d 2195'
+want_sel 2195 "short -m"                           'gh pr merge -m 2195'
+want_sel 2195 "short -r"                           'gh pr merge -r 2195'
+want_sel 2195 "long then short, both valueless"    'gh pr merge --squash -d 2195'
+want_sel 2195 "--admin --auto then the number"     'gh pr merge --admin --auto 2195'
+
+# gate_pr_selector_ate_number: "no selector given" vs "a flag swallowed one".
+# Reported identically as an empty selector, and ci-green-gate must treat them
+# differently — the first is a legitimate current-branch merge, the second audits
+# a PR the user never named.
+want_ate() {
+  local expect="$1" name="$2" cmd="$3" got=no
+  gate_pr_selector_ate_number "$cmd" "$GATE_RE_GH_PR_MERGE" && got=yes
+  if [ "$got" = "$expect" ]; then pass=$((pass + 1)); printf 'OK   ate %s\n' "$name"
+  else fail=$((fail + 1)); printf 'FAIL ate %s (got %s, want %s)\n' "$name" "$got" "$expect"; fi
+}
+want_ate yes "unknown flag swallowed the number" 'gh pr merge --future-flag 552'
+want_ate no  "no selector given at all"          'gh pr merge --squash'
+want_ate no  "selector present and resolved"     'gh pr merge -s 2195'
+want_ate no  "flag value is not numeric"         'gh pr merge -t msg 2195'
+
+
 # --- gate_repo_flag / slug normalisation ------------------------------------
 want_slug() {
   local expect="$1" name="$2" cmd="$3" got
@@ -340,6 +367,7 @@ want_local_slug a/b "https remote bare"      'https://github.com/a/b'
 want_local_slug a/b "scp-style remote"       'git@github.com:a/b.git'
 want_local_slug a/b "ssh:// remote"          'ssh://git@github.com/a/b.git'
 want_local_slug a/b "uppercase remote"       'https://github.com/A/B.git'
+want_local_slug a/b "trailing slash after .git" 'https://github.com/a/b.git/'
 
 
 

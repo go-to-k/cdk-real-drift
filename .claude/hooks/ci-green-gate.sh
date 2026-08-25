@@ -116,10 +116,12 @@ command -v gh >/dev/null 2>&1 || exit 0
 #       gh pr merge --squash 1          rc=0   <- regression
 #       gh -R o/r pr merge --squash 1   rc=0   <- regression
 #
-# `gate_pr_selector` skips leading flags (order-independent) and reads only the
-# matching segment, so a quoted `gh pr merge 9` in a --body cannot donate its
-# number to a later bare `gh pr merge`. Fenced in _command-match.test.sh and by
-# this gate's own harness, whose stub now answers PER SELECTOR.
+# `gate_pr_selector` consumes flag VALUES (not merely skipping tokens that start
+# with `-`, which made `-t msg 2195` resolve `msg`), applies a numeric guard, and
+# reads only the matching segment, so a quoted `gh pr merge 9` in a --body cannot
+# donate its number to a later bare `gh pr merge`. Fenced in
+# _command-match.test.sh and by this gate's own harness, whose stub answers PER
+# SELECTOR.
 prsel=$(gate_pr_selector "$cmd" "$GATE_RE")
 # A SECOND, INDEPENDENT shape guard, mirroring non-english-text-gate's. Two
 # guards beat one here specifically: this is the gate whose fail-open arm turns a
@@ -131,6 +133,39 @@ prsel=$(gate_pr_selector "$cmd" "$GATE_RE")
 case "$prsel" in
   ''|*[!0-9]*) prsel="" ;;
 esac
+
+# AN EMPTY SELECTOR IS NOT AUTOMATICALLY SAFE HERE, and the flag-list comment in
+# _command-match.sh used to claim it was. Measured: with the short forms missing
+# from the valueless list, `gh pr merge -s 2195` lost its number, this gate ran
+# `gh pr checks` with NO argument, nothing resolved, the output matched the
+# `no pull requests found` fail-open below, and the merge PASSED past red CI.
+#
+# So distinguish the two ways a selector can be absent. `gh pr merge --squash`
+# gives no selector at all -- a legitimate current-branch merge, and the
+# no-argument fallback is right for it. `gh pr merge --future-flag 552` DID give
+# one and a flag swallowed it; resolving the current branch there audits a PR the
+# user never named. Only the second is refused, so the fallback keeps working for
+# the case it exists for.
+if [ -z "$prsel" ] && gate_pr_selector_ate_number "$cmd" "$GATE_RE"; then
+  {
+    echo "Blocked by ci-green-gate: a flag in this command swallowed the PR number,"
+    echo "so the gate cannot tell which PR's CI to check."
+    echo ""
+    echo "This happens when a flag that TAKES a value is not in the gate's"
+    echo "valueless-flag list, or when a flag genuinely takes a value and the PR"
+    echo "number follows it. Falling back to the current branch here would audit a"
+    echo "PR you did not name, and a PR that does not resolve at all reads as"
+    echo "\"no CI to check\" -- which is how a red CI once merged."
+    echo ""
+    echo "Put the PR number where it cannot be eaten:"
+    echo ""
+    echo "  gh pr merge <number> --squash --delete-branch"
+    echo ""
+    echo "If the flag really is valueless, add BOTH its spellings to"
+    echo "GATE_GH_PR_VALUELESS_FLAGS in .claude/hooks/_command-match.sh."
+  } >&2
+  exit 2
+fi
 
 checks_out=$(gh pr checks $prsel 2>&1)
 rc=$?

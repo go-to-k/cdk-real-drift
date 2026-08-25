@@ -40,16 +40,20 @@ hook_cwd=$(printf '%s' "$input" | jq -r '.cwd // ""' 2>/dev/null || echo "")
 # had already closed: it claimed the pattern was LINE-START anchored so a verb
 # inside a quoted body could not false-positive, and that `` `git push` `` in a
 # substitution matched. `gate_segments` supersedes both — it splits a command
-# LIST and anchors each verb at a SEGMENT start, so `git add -A && git commit`
-# and `$(git push)` are caught while a quoted mention still is not.
+# LIST and anchors each verb at a SEGMENT start, so `git add -A && git commit` is
+# caught while a quoted mention still is not.
 #
-# Keeping it was the exact hazard this lane's own thesis names: a stale local
-# COPY of a shared thing. A prose copy rots the same way a regex copy does, and
-# is harder to notice because nothing runs it.
-#                               `$(git commit)` / backtick-wrapped
-#                               forms are an accepted false-negative
-#                               of the line-start tightening (per the
-#                               memory rule's trade-off).
+# Substitutions, precisely -- the replaced comment was wrong in BOTH directions,
+# and so was its first replacement. Measured: `` echo `git push` `` matches and
+# `foo=$(git commit -m x)` matches, but `echo "$(git commit -m x)"` does NOT: a
+# `$(` inside a quoted span becomes the GATE_SEP_SUBST placeholder rather than a
+# split point. So the UNQUOTED substitution forms are caught; the quoted one is
+# the remaining false-negative.
+#
+# Keeping the old text was the exact hazard this lane's own thesis names: a stale
+# local COPY of a shared thing. A prose copy rots the same way a regex copy does,
+# and is harder to notice because nothing runs it -- which is why an orphaned tail
+# of it survived the first rewrite and contradicted the paragraph above it.
 # Fail CLOSED if the shared matcher is missing or does not load: a gate that
 # cannot decide must not wave the command through. `[ -r … ] || exit 0` was the
 # first shape here, and it silently disabled the gate whenever the library was
