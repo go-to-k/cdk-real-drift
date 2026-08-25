@@ -76,25 +76,20 @@
 # No bypass marker, matching non-english-text-gate.sh: running the search and
 # writing one line is the entire ask, and a bypass would defeat the gate.
 #
-# WHY THE VERB REGEXES USE `GATE_GH_CR` AND NOT `GATE_GH_C`
+# `gh -R <owner/repo> issue create` IS MATCHED, and that matters more here than
+# anywhere: it is the cross-repo mirror flow's own spelling, and that flow is
+# this gate's whole rationale, so missing it would leave the gate inert against
+# the one case it exists for.
 #
-# `gh -R <owner/repo> issue create` is the mirror flow's own spelling, and the
-# mirror flow is this gate's whole rationale — so missing that shape would leave
-# the gate close to inert against the one case it exists for. This repo's
-# `GATE_GH_C` absorbs a single `-C <path>` and nothing else.
+# `GATE_GH_C` absorbs `-R` / `--repo` in every spelling gh accepts — space, `=`
+# and GLUED (`-Ro/r`) — as of 2026-08-25, when the same `-C`-only absorber was
+# measured letting `gh -R … pr merge` walk past three OTHER gates. See that
+# constant's header. An earlier revision of this file solved the issue-mint half
+# with a scoped `GATE_GH_CR`; the repo-wide widening made it redundant and it was
+# deleted rather than left beside its live twin.
 #
-# The fix is SCOPED rather than global: `_command-match.sh` grows a separate
-# `GATE_GH_CR` (`-C` plus `-R` / `--repo`, quoted and `=`-joined forms included)
-# used ONLY by `GATE_RE_GH_ISSUE_CREATE` and `GATE_RE_GH_API_ISSUE_CREATE`. The
-# five gates that reach `gh` through `GATE_RE_GH_PR_*` — verify-pr, ci-green,
-# non-english-text, bughunt-clean, branch — keep referencing `GATE_GH_C`, so
-# their trigger surface is untouched. Widening THEIRS is a defensible change
-# (cdkd made it, after measuring `gh -R owner/repo pr merge` walk past every
-# merge gate there), but it is a change to five gates and belongs in its own PR.
-#
-# Both harnesses pin `gh -R … issue create` as BLOCKING, with a `-C` control and
-# a marker-carrying `-R` case beside it, so reverting either regex to
-# `GATE_GH_C` fails exactly those cases and points back here.
+# `gh-repo-flag-parity.test.sh` asserts the property directly across every gate:
+# naming the repo must not change any verdict.
 
 set -u
 
@@ -112,6 +107,7 @@ if ! . "$__hook_dir/_command-match.sh" 2>/dev/null \
   || ! declare -F gate_matches >/dev/null \
   || ! declare -F gate_segments >/dev/null \
   || ! declare -F gate_target_dir >/dev/null \
+  || ! declare -F gate_re_any >/dev/null \
   || [ -z "${GATE_RE_GH_ISSUE_CREATE:-}" ] \
   || [ -z "${GATE_RE_GH_API_ISSUE_CREATE:-}" ]; then
   echo "Blocked: .claude/hooks/_command-match.sh is missing, unloadable, or" >&2
@@ -146,7 +142,7 @@ gate_matches "$cmd" "$GATE_RE_GH_ISSUE_CREATE" \
 # gate; the ERE is therefore DERIVED from the shared constants rather than
 # hand-rolled, so a local copy cannot drift from what `gate_matches` triggered
 # on above.
-VERB_ERE="^((${GATE_RE_GH_ISSUE_CREATE#^})|(${GATE_RE_GH_API_ISSUE_CREATE#^}))"
+VERB_ERE=$(gate_re_any "$GATE_RE_GH_ISSUE_CREATE" "$GATE_RE_GH_API_ISSUE_CREATE")
 target_dir=$(gate_target_dir "$cmd" "${hook_cwd:-$PWD}" "$VERB_ERE" 2>/dev/null || true)
 [ -n "$target_dir" ] || target_dir="${hook_cwd:-$PWD}"
 

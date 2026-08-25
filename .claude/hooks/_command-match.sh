@@ -255,31 +255,53 @@ GATE_PATH_TOKEN='("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+)'
 # an earlier version could not parse, so `git -C "/a b" commit` matched nothing
 # and ran ungated (go-to-k/cdk-local#542 review).
 GATE_FLAGS='([[:space:]]+-[^[:space:]]+([[:space:]]+("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]-][^[:space:]]*))?)*'
-GATE_GH_C='([[:space:]]+-C[[:space:]]+("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+))?'
+# Every gh GLOBAL FLAG that can sit before the subcommand, not just `-C`.
+#
+# WIDENED 2026-08-25 after measuring a LIVE BYPASS, not a coverage gap. With the
+# `-C`-only form, `-R <owner/repo>` before the verb made the verb unreachable, so
+# `gh -R go-to-k/cdk-real-drift pr merge 1 --squash` matched NOTHING and walked
+# past the merge gates while the identical command without `-R` was refused.
+# Driven directly against each hook on a fixture repo with a src/** diff, no
+# markers and an armed bug-hunt sentinel:
+#
+#   gate                    plain   -R form
+#   verify-pr-gate            2        0      <- merges past /verify-pr
+#   ci-green-gate             2        0      <- merges past red CI
+#   bughunt-clean-gate        2        0      <- merges with live AWS resources
+#
+# `-R` names where the PR LIVES; it changes nothing about what the command DOES,
+# so a gate that reads one verdict for `gh pr merge` and another for
+# `gh -R o/r pr merge` is simply wrong. cdkd hit the same measurement and widened
+# its copy first. `gh-repo-flag-parity.test.sh` now asserts the equality directly
+# against each gate, which is the assertion that would have caught this.
+#
+# Repeated and `=`-joined forms are absorbed (`gh -C /w -R o/r pr merge`,
+# `gh --repo=o/r pr merge`), and quoted values survive. `-C` is kept even though
+# `gh` HAS NO `-C` FLAG: this matches command TEXT, where over-approximating the
+# trigger is free. Same shape as GATE_FLAGS, and like it this contributes
+# multiple capture groups.
+#
+# IT IS `GATE_FLAGS`, NOT A HAND-WRITTEN `(-C|-R|--repo)` ALTERNATION, and the
+# reason is the GLUED spelling. `gh` accepts a flag value with a space, with `=`,
+# or with NO SEPARATOR AT ALL -- verified against gh 2.89.0, all three returning
+# the same PR number:
+#
+#   gh pr list --repo=go-to-k/cdkd   -> 2195
+#   gh pr list -R=go-to-k/cdkd       -> 2195
+#   gh pr list -Rgo-to-k/cdkd        -> 2195   <- no separator
+#
+# `GATE_FLAGS`' flag token is `-[^[:space:]]+`, which swallows `--repo=X`, `-R=X`
+# and `-RX` as ONE token, leaving the optional value group needed only for the
+# space form. An explicit alternation gets the first two and misses the third:
+# the first revision of this change used `(-C|-R|--repo)([[:space:]]+|=)` and
+# `gh -Rgo-to-k/x issue create` did NOT match. A flag list also has to be
+# maintained as gh grows global flags; a tokeniser does not.
+#
+# `-C` is still absorbed even though `gh` HAS NO `-C` FLAG: this matches command
+# TEXT, where over-approximating the trigger costs nothing. Contributes THREE
+# capture groups, like GATE_FLAGS -- no caller indexes BASH_REMATCH off these.
+GATE_GH_C="$GATE_FLAGS"
 
-# GATE_GH_CR — `GATE_GH_C` PLUS the repo-selecting flags, and a SEPARATE constant
-# rather than a widening of `GATE_GH_C`, deliberately.
-#
-# `gh -R <owner/repo> issue create` is the CROSS-REPO MIRROR FLOW's own spelling
-# (/work-issues section 10-c: one issue body written once and filed into two
-# sibling repos), and that flow is the entire rationale for issue-dup-check-gate.
-# A gate that misses its primary shape is close to inert, so `-R` must be absorbed
-# — recording it as a known limit would have documented the hole, not closed it.
-#
-# But widening `GATE_GH_C` itself would change the trigger surface of FIVE other
-# gates at once — verify-pr-gate, ci-green-gate, non-english-text-gate,
-# bughunt-clean-gate and branch-gate all reach `gh` through
-# `GATE_RE_GH_PR_CREATE` / `_EDIT` / `_MERGE`, which keep referencing
-# `GATE_GH_C`. Widening theirs is a defensible change (cdkd made it, after
-# measuring `gh -R owner/repo pr merge` walk past every merge gate there), but it
-# is a change to five gates' behaviour and belongs in its own PR with its own
-# review. THIS constant is used by the two issue-mint regexes below and by
-# nothing else, so adding it cannot move any other gate.
-#
-# Repeated and `=`-joined forms are absorbed too (`gh -C /w -R o/r issue create`,
-# `gh --repo=o/r issue create`): over-approximate the TRIGGER, be strict on
-# RESOLUTION — each gate re-reads what it actually needs.
-GATE_GH_CR='([[:space:]]+(-C|-R|--repo)([[:space:]]+|=)("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+))*'
 GATE_RE_GIT_COMMIT="^git${GATE_FLAGS}[[:space:]]+commit([[:space:]]|$)"
 GATE_RE_GIT_PUSH="^git${GATE_FLAGS}[[:space:]]+push([[:space:]]|$)"
 GATE_RE_GH_PR_CREATE="^gh${GATE_GH_C}[[:space:]]+pr[[:space:]]+create([[:space:]]|$)"
@@ -290,18 +312,39 @@ GATE_RE_GH_PR_MERGE="^gh${GATE_GH_C}[[:space:]]+pr[[:space:]]+merge([[:space:]]|
 # already exists is the outcome that gate exists to steer toward, so gating it
 # would tax the cheap path and leave the expensive one untouched.
 #
-# `GATE_GH_CR`, not `GATE_GH_C`: the mirror flow files with `-R <owner/repo>`, so
-# a `-C`-only absorber would leave the gate blind to its own primary shape. See
-# that constant's header for why it is scoped to these two regexes instead of
-# widening the one five other gates share. Both harnesses pin the `-R` shape as
-# BLOCKING with a `-C` control beside it, so a revert to `GATE_GH_C` fails them.
-GATE_RE_GH_ISSUE_CREATE="^gh${GATE_GH_CR}[[:space:]]+issue[[:space:]]+create([[:space:]]|$)"
+# `GATE_GH_C` absorbs `-R` / `--repo` as of 2026-08-25 (see its header), which
+# matters here beyond tidiness: the cross-repo mirror flow files with
+# `gh -R <owner/repo> issue create`, so a `-C`-only absorber would have left this
+# gate blind to its own primary shape. An earlier revision solved that with a
+# scoped `GATE_GH_CR` used only by these two regexes; the widening made it
+# redundant and it was DELETED rather than left beside its live twin.
+GATE_RE_GH_ISSUE_CREATE="^gh${GATE_GH_C}[[:space:]]+issue[[:space:]]+create([[:space:]]|$)"
 # The same mint through the REST verb. `gh api repos/<o>/<r>/issues` with a
 # `title=` field creates an issue; the path must NOT continue past `issues`,
 # which is what separates it from `/issues/<n>/comments` (a comment) and
 # `/issues/<n>` (an edit) — neither of which mints anything. Over-approximate
 # the TRIGGER, be strict on RESOLUTION: the gate re-reads the body itself.
-GATE_RE_GH_API_ISSUE_CREATE="^gh${GATE_GH_CR}[[:space:]]+api([[:space:]]|$).*repos/[^[:space:]/]+/[^[:space:]/]+/issues([[:space:]]|$|\")"
+GATE_RE_GH_API_ISSUE_CREATE="^gh${GATE_GH_C}[[:space:]]+api([[:space:]]|$).*repos/[^[:space:]/]+/[^[:space:]/]+/issues([[:space:]]|$|\")"
+
+# gate_re_any <ere>... — combine several anchored segment regexes into ONE.
+#
+# Gates that guard more than one verb used to HAND-ROLL a combined regex, and
+# every hand-rolled copy drifted from the shared constants: on 2026-08-25
+# verify-pr-gate, non-english-text-gate and bughunt-clean-gate each carried their
+# own `gh([[:space:]]+-C[[:space:]]+[^[:space:]]+)?` and therefore missed
+# `gh -R <owner/repo> pr merge` even after `GATE_GH_C` was widened here. A local
+# copy of a shared pattern is a copy that stops being shared.
+#
+# Each input keeps its own `^`; they are stripped and re-anchored once so the
+# result still means "at the START of a segment".
+gate_re_any() {
+  local out="" re
+  for re in "$@"; do
+    re="${re#^}"
+    out="${out:+$out|}($re)"
+  done
+  printf '^(%s)' "$out"
+}
 
 # Strip one layer of surrounding quotes from a path token.
 gate_unquote() {

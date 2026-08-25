@@ -91,7 +91,9 @@ fi
 # Which commands this gate applies to. The segment matcher sees a gated verb in
 # ANY position — `git add -A && git commit` used to run ungated
 # (go-to-k/cdk-real-drift#1803).
-GATE_RE_PR_WRITE='^gh([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+pr[[:space:]]+(create|edit|merge)([[:space:]]|$)'
+# DERIVED from the shared constants, never hand-rolled — see verify-pr-gate.sh
+# for the `-R` bypass this closes.
+GATE_RE_PR_WRITE=$(gate_re_any "$GATE_RE_GH_PR_CREATE" "$GATE_RE_GH_PR_EDIT" "$GATE_RE_GH_PR_MERGE")
 gate_matches "$cmd" "$GATE_RE_PR_WRITE" || exit 0
 
 # Resolve where the command will actually run: a `-C <path>` in the matched
@@ -137,7 +139,12 @@ fi
 #   `gh pr merge <N>` / `gh pr edit <N>` — N is the explicit arg.
 #   `gh pr create` / `gh pr merge` (no arg) — current branch's PR.
 pr_number=""
-if [[ "$cmd" =~ gh([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+pr[[:space:]]+(merge|edit)[[:space:]]+([0-9]+) ]]; then
+# Match from `pr <verb> <N>` rather than from `gh` + a flag prefix. The prefix
+# form was `-C`-only, so `gh -R o/r pr merge 5` extracted NO number and silently
+# fell back to the current branch's PR — scanning the wrong diff rather than
+# refusing. Anchoring on the verb makes this independent of however many global
+# flags precede it, and keeps the capture index stable when `GATE_GH_C` changes.
+if [[ "$cmd" =~ (^|[[:space:]])pr[[:space:]]+(merge|edit)[[:space:]]+([0-9]+) ]]; then
   pr_number="${BASH_REMATCH[3]}"
 fi
 

@@ -151,11 +151,11 @@ run "command substitution blocks"        "URL=\$(gh issue create --body-file $WI
 # --- the repo-selecting flags: the MIRROR FLOW's own spelling ---------------
 # `gh -R <owner/repo> issue create` is how §10-c files a mirrored issue into a
 # sibling repo, and that flow is this gate's entire rationale — a gate blind to
-# its primary shape would be close to inert. The verb regexes therefore use the
-# SCOPED `GATE_GH_CR` (`-C` plus `-R` / `--repo`) rather than this repo's
-# `-C`-only `GATE_GH_C`, which the five `GATE_RE_GH_PR_*` gates keep using.
+# its primary shape would be close to inert. `GATE_GH_C` absorbs the repo flags
+# in every spelling gh accepts, including the GLUED `-Ro/r` that a hand-written
+# alternation misses.
 #
-# IF THESE CASES START FAILING, someone reverted the regexes to `GATE_GH_C`.
+# IF THESE CASES START FAILING, `GATE_GH_C` was narrowed back.
 run "gh -R <repo> issue create blocks"   "gh -R go-to-k/cdk-real-drift issue create --body-file $WITHOUT" "$TMPROOT" 2
 run "gh -R <repo> with marker passes"    "gh -R go-to-k/cdk-real-drift issue create --body-file $WITH"    "$TMPROOT" 0
 run "gh --repo <repo> issue create blocks" "gh --repo go-to-k/cdk-local issue create --body-file $WITHOUT" "$TMPROOT" 2
@@ -165,8 +165,11 @@ run "gh --repo=<repo> issue create blocks" "gh --repo=go-to-k/cdk-local issue cr
 run "-R sibling from an opted-in cwd"    "gh -R go-to-k/cdk-local issue create --body-file $WITHOUT"      "$TMPROOT" 2
 run "gh -R … api issues POST blocks"     "gh -R go-to-k/cdk-local api repos/go-to-k/cdk-local/issues -f title=t" "$TMPROOT" 2
 run "repeated flags absorbed"            "gh -C $TMPROOT -R go-to-k/cdk-local issue create --body-file $WITHOUT" "$TMPROOT" 2
+run "glued -R<repo> blocks"              "gh -Rgo-to-k/cdk-local issue create --body-file $WITHOUT"        "$TMPROOT" 2
+run "-R=<repo> blocks"                   "gh -R=go-to-k/cdk-local issue create --body-file $WITHOUT"       "$TMPROOT" 2
+run "glued -R<repo> with marker passes"  "gh -Rgo-to-k/cdk-local issue create --body-file $WITH"           "$TMPROOT" 0
 # The control that keeps the block above from passing merely because the gate is
-# broken: `-C` was already absorbed before `GATE_GH_CR` existed, and must stay so.
+# broken: `-C` was absorbed before this widening too, and must stay so.
 run "gh -C <dir> issue create blocks"    "gh -C $TMPROOT issue create --body-file $WITHOUT" "$TMPROOT" 2
 
 # --- quoted-body false-positive cases ---------------------------------------

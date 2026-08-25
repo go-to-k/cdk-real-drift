@@ -67,7 +67,12 @@ fi
 # Which commands this gate applies to. The segment matcher sees a gated verb in
 # ANY position — `git add -A && git commit` used to run ungated
 # (go-to-k/cdk-real-drift#1803).
-GATE_RE_PR_CREATE_OR_MERGE='^gh([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+pr[[:space:]]+(create|merge)([[:space:]]|$)'
+# DERIVED from the shared constants, never hand-rolled. The local copy this
+# replaces absorbed only `-C <path>`, so `gh -R <owner/repo> pr merge 1 --squash`
+# matched nothing and merged past this gate while the same command without `-R`
+# was refused (measured 2026-08-25: plain rc=2, `-R` rc=0). A hand-rolled copy
+# also does not inherit a widening of `GATE_GH_C`, which is how it drifted.
+GATE_RE_PR_CREATE_OR_MERGE=$(gate_re_any "$GATE_RE_GH_PR_CREATE" "$GATE_RE_GH_PR_MERGE")
 gate_matches "$cmd" "$GATE_RE_PR_CREATE_OR_MERGE" || exit 0
 
 # Resolve where the command will actually run: a `-C <path>` in the matched

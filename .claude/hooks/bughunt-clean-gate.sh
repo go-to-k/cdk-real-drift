@@ -59,7 +59,10 @@ fi
 # matcher sees the verb in ANY position — `git add -A && git commit` used to run
 # ungated (go-to-k/cdk-real-drift#1803) — while a mention inside a quoted argument
 # body still does not count, because quoted spans are blanked before splitting.
-GATE_RE_COMMIT_OR_PR='^(git([[:space:]]+-[^[:space:]]+([[:space:]]+[^[:space:]-][^[:space:]]*)?)*[[:space:]]+commit|gh([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+pr[[:space:]]+(create|merge))([[:space:]]|$)'
+# DERIVED from the shared constants, never hand-rolled — see verify-pr-gate.sh
+# for the `-R` bypass this closes (here it let a merge through with live AWS
+# resources still standing).
+GATE_RE_COMMIT_OR_PR=$(gate_re_any "$GATE_RE_GIT_COMMIT" "$GATE_RE_GH_PR_CREATE" "$GATE_RE_GH_PR_MERGE")
 gate_matches "$cmd" "$GATE_RE_COMMIT_OR_PR" || exit 0
 
 # Resolve where the command will actually run: a `-C <path>` in the matched

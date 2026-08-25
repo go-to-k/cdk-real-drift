@@ -453,13 +453,11 @@ that gate a reader will otherwise discover the hard way:
   creating one for folding.
 - **`gh -R <owner/repo> issue create` IS matched**, which matters because that is this
   very flow's own spelling — §10-c files a mirrored issue into a sibling repo with `-R`,
-  from this repo's worktree. The gate's verb regexes use a scoped absorber,
-  `GATE_GH_CR` (`-C` plus `-R` / `--repo`), rather than this repo's `-C`-only
-  `GATE_GH_C`, precisely so its primary shape is not the one it misses. The scoping is
-  the point: `GATE_GH_CR` is used by the two issue-mint regexes and nothing else, so the
-  five gates reaching `gh` through `GATE_RE_GH_PR_*` keep their trigger surface
-  unchanged. So a mirrored filing needs the `Dup-check:` line like any other — which is
-  the right outcome, since §10-c's own three-window check is what the line records.
+  from this repo's worktree. So a mirrored filing needs the `Dup-check:` line like any
+  other, which is the right outcome: §10-c's own three-window check is exactly what the
+  line records. The shared `GATE_GH_C` absorbs the repo flags in every spelling `gh`
+  accepts — space, `=`, and glued (`-Ro/r`) — after the `-C`-only form was measured
+  letting `gh -R … pr merge` walk past three other gates.
 
 Never edit in the main checkout. Per lane:
 

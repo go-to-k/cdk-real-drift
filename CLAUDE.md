@@ -299,16 +299,26 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   repo had ZERO open issues on 2026-08-25 and no verified duplicate filing, unlike
   cdkd (a non-converging count) and cdk-local (two duplicates nine minutes apart,
   go-to-k/cdk-local#528 / go-to-k/cdk-local#531) —
-  and the gate's own header says so rather than borrowing their numbers. Its verb
-  regexes use a **scoped** flag absorber, `GATE_GH_CR` (`-C` plus `-R` / `--repo`),
-  rather than this repo's `-C`-only `GATE_GH_C`: `gh -R <owner/repo> issue create`
-  is the cross-repo mirror flow's own spelling and therefore the gate's primary
-  shape, so missing it would leave the gate close to inert. The constant is used by
-  the two issue-mint regexes and nothing else, so the five gates reaching `gh`
-  through `GATE_RE_GH_PR_*` — verify-pr, ci-green, non-english-text, bughunt-clean,
-  branch — keep their trigger surface exactly as it was; widening THAT one is a
-  separate change. Both hook harnesses pin the `-R` shape as blocking with a `-C`
-  control beside it.
+  and the gate's own header says so rather than borrowing their numbers.
+  `gh -R <owner/repo> issue create` — the cross-repo mirror flow's own spelling, and
+  therefore this gate's primary shape — IS matched: the shared `GATE_GH_C` absorbs
+  the repo flags in every spelling `gh` accepts (space, `=`, and glued `-Ro/r`).
+- **Naming the repo must never change a gate's verdict, and twice it did.** On
+  2026-08-25, `gh -R <owner/repo> pr merge 1 --squash` matched NOTHING in
+  `verify-pr-gate`, `ci-green-gate` and `bughunt-clean-gate` — each measured at
+  exit 2 for the plain form and exit 0 for the `-R` form, i.e. a live bypass of
+  `/verify-pr`, of red CI, and of the un-deleted-AWS-resources check. Two causes,
+  both worth remembering: the shared `GATE_GH_C` absorbed only `-C <path>`, AND
+  those three gates each HAND-ROLLED their own copy of the verb regex, so they
+  would not have inherited a fix to the shared one anyway. Both are closed —
+  `GATE_GH_C` is now `GATE_FLAGS`-style tokenisation (covering space, `=`, and the
+  glued `-Ro/r` that a hand-written flag list misses), and every gate derives its
+  trigger from the shared constants via `gate_re_any`. Fenced by
+  `.claude/hooks/gh-repo-flag-parity.test.sh`, which asserts across every gate that
+  the flagged spellings return the SAME exit code as the plain one **and** that the
+  plain one actually blocks — parity alone is satisfied by a gate inert in both
+  directions, which is the state `non-english-text-gate` was in (it invoked
+  `gh -C`, a flag `gh` does not have, so it failed open on every command).
 - **Registration is not execution — prove the gates are ALIVE before the first
   commit of a session**: run `git commit --dry-run -m "gate liveness probe"` from
   the repo root **as a Bash TOOL CALL**. PreToolUse hooks gate the AGENT's tool
