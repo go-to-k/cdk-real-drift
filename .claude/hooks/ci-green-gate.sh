@@ -81,9 +81,30 @@ command -v gh >/dev/null 2>&1 || exit 0
 
 # Extract the first non-flag token after `pr merge` as the PR selector
 # (number / URL / branch). Empty => gh resolves the current branch's PR.
-prsel=$(printf '%s' "$cmd" \
-  | sed -E 's/.*gh([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+pr[[:space:]]+merge//' \
-  | awk '{ for (i = 1; i <= NF; i++) { if (substr($i,1,1) != "-") { print $i; exit } } }')
+#
+# ANCHORED ON `pr merge`, NOT ON `gh` PLUS A FLAG PREFIX. The previous form led
+# with `.*gh([[:space:]]+-C[[:space:]]+[^[:space:]]+)?`, so any global flag other
+# than `-C` made the whole substitution fail to apply -- and the awk fallback then
+# returned the first non-flag token of the UNTOUCHED command, which is the literal
+# string `gh`:
+#
+#   gh pr merge 1 --squash                 -> prsel=1
+#   gh -R go-to-k/x pr merge 1 --squash    -> prsel=gh     <-- wrong
+#   gh -Rgo-to-k/x pr merge 7 --squash     -> prsel=gh     <-- wrong
+#
+# That is not a cosmetic mis-parse, it is the SAME BYPASS arriving one step later.
+# `gh pr checks gh` prints `no pull requests found for branch "gh"` (measured
+# against gh 2.89.0), which this gate's fail-open grep below treats as "no CI to
+# check" and PASSES. So widening `GATE_GH_C` made the gate fire on
+# `gh -R o/r pr merge` and it still exited 0 in any repo with a remote. The parity
+# harness did not catch it because its fixture had no remote, so `gh` failed with
+# a different message -- the fixture could not contain the feature under test.
+# Its `gh` stub now answers a non-numeric selector with the real fail-open
+# wording, so this arm is fenced.
+prsel=""
+if [[ "$cmd" =~ (^|[[:space:]])pr[[:space:]]+merge([[:space:]]+([^-][^[:space:]]*))? ]]; then
+  prsel="${BASH_REMATCH[3]}"
+fi
 
 checks_out=$(gh pr checks $prsel 2>&1)
 rc=$?

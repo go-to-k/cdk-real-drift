@@ -31,6 +31,24 @@
 # alone is satisfied by a gate that is inert in both directions — which is
 # exactly the state non-english-text-gate was in until `gh -C` was removed from
 # its calls, and exactly how a suite can be green over a gate enforcing nothing.
+#
+# `gh` IS STUBBED, because that non-vacuity assertion is about the CODE and was
+# accidentally about the ENVIRONMENT. On the GitHub runner `gh` exists but is
+# unauthenticated, so non-english-text-gate took its LEGITIMATE fail-open arm,
+# returned 0, and this harness reported "the gate is inert" about a gate that was
+# fine (CI of go-to-k/cdk-real-drift#1815). A fence that cannot run where it
+# matters most is the same category of fault as a stub more permissive than
+# production: one certifies a defect as fixed, the other reports one that is not
+# there, and both make the suite say something untrue.
+#
+# The stub is injected two ways because the gates reach `gh` two ways:
+# `$GH_BIN` for the hook that honours that seam, and a PATH shim for the one that
+# calls `gh` directly (and for its `command -v gh` probe).
+#
+# IT IS STRICT ABOUT `-C`, for the reason established one commit earlier: `gh`
+# has no `-C` flag, and a stub that tolerates one certifies a broken call as
+# working — which is exactly how non-english-text-gate stayed green at 15/15
+# while enforcing nothing.
 
 set -u
 
@@ -63,11 +81,52 @@ git -C "$FIX" -c user.email=t@t -c user.name=t commit -qm change >/dev/null 2>&1
 printf 'stack-a\n' > "$FIX/.markgate-bughunt-pending"
 printf 'stack-a\n' > "$FIX/.markgate-bughunt-pending-$(id -un)"
 
+# A deterministic `gh`.
+#
+# `pr checks <sel>` is the load-bearing arm. A NUMERIC selector answers "red CI"
+# so ci-green-gate blocks; anything else answers with the real binary's
+# no-such-PR wording, which that gate's fail-open grep treats as "no CI to
+# check" and PASSES. That asymmetry is deliberate: it is what makes this harness
+# able to see a gate resolving the WRONG PR selector. It could not before —
+# ci-green-gate extracted the literal string `gh` from `gh -R o/r pr merge 1`,
+# and `gh pr checks gh` fails open in any repo with a remote, so the `-R` bypass
+# survived the flag-absorber widening. The fixture had no remote, so `gh` failed
+# with a different message and the case passed for the wrong reason.
+GH_STUB="$FIX/bin/gh"
+mkdir -p "$FIX/bin"
+cat > "$GH_STUB" <<'STUB'
+#!/usr/bin/env bash
+# Mirror the real binary: an unknown shorthand is rejected before anything runs.
+for a in "$@"; do
+  case "$a" in
+    -C) echo "unknown shorthand flag: 'C' in -C" >&2; exit 1 ;;
+  esac
+done
+case "$1 ${2:-}" in
+  "auth status") exit 0 ;;
+  "pr view") printf '' ; exit 0 ;;
+  "pr checks")
+    sel="${3:-}"
+    case "$sel" in
+      ''|*[!0-9]*)
+        # Not a PR number -> the wording gh really emits, which ci-green-gate
+        # deliberately treats as fail-open.
+        printf 'no pull requests found for branch "%s"\n' "$sel" >&2
+        exit 1 ;;
+      *)
+        printf 'build\tfail\t1s\thttps://example.invalid/checks\n'
+        exit 1 ;;
+    esac ;;
+  *) printf '' ; exit 0 ;;
+esac
+STUB
+chmod +x "$GH_STUB"
+
 drive() { # <hook.sh> <command> -> exit code
   local rc
   jq -n --arg c "$2" --arg d "$FIX" \
     '{tool_name:"Bash", tool_input:{command:$c}, cwd:$d}' \
-    | bash "$HOOKS_DIR/$1" >/dev/null 2>&1 && rc=0 || rc=$?
+    | PATH="$FIX/bin:$PATH" GH_BIN="$GH_STUB" bash "$HOOKS_DIR/$1" >/dev/null 2>&1 && rc=0 || rc=$?
   printf '%s' "$rc"
 }
 
