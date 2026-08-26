@@ -612,6 +612,16 @@ Effort: small (S) | medium (M) | large (L) - <which verification cycle it drags>
 Estimate: <duration, e.g. ~1-3 h -- never a bare letter> - <what eats the time>
 ```
 
+**Two of the four are ALSO LABELS on the filed issue** -- the body lines stay
+exactly as written, and the same values ride the command as
+`--label severity:<high|medium|low> --label effort:<small|medium|large>`. Prose
+is invisible to `gh issue list`, so ranking by `Severity` costs one
+`gh issue view` per candidate without them. `Session-fit` and `Estimate` get no
+label (the first is re-decided at claim time, the second is a free-form
+duration). Enforced by `.claude/hooks/issue-classification-label-gate.sh`; the
+fix PR inherits the issue's labels via
+`.github/workflows/pr-inherit-issue-labels.yml`, so never hand-add them there.
+
 A hunt is the single best moment to write them: you have just reproduced the bug,
 so `Severity` is measured rather than guessed, and you already know which fixture
 the fix will drag. Deferring them to whoever picks the issue up throws that

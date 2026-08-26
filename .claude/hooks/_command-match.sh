@@ -325,6 +325,13 @@ GATE_RE_GH_ISSUE_CREATE="^gh${GATE_GH_C}[[:space:]]+issue[[:space:]]+create([[:s
 # `/issues/<n>` (an edit) — neither of which mints anything. Over-approximate
 # the TRIGGER, be strict on RESOLUTION: the gate re-reads the body itself.
 GATE_RE_GH_API_ISSUE_CREATE="^gh${GATE_GH_C}[[:space:]]+api([[:space:]]|$).*repos/[^[:space:]/]+/[^[:space:]/]+/issues([[:space:]]|$|\")"
+# issue-classification-label-gate: the CLAIM site. Most open bodies are still in
+# the old packed shape and are upgraded to the four-line shape when the issue is
+# claimed, so `edit` -- not `create` -- is where `Severity` first exists for the
+# bulk of the backlog. `comment` stays absent: a comment is not the issue's
+# classification. (`create` and the REST mint are the constants above; that gate
+# uses all three.)
+GATE_RE_GH_ISSUE_EDIT="^gh${GATE_GH_C}[[:space:]]+issue[[:space:]]+edit([[:space:]]|$)"
 
 # gate_re_any <ere>... — combine several anchored segment regexes into ONE.
 #
