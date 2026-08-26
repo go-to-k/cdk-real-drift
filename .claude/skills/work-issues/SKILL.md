@@ -325,6 +325,66 @@ filed at 03:14Z, claimed by its filing lane at 03:30Z, and that lane's branch re
 so every probe in §2 reported it free; for 52 minutes nothing but a time-based gate
 could have kept a second run off it.
 
+### 3-b. Before writing `next`, NAME the verification — in the ISSUE BODY
+
+`CLAUDE.md` ("The four TODO fields") forbids writing `Session-fit: next` until you
+can name the command the NEXT session will run to see the fix work, and can say a
+fresh session will be able to run it. Read the rule there; this section is where it
+lands in THIS flow, and the flow is where it has teeth: here a deferral does not
+stay in a chat report, it becomes an ISSUE, read later by a session holding none of
+this run's context. So the named command goes INTO the body, as the reason clause on
+the `Session-fit` line:
+
+```text
+Session-fit: next (not this session) — no corpus case covers this type yet, so
+one has to be recorded from a live read first; after that `vp test run
+corpus-replay` fails on the fold and passes with the fix, on any machine, no AWS.
+```
+
+What that answer looks like HERE, cheapest first. Walking the list is not a
+classification exercise — its value is that the SECOND entry, which looks like an
+ordinary `next`, is the one that is almost always `now`:
+
+- **Portable, so `next` is honest.** A committed unit test (`vp test run <file>`)
+  or a golden-corpus replay (`vp test run corpus-replay`, over
+  `tests/corpus/*.json`) runs offline on any machine with no AWS at all. This is
+  the common case in this repo, and naming it costs one line.
+- **Bound to THIS run's live AWS state, so `next` is a bad bet.** A drift this run
+  injected by hand, or a stack still standing. This is not merely unlikely to
+  survive the session: `/hunt-bugs`'s cleanup gate
+  (`.claude/hooks/bughunt-clean-gate.sh`) is armed before any deploy and refuses
+  every `git commit` / `gh pr create` / `gh pr merge` until each tracked stack is
+  deleted and the orphan sweep is clean — so this run cannot SHIP without
+  destroying its own verifier. The counter-move is
+  `/hunt-bugs` §5: while the stack is still up, harvest the live read into
+  `tests/corpus/` via `CDKRD_CORPUS_DIR`, which converts a session-bound verifier
+  into a portable one — after which the entry above applies and `next` is fine.
+- **Bound to the account, the region, or a window.** The shared-name core suite
+  (`tests/integration/basic/verify.sh` and its siblings) deploys FIXED stack names
+  (`CdkdriftIntegBasic`) into one account in `us-east-1` and must hold a GLOBAL
+  CLEAN WINDOW while it runs (`/verify-pr` step 7); and a fresh session may hold no
+  credentials at all, which `/verify-pr` step 6 already accepts as a legitimate
+  reason not to live-test. Naming it is still worth the line — it tells the next
+  session what it has to ACQUIRE before it can start.
+- **It does not exist yet.** No fixture under `tests/integration/` and no corpus
+  case covers the shape, and writing one is most of the work. The one case where
+  `next` is unambiguously right, and right BECAUSE you could name what is missing.
+- **You cannot name it at all.** Then nobody can confirm the fix later either —
+  that is an unbounded deferral, not a deferral. Do it now, or say in the body that
+  the fix would be unverifiable and why.
+
+The incident behind the rule is a sibling's, and its binding was a HOST rather than
+an account: go-to-k/cdk-local#560 was deferred on "a fixture / base-image change on
+a different axis" — a statement about the work's CATEGORY, never about who could
+check it. The defect is a Go RIE segfault under `linux/amd64` emulation on an arm64
+host, the machine that filed it was arm64, and the real verification was "run those
+fixtures on an arm64 host". The maintainer caught the misclassification; the flow
+did not. That exact shape cannot recur here — cdkrd has no Docker anywhere in its
+gates, and its `integ` gate (`.markgate.yml`) is read-only AWS and has no companion
+skill — so the binding that will bite in THIS repo is the account / region /
+live-resource one two bullets up. The error is identical either way: naming the KIND
+of work in place of naming the check.
+
 ## 4. CLAIM the chosen issues BEFORE editing
 
 For EACH issue you will start:

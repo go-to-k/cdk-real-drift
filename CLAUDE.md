@@ -493,6 +493,35 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   all review of a larger diff, which grows superlinearly because a reviewer reads
   the whole thing and cross-file interactions multiply. Defer on those.
 
+  **Before writing `Session-fit: next`, NAME the command that verifies the fix.**
+  A deferral is a PREDICTION — that a later session can finish this — and an
+  unstated prediction is never checked, so the field decays into naming the KIND
+  of work ("a fixture change", "a different subsystem"). That is classifying by
+  MEANS rather than by PURPOSE, and no list of `now` triggers can catch it,
+  because the next miss arrives in a shape the list does not contain. So you may
+  not write `next` until you can name, concretely, the command the NEXT session
+  will run to see the fix work — and can say a fresh session will be able to run
+  it. Not "run the tests": the test file. Not "check it live": the stack and the
+  region. The check is GENERATIVE rather than a lookup, which is the whole point,
+  and if naming it is HARD that difficulty IS the finding. It is one of four
+  things: the verifier is bound to THIS run's live AWS state (a stack this run
+  must delete before it can ship, a drift injected by hand, a clean window on the
+  shared-name suite) or to credentials a fresh session may not hold; it is
+  bound to THIS host (CPU architecture, an installed toolchain, a container image
+  already pulled); it does NOT EXIST yet and writing it is most of the work — the
+  one case where `next` is unambiguously right, and right BECAUSE you could name
+  what is missing; or you cannot name it at all, which is not a deferral but an
+  unbounded one. Measured 2026-08-26: go-to-k/cdk-local#560 was deferred on "a
+  fixture / base-image change on a different axis", a statement about the work's
+  CATEGORY. Its defect is a Go RIE segfault under `linux/amd64` emulation on an
+  arm64 host and the filing machine was arm64, so the real verification was "run
+  those fixtures on an arm64 host" — which nothing guarantees a fresh session
+  has. The maintainer caught the misclassification, not the flow. The converse is
+  the honest `next`: when you CAN name the check and any machine can run it, say
+  so in one line beside `Session-fit`, so the next session starts from the check
+  instead of re-deriving it. `/work-issues` §3-b applies this to a deferral that
+  becomes a filed ISSUE, with the repo-specific shapes the answer takes here.
+
   **`Session-fit: next` is NOT available for work discovered inside a scope the
   user framed as "do this across the repos in one session".** Three tells that
   force `now`: (a) you are about to file the SAME issue body in more than one
