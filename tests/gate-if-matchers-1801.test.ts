@@ -42,6 +42,7 @@ const REQUIRED: Record<string, string[]> = {
   'verify-pr-gate.sh': ['Bash(*gh*pr*create*)', 'Bash(*gh*pr*merge*)'],
   'ci-green-gate.sh': ['Bash(*gh*pr*merge*)'],
   'non-english-text-gate.sh': ['Bash(*gh*pr*create*)', 'Bash(*gh*pr*edit*)', 'Bash(*gh*pr*merge*)'],
+  'issue-classification-label-gate.sh': ['Bash(*gh*issue*create*)', 'Bash(*gh*issue*edit*)'],
   'deploy-autoarm-gate.sh': ['Bash(*deploy*)', 'Bash(*create-stack*)', 'Bash(*update-stack*)'],
   // Two entries, never one joined pattern: `gh issue create` and the REST mint
   // `gh api repos/<o>/<r>/issues`. Both are deliberately UNANCHORED and broad —

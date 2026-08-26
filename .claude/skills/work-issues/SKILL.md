@@ -325,6 +325,17 @@ later session gets NO claim at filing time — that would park a released issue 
 session that has decided not to do it — but this says nothing about the LATER run
 that takes it: that run claims it normally, per the mandatory rule above.
 
+**`Severity` and `Effort` also ride the filing command as LABELS** — the body
+lines stay exactly as written, and the same two values go on as
+`--label severity:<high|medium|low> --label effort:<small|medium|large>`, or as
+`--add-label` on the `gh issue edit` that rewrites an old packed body into the
+four-line shape. Prose is invisible to `gh issue list`, so ranking by `Severity`
+costs one `gh issue view` per candidate without them. `Session-fit` and
+`Estimate` get no label (see `CLAUDE.md` → "The four TODO fields"). Enforced by
+`.claude/hooks/issue-classification-label-gate.sh`; the lane's PR inherits the
+issue's labels via `.github/workflows/pr-inherit-issue-labels.yml`, so never
+hand-add them to a PR.
+
 **English-only covers the issue BODIES this flow files, not just the comment above.**
 Write the classification lines in English too — `Session-fit` / `Severity` /
 `Effort` / `Estimate`, one field per line (see `CLAUDE.md` → "The four TODO
@@ -333,11 +344,13 @@ fields"), glosses included: `Session-fit: next (not this session)`,
 half: `non-english-text-gate` fires only on `gh pr create` / `gh pr edit` /
 `gh pr merge` (its `"if"` clause in `.claude/settings.json`), and it identifies its
 target by resolving a PR NUMBER and scanning `gh pr diff`, so it structurally cannot
-see an issue at all. `issue-dup-check-gate` DOES now select on `gh issue create`
-(§5), so the sentence that used to stand here — "no `gh issue` command appears in
-any hook's `"if"` clause" — is no longer true; but that gate reads the body for one
-`Dup-check:` line and nothing else, so it says nothing about the LANGUAGE of the
-body and this half remains unenforced. Discipline is still the only guard here, and
+see an issue at all. Three `"if"` clauses DO name `gh issue` now, so the sentence
+that used to stand here — "no `gh issue` command appears in any hook's `"if"`
+clause" — is no longer true: `issue-dup-check-gate` on `create` (§5), and
+`issue-classification-label-gate` on `create` and on `edit`. But the first reads
+the body for one `Dup-check:` line and the second for a `Severity:` / `Effort:`
+value, so neither says anything about the LANGUAGE of the body and this half
+remains unenforced. Discipline is still the only guard here, and
 it has already failed once: a `/work-issues` run in
 go-to-k/cdk-local filed its follow-up on 2026-08-19 with both halves of the
 `Session-fit` line glossed in the session's chat language, and had to patch the body
