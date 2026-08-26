@@ -381,6 +381,36 @@ Two boundaries, so this does not become a licence for unbounded lanes:
   are two issues; one wrong assumption at five call sites is one. The test is
   whether a single sentence describes the fix at every site.
 
+**A COUNT is a claim, and one RELAYED from a subagent is unearned.** A sweep
+reporting "N sites" in its commit message, its issue body and its PR body has
+asserted that number three times, and a reader can only re-derive it if the query
+is there — so paste the command beside the number. The harder half is the count
+you never derived: in this flow the published numbers usually arrive inside a
+fan-out agent's summary or a reviewer's finding, already phrased as fact, and get
+copied onward without anyone re-running anything.
+
+Measured in cdkd on 2026-08-26 (go-to-k/cdkd#2261), whose run published FOUR such
+counts, every one wrong and every one relayed — "all nine sibling sites" (a grep
+found 78 across 14 files), "nine mutation probes" (fourteen), "ten unit shapes"
+(thirteen), and a "if a third copy ever appears" trigger for a predicate that
+already had nine copies. Two went into GitHub artifacts, where they outlive the
+session, and the first was the load-bearing argument for deferring that work to
+an umbrella — so being wrong by ~9x under-scoped the deferral it justified.
+
+The tell is grammatical rather than technical: a number arriving as a WORD
+("nine sites", "a third copy") was counted by a person or an agent, while one
+arriving as command output was counted by a machine. Before a relayed count goes
+anywhere durable — an issue body, a PR body, this file — run the query yourself
+and put it in the text. It is one command. What worked on that run was the
+implementing agent deriving its next count with `awk` and catching its own
+correction mid-flight, and declining to relay a path from the orchestrator's
+message after grepping and finding no such file.
+
+This repo has no automated fence on that class: its own §8 prose arm ("the CLAIMS
+are the artifact") is the only thing standing between a relayed number and a
+merged one, and a number is exactly the kind of claim that reads as already
+verified.
+
 **And whatever you do file, resolve it against the issues ALREADY OPEN first.** The
 sweep above looks for sibling sites in the CODE. This looks for a sibling ISSUE, and
 it is a different search with a different answer: the issue that covers your finding
@@ -844,6 +874,24 @@ your last, authoritative signal to stop and check before spending more.
 ## 8. Verify before merge (`/verify-pr`)
 
 Run `/verify-pr`. Its live-test rules decide how each PR is verified:
+
+**Run the integ LAST, and note that "last" does not hold still across review
+rounds — so DECLARE the tree final, in words, to whoever is still editing it.**
+This repo's `integ` gate is `hash: diff` over `src/**` and
+`tests/integration/**`, so it digests the branch's DELTA rather than the working
+tree's behaviour. The consequence is worth stating outright: a round of review
+fixes whose change to an in-scope file is **comment-only** still stales the
+marker, and still costs a full fixture run. Measured in cdkd on 2026-08-26
+(go-to-k/cdkd#2261), where a lane paid THREE real-AWS runs of one fixture, the
+third for a round whose provider change was verified to carry zero non-comment
+lines. What ended it was telling the implementing agent, before its last pass, to
+batch every remaining finding into ONE commit and report when the tree is FINAL
+with no second pass — after which the integ ran once. Say that explicitly rather
+than assuming it: an agent handed a list of findings will otherwise fix, verify
+and hand back, which is the right instinct everywhere except in front of a gate
+that costs a real run. The reviewer-side corollary is the reverse — dispatch a
+round SCOPED to the delta and ask for the whole round's findings at once, rather
+than trickling them.
 
 - **fold / FP / classify fix** → the harvested **corpus** case is authoritative
   live data. If it is pinned by `vp test run corpus-replay` AND was live-proven in
