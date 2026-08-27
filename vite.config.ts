@@ -143,7 +143,13 @@ export default defineConfig({
       build: { command: 'vp pack', cache: false },
       dev: { command: 'vp pack --watch', cache: false },
       check: { command: checkCommand },
-      test: { command: 'vp test run' },
+      // `dependsOn: ['build']` because several suites SPAWN `dist/cli.js`
+      // (`tests/json-empty-on-error.test.ts` among them). Without it a bare
+      // `vp test run`, and `vp run verify` on a clean checkout, execute a stale
+      // or absent binary -- 13 cases failed on a fresh clone for a reason that
+      // had nothing to do with the source. `runtime:smoke` already declares it
+      // for the same reason. See go-to-k/cdk-real-drift#1825.
+      test: { command: 'vp test run', dependsOn: ['build'] },
       'test:watch': { command: 'vp test watch', cache: false },
       'test:coverage': { command: 'vp test run --coverage', cache: false },
       lint: { command: 'vp lint' },
@@ -162,7 +168,11 @@ export default defineConfig({
       // typecheck` reported GREEN from cache, so the gate marker was set on a red
       // tree and the break reached main. Typecheck is ~1s; correctness > the cache.
       typecheck: { command: 'tsc --project tsconfig.json --noEmit', cache: false },
-      verify: { command: 'vp run check && vp run test && vp run test:hooks && vp run build' },
+      // `build` FIRST: `test` spawns `dist/cli.js`, so running it before the
+      // build measured the previous commit's binary. The `dependsOn` above makes
+      // this ordering redundant rather than load-bearing, and it is kept so the
+      // sequence reads in the order it actually happens.
+      verify: { command: 'vp run build && vp run check && vp run test && vp run test:hooks' },
       'runtime:smoke': {
         command: 'node dist/cli.js --version',
         dependsOn: ['build'],
