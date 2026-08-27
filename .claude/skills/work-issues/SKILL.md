@@ -1795,6 +1795,30 @@ pnpm install                  # worktrees have no node_modules
   the reformatted diff before committing; the damage is invisible in the source you
   typed.
 
+- **A skill doc cannot cite a repo path in order to say it is ABSENT.**
+  `tests/skill-doc-paths.test.ts` resolves every path-shaped code span in every
+  `.claude/skills/*/SKILL.md`, and it has no negation exemption on purpose: a
+  genuinely stale path would otherwise hide behind a "no longer exists" phrasing,
+  which is the class the fence exists to catch. Adding an exemption is therefore
+  the wrong repair — reword instead. Measured 2026-08-28
+  (go-to-k/cdk-real-drift#1829): a draft explaining that this repo has no reviewer
+  tier put the dot-claude agents directory in a code span to say it does not
+  exist, and went red; naming the absence in PROSE ("this repo ships no
+  multi-agent reviewer set and no `/review-pr` skill") passes and reads better.
+  Note that this very bullet cannot quote that example in a code span either — it
+  went red a second time for exactly that, which is the rule demonstrating itself.
+  This bites MIRROR lanes hardest, because adapting a sibling's lesson so often
+  means stating that the mechanism it assumes is missing here. Two details of the
+  fence make the reword easy once you know them: a span is only checked when its
+  FIRST segment is an existing top-level directory, so an invented root is not
+  checked at all while anything under the real `.claude` tree is; and `PATH_LIKE`
+  requires a leading word character, so a skill name like `/review-pr` is never
+  treated as a path. A gate that DOES exist, such
+  as the INERT `pr-review` entry in `.markgate.yml`, can still be cited by name.
+  Run `vp test run tests/skill-doc-paths.test.ts` before the commit rather than
+  after a full gate cycle: on a prose-only diff it is the one fence that can
+  actually go red.
+
 - A `work-issues`-only edit is outside BOTH the `check` and `docs` gate scopes, but
   `check-gate` verifies both markers on every commit without computing scope, and a
   fresh worktree starts with NONE — so run `/check` + `/check-docs` there before the
