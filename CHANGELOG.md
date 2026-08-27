@@ -1,3 +1,10 @@
+## [0.26.8](https://github.com/go-to-k/cdk-real-drift/compare/v0.26.7...v0.26.8) (2026-08-27)
+
+
+### Bug Fixes
+
+* **build:** make `test` depend on `build`, so a cold checkout is not red ([#1826](https://github.com/go-to-k/cdk-real-drift/issues/1826)) ([c66fa83](https://github.com/go-to-k/cdk-real-drift/commit/c66fa83c07a98a890253ca267d834a8bcc6f60bf))
+
 ## [0.26.7](https://github.com/go-to-k/cdk-real-drift/compare/v0.26.6...v0.26.7) (2026-08-21)
 
 
