@@ -546,8 +546,22 @@ The tell is grammatical rather than technical: a number arriving as a WORD
 ("nine sites", "a third copy") was counted by a person or an agent, while one
 arriving as command output was counted by a machine. Before a relayed count goes
 anywhere durable — an issue body, a PR body, this file — run the query yourself
-and put it in the text. It is one command. What worked on that run was the
-implementing agent deriving its next count with `awk` and catching its own
+and put it in the text. It is one command. **Run it at the sha that artifact will
+describe**, because WHEN is the other half of the rule and the half that actually
+fails: a count is correct for the round that reported it and stale by the time it
+reaches the PR body, because the body is written once and the branch keeps
+moving. Measured in cdk-local on 2026-08-27 (go-to-k/cdk-local#614): one run
+published four counts, every one accurate for its round and wrong against the
+merged branch — 90 cases (94 by merge); `52 -> 93` for a file that was NEW, so
+`0 -> 118` against `main`; `354 -> 368`, where 354 was a mid-PR peak and the real
+delta is `337 -> 358` for a feature later deleted; and "6 sites closed" against an
+enumeration that omitted one the totals included (7). Three of the four reached PR
+bodies and were patched after review caught them. So re-derive every number in a
+body after the LAST fix round, not once when you first wrote it — and note that a
+count already committed to a durable artifact goes stale the same way: this file
+said "nine" `.claude/hooks/*.test.sh` harnesses in two places until 2026-08-28,
+when `ls .claude/hooks/*.test.sh | wc -l` returned 15. What worked on that run
+was the implementing agent deriving its next count with `awk` and catching its own
 correction mid-flight, and declining to relay a path from the orchestrator's
 message after grepping and finding no such file.
 
@@ -690,7 +704,7 @@ behavior by standalone `.claude/hooks/*.test.sh` suites you run BY HAND (`bash
 .claude/hooks/<name>.test.sh` from the repo root) — nothing in `vp test run` or CI
 invokes those, so a hook change resting on a green suite plus green CI is not
 verified at all. Run that harness FROM `.claude/hooks/`, never from a copy parked
-elsewhere: all nine suites resolve their subject from their OWN script path —
+elsewhere: every suite resolves its subject from its OWN script path —
 `$(dirname "$0")` or the interchangeable `$(dirname "${BASH_SOURCE[0]}")` — with no
 env override for it (`BUGHUNT_TRACKER_OVERRIDE` overrides the TRACKER script, not the
 hook). A copy under a scratch directory therefore points at a sibling that is not
@@ -756,7 +770,7 @@ fence in this repo was put through them on 2026-08-20
   `parserOpts` at all — which is why all 13 `type!:` merges in this repo's history
   released a version and left no CHANGELOG entry behind.
 
-And ask the dumbest question last: **is anything RUNNING it?** The nine
+And ask the dumbest question last: **is anything RUNNING it?** The
 `.claude/hooks/*.test.sh` harnesses had no `vp run` task and no CI step — they are
 shell, so `vp test run` never saw them — and had been exercised only by hand since
 the day each was written (`vp run test:hooks` now runs them, in CI too).
@@ -765,8 +779,29 @@ The general shape: **a fence is not evidence until you have watched it go red on
 something you had not already counted.** Calibration says it is not noisy; only
 the spelling and deletion probes say it is load-bearing.
 
-**Those two probes test the RULE; a third is needed when the subject is a
-CLASSIFIER, because there the weak part is the POPULATION.** A classifier is any
+**Both probes above vary the INPUT. The second axis is the STATE the subject is in
+when the input arrives, and that one gets enumerated by ACCIDENT** — every case
+reuses whatever fixture setup the first case needed, so the suite covers one row
+of a table it never drew, and goes green over every defect in the other rows.
+Measured twice in one cdk-local PR on 2026-08-27 (go-to-k/cdk-local#609): a commit
+gate shipped 52 green cases with two live fail-opens, was fixed, and shipped 93
+green cases with four more. Both times the misses were a file STATE the fixture
+never entered — untracked, tracked-but-modified, deleted on disk — not a command
+shape nobody imagined, and one of those branches let a NUL byte reach a commit.
+DRAW THE GRID: enumerate the states on one axis and the input shapes on the other
+and write the cells out. Six states by four command shapes ended it there, made
+the deliberately-uncovered cells NAMEABLE rather than merely absent, and surfaced
+three FALSE blocks that a one-dimensional suite cannot produce at all. The state
+axis is repo-specific, so name it from what the subject actually reads: a
+`.claude/hooks/*.test.sh` case reads the TREE (clean, staged-only, dirty,
+untracked-only, on `main`, on a branch, inside a worktree), while a fold or
+classify fence reads the TIER a property lands in (`declared`, `undeclared`,
+`atDefault`, `readGap`) plus the empty-husk shape `isTrivialEmpty` pre-empts —
+which is the row a hand-picked case most often skips, and the row
+go-to-k/cdk-real-drift#1647 turned out to live in.
+
+**The spelling and deletion probes test the RULE; a third is needed when the
+subject is a CLASSIFIER, because there the weak part is the POPULATION.** A classifier is any
 function deciding which of several shapes an input is — `classifyTransient` and
 `isDependencyViolation` (`src/revert/transient.ts`, `src/revert/apply.ts`),
 `classifyStackStatus` and `isResourceNotFoundError` (`src/aws-errors.ts`),
@@ -1113,8 +1148,9 @@ than trickling them.
   sweep, run the fixture end to end against stubs first — two seconds of a dry run
   catches it.
 - **When a fix round produces the NEXT round's blocker twice, stop reviewing the
-  patch and question its SHAPE.** `/verify-pr` already says to re-review the fix
-  delta; this is what to do when that keeps paying out. Each fix is locally
+  patch and question its SHAPE.** `/verify-pr` step 5 re-reads the WHOLE diff on
+  every run, fix-round deltas included, and re-decides review depth at the final
+  sha; this is what to do when that keeps paying out. Each fix is locally
   correct and moves the failure one layer out rather than removing it, and the
   blockers are found by executing a probe or tracing a window — never by
   re-reading the diff. After round two, ask what the rounds have in COMMON: it is
