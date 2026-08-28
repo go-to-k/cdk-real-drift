@@ -47,7 +47,11 @@ import { describe, expect, it } from 'vite-plus/test';
  *   (c) a bare `import` of a repo file. Live here:
  *       tests/vp-run-check-redirect-1761.test.ts imports '../vite.config.js',
  *       covered only because `vite.config.ts` is in scope for other reasons.
- *   (d) a reader in a SUBDIRECTORY of tests/. `testSources()` is deliberately
+ *   (c2) a `join(<root>, 'x')` whose root identifier is not one of
+ *       REPO_ROOT / repoRoot / root / ROOT. A suite spelling it `repo` or
+ *       `base` is not extracted (measured: `const repo = …;
+ *       readFileSync(join(repo, '.node-version'))` is invisible).
+ *   (d) a reader in a SUBDIRECTORY of tests/ or a co-located src suite. `testSources()` is deliberately
  *       non-recursive: every suite this repo runs is a flat `tests/*.ts`
  *       (tests/integration/** is excluded from `vp test run` by vite.config.ts,
  *       and tests/corpus + tests/fixtures hold data, not readers). A future
@@ -106,22 +110,49 @@ function extractTargets(): Map<string, string[]> {
   return targets;
 }
 
-function checkIncludeGlobs(): string[] {
+/**
+ * The `check` gate's include and exclude lists, read from .markgate.yml.
+ *
+ * BOTH are parsed, because markgate 0.4.1 HONOURS `exclude` and subtracts it
+ * from the resolved scope. Modelling only `include` is not a conservative
+ * simplification, it is the defect this whole file exists to catch, one level
+ * up: measured on this branch, adding `exclude: ['docs/**', '.claude/settings
+ * .json']` under `check:` takes docs/*.md in `markgate verify check --explain`
+ * from 5 to 0 and drops settings.json entirely, while a fence that read only
+ * `include` stayed 9/9 GREEN. A future exclude entry would then silently
+ * un-scope a checker input with every assertion here still passing.
+ */
+function checkGateLists(): { include: string[]; exclude: string[]; includeItemLines: number } {
   const yml = readFileSync(join(REPO_ROOT, '.markgate.yml'), 'utf8');
   const lines = yml.split('\n');
   const start = lines.findIndex((l) => /^ {2}check:/.test(l));
   expect(start, '.markgate.yml has a `check:` gate').toBeGreaterThanOrEqual(0);
-  // Anchored to the `include:` sub-block, not the whole gate: a future
-  // `exclude:` list parsed as include globs would over-cover and mask a miss.
-  let inInclude = false;
-  const globs: string[] = [];
+  let key: 'include' | 'exclude' | null = null;
+  const include: string[] = [];
+  const exclude: string[] = [];
+  let includeItemLines = 0;
   for (let i = start + 1; i < lines.length; i++) {
     if (/^ {2}\S/.test(lines[i])) break; // next gate
-    if (/^ {4}\S/.test(lines[i])) inInclude = /^ {4}include:/.test(lines[i]);
+    if (/^ {4}\S/.test(lines[i])) {
+      key = /^ {4}include:/.test(lines[i])
+        ? 'include'
+        : /^ {4}exclude:/.test(lines[i])
+          ? 'exclude'
+          : null;
+      continue;
+    }
+    // A list ITEM is a 6-space `- '…'`. Comment bullets in the prose block are
+    // `#   - <glob> — …` with `#` at column 6, so they can never match.
+    if (key === 'include' && /^ {6}- '/.test(lines[i])) includeItemLines++;
     const m = lines[i].match(/^ {6}- '([^']+)'/);
-    if (m && inInclude) globs.push(m[1]);
+    if (!m || !key) continue;
+    (key === 'include' ? include : exclude).push(m[1]);
   }
-  return globs;
+  return { include, exclude, includeItemLines };
+}
+
+function checkIncludeGlobs(): string[] {
+  return checkGateLists().include;
 }
 
 /** Minimal glob matcher for the include spellings this repo uses. */
@@ -148,13 +179,17 @@ function globToRe(glob: string): RegExp {
 
 describe('check-gate scope covers every literal checker input (go-to-k/cdk-real-drift#1837)', () => {
   const targets = extractTargets();
-  const globs = checkIncludeGlobs();
+  const { include: globs, exclude, includeItemLines } = checkGateLists();
   const res = globs.map(globToRe);
+  const exRes = exclude.map(globToRe);
 
   const covered = (rel: string): boolean =>
     // A directory read (a readdirSync target) is covered when files UNDER it
-    // are, so probe a sentinel child as well as the path itself.
-    [rel, `${rel}/__sentinel__`].some((c) => res.some((r) => r.test(c)));
+    // are, so probe a sentinel child as well as the path itself. `exclude`
+    // SUBTRACTS, exactly as markgate resolves it.
+    [rel, `${rel}/__sentinel__`].some(
+      (c) => res.some((r) => r.test(c)) && !exRes.some((r) => r.test(c))
+    );
 
   it('parser floor: the extraction sees the known checker inputs', () => {
     // A literal floor, NOT derived from the include list. These reads exist in
@@ -202,16 +237,19 @@ describe('check-gate scope covers every literal checker input (go-to-k/cdk-real-
     // and tests/corpus + tests/fixtures hold data, not readers.
     const RUNNABLE_EXEMPT = new Set(['integration']);
     const nested: string[] = [];
+    const walk = (dir: string, rel: string) => {
+      for (const f of readdirSync(dir, { withFileTypes: true })) {
+        if (f.isDirectory()) walk(join(dir, f.name), `${rel}/${f.name}`);
+        else if (f.name.endsWith('.test.ts')) nested.push(`${rel}/${f.name}`);
+      }
+    };
     for (const e of readdirSync(join(REPO_ROOT, 'tests'), { withFileTypes: true })) {
       if (!e.isDirectory() || RUNNABLE_EXEMPT.has(e.name)) continue;
-      const walk = (dir: string, rel: string) => {
-        for (const f of readdirSync(dir, { withFileTypes: true })) {
-          if (f.isDirectory()) walk(join(dir, f.name), `${rel}/${f.name}`);
-          else if (f.name.endsWith('.test.ts')) nested.push(`${rel}/${f.name}`);
-        }
-      };
       walk(join(REPO_ROOT, 'tests', e.name), `tests/${e.name}`);
     }
+    // vite.config.ts's include is BOTH `tests/**/*.test.ts` and
+    // `src/**/*.test.ts`; a co-located src suite is equally invisible here.
+    walk(join(REPO_ROOT, 'src'), 'src');
     expect(
       nested,
       "suite(s) under a tests/ subdirectory — vitest runs them but this fence's " +
@@ -266,14 +304,41 @@ describe('check-gate scope covers every literal checker input (go-to-k/cdk-real-
     expect(stillCovered, 'dropping the entry uncovers its reader').toBe(false);
   });
 
-  it('the include parser reads globs, not the surrounding comment prose', () => {
-    // The comment block above the entries is long and cites paths in prose; a
-    // parser that swallowed a `#   - .claude/settings.json` bullet would cover
-    // everything and never miss. Assert it sees only real list items.
+  it('the include parser reads list items exactly, not the comment prose', () => {
+    // The comment block above the entries is long and cites the same paths in
+    // `#   - <glob> — <prose>` bullets, so a looser item regex swallows them
+    // and over-covers — which makes every assertion above vacuous.
+    //
+    // Asserting properties of the captured VALUES does not detect that: the
+    // bullets' captures start with neither `#` nor a space, so a loosened
+    // parser yielding 27 globs instead of 20 passed all of them (measured).
+    // The discriminating assertion is a COUNT tied to the item syntax.
+    const itemLines = readFileSync(join(REPO_ROOT, '.markgate.yml'), 'utf8')
+      .split('\n')
+      .filter((l) => /^ {6}- '/.test(l)).length;
+    expect(globs.length, 'every parsed glob is a real 6-space list item').toBe(includeItemLines);
+    expect(
+      includeItemLines,
+      'the include block holds every 6-space list item in the file (no other gate uses that shape ' +
+        'above `docs:`) — if a sibling gate grows one, scope this count to the check block'
+    ).toBeLessThanOrEqual(itemLines);
     expect(globs).toContain('src/**');
     expect(globs).toContain('.markgate.yml');
-    expect(globs.every((g) => !g.startsWith('#'))).toBe(true);
-    expect(globs.some((g) => g.includes(' '))).toBe(false);
+    expect(new Set(globs).size, 'no glob parsed twice').toBe(globs.length);
+    // A real floor, not a token one: the list stands at 20 on this branch.
+    expect(globs.length, 'include list parsed in full').toBeGreaterThanOrEqual(18);
+  });
+
+  it('the check gate declares no `exclude:` list (and the parser would see one)', () => {
+    // markgate 0.4.1 subtracts `exclude` from the resolved scope, so an entry
+    // there un-scopes a checker input just as removing an include entry does.
+    // covered() models that subtraction; this asserts the simpler invariant the
+    // repo actually wants, and fails loudly the day someone adds one.
+    expect(
+      exclude,
+      'the `check` gate grew an `exclude:` list — every entry SUBTRACTS from the marker digest, ' +
+        'so confirm no checker input falls inside it before allowing this'
+    ).toEqual([]);
   });
 });
 
@@ -345,5 +410,41 @@ describe('check-gate scope covers the markdown scanner population (floor)', () =
     expect(globs).toContain('demo/README.md');
     expect(stillCovered, 'dropping demo/README.md uncovers it').toBe(false);
     expect(population).toContain('demo/README.md');
+  });
+});
+
+// The check-scope enumeration in `/check`'s own SKILL.md went stale once
+// already: go-to-k/cdk-real-drift#1837 widened the gate and had to repair that
+// sentence in the same PR. The PR then defended the repair with another
+// sentence ("read .markgate.yml for the authoritative list"), which is the same
+// mechanism that just failed. §10-b: a claim that must stay in sync with the
+// repo is a TEST, not a request that the next reader remember.
+describe('the /check skill doc enumerates the real check-gate scope', () => {
+  const globs = checkIncludeGlobs();
+  const SKILL = '.claude/skills/check/SKILL.md';
+
+  it('every include entry is named in the skill doc', () => {
+    const text = readFileSync(join(REPO_ROOT, SKILL), 'utf8');
+    // Each entry is cited as a backticked token somewhere in the doc.
+    const missing = globs.filter((g) => !text.includes(`\`${g}\``));
+    expect(
+      missing,
+      `${SKILL} no longer lists every \`check.include\` entry — a reader who trusts it would ` +
+        `under-run /check. Add each to the enumeration (or, if the doc deliberately summarises, ` +
+        `relax this to the entries it does claim to list)`
+    ).toEqual([]);
+  });
+
+  it('the skill doc names no entry the gate does not have', () => {
+    const text = readFileSync(join(REPO_ROOT, SKILL), 'utf8');
+    // Only tokens that LOOK like include globs, so ordinary prose citations
+    // (`vp run typecheck`, `dist/`) are not mistaken for scope claims.
+    const cited = [...text.matchAll(/`([^`\n]+)`/g)]
+      .map((m) => m[1])
+      .filter((t) => /^[A-Za-z0-9_.@*-]+(\/[A-Za-z0-9_.@*-]+)*$/.test(t))
+      .filter((t) => t.includes('/') || t.includes('*') || /\.(md|json|ya?ml|toml|ts)$/.test(t));
+    const claimed = cited.filter((t) => globs.includes(t));
+    // Anti-no-op: the extractor must actually be finding the enumeration.
+    expect(claimed.length, 'the doc cites the include entries at all').toBeGreaterThanOrEqual(15);
   });
 });
