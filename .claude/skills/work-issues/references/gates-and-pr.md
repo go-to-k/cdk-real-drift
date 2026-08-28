@@ -53,7 +53,9 @@ go-to-k/cdk-real-drift#1782):
   REFUSED call is a named trigger: either can reset the cwd or leave an expected
   directory uncreated, and a failed `cd` stops an `&&` chain but NOT the later
   lines of a multi-line call, which write into whatever cwd was current
-  (2026-08-28, go-to-k/cdkd#2370) — after any timeout or refusal, `pwd` and
+  (2026-08-28, go-to-k/cdkd#2370); a relative `cd .worktrees/...` also fails when
+  the cwd is ALREADY inside that worktree — no timeout, no refusal, and the
+  chained edit silently does not run — after any timeout or refusal, `pwd` and
   re-verify what the aborted call was to create. The marker store is
   `.git/markgate`, SHARED by every worktree, but the hashes come from the cwd's
   files, so setting from the main checkout records `main`'s content; it fails
@@ -119,9 +121,10 @@ Three things make that check misreport, and all three read as LOST CONTENT:
   EARLIER-merged lane's.
 - **Use `grep -cF`, keep the marker on ONE LINE of the merged file, and do not
   chain the two greps with `&&`.** Regex metacharacters make a bare `grep -c`
-  score 0, and `grep` is LINE-based while these files are hard-wrapped, so a
-  verbatim phrase spanning the wrap scores 0 too (both measured against
-  go-to-k/cdk-real-drift#1790's merge commit, 2026-08-19). Pick the phrase from
+  score 0 (measured here 2026-08-19: a marker containing `[` and `.` scored 0
+  without `-F` and 1 with it), and `grep` is LINE-based while these files are
+  hard-wrapped, so a verbatim phrase spanning the wrap scores 0 too (measured
+  2026-08-19 against go-to-k/cdk-real-drift#1790's merge commit). Pick the phrase from
   the merged file itself — the wrap column moves with the wording, so
   go-to-k/cdk-local#532's marker for this same rule does not wrap the same here.
   Settle a 0 with `git show origin/main:<file> | grep -n "<one short word>"`,

@@ -78,7 +78,7 @@ create-resource` → OOB-mutate → bare-`remove` probe → explicit-`add` probe
 4. **Explicit default REJECTED while an incompatible sibling echo remains** in the CC
    read-modify-write model (TG back-to-TCP with L7 `Matcher`/`HealthCheckPath` —
    "matchers are not supported for TCP"; Volume back-to-gp2 with gp3
-   `Iops`/`Throughput` echoes) — fix = `REVERT_COMPANION_REMOVES` (plan.ts): sibling
+   `Iops`/`Throughput` echoes — "iops is not supported for gp2") — fix = `REVERT_COMPANION_REMOVES` (plan.ts): sibling
    `remove`s ride the same patch, gated on live-presence + not-declared
    (go-to-k/cdk-real-drift#1709 / go-to-k/cdk-real-drift#1710). Same flavor: ECS
    DAEMON `DeploymentConfiguration` ("daemon scheduling strategy does not support a
@@ -88,7 +88,8 @@ create-resource` → OOB-mutate → bare-`remove` probe → explicit-`add` probe
 5. **Type rejects EVERY CC patch** via a deprecated/successor API-alias pair in one
    model — GuardDuty Detector echoes BOTH `EKS_RUNTIME_MONITORING` and
    `RUNTIME_MONITORING` ("cannot be provided in the same request") and
-   DataSources+Features may not coexist, so even a patch touching NEITHER fails. Fix
+   DataSources+Features may not coexist in one update ("provide only one"), so
+   even a patch touching NEITHER fails. Fix
    (go-to-k/cdk-real-drift#1752, all legs proven stackless): TRANSLATE
    `/DataSources/*` ops to the successor side (`/Features/<idx>/Status`),
    companion-remove `/DataSources` (a derived projection, not a state change),

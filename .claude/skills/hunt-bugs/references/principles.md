@@ -151,7 +151,10 @@ Skip the question only when the user already named one ("stop at filing the issu
    go-to-k/cdk-real-drift#344). **But weight by GENERATION: registry-era types are
    overwhelmingly NATURAL composites** (physical id already the `seg1|seg2` join —
    CC reads as-is, no adapter): a one-stack probe of 7 uncovered composite-pi
-   registry-era types all read clean, zero `skipped`. The gap class lives in
+   registry-era types (ServiceCatalog PortfolioPrincipalAssociation +
+   TagOptionAssociation, AppRegistry AttributeGroupAssociation, aoss
+   AccessPolicy, EC2 SecurityGroupVpcAssociation, Lex BotVersion + BotAlias) all
+   read clean, zero `skipped` — do not re-burn deploys on these. The gap class lives in
    LEGACY types that kept a bare-segment physical id when registry-migrated (the
    ~40 existing adapters are all that class); an association-pack probe is still
    worth it, but expect "no gap" as the common outcome.
