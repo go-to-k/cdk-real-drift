@@ -7,140 +7,140 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/check-gate.sh",
+            "command": "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/check-gate.sh",
             "if": "Bash(*git*commit*)",
             "timeout": 10,
             "statusMessage": "Checking /check + /check-docs markers..."
           },
           {
             "type": "command",
-            "command": ".claude/hooks/branch-gate.sh",
+            "command": "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/branch-gate.sh",
             "if": "Bash(*git*commit*)",
             "timeout": 10,
             "statusMessage": "Checking target branch is not main..."
           },
           {
             "type": "command",
-            "command": ".claude/hooks/branch-gate.sh",
+            "command": "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/branch-gate.sh",
             "if": "Bash(*git*push*)",
             "timeout": 10,
             "statusMessage": "Checking target branch is not main..."
           },
           {
             "type": "command",
-            "command": ".claude/hooks/bughunt-clean-gate.sh",
+            "command": "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/bughunt-clean-gate.sh",
             "if": "Bash(*git*commit*)",
             "timeout": 10,
             "statusMessage": "Checking for un-deleted bug-hunt resources..."
           },
           {
             "type": "command",
-            "command": ".claude/hooks/bughunt-clean-gate.sh",
+            "command": "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/bughunt-clean-gate.sh",
             "if": "Bash(*gh*pr*create*)",
             "timeout": 10,
             "statusMessage": "Checking for un-deleted bug-hunt resources..."
           },
           {
             "type": "command",
-            "command": ".claude/hooks/bughunt-clean-gate.sh",
+            "command": "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/bughunt-clean-gate.sh",
             "if": "Bash(*gh*pr*merge*)",
             "timeout": 10,
             "statusMessage": "Checking for un-deleted bug-hunt resources..."
           },
           {
             "type": "command",
-            "command": ".claude/hooks/stale-base-gate.sh",
+            "command": "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/stale-base-gate.sh",
             "if": "Bash(*git*push*)",
             "timeout": 10,
             "statusMessage": "Checking branch does not stale-base-clobber main..."
           },
           {
             "type": "command",
-            "command": ".claude/hooks/verify-pr-gate.sh",
+            "command": "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/verify-pr-gate.sh",
             "if": "Bash(*gh*pr*create*)",
             "timeout": 15,
             "statusMessage": "Checking /verify-pr marker is fresh..."
           },
           {
             "type": "command",
-            "command": ".claude/hooks/verify-pr-gate.sh",
+            "command": "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/verify-pr-gate.sh",
             "if": "Bash(*gh*pr*merge*)",
             "timeout": 15,
             "statusMessage": "Checking /verify-pr marker is fresh..."
           },
           {
             "type": "command",
-            "command": ".claude/hooks/ci-green-gate.sh",
+            "command": "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/ci-green-gate.sh",
             "if": "Bash(*gh*pr*merge*)",
             "timeout": 30,
             "statusMessage": "Checking the PR's CI is all-green before merge..."
           },
           {
             "type": "command",
-            "command": ".claude/hooks/issue-classification-label-gate.sh",
+            "command": "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/issue-classification-label-gate.sh",
             "if": "Bash(*gh*issue*create*)",
             "timeout": 15,
             "statusMessage": "Checking the issue's Severity / Effort labels match its body..."
           },
           {
             "type": "command",
-            "command": ".claude/hooks/issue-classification-label-gate.sh",
+            "command": "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/issue-classification-label-gate.sh",
             "if": "Bash(*gh*issue*edit*)",
             "timeout": 15,
             "statusMessage": "Checking the issue's Severity / Effort labels match its body..."
           },
           {
             "type": "command",
-            "command": ".claude/hooks/non-english-text-gate.sh",
+            "command": "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/non-english-text-gate.sh",
             "if": "Bash(*gh*pr*create*)",
             "timeout": 20,
             "statusMessage": "Scanning PR diff for non-English text..."
           },
           {
             "type": "command",
-            "command": ".claude/hooks/non-english-text-gate.sh",
+            "command": "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/non-english-text-gate.sh",
             "if": "Bash(*gh*pr*edit*)",
             "timeout": 20,
             "statusMessage": "Scanning PR diff for non-English text..."
           },
           {
             "type": "command",
-            "command": ".claude/hooks/non-english-text-gate.sh",
+            "command": "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/non-english-text-gate.sh",
             "if": "Bash(*gh*pr*merge*)",
             "timeout": 20,
             "statusMessage": "Scanning PR diff for non-English text..."
           },
           {
             "type": "command",
-            "command": ".claude/hooks/issue-dup-check-gate.sh",
+            "command": "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/issue-dup-check-gate.sh",
             "if": "Bash(*gh*issue*create*)",
             "timeout": 10,
             "statusMessage": "Checking the issue body records an open-issue dup check..."
           },
           {
             "type": "command",
-            "command": ".claude/hooks/issue-dup-check-gate.sh",
+            "command": "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/issue-dup-check-gate.sh",
             "if": "Bash(*gh*api*issues*)",
             "timeout": 10,
             "statusMessage": "Checking the issue body records an open-issue dup check..."
           },
           {
             "type": "command",
-            "command": ".claude/hooks/deploy-autoarm-gate.sh",
+            "command": "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/deploy-autoarm-gate.sh",
             "if": "Bash(*deploy*)",
             "timeout": 10,
             "statusMessage": "Auto-arming the cleanup gate on deploy..."
           },
           {
             "type": "command",
-            "command": ".claude/hooks/deploy-autoarm-gate.sh",
+            "command": "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/deploy-autoarm-gate.sh",
             "if": "Bash(*create-stack*)",
             "timeout": 10,
             "statusMessage": "Auto-arming the cleanup gate on deploy..."
           },
           {
             "type": "command",
-            "command": ".claude/hooks/deploy-autoarm-gate.sh",
+            "command": "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/deploy-autoarm-gate.sh",
             "if": "Bash(*update-stack*)",
             "timeout": 10,
             "statusMessage": "Auto-arming the cleanup gate on deploy..."
@@ -152,7 +152,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/worktree-guard.sh",
+            "command": "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/worktree-guard.sh",
             "timeout": 10,
             "statusMessage": "Checking edit targets a worktree, not the main checkout..."
           }
@@ -164,12 +164,12 @@
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/stop-cleanup-warn.sh",
+            "command": "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/stop-cleanup-warn.sh",
             "timeout": 10
           },
           {
             "type": "command",
-            "command": ".claude/hooks/stop-unmerged-lane-warn.sh"
+            "command": "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/stop-unmerged-lane-warn.sh"
           }
         ]
       }
