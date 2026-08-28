@@ -2,6 +2,17 @@
 
 ## 5. One worktree per lane, then implement
 
+This stage (and stages 6-8) normally runs INSIDE a lane subagent the
+orchestrator dispatched — one general-purpose agent per claimed issue, so the
+lane's diffs, test output and review round-trips never land in the parent
+context. Every rule below applies unchanged inside the lane: hooks fire on the
+lane's tool calls (measured on go-to-k/cdk-real-drift#1831, built end-to-end by
+a lane subagent on 2026-08-28), and markgate markers land in the lane's own
+worktree. Two actions are reserved to the parent's serialization turn and are
+NOT the lane's to start: a real-AWS live test (deploy → mutate → revert) and
+the merge (the orchestrator's serialization invariant; §9). A lane stops at
+merge-ready and reports.
+
 **Before fixing, ask whether the defect has SIBLING SITES — and if it does, sweep
 them in THIS lane rather than filing them.** Most defects here are a CLASS, not an
 instance: one command factory mishandling a flag, one resolver arm missing a case,
@@ -389,6 +400,8 @@ its first run, against this paragraph's own draft.
 You may fan out **one subagent per lane** (disjoint files) to run them
 concurrently — give each agent its worktree path, its allowed files, and an
 explicit "do NOT touch <the other lanes' / other agents' files>; STOP and report
-if the fix needs a forbidden file" guardrail. Note: a subagent's Bash **bypasses
-the PreToolUse gate hooks**, so it can `gh pr create` past `verify-pr-gate` —
-enforce quality yourself; you (the orchestrator) still gate the MERGE.
+if the fix needs a forbidden file" guardrail. This file used to warn that a
+subagent's Bash bypasses the PreToolUse gate hooks; that is measured FALSE —
+on 2026-08-28 the go-to-k/cdk-real-drift#1831 lane subagent had every gate hook
+fire on its own calls exactly as in the parent. The gates are a backstop, not
+the plan, either way: the orchestrator still holds the MERGE turn (§9).
