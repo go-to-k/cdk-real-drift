@@ -57,6 +57,10 @@ import { describe, expect, it } from 'vite-plus/test';
  *       (tests/integration/** is excluded from `vp test run` by vite.config.ts,
  *       and tests/corpus + tests/fixtures hold data, not readers). A future
  *       nested suite is invisible here.
+ *   (d2) the repo's ROOT LISTING. skill-doc-paths.test.ts:33 builds PATH_ROOTS
+ *       with readdirSync(ROOT), so adding or removing a TOP-LEVEL directory
+ *       changes which tokens count as path citations. Unscopeable by any glob;
+ *       recorded as a known limit in .markgate.yml.
  *   (e) repo-wide scanners whose population really is the whole tree —
  *       tests/skill-doc-paths.test.ts's citation resolution walks every
  *       backticked path token in every skill doc. `.markgate.yml`'s comment
@@ -287,7 +291,22 @@ describe('check-gate scope covers every literal checker input (go-to-k/cdk-real-
     // WOULD run while being invisible here. Fence the flatness assumption
     // rather than trusting it: tests/integration/** is excluded from the run,
     // and tests/corpus + tests/fixtures hold data, not readers.
-    const RUNNABLE_EXEMPT = new Set(['integration']);
+    // DERIVED from vite.config.ts, not asserted about it. The previous version
+    // hard-coded `integration` and justified it with a comment describing what
+    // the config says — correct on the day it was written and silently wrong
+    // the day the config changes, which is this PR's own subject.
+    const viteConfig = readFileSync(join(REPO_ROOT, 'vite.config.ts'), 'utf8');
+    const excludeLine = viteConfig.match(/exclude:\s*\[([^\]]*)\]/g) ?? [];
+    const excluded = excludeLine
+      .flatMap((b) => [...b.matchAll(/'([^']+)'/g)].map((m) => m[1]))
+      .filter((e) => e.startsWith('tests/'))
+      .map((e) => e.replace(/^tests\//, '').replace(/\/\*\*$/, ''));
+    expect(
+      excluded,
+      "vite.config.ts's test exclude no longer names any tests/ subdirectory — if the integration " +
+        'suite stopped being excluded it is now RUN, and this fence must stop exempting it'
+    ).toContain('integration');
+    const RUNNABLE_EXEMPT = new Set(excluded);
     const nested: string[] = [];
     const walk = (dir: string, rel: string) => {
       for (const f of readdirSync(dir, { withFileTypes: true })) {

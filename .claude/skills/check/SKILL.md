@@ -72,7 +72,7 @@ gate is satisfied. The marker captures the current working-tree state of the
 gate's scope; any subsequent edit in that scope invalidates it and requires
 re-running `/check`. Since go-to-k/cdk-real-drift#1837 that scope is `src/**`,
 `tests/**`, the build inputs (`package.json`, `pnpm-lock.yaml`,
-`tsconfig*.json`, `vite.config.ts`, `.mise.toml`), this gate's own definition
+`pnpm-workspace.yaml`, `tsconfig*.json`, `vite.config.ts`, `.mise.toml`), this gate's own definition
 (`.markgate.yml`), and the checker-INPUT files the unit suite reads from
 outside `src`/`tests` — `.claude/skills/**`, `.claude/settings.json`,
 `.claude/hooks/**`, `scripts/**`, `.releaserc.json`, `.github/workflows/**`,

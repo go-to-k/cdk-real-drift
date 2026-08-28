@@ -88,6 +88,13 @@ gates:
       - 'tests/**'
       - 'package.json'
       - 'pnpm-lock.yaml'
+      # pnpm-workspace.yaml carries `overrides` (today pinning @smithy/types),
+      # which decide the dependency graph the suite runs against — the same
+      # 'decides what green means' argument as .mise.toml. Its effect is
+      # MEDIATED by pnpm-lock.yaml above, which is already in scope, so this
+      # entry catches the window between editing an override and
+      # regenerating the lock. Cheap: the file changes rarely.
+      - 'pnpm-workspace.yaml'
       - 'tsconfig*.json'
       - 'vite.config.ts'
       # Checker-INPUT files outside src/** and tests/**: the unit suite READS
@@ -181,7 +188,23 @@ gates:
       # citation to an unscoped path reopens the gap, and unlike the markdown
       # scanner there is no cheap finite enumeration to floor it against. The
       # reddening edit is a RENAME, not an ordinary edit, so CI
-      # (.github/workflows/ci.yml) is a proportionate backstop here. Same for
+      # (.github/workflows/ci.yml) is a proportionate backstop here.
+      #
+      # SECOND KNOWN LIMIT, same file, same kind: skill-doc-paths.test.ts:33
+      # builds PATH_ROOTS with readdirSync(ROOT), which makes the repo's ROOT
+      # LISTING a checker input — adding or removing a TOP-LEVEL directory
+      # changes which backticked tokens count as path citations and can red the
+      # scan. No glob can follow "the set of top-level entries", and the
+      # reddening edit is creating or deleting a top-level directory: rare, and
+      # loud when it happens. Recorded rather than scoped.
+      #
+      # DELIBERATELY OUT, with the measurement rather than a guess:
+      # `.node-version` (24.15.0) has no verified reader in the flow this marker
+      # attests to. `mise ls --current` lists no node tool here, `mise exec --
+      # node --version` reports v26.6.0, and editing .node-version changes
+      # neither — while CI pins its own `node-version: '24'` inside
+      # .github/workflows/**, which IS in scope. Scoping a file nothing reads
+      # would be the dead-entry shape go-to-k/cdk-local#630 is about. Same for
       # `vp check`'s own format pass, which reads 1485 files on this tree:
       # scoping THAT would stale the marker on every edit anywhere, which is a
       # different failure, not a smaller one. Both counts move with the file
