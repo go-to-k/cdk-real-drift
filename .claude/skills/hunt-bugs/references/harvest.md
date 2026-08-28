@@ -2,14 +2,12 @@
 
 ### 5. Harvest the live read into the golden corpus (EVERY round — bug or not)
 
-This is the asset a hunt leaves behind even when it finds no bug. Every live read
-you just paid for is a real `normalize`→`classify` pipeline input; capturing it as
-a golden-corpus case turns this one-time deploy into a permanent **offline**
-regression that runs in plain `vp run test` (no AWS) forever — `tests/corpus/*.json`
-is replayed by `tests/corpus-replay.test.ts`, which re-runs `classifyResource` on
-the recorded inputs and asserts the findings reproduce exactly (R63). A future
-normalization change that would silently re-introduce an FP/FN on this resource
-then fails a unit test instead of waiting for the next paid hunt.
+This is the asset a hunt leaves behind even when it finds no bug: every live read
+you paid for becomes a permanent **offline** regression — `tests/corpus/*.json`
+is replayed by `tests/corpus-replay.test.ts`, which re-runs `classifyResource`
+on the recorded inputs and asserts the findings reproduce exactly (R63), so a
+future normalization change that would re-introduce an FP/FN fails a unit test
+instead of waiting for the next paid hunt.
 
 So while a tracked stack is still deployed, record the corpus by setting
 `CDKRD_CORPUS_DIR` on a `check` (it writes one sanitized case per readable
