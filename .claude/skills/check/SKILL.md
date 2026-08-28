@@ -70,8 +70,10 @@ artifact, not a regression.
 After all four checks pass, record the `check` marker so the markgate `check`
 gate is satisfied. The marker captures the current working-tree state of the
 gate's scope (`src/**`, `tests/**`, `package.json`, `pnpm-lock.yaml`,
-`tsconfig*.json`, `vite.config.ts` — see `.markgate.yml`); any subsequent edit
-in that scope invalidates it and requires re-running `/check`.
+`tsconfig*.json`, `vite.config.ts`, and `.claude/skills/**` — the skill docs are
+input to `tests/skill-file-payload.test.ts` / `tests/skill-doc-paths.test.ts`;
+see `.markgate.yml`); any subsequent edit in that scope invalidates it and
+requires re-running `/check`.
 
 Run from the root of the tree you are WORKING in — the worktree, not the main
 checkout, whenever the lane lives in one. The marker store is `.git/markgate`,
