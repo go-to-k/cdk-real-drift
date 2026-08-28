@@ -73,10 +73,12 @@ Run each check and report pass/fail:
      here to recompute — this repo ships no multi-agent reviewer set and no
      `/review-pr` skill (CLAUDE.md keeps `pr-review` UNPORTED because cdkrd is
      solo), and `.markgate.yml` keeps that gate INERT and UNWIRED — so what gets
-     frozen is your own call: how closely to read, and whether to
-     dispatch read-only reviewers at all for a diff big enough to warrant them
-     (`/work-issues` §8 covers what to do when two of them contradict each
-     other). Nothing re-opens that call mechanically. A stale marker is not that
+     frozen is your own call: how closely to read, and which read-only
+     reviewers to dispatch — not WHETHER to, which `/work-issues` §8 settles:
+     an independent round is owed even when the lane already ran one, because a
+     lane's reviewers inherit the premise the lane handed them (§8 also covers
+     what to do when two of them contradict each other). Nothing re-opens the
+     depth call mechanically. A stale marker is not that
      forcing function either, and it is easy to mistake for one: a `.claude/**`
      fix round DOES stale `check`, which covers `.claude/skills/**` and — since
      go-to-k/cdk-real-drift#1837 — `.claude/settings.json`, `.claude/hooks/**`,
