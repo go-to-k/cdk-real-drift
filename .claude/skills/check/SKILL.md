@@ -69,11 +69,22 @@ artifact, not a regression.
 
 After all four checks pass, record the `check` marker so the markgate `check`
 gate is satisfied. The marker captures the current working-tree state of the
-gate's scope (`src/**`, `tests/**`, `package.json`, `pnpm-lock.yaml`,
-`tsconfig*.json`, `vite.config.ts`, and `.claude/skills/**` — the skill docs are
-input to `tests/skill-file-payload.test.ts` / `tests/skill-doc-paths.test.ts`;
-see `.markgate.yml`); any subsequent edit in that scope invalidates it and
-requires re-running `/check`.
+gate's scope; any subsequent edit in that scope invalidates it and requires
+re-running `/check`. Since go-to-k/cdk-real-drift#1837 that scope is `src/**`,
+`tests/**`, the build inputs (`package.json`, `pnpm-lock.yaml`,
+`tsconfig*.json`, `vite.config.ts`, `.mise.toml`), this gate's own definition
+(`.markgate.yml`), and the checker-INPUT files the unit suite reads from
+outside `src`/`tests` — `.claude/skills/**`, `.claude/settings.json`,
+`.claude/hooks/**`, `scripts/**`, `.releaserc.json`, `.github/workflows/**`,
+plus every hand-written markdown file (`README.md`, `DESIGN.md`, `CLAUDE.md`,
+`CONTRIBUTING.md`, `docs/**`, `demo/README.md`), because
+`tests/markdown-fmt-corruption-1771.test.ts` scans them all.
+
+**A docs-only edit therefore needs BOTH `/check` and `/check-docs`** — those
+markdown files sit in both gates on purpose. **Read `.markgate.yml` for the
+authoritative list**, not this sentence: each entry there names the test that
+reads it, and this copy has already gone stale once (go-to-k/cdk-real-drift#1837
+widened the gate and had to repair the enumeration here in the same PR).
 
 Run from the root of the tree you are WORKING in — the worktree, not the main
 checkout, whenever the lane lives in one. The marker store is `.git/markgate`,

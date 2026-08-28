@@ -3,9 +3,12 @@
 #
 # PreToolUse hook. Blocks `git commit` unless both the `check` and `docs`
 # markgate markers are fresh for the current content state. Each gate is
-# scoped (see .markgate.yml) so edits to tests-only invalidate only `check`,
-# and edits to docs-only invalidate only `docs`. The error message names the
-# skill to re-run.
+# scoped (see .markgate.yml) so a tests-only edit invalidates only `check`.
+# A docs-only edit invalidates BOTH since go-to-k/cdk-real-drift#1837: the
+# markdown scanner in tests/markdown-fmt-corruption-1771.test.ts reads every
+# tracked *.md, so README / DESIGN / CLAUDE / CONTRIBUTING / docs/** are a
+# `check` input as well as the `docs` gate's subject. The error message names
+# the skill(s) to re-run.
 #
 # cdk-real-drift is a smaller repo than cdkd, so only a subset of cdkd's
 # gate suite is wired: this hook plus branch-gate, verify-pr-gate,

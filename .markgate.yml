@@ -90,11 +90,112 @@ gates:
       - 'pnpm-lock.yaml'
       - 'tsconfig*.json'
       - 'vite.config.ts'
-      # Skill docs are a checker's INPUT: tests/skill-file-payload.test.ts and
-      # tests/skill-doc-paths.test.ts read every .md under .claude/skills/**, so
-      # an edit there must stale the check marker those tests helped record
-      # (mirrors go-to-k/cdkd#2041's reasoning for its check-gate scope).
+      # Checker-INPUT files outside src/** and tests/**: the unit suite READS
+      # these, so an edit to one can red `vp test run` while a previously
+      # recorded `check` marker still verifies FRESH — the marker then attests
+      # to a tree whose checker INPUT it never digested. Third instance of the
+      # root cause fixed in go-to-k/cdk-local#620 / go-to-k/cdk-local#624 and
+      # go-to-k/cdkd#2041 / go-to-k/cdkd#2364 (go-to-k/cdk-real-drift#1837).
+      # Each entry names the test that reads it and the edit that reds the suite:
+      #
+      #   - .claude/skills/** — tests/skill-file-payload.test.ts and
+      #     tests/skill-doc-paths.test.ts read every .md under a skill directory
+      #     (SKILL.md plus references/*.md). Growing one past its byte cap, or
+      #     citing a repo path that no longer resolves, reds the suite.
+      #   - .claude/settings.json — tests/gate-if-matchers-1801.test.ts parses it
+      #     as its WHOLE population: gateHooks() walks hooks.PreToolUse[].hooks[]
+      #     and keeps the commands naming .claude/hooks/. Rejoining two `if:`
+      #     patterns with ` or ` reds 4 of its 16 cases — measured here — and is
+      #     the go-to-k/cdk-real-drift#1801 inert-gate class the test exists for.
+      #   - .claude/hooks/** — the WHOLE glob, deliberately not the precise file
+      #     list go-to-k/cdkd#2364 uses. skill-doc-paths.test.ts's "hook
+      #     harnesses resolve their subject from their own script path" block
+      #     readdirSync()s the DIRECTORY, so the population IS the directory:
+      #     adding a hook with no *.test.sh beside it reds "every hook has a
+      #     harness beside it" (measured) while touching no file a precise list
+      #     could have named. cdkd's precise list is right THERE because its
+      #     tests name specific hooks; copying its shape here misses the edit.
+      #   - scripts/** — tests/check-pr-title.test.ts execFileSync()s
+      #     scripts/check-pr-title.mjs as the shipped PR-title validator, and the
+      #     citation walk below reaches scripts/measure-schema-defaults.mjs. The
+      #     glob rather than those two files: a precise pair would be a list of
+      #     the citations that happen to exist today.
+      #   - .releaserc.json — tests/releaserc-header-pattern.test.ts parses its
+      #     plugin list and pins each commit-parsing plugin's headerPattern.
+      #   - .github/workflows/** — tests/pr-inherit-issue-labels.test.ts extracts
+      #     pr-inherit-issue-labels.yml's `run:` block and executes it against a
+      #     stub `gh`; the citation walk below additionally reaches ci.yml and
+      #     release.yml (3 of the 4 workflow files), so the glob is the honest
+      #     shape here even though only one file is read directly.
+      #   - README.md, DESIGN.md, CLAUDE.md, CONTRIBUTING.md, docs/**,
+      #     demo/README.md — see the markdown-scanner note below. These also sit
+      #     in the `docs` gate; the overlap is deliberate and mirrors the one
+      #     go-to-k/cdk-local#620 accepted for `.claude/rules/**`.
+      #
+      # THE MARKDOWN SCANNER IS NOT A CARVE-OUT HERE, and that is the one place
+      # this repo must NOT copy its siblings' comment. Both of them document a
+      # repo-wide `git ls-files` scanner as a benign known limit with CI as the
+      # backstop, which is proportionate for them because those scanners fire on
+      # something RARE (a control byte, an unlisted binary extension). The
+      # predicate that matters is not "repo-wide vs finite", it is "does the
+      # assertion fire on a rare condition, or on ORDINARY content?".
+      # tests/markdown-fmt-corruption-1771.test.ts is the second kind: it globs
+      # `git ls-files "*.md"` (minus CHANGELOG.md) and its two scans are
+      # PROSE-SHAPE checks — `boldGlobHazard` reds on a bolded run containing a
+      # code span with `**` in it, which is the ordinary house style of the
+      # instruction prose in these repos. Measured 2026-08-28 in this worktree:
+      # appending one such line to docs/limitations.md takes the file to rc=1
+      # while a `check` marker recorded a moment earlier still verified FRESH.
+      # So the 10 tracked .md files that sat outside this include (CLAUDE.md,
+      # CONTRIBUTING.md, DESIGN.md, README.md, demo/README.md and the five under
+      # docs/) are now IN it — which is what converts this reader back into the
+      # benign class rather than leaving CI to catch a normal doc edit.
+      #
+      # KNOWN LIMIT that genuinely remains, and it is the rare-condition kind:
+      # skill-doc-paths.test.ts's resolves() existsSync-walks EVERY backticked
+      # path token in every skill doc (46 citations measured 2026-08-28), so
+      # deleting or renaming any cited target reds it. Every citation outside
+      # src/tests now lands in a glob above, but the population is "whatever a
+      # skill doc names", which no finite include can follow — a NEW citation to
+      # an unscoped path reopens the gap. The reddening edit is a rename, not an
+      # ordinary edit, so CI (.github/workflows/ci.yml) is a proportionate
+      # backstop for this one. Same for `vp check`'s own format pass, which
+      # reads 1484 files (measured): scoping THAT would stale the marker on
+      # every edit anywhere, which is a different failure, not a smaller one.
       - '.claude/skills/**'
+      - '.claude/settings.json'
+      - '.claude/hooks/**'
+      - 'scripts/**'
+      - '.releaserc.json'
+      - '.github/workflows/**'
+      - 'README.md'
+      - 'DESIGN.md'
+      - 'CLAUDE.md'
+      - 'CONTRIBUTING.md'
+      - 'docs/**'
+      - 'demo/README.md'
+      # CHANGELOG.md is deliberately ABSENT. It is the one .md the markdown
+      # scanner itself excludes — machine-generated by semantic-release and
+      # rewritten wholesale on every release — so scoping it would stale the
+      # marker on every release commit for a file no checker reads. It is also
+      # this gate's negative control: an append there must leave
+      # `markgate verify check` at rc=0.
+      #
+      # This file itself — the go-to-k/cdk-local#624 sibling. The gate's own
+      # definition decides what the marker MEANS, so editing it (this include
+      # list included) must stale a marker recorded under the old definition.
+      # Measured on the go-to-k/cdk-real-drift#1837 tree before the entry
+      # existed: appending include entries left `markgate verify check` at rc=0.
+      - '.markgate.yml'
+      # .mise.toml pins the BINARY that runs the definitions above (`vp`), so it
+      # decides what typecheck / lint / build / test MEAN — the same argument as
+      # .markgate.yml, one level down (go-to-k/cdkd#1954). It is also a direct
+      # input to one test: markdown-fmt-corruption-1771.test.ts shells out to
+      # `vp fmt` to prove the formatter round-trips the corruption repro, and
+      # mise resolves that binary from the `[tools."http:vp"]` pin here — while
+      # package.json's `vite-plus` devDependency, which IS in this include, is
+      # not the version that runs. The gate was watching the wrong pin.
+      - '.mise.toml'
 
   docs:
     hash: files
