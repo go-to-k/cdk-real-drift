@@ -472,7 +472,7 @@ fi
   echo "written, so an open issue counts one unresolved root cause rather than"
   echo "one unfixed site."
   echo ""
-  echo "Rule: .claude/skills/work-issues/SKILL.md section 5 (\"N sites of one root"
-  echo "cause is ONE issue and ONE PR, never N issues\")."
+  echo "Rule: .claude/skills/work-issues/references/implement.md section 5 (\"N sites"
+  echo "of one root cause is ONE issue and ONE PR, never N issues\")."
 } >&2
 exit 2

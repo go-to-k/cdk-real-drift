@@ -90,6 +90,11 @@ gates:
       - 'pnpm-lock.yaml'
       - 'tsconfig*.json'
       - 'vite.config.ts'
+      # Skill docs are a checker's INPUT: tests/skill-file-payload.test.ts and
+      # tests/skill-doc-paths.test.ts read every .md under .claude/skills/**, so
+      # an edit there must stale the check marker those tests helped record
+      # (mirrors go-to-k/cdkd#2041's reasoning for its check-gate scope).
+      - '.claude/skills/**'
 
   docs:
     hash: files

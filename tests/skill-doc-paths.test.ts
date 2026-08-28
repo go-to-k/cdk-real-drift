@@ -6,7 +6,8 @@ import { describe, expect, it } from 'vite-plus/test';
 // Guard against a skill doc making a citation that does not resolve — a repo PATH
 // that is not there, or an issue reference that resolves to the WRONG repository.
 //
-// `.claude/skills/**/SKILL.md` is instruction prose an agent ACTS on, and nothing
+// `.claude/skills/**` markdown — SKILL.md orchestrators and the per-stage
+// `references/*.md` files alike — is instruction prose an agent ACTS on, and nothing
 // lints it: a stale `src/…` path or a `tests/unit/**` that this repo never had
 // sends the next session to a directory that is not there, and the mistake is only
 // found by a human reading the run afterwards. #1767 mirrored a lesson from the
@@ -86,12 +87,26 @@ function prose(text: string): string {
   );
 }
 
+// The population is every `.md` under each skill's directory — the SKILL.md
+// orchestrator AND the per-stage `references/*.md` files a split skill loads at
+// stage entry (work-issues / hunt-bugs since the 2026-08-28 split). Deriving it
+// from the directory, not a list: a SKILL.md-only population would have let the
+// split silently move 95% of the prose out of this fence's scope.
 function skillDocs(): string[] {
   if (!existsSync(SKILLS_DIR)) return [];
-  return readdirSync(SKILLS_DIR, { withFileTypes: true })
-    .filter((e) => e.isDirectory())
-    .map((e) => path.join('.claude', 'skills', e.name, 'SKILL.md'))
-    .filter((rel) => existsSync(path.join(ROOT, rel)));
+  const docs: string[] = [];
+  for (const e of readdirSync(SKILLS_DIR, { withFileTypes: true })) {
+    if (!e.isDirectory()) continue;
+    const skillMd = path.join('.claude', 'skills', e.name, 'SKILL.md');
+    if (existsSync(path.join(ROOT, skillMd))) docs.push(skillMd);
+    const refsDir = path.join(SKILLS_DIR, e.name, 'references');
+    if (existsSync(refsDir)) {
+      for (const f of readdirSync(refsDir).sort()) {
+        if (f.endsWith('.md')) docs.push(path.join('.claude', 'skills', e.name, 'references', f));
+      }
+    }
+  }
+  return docs;
 }
 
 MIRRORED_DOCS = skillDocs();
@@ -151,7 +166,7 @@ describe('skill docs cite real repo paths', () => {
     expect(docs.length).toBeGreaterThan(0);
   });
 
-  it('every repo path cited in a SKILL.md resolves', () => {
+  it('every repo path cited in a skill doc resolves', () => {
     const missing: string[] = [];
     for (const rel of docs) {
       for (const citation of citations(rel)) {
@@ -163,7 +178,10 @@ describe('skill docs cite real repo paths', () => {
 
   it('actually inspects a meaningful number of citations (the extractor is not a no-op)', () => {
     const total = docs.reduce((n, rel) => n + citations(rel).length, 0);
-    expect(total).toBeGreaterThanOrEqual(20);
+    // 89 measured on 2026-08-28 across 21 docs (SKILL.md + references/); the
+    // floor sits above the ~20 the SKILL.md-only population yielded, so a
+    // population regression back to orchestrators-only fails here.
+    expect(total).toBeGreaterThanOrEqual(60);
   });
 });
 
@@ -200,13 +218,16 @@ describe('mirrored skill docs cite issues by fully-qualified reference', () => {
       const text = prose(readFileSync(path.join(ROOT, rel), 'utf8'));
       return n + [...text.matchAll(/[\w-]+\/[\w-]+#\d+/g)].length;
     }, 0);
+    // 210 measured on 2026-08-28 across the widened population (SKILL.md +
+    // references/); above the ~50 the SKILL.md-only population carried, so a
+    // regression back to orchestrators-only fails here too.
     expect(qualified, 'no qualified refs anywhere — extractor is a no-op').toBeGreaterThanOrEqual(
-      50
+      120
     );
   });
 });
 
-// `.claude/skills/work-issues/SKILL.md` §5 tells the next agent to run a hook
+// `.claude/skills/work-issues/references/implement.md` §5 tells the next agent to run a hook
 // harness FROM `.claude/hooks/` and never from a copy parked elsewhere. That rule is
 // only true while every harness resolves its subject from its OWN script path with no
 // env override — the day one grows a `HOOK=` escape hatch, §5 becomes stale prose
