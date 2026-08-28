@@ -34,7 +34,7 @@
 #               remains, and it has no companion /run-integ skill yet. 14d TTL
 #               (AWS-side wire-format + Cloud Control behavior drift over time).
 #
-#               This is the ONE gate on `hash: diff` (markgate 0.4+, #1756). Its
+#               This is the ONE gate on `hash: diff` (markgate 0.4+, go-to-k/cdk-real-drift#1756). Its
 #               digest is the working-tree delta against `merge-base(origin/main,
 #               HEAD)` restricted to the include set, so a merge arriving from
 #               `main` that moves an UNRELATED in-scope file no longer invalidates
@@ -140,28 +140,52 @@ gates:
       # predicate that matters is not "repo-wide vs finite", it is "does the
       # assertion fire on a rare condition, or on ORDINARY content?".
       # tests/markdown-fmt-corruption-1771.test.ts is the second kind: it globs
-      # `git ls-files "*.md"` (minus CHANGELOG.md) and its two scans are
-      # PROSE-SHAPE checks — `boldGlobHazard` reds on a bolded run containing a
-      # code span with `**` in it, which is the ordinary house style of the
-      # instruction prose in these repos. Measured 2026-08-28 in this worktree:
-      # appending one such line to docs/limitations.md takes the file to rc=1
-      # while a `check` marker recorded a moment earlier still verified FRESH.
+      # `git ls-files "*.md"` (minus CHANGELOG.md), and ONE of its two scans is
+      # a PROSE-SHAPE check. (`glueDamage` is the rare kind — it only fires on
+      # text a buggy formatter already mangled. `boldGlobHazard` carries the
+      # whole argument: it reds on a bolded run containing a code span with
+      # `**` inside it.)
+      #
+      # That shape is not exotic — it is what writing **bold** around a
+      # `src/**`-style glob produces, and it arises unprompted wherever this
+      # test is not policing. Measured on 2026-08-29 by running this repo's own
+      # boldGlobHazard over each sibling's tracked *.md: cdkd 5 live hits in 245
+      # files (.claude/skills/check/SKILL.md, two work-issues stage files,
+      # docs/changelog-cdkd.md x2), cdk-local 6 in 33 (.claude/CLAUDE.md, retro.md,
+      # verify.md x4). This repo scores 0 in 32 — necessarily, since the test
+      # forces zero, which is exactly why the count had to be taken next door.
+      # And the reddening edit really is an ordinary one: appending a single
+      # such line to docs/limitations.md takes that file to rc=1 while a `check`
+      # marker recorded a moment earlier still verified FRESH.
       # So the 10 tracked .md files that sat outside this include (CLAUDE.md,
       # CONTRIBUTING.md, DESIGN.md, README.md, demo/README.md and the five under
       # docs/) are now IN it — which is what converts this reader back into the
-      # benign class rather than leaving CI to catch a normal doc edit.
+      # benign class rather than leaving CI to catch a normal doc edit. Proved by
+      # CONTAINMENT rather than spot check: all 32 files in that scanner's
+      # population are in `markgate verify check --explain`'s resolved scope,
+      # zero uncovered. And it STAYS that way without vigilance — the floor in
+      # tests/check-scope-checker-inputs-1837.test.ts re-derives the population
+      # from the same `git ls-files "*.md"` and fails by name on any file this
+      # list does not cover.
       #
       # KNOWN LIMIT that genuinely remains, and it is the rare-condition kind:
       # skill-doc-paths.test.ts's resolves() existsSync-walks EVERY backticked
-      # path token in every skill doc (46 citations measured 2026-08-28), so
-      # deleting or renaming any cited target reds it. Every citation outside
-      # src/tests now lands in a glob above, but the population is "whatever a
-      # skill doc names", which no finite include can follow — a NEW citation to
-      # an unscoped path reopens the gap. The reddening edit is a rename, not an
-      # ordinary edit, so CI (.github/workflows/ci.yml) is a proportionate
-      # backstop for this one. Same for `vp check`'s own format pass, which
-      # reads 1484 files (measured): scoping THAT would stale the marker on
-      # every edit anywhere, which is a different failure, not a smaller one.
+      # path token in every skill doc — 92 by that test's own metric (the sum of
+      # per-doc distinct citations over 21 docs, the number its floor asserts),
+      # 48 distinct repo-wide, 19 of those outside src/tests, all measured on
+      # this branch's own tree — so deleting or
+      # renaming any cited target reds it. 18 of those 19 land in a glob above;
+      # the 19th is a bare `.claude/**` prefix citation, which can only red if
+      # `.claude` itself is removed. The population is nonetheless "whatever a
+      # skill doc happens to name", which no finite include can follow — a NEW
+      # citation to an unscoped path reopens the gap, and unlike the markdown
+      # scanner there is no cheap finite enumeration to floor it against. The
+      # reddening edit is a RENAME, not an ordinary edit, so CI
+      # (.github/workflows/ci.yml) is a proportionate backstop here. Same for
+      # `vp check`'s own format pass, which reads 1485 files on this tree:
+      # scoping THAT would stale the marker on every edit anywhere, which is a
+      # different failure, not a smaller one. Both counts move with the file
+      # count — re-derive them rather than trusting these numbers.
       - '.claude/skills/**'
       - '.claude/settings.json'
       - '.claude/hooks/**'
@@ -173,6 +197,15 @@ gates:
       - 'CLAUDE.md'
       - 'CONTRIBUTING.md'
       - 'docs/**'
+      # NARROW ON PURPOSE — do not "helpfully" widen this to `demo/**`. The rest
+      # of demo/ is a .gif and four shell scripts that no checker reads, and a
+      # glob matching only unread files is the dead-entry shape
+      # go-to-k/cdk-local#630 is about. The entry is safe to keep narrow because
+      # the FLOOR in tests/check-scope-checker-inputs-1837.test.ts owns the
+      # relation: every file `git ls-files "*.md"` returns (bar CHANGELOG.md)
+      # must be covered by an entry here, so a future demo/GUIDE.md fails that
+      # test by name instead of silently reopening the gap. Cap plus floor, not
+      # cap plus vigilance — vigilance is what failed across all three repos.
       - 'demo/README.md'
       # CHANGELOG.md is deliberately ABSENT. It is the one .md the markdown
       # scanner itself excludes — machine-generated by semantic-release and

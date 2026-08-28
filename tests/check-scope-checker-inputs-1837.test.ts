@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -26,16 +27,39 @@ import { describe, expect, it } from 'vite-plus/test';
  * (`new URL('../x', import.meta.url)`) and the include parser switched to
  * single-quoted YAML scalars.
  *
- * Extraction is deliberately LITERAL-ONLY. KNOWN LIMITS, stated because the
- * parser floor below fences only the parser going dead, not idiom coverage:
- * (a) a path arriving through a VARIABLE or a table; (b) template literals;
- * (c) a bare `import` of a repo file (tests/vp-run-check-redirect-1761.test.ts
- * imports '../vite.config.js', which is in scope for other reasons);
- * (d) repo-wide scanners — tests/markdown-fmt-corruption-1771.test.ts's
- * `git ls-files "*.md"` walk and tests/skill-doc-paths.test.ts's citation
- * resolution — whose population is the whole tree. `.markgate.yml`'s comment
- * records how each of those is handled. When a new test reads a repo file
- * through one of those shapes, add the include entry by hand.
+ * The literal walk is a CAP: it says every reader it can see is covered. A cap
+ * alone rewards the inverse regression — nothing establishes a FLOOR, so a new
+ * uncovered file reopens the gap silently. The second describe block below
+ * pairs it with one, for the reader whose population is finite and cheap to
+ * enumerate (the markdown scanner). That pairing is what makes the narrow
+ * `demo/README.md` include entry safe by construction rather than by vigilance.
+ *
+ * BLIND SPOTS — what this fence CANNOT see, declared rather than implied,
+ * because a fence that does not state its limits gets mistaken for total
+ * coverage, which is how these three repos accumulated the gaps in the first
+ * place. The parser floors below fence the parser going DEAD; they say nothing
+ * about idiom coverage, so each of these still needs an include entry added by
+ * hand:
+ *   (a) a path arriving through a VARIABLE or a lookup table. cdkd's copy hit
+ *       this live — cc-protection-doc-coverage.test.ts reads README.md that way
+ *       and only human review found it.
+ *   (b) template-literal paths.
+ *   (c) a bare `import` of a repo file. Live here:
+ *       tests/vp-run-check-redirect-1761.test.ts imports '../vite.config.js',
+ *       covered only because `vite.config.ts` is in scope for other reasons.
+ *   (d) a reader in a SUBDIRECTORY of tests/. `testSources()` is deliberately
+ *       non-recursive: every suite this repo runs is a flat `tests/*.ts`
+ *       (tests/integration/** is excluded from `vp test run` by vite.config.ts,
+ *       and tests/corpus + tests/fixtures hold data, not readers). A future
+ *       nested suite is invisible here.
+ *   (e) repo-wide scanners whose population really is the whole tree —
+ *       tests/skill-doc-paths.test.ts's citation resolution walks every
+ *       backticked path token in every skill doc. `.markgate.yml`'s comment
+ *       records it as an accepted limit; it fires on a RENAME, not an ordinary
+ *       edit, so CI is a proportionate backstop.
+ *       tests/markdown-fmt-corruption-1771.test.ts USED to be in this bucket
+ *       and no longer is — its population is `git ls-files "*.md"`, which is
+ *       finite, so the floor below owns it instead.
  */
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -56,7 +80,7 @@ function testSources(): string[] {
 const JOIN_RE = /(?:join|resolve)\(\s*(?:REPO_ROOT|repoRoot|root|ROOT)\s*((?:,\s*'[^']+')+)\s*\)/g;
 
 /** new URL('../a/b', import.meta.url) and the url('../a/b') helper spelling. */
-const URL_RE = /(?:new\s+URL|url)\(\s*'(\.\.\/[^']+)'/g;
+const URL_RE = /(?:new\s+URL|\burl)\(\s*'(\.\.\/[^']+)'/g;
 
 function extractTargets(): Map<string, string[]> {
   const targets = new Map<string, string[]>();
@@ -151,11 +175,50 @@ describe('check-gate scope covers every literal checker input (go-to-k/cdk-real-
   it('both extraction idioms are live, not just the join form', () => {
     // The URL form is this repo's own addition over cdkd's parser; without a
     // per-idiom floor it could go dead while the join floor above stayed green.
-    const src = testSources().map((f) => readFileSync(f, 'utf8'));
-    const joinHits = src.reduce((n, s) => n + [...s.matchAll(JOIN_RE)].length, 0);
-    const urlHits = src.reduce((n, s) => n + [...s.matchAll(URL_RE)].length, 0);
-    expect(joinHits, 'join/resolve extraction is live').toBeGreaterThanOrEqual(3);
-    expect(urlHits, 'new URL extraction is live').toBeGreaterThanOrEqual(2);
+    //
+    // THIS FILE IS EXCLUDED FROM THE COUNT, and that exclusion is the whole
+    // point. The doc comment above contains illustrative `join(REPO_ROOT, …)`
+    // and `new URL('../x', import.meta.url)` spellings, so a floor measured
+    // over every file scores 3 join + 3 url from this file ALONE — enough to
+    // satisfy any floor at or below those numbers with every real reader in
+    // the repo deleted. A floor a fence can satisfy by quoting itself is not a
+    // floor. Counted over the other suites: join 5, url 6 (measured on this
+    // branch); the floors sit just under, so losing either idiom fails here.
+    const self = fileURLToPath(import.meta.url);
+    const src = testSources()
+      .filter((f) => f !== self)
+      .map((f) => readFileSync(f, 'utf8'));
+    const joinHits = src.reduce((n, t) => n + [...t.matchAll(JOIN_RE)].length, 0);
+    const urlHits = src.reduce((n, t) => n + [...t.matchAll(URL_RE)].length, 0);
+    expect(joinHits, 'join/resolve extraction is live').toBeGreaterThanOrEqual(5);
+    expect(urlHits, 'new URL extraction is live').toBeGreaterThanOrEqual(6);
+  });
+
+  it('no suite hides in a tests/ subdirectory the extractor cannot see', () => {
+    // testSources() is deliberately non-recursive (blind spot (d) above), but
+    // vite.config.ts's test include is `tests/**/*.test.ts` — so a nested suite
+    // WOULD run while being invisible here. Fence the flatness assumption
+    // rather than trusting it: tests/integration/** is excluded from the run,
+    // and tests/corpus + tests/fixtures hold data, not readers.
+    const RUNNABLE_EXEMPT = new Set(['integration']);
+    const nested: string[] = [];
+    for (const e of readdirSync(join(REPO_ROOT, 'tests'), { withFileTypes: true })) {
+      if (!e.isDirectory() || RUNNABLE_EXEMPT.has(e.name)) continue;
+      const walk = (dir: string, rel: string) => {
+        for (const f of readdirSync(dir, { withFileTypes: true })) {
+          if (f.isDirectory()) walk(join(dir, f.name), `${rel}/${f.name}`);
+          else if (f.name.endsWith('.test.ts')) nested.push(`${rel}/${f.name}`);
+        }
+      };
+      walk(join(REPO_ROOT, 'tests', e.name), `tests/${e.name}`);
+    }
+    expect(
+      nested,
+      "suite(s) under a tests/ subdirectory — vitest runs them but this fence's " +
+        'extractor only reads tests/*.ts, so any repo file they read is unchecked. ' +
+        'Make testSources() recursive (and fix the `../` depth assumption in URL_RE) ' +
+        'before adding one'
+    ).toEqual([]);
   });
 
   it('every existing out-of-tree read target is inside the check include', () => {
@@ -211,5 +274,76 @@ describe('check-gate scope covers every literal checker input (go-to-k/cdk-real-
     expect(globs).toContain('.markgate.yml');
     expect(globs.every((g) => !g.startsWith('#'))).toBe(true);
     expect(globs.some((g) => g.includes(' '))).toBe(false);
+  });
+});
+
+// The FLOOR half. The literal walk above caps what is covered; nothing in it
+// establishes a minimum, so a new markdown file — `demo/GUIDE.md`, another root
+// `.md` — would reopen go-to-k/cdk-real-drift#1837's G8 silently while every
+// assertion above stayed green.
+//
+// This reader earns a floor where the citation walk does not, because its
+// population is FINITE and cheap to enumerate: `git ls-files "*.md"` minus the
+// one file it excludes. It is also the reader whose predicate fires on ORDINARY
+// content rather than a rare condition — `boldGlobHazard` reds on a bolded run
+// containing a code span with `**` in it, the house style of the instruction
+// prose in these repos — so leaving it to CI is materially weaker here than the
+// same carve-out is in the siblings.
+describe('check-gate scope covers the markdown scanner population (floor)', () => {
+  const globs = checkIncludeGlobs();
+  const res = globs.map(globToRe);
+
+  // Mirrors markdown-fmt-corruption-1771.test.ts's own markdownFiles(): the
+  // same command and the same exclusion, so the two cannot drift apart.
+  const EXCLUDED = new Set(['CHANGELOG.md']);
+  const population = execSync('git ls-files "*.md"', { cwd: REPO_ROOT, encoding: 'utf8' })
+    .trim()
+    .split('\n')
+    .filter((f) => f && !EXCLUDED.has(f));
+
+  it('the population matches the scanner it mirrors (not a no-op)', () => {
+    // A floor over an empty population passes vacuously, and `git ls-files`
+    // returns nothing in a non-repo cwd or a broken checkout.
+    expect(population.length, 'git ls-files "*.md" found markdown').toBeGreaterThanOrEqual(20);
+    expect(population).toContain('README.md');
+    expect(population).toContain('docs/ARCHITECTURE.md');
+    expect(population, 'CHANGELOG.md is excluded, as the scanner excludes it').not.toContain(
+      'CHANGELOG.md'
+    );
+
+    // The exclusion must stay in sync with the scanner's own. If that test
+    // stops excluding CHANGELOG.md (or starts excluding more), this floor is
+    // measuring a different set than the suite actually scans.
+    const scanner = readFileSync(
+      join(REPO_ROOT, 'tests', 'markdown-fmt-corruption-1771.test.ts'),
+      'utf8'
+    );
+    expect(scanner, 'the scanner still globs every tracked *.md').toContain('git ls-files "*.md"');
+    expect(scanner, 'the scanner still excludes exactly CHANGELOG.md').toContain(
+      "const EXCLUDED = new Set(['CHANGELOG.md']);"
+    );
+  });
+
+  it('every markdown file the scanner reads is inside the check include', () => {
+    const uncovered = population.filter((f) => !res.some((r) => r.test(f)));
+    expect(
+      uncovered,
+      'markdown file(s) scanned by tests/markdown-fmt-corruption-1771.test.ts but NOT digested by ' +
+        'the `check` marker — an ordinary prose edit there reds the suite while the marker still ' +
+        'verifies FRESH. Add a glob covering each to `check.include` in .markgate.yml (a narrow ' +
+        'entry like `demo/README.md` is fine; this floor is what keeps it safe)'
+    ).toEqual([]);
+  });
+
+  it('the floor fails when the entry covering a narrow case is dropped (self-probe)', () => {
+    // `demo/README.md` is deliberately a single file rather than `demo/**`
+    // (demo/ holds a .gif and four shell scripts no checker reads). Dropping it
+    // must uncover demo/README.md — this is the assertion that lets the narrow
+    // entry be safe by construction instead of by vigilance.
+    const without = globs.filter((g) => g !== 'demo/README.md').map(globToRe);
+    const stillCovered = without.some((r) => r.test('demo/README.md'));
+    expect(globs).toContain('demo/README.md');
+    expect(stillCovered, 'dropping demo/README.md uncovers it').toBe(false);
+    expect(population).toContain('demo/README.md');
   });
 });

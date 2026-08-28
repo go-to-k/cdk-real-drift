@@ -80,8 +80,12 @@ plus every hand-written markdown file (`README.md`, `DESIGN.md`, `CLAUDE.md`,
 `CONTRIBUTING.md`, `docs/**`, `demo/README.md`), because
 `tests/markdown-fmt-corruption-1771.test.ts` scans them all.
 
-**A docs-only edit therefore needs BOTH `/check` and `/check-docs`** — those
-markdown files sit in both gates on purpose. **Read `.markgate.yml` for the
+**A markdown edit therefore always stales `check`.** Which OTHER gate it stales
+depends on the file: `README.md` / `DESIGN.md` / `docs/**` are also the `docs`
+gate's subject, so they need `/check` AND `/check-docs`; `CLAUDE.md`,
+`CONTRIBUTING.md` and `demo/README.md` are `check`-only inputs, because the
+`docs` gate includes just `src/**`, `docs/**`, `README.md` and `DESIGN.md`.
+**Read `.markgate.yml` for the
 authoritative list**, not this sentence: each entry there names the test that
 reads it, and this copy has already gone stale once (go-to-k/cdk-real-drift#1837
 widened the gate and had to repair the enumeration here in the same PR).
