@@ -171,9 +171,9 @@ gates:
       # KNOWN LIMIT that genuinely remains, and it is the rare-condition kind:
       # skill-doc-paths.test.ts's resolves() existsSync-walks EVERY backticked
       # path token in every skill doc — 92 by that test's own metric (the sum of
-      # per-doc distinct citations over 21 docs, the number its floor asserts),
-      # 48 distinct repo-wide, 19 of those outside src/tests, all measured on
-      # this branch's own tree — so deleting or
+      # per-doc distinct citations over 21 docs; its floor asserts only >= 60,
+      # so 92 is the measurement, not the threshold), 48 distinct repo-wide, 19
+      # of those outside src/tests, all measured on this branch — so deleting or
       # renaming any cited target reds it. 18 of those 19 land in a glob above;
       # the 19th is a bare `.claude/**` prefix citation, which can only red if
       # `.claude` itself is removed. The population is nonetheless "whatever a
@@ -198,7 +198,9 @@ gates:
       - 'CONTRIBUTING.md'
       - 'docs/**'
       # NARROW ON PURPOSE — do not "helpfully" widen this to `demo/**`. The rest
-      # of demo/ is a .gif and four shell scripts that no checker reads, and a
+      # of demo/ (from `git ls-files demo`: app.ts, cdk.json, cdkrd.tape,
+      # demo.gif, package.json, run.sh, setup.sh, teardown.sh, tmux-clean.conf
+      # — 9 files, 3 of them shell) is read by no checker, and a
       # glob matching only unread files is the dead-entry shape
       # go-to-k/cdk-local#630 is about. The entry is safe to keep narrow because
       # the FLOOR in tests/check-scope-checker-inputs-1837.test.ts owns the
