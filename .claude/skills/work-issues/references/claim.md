@@ -22,44 +22,34 @@ DISJOINT-FILE rule. Re-check for a competing claim/PR right before you start; if
 one appeared, pick a different issue.
 
 **Claim what you FILE, too — filing is not claiming.** An issue this run files as
-its own deferral is invisible to every ownership probe: no branch, no PR, no comment,
-and only §3-a's hour covers it. So when the issue is one THIS run means to pick up
-itself (a `Session-fit: now` line in the body, where you write one), post the claim
-comment in the same turn you file it. Name the LANE and what it defers from, not just
-your current branch: a merged branch is deleted, so a claim naming the branch you are
-on now reads stale at exactly the moment you come back for the issue — re-post the
-claim with the real branch when you open that lane. An issue you are handing off to a
-later session gets NO claim at filing time — that would park a released issue under a
-session that has decided not to do it — but this says nothing about the LATER run
-that takes it: that run claims it normally, per the mandatory rule above.
+its own deferral is invisible to every ownership probe (no branch, no PR, no
+comment; only §3-a's hour covers it). If the body carries `Session-fit: now`,
+post the claim comment in the same turn you file it, naming the LANE and what it
+defers from — not your current branch, which is deleted at merge and reads stale
+exactly when you come back; re-post with the real branch when you open that lane.
+A `next` issue handed to a later session gets NO claim at filing time (that would
+park a released issue under a session that declined it); the later run claims it
+normally.
 
-**`Severity` and `Effort` also ride the filing command as LABELS** — the body
-lines stay exactly as written, and the same two values go on as
-`--label severity:<high|medium|low> --label effort:<small|medium|large>`, or as
-`--add-label` on the `gh issue edit` that rewrites an old packed body into the
-four-line shape. Prose is invisible to `gh issue list`, so ranking by `Severity`
-costs one `gh issue view` per candidate without them. `Session-fit` and
-`Estimate` get no label (see `CLAUDE.md` → "The four TODO fields"). Enforced by
-`.claude/hooks/issue-classification-label-gate.sh`; the lane's PR inherits the
-issue's labels via `.github/workflows/pr-inherit-issue-labels.yml`, so never
-hand-add them to a PR.
+**`Severity` and `Effort` also ride the filing command as LABELS** — body lines
+unchanged, plus `--label severity:<high|medium|low> --label
+effort:<small|medium|large>` (or `--add-label` on the `gh issue edit` that
+rewrites an old packed body). Why: prose is invisible to `gh issue list`, so
+ranking by `Severity` otherwise costs one `gh issue view` per candidate.
+`Session-fit` and `Estimate` get no label (`CLAUDE.md` → "The four TODO
+fields"). Enforced by `.claude/hooks/issue-classification-label-gate.sh`; the
+lane's PR inherits the issue's labels via
+`.github/workflows/pr-inherit-issue-labels.yml`, so never hand-add them to a PR.
 
 **English-only covers the issue BODIES this flow files, not just the comment above.**
-Write the classification lines in English too — `Session-fit` / `Severity` /
-`Effort` / `Estimate`, one field per line (see `CLAUDE.md` → "The four TODO
-fields"), glosses included: `Session-fit: next (not this session)`,
-`Estimate: ~1-3 h — one live run` — never in the session's chat language. Nothing enforces this
-half: `non-english-text-gate` fires only on `gh pr create` / `gh pr edit` /
-`gh pr merge` (its `"if"` clause in `.claude/settings.json`), and it identifies its
-target by resolving a PR NUMBER and scanning `gh pr diff`, so it structurally cannot
-see an issue at all. Three `"if"` clauses DO name `gh issue` now, so the sentence
-that used to stand here — "no `gh issue` command appears in any hook's `"if"`
-clause" — is no longer true: `issue-dup-check-gate` on `create` (§5), and
-`issue-classification-label-gate` on `create` and on `edit`. But the first reads
-the body for one `Dup-check:` line and the second for a `Severity:` / `Effort:`
-value, so neither says anything about the LANGUAGE of the body and this half
-remains unenforced. Discipline is still the only guard here, and
-it has already failed once: a `/work-issues` run in
-go-to-k/cdk-local filed its follow-up on 2026-08-19 with both halves of the
-`Session-fit` line glossed in the session's chat language, and had to patch the body
-after creation (go-to-k/cdk-real-drift#1777).
+Write the classification lines in English, glosses included —
+`Session-fit: next (not this session)`, `Estimate: ~1-3 h — one live run` —
+never in the session's chat language. No hook enforces this half:
+`non-english-text-gate` fires only on `gh pr create` / `gh pr edit` /
+`gh pr merge` and resolves a PR number + `gh pr diff`, so it structurally cannot
+see an issue; `issue-dup-check-gate` and `issue-classification-label-gate` do
+fire on `gh issue` commands but read only the `Dup-check:` / `Severity:` /
+`Effort:` lines, saying nothing about language. Discipline is the only guard and
+has failed once: a go-to-k/cdk-local run filed a `Session-fit` gloss in the chat
+language and had to patch the body after creation (2026-08-19,
+go-to-k/cdk-real-drift#1777).

@@ -26,14 +26,13 @@ Take it all the way to merged — do not leave a green PR hanging:
 
 For any recurring surprise (a whole _class_ of latent bug, a verification gotcha, a
 methodology improvement), **encode the durable lesson into THIS skill's stage
-files** — a committed principle/gotcha survives across machines and sessions,
-whereas an auto-memory is per-terminal and invisible to the next hunter. Fold the
-new lesson into the relevant entry in `references/principles.md` /
-`references/gotchas.md` — or the stage file where it fires — with the issue/PR
-number as evidence, and PR it. Never the orchestrator `SKILL.md`, whose byte size
-is capped by `tests/skill-file-payload.test.ts`; it changes only when the stage
-list itself changes. Reserve memory for genuinely session-transient notes;
-anything future-hunter-relevant belongs in the skill.
+files** — a committed principle/gotcha survives across machines and sessions;
+auto-memory is per-terminal and invisible to the next hunter, so reserve it for
+session-transient notes. Fold the lesson into the relevant entry in
+`references/principles.md` / `references/gotchas.md` — or the stage file where it
+fires — with the issue/PR number as evidence, and PR it. Never the orchestrator
+`SKILL.md` (byte-capped by `tests/skill-file-payload.test.ts`; it changes only
+when the stage list itself changes).
 
 ## Cleanup is non-negotiable (gate-enforced)
 

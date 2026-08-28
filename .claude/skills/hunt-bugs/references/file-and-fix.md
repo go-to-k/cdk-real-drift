@@ -35,12 +35,10 @@ duration). Enforced by `.claude/hooks/issue-classification-label-gate.sh`; the
 fix PR inherits the issue's labels via
 `.github/workflows/pr-inherit-issue-labels.yml`, so never hand-add them there.
 
-A hunt is the single best moment to write them: you have just reproduced the bug,
-so `Severity` is measured rather than guessed, and you already know which fixture
-the fix will drag. Deferring them to whoever picks the issue up throws that
-evidence away -- the same reason `CLAUDE.md` puts the decision at the moment of
-deferral. `/work-issues` reads these lines back when it ranks candidates, so an
-unclassified body is one this hunt made harder to triage.
+A hunt is the single best moment to write them: the bug is just-reproduced, so
+`Severity` is measured rather than guessed, and you already know which fixture
+the fix drags. `/work-issues` reads these lines back when ranking candidates, so
+an unclassified body is one this hunt made harder to triage.
 
 When you then WORK an issue — this hunt's own or one already filed — **run
 `/work-issues` and follow it** for the collision-safe start: its §0 screens the

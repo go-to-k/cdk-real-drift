@@ -40,7 +40,7 @@ const SKILLS_DIR = path.join(ROOT, '.claude', 'skills');
 
 const MAX_SKILL_MD_BYTES = 36_000; // largest non-split skill measured 12,175 B (verify-pr)
 const MAX_ORCHESTRATOR_BYTES = 12_000; // orchestrators measured 7,952 B / 6,932 B at the split
-const MAX_REFERENCE_FILE_BYTES = 64_000; // largest stage file measured 55,137 B (hunt-bugs gotchas.md)
+const MAX_REFERENCE_FILE_BYTES = 64_000; // largest stage file measured 55,137 B (hunt-bugs gotchas.md); 41,922 B after the rule+citation compression pass (2026-08-28)
 
 // The split skills' stage files must still exist and still carry the moved
 // content. Floors sit far enough below the at-split measurement that narrative
@@ -55,10 +55,15 @@ const MAX_REFERENCE_FILE_BYTES = 64_000; // largest stage file measured 55,137 B
 // and `references/...` is skill-relative; measured, not assumed), so the
 // pointer-integrity block below is what catches a single deleted stage file:
 // every `references/<stage>.md` the orchestrator names must exist.
+// Floors re-measured after the rule+citation compression pass (2026-08-28):
+// work-issues 94,136 B and hunt-bugs 87,180 B. Both floors deliberately KEPT at
+// 60,000 B rather than re-derived at ~50% of the new totals — for hunt-bugs,
+// 87,180 − 41,922 (its largest file) = 45,258 < 60,000, so the floor now
+// catches deleting gotchas.md outright, a property a ~43,000 floor would lose.
 const SPLIT_SKILLS: Record<string, { minFiles: number; minCorpusBytes: number }> = {
-  // 8 files / 125,139 B measured at the split (2026-08-28); largest 26,621 B
+  // 8 files / 125,139 B measured at the split (2026-08-28); largest 26,621 B; 94,136 B post-compression
   'work-issues': { minFiles: 6, minCorpusBytes: 60_000 },
-  // 7 files / 108,940 B measured at the split (2026-08-28); largest 55,137 B
+  // 7 files / 108,940 B measured at the split (2026-08-28); largest 55,137 B; 87,180 B post-compression
   'hunt-bugs': { minFiles: 5, minCorpusBytes: 60_000 },
 };
 

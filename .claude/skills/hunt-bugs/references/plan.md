@@ -5,8 +5,8 @@
 ### 0. Opening offline audits (free — run these BEFORE picking deploy targets)
 
 Every hunt opens with the zero-cost sweeps; they regularly dissolve whole rounds
-(2026-07-20: the entire "unproven variant rows" round proved out via corpus grep —
-zero deploys) or hand you a confirmed bug before the first deploy:
+with zero deploys (2026-07-20) or hand you a confirmed bug before the first
+deploy:
 
 - **New-pin off-flip audit over the diff window since the last hunt** — the step
   that found the Budgets CostTypes FN (go-to-k/cdk-real-drift#1675). New truthy boolean pins arrive not
