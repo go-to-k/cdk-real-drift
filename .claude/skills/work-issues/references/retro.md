@@ -279,8 +279,13 @@ pnpm install                  # worktrees have no node_modules
   real `.claude` tree is), and `PATH_LIKE` needs a leading word character, so a
   skill name like `/review-pr` is never a path. A gate that DOES exist — the
   INERT `pr-review` entry in `.markgate.yml` — can still be cited by name. Run
-  `vp test run tests/skill-doc-paths.test.ts` before the commit: on a
-  prose-only diff it is the one fence that can actually go red.
+  `vp test run tests/skill-doc-paths.test.ts` before the commit. It is not the
+  only fence a prose-only diff can red, and treating it as such is how the other
+  two get skipped: `tests/markdown-fmt-corruption-1771.test.ts` scans every
+  tracked `*.md` for the `vp fmt` corruption signature, and
+  `tests/check-scope-checker-inputs-1837.test.ts` reds when `/check`'s SKILL.md
+  stops matching the `check` gate's real scope. On a prose-only diff, run all
+  three — or just `vp test run`, which is cheap here.
 
 - A `work-issues`-only edit is INSIDE the `check` gate's scope
   (`tests/skill-file-payload.test.ts` and `tests/skill-doc-paths.test.ts` read

@@ -179,9 +179,11 @@ describe('skill docs cite real repo paths', () => {
   it('actually inspects a meaningful number of citations (the extractor is not a no-op)', () => {
     const total = docs.reduce((n, rel) => n + citations(rel).length, 0);
     // 89 measured on 2026-08-28 across 21 docs (SKILL.md + references/);
-    // 83 after the same-day rule+citation compression pass; the
-    // floor sits above the ~20 the SKILL.md-only population yielded, so a
-    // population regression back to orchestrators-only fails here.
+    // 83 after the same-day rule+citation compression pass; 92 after
+    // go-to-k/cdk-real-drift#1837 added path citations to check/SKILL.md and
+    // verify-pr/SKILL.md. The floor sits above the ~20 the SKILL.md-only
+    // population yielded, so a population regression back to
+    // orchestrators-only fails here.
     expect(total).toBeGreaterThanOrEqual(60);
   });
 });
@@ -222,8 +224,9 @@ describe('mirrored skill docs cite issues by fully-qualified reference', () => {
     // 210 measured on 2026-08-28 across the widened population (SKILL.md +
     // references/); 214 after the same-day rule+citation compression pass
     // (compression deduped repeats but qualified more refs than it removed);
-    // above the ~50 the SKILL.md-only population carried, so a regression back
-    // to orchestrators-only fails here too.
+    // 217 after go-to-k/cdk-real-drift#1837's edits to check/SKILL.md and
+    // verify-pr/SKILL.md. Above the ~50 the SKILL.md-only population carried,
+    // so a regression back to orchestrators-only fails here too.
     expect(qualified, 'no qualified refs anywhere — extractor is a no-op').toBeGreaterThanOrEqual(
       120
     );

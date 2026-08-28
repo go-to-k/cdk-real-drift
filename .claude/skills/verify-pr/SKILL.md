@@ -76,11 +76,14 @@ Run each check and report pass/fail:
      frozen is your own call: how closely to read, and whether to
      dispatch read-only reviewers at all for a diff big enough to warrant them
      (`/work-issues` §8 covers what to do when two of them contradict each
-     other). Nothing re-opens that call mechanically, and on a prose / tooling PR
-     nothing even stales the marker that would force a re-run: `check` and `docs`
-     — the two gates this one is an AND of — include `src/**`, `tests/**`,
-     `docs/**`, `README.md` and `DESIGN.md`, none of which a `.claude/**` fix
-     round touches. Measured in cdk-local on 2026-08-27
+     other). Nothing re-opens that call mechanically. A stale marker is not that
+     forcing function either, and it is easy to mistake for one: a `.claude/**`
+     fix round DOES stale `check`, which covers `.claude/skills/**` and — since
+     go-to-k/cdk-real-drift#1837 — `.claude/settings.json`, `.claude/hooks/**`,
+     `.markgate.yml`, `scripts/**`, `.github/workflows/**` and every
+     hand-written `.md` alongside `src/**` / `tests/**`. So does a docs-only
+     round. But what that buys is a re-run of typecheck / lint / build / tests,
+     never a re-derivation of the depth. Measured in cdk-local on 2026-08-27
      (go-to-k/cdk-local#609): tiered from its first commit at 819 LOC / 5 files
      and given ONE reviewer, its fix round took it to 1342 LOC, and it merged at
      1466 added lines across 5 files (`gh pr view 609 -R go-to-k/cdk-local
