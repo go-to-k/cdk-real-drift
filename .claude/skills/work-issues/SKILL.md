@@ -28,23 +28,49 @@ optional** — each file carries hard rules and measured failure modes without
 which the stage summary below is not executable. A bare `§N` anywhere in this
 skill points into the file that holds that section (map in the table).
 
-**Delegate the read-heavy stages to subagents to keep this session's context for
-the lanes.** Two stages are shaped for it:
+**Delegate for context; keep the locks and the serialization in the parent.**
+The placements below are live-proven, not aspirational: on 2026-08-28 this
+repo's own skill-split PR (go-to-k/cdk-real-drift#1831), like its sibling
+go-to-k/cdk-local#621, was built END-TO-END by a lane subagent — worktree,
+implementation, gates, CI — with the parent doing only claims, serialized
+merges and cleanup, and every hook and markgate gate fired inside the lane's
+calls exactly as in the parent.
 
-- **Triage (stages 0–3)**: dispatch a read-only subagent (general-purpose or
-  Explore) whose prompt is: read `references/triage.md` in full, execute it
-  against this repo, and return ONLY the candidate table — per issue: number,
-  title, target files, rank + the rule that decided it, collision evidence
-  (worktrees / branches / claims found), and any premise-check findings. The raw
-  backlog listing and issue bodies stay out of the parent context. The PARENT
-  then claims (stage 4) — never the subagent, so the claim names the session
-  that will actually do the work.
-- **Retro (stage 10)**: after the last merge, dispatch a subagent with
+- **Triage (stages 0–3): a read-only subagent** (general-purpose or Explore)
+  whose prompt is: read `references/triage.md` in full, execute it against
+  this repo, and return ONLY the candidate table — per issue: number, title,
+  target files, rank + the rule that decided it, collision evidence
+  (worktrees / branches / claims found), and any premise-check findings. The
+  raw backlog listing and issue bodies stay out of the parent context.
+- **Claim (stage 4): the PARENT, never a subagent** — the claim is the lock,
+  so it names the session accountable for the lane; it also names the lane
+  branch/worktree the dispatched subagent will create, and the parent runs
+  §4's competing-claim re-check right before dispatching (§4).
+- **Lanes (stages 5–8): one general-purpose subagent per claimed issue.**
+  Dispatch each with the issue number(s), the posted claim, and the stage
+  files to read at stage entry (`references/implement.md`,
+  `references/gates-and-pr.md`, `references/verify.md`). The lane creates its
+  own worktree per §5, implements, runs `/check` + `/check-docs`, opens the
+  PR, dispatches read-only reviewers when the diff warrants them (§8),
+  addresses findings, and drives CI to green — then STOPS at merge-ready and
+  reports back: PR number, HEAD sha, markers set, review verdicts, the
+  live-test tier it owes (§8), anything deferred. Its diffs, test logs and
+  review round-trips never enter the parent context. A lane must NOT run a
+  real-AWS live test (a deploy → mutate → revert fixture) or merge on its
+  own — that is the serialization invariant below, not a capability gap.
+- **Finishing (stage 9): the parent, one lane at a time.** Grant each
+  merge-ready lane its turn — resume the lane agent (SendMessage) to run its
+  owed live test + `/sweep-resources` and merge while it holds the turn, or
+  run them yourself FROM THAT LANE'S WORKTREE (gate verdicts are computed
+  against the tree the command runs from — §9). Post-merge (pull → release →
+  install → worktree cleanup) follows §9.
+- **Retro (stage 10): a subagent**, dispatched after the last merge with
   `references/retro.md` plus this run's key evidence (what you re-read, what
   the text sent you into, corrections the user made) to measure the backlog
   effect, draft the skill edits, and ship them as the retro PR.
 
-Stages 4–9 run in the parent: they hold the locks, the worktrees, and the gates.
+Running a lane in the parent instead stays legal (a single-lane run, or a lane
+the user wants to watch); the stage files apply unchanged either way.
 
 ## Stages
 
@@ -75,6 +101,15 @@ Stages 4–9 run in the parent: they hold the locks, the worktrees, and the gate
   (`noise.ts` / `classify.ts` / `revert/plan.ts`). (§2, §3)
 - **Never work in the main checkout** — one worktree per lane under
   `.worktrees/`, `mise trust` + `pnpm install` in each. (§5)
+- **Real-AWS live tests and merges are SERIALIZED across lanes** — the parent
+  grants the turn, one lane at a time; a lane subagent never starts either on
+  its own. Everything else (edits, unit tests, markers, PR create, reviews,
+  CI) runs concurrently, with two repo-local caveats: the markgate store is
+  SHARED across worktrees with hashes from the setter's cwd, so a peer's
+  `markgate set` landing between your set and your commit fails closed (a
+  re-run, not a wrong pass); and the deploy-autoarm sentinel is per-SESSION,
+  so one lane's live deploy blocks EVERY lane's commit and PR until the
+  sweep clears it. (§9)
 - **English only in every published artifact** — issue bodies/comments, PR
   titles/bodies, commits, code. (CLAUDE.md)
 - **The run ends with the retro (stage 10) and the standard wrap report**

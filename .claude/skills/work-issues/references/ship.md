@@ -2,6 +2,24 @@
 
 ## 9. Ship: merge → pull → release → global install → cleanup
 
+With subagent lanes, this stage is the PARENT's serialization point: grant one
+merge-ready lane at a time its turn — resume that lane agent (SendMessage) to
+run its owed §8 live test + `/sweep-resources` and merge while it holds the
+turn, or run them yourself FROM THAT LANE'S WORKTREE. The worktree matters
+mechanically, not stylistically: gate verdicts are computed against the tree
+the command runs from — this repo's markgate store is shared across worktrees
+but the HASHES come from the cwd's files (the `/check` skill's 2026-08-19
+measurement), and the bughunt-clean gate keys the committing WORKTREE owner —
+so a marker set or a merge issued from the main tree attests to MAIN's
+content, not the lane's. cdkd measured the merge-time failure live on
+2026-08-28 (go-to-k/cdkd#2363 records the cwd-race side of it).
+Live-AWS runs have a second, repo-specific reason to stay inside the granted
+turn: the deploy-autoarm sentinel is per-SESSION, and a lane subagent's calls
+carry this same session, so one lane's deploy arms the token that blocks EVERY
+lane's commit / PR create / merge until `/sweep-resources` clears it. Never
+two lanes' live tests or merges concurrently; everything after the merge in
+this section (pull → release → install → cleanup) stays with the parent.
+
 ```bash
 gh pr merge <n> --squash --delete-branch     # squash is the repo's only method
 ```
