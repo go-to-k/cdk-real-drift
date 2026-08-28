@@ -125,8 +125,8 @@ at once, not trickled.
   before forwarding either** — forwarding both hands the implementer a
   contradiction with LESS context than you have; forwarding only the reassuring
   one is how a blocker ships. Read the disputed lines; say which reviewer was
-  right and why. No standing reviewer ladder here — this fires when a lane
-  dispatches read-only reviewers of its own.
+  right and why — routine whenever a lane, or you, dispatch read-only reviewers
+  (see the round below, which this repo has no ladder to run for you).
 
   What to measure in the command arm (all confirmed here 2026-08-19,
   go-to-k/cdk-real-drift#1768):
@@ -211,6 +211,39 @@ worktree cwd (the merge gate scopes by committing worktree owner + your
 `/verify-pr` sets the `check` + `docs` + `verify-pr` markers, which unblock
 `gh pr merge`. Docs/tooling-only PRs (no `src/**`) are EXEMPT from the
 live-test — `check` + `docs` suffice.
+
+**Your own review round is not optional because the lane already ran one, and
+this repo has no ladder to fall back on.** A lane's reviewers are its children
+— same brief, same framing — so they clear what the lane already believes, and
+here nothing mechanical catches that: there is no multi-agent reviewer set and
+no review-tier skill, and the `pr-review` entry in `.markgate.yml` is wired to
+no hook. Measured 2 for 2 on 2026-08-29: go-to-k/cdk-real-drift#1838's lane ran
+its own 3-axis round, reported clean, and an independent 3-axis pass then found
+a HIGH blocker — a flow-style `exclude:` invisible to a hand-rolled YAML
+scanner, leaving its "no exclude declared" tripwire green while markgate really
+did subtract; the sibling go-to-k/cdkd#2383 repeated it one spelling deeper
+with a merge key anchored on another gate. So the depth is your own read of the
+whole diff plus a round you dispatch yourself, and a lane's clean round is not
+a measurement that lowers it.
+
+**A reviewer's scratch COPY of a worktree is not detached from git, so its
+`git add -A` writes to the LIVE tree.** A linked worktree's `.git` is a FILE
+holding `gitdir: <repo>/.git/worktrees/<name>`, and `cp -R` carries the
+pointer: every git command inside the copy reads and WRITES the real worktree's
+index and HEAD. Measured 2026-08-29 in the sibling cdkd, where a read-only code
+reviewer copied a lane's worktree, ran `git add -A` there, and staged three
+tracked DELETIONS in the live tree that the lane's next commit would have
+shipped — nothing announced it, because the reviewer believed it was on a copy.
+Two lines therefore belong in every read-only reviewer's brief: **run no
+WRITING git verb** (`add` / `commit` / `restore` / `checkout` / `stash` /
+`clean`) anywhere, copy included, severing the pointer with `rm .git` if you
+must copy at all; and **report the TARGET worktree's `git status --porcelain`
+before AND after the round.** The pair is what makes damage attributable rather
+than a mystery a later agent finds: that incident surfaced only because the
+NEXT reviewer volunteered "the tree went dirty mid-review, not mine", after
+which the responsible one repaired the index with `git restore --staged` (index
+only, never the working tree). This repo's lanes live under a `.worktrees/`
+directory, so the hazard is identical here.
 
 ### 8-z. When a mutation probe reports NO discrimination
 

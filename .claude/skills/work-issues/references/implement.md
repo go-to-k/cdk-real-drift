@@ -198,6 +198,27 @@ with two more probes against the real tree; every fence here got them on
   `const { isTTY } = process.stdin` and `isatty(0)` from `node:tty` all passed.
   Source-side sibling go-to-k/cdkd#2111: a scanner matched `||` only while the
   tree already used `??`; widening it surfaced an unfiled real bug.
+
+  **But when round three is still ADDING spellings, the instrument is wrong —
+  change it rather than write a better pattern.** Measured 2026-08-29 across
+  go-to-k/cdk-real-drift#1837, go-to-k/cdkd#2381 and go-to-k/cdk-local#630: one
+  defect class in five escalating spellings of a fence reading `.markgate.yml`
+  by hand. Block items only, so a FLOW list passed — this repo's own instance,
+  and it left the fence's "no exclude declared" tripwire GREEN while markgate
+  really did subtract from the scope. Then unquoted keys only, so `"exclude":`
+  passed; then a block scan terminating on `/^ {2}\S/`, which a two-space
+  COMMENT ended early with every case still green; then a merge key
+  (`<<: *anchor`) splicing an `exclude` declared on a SIBLING gate. Each round
+  added one more regex. **Three spellings in three rounds is the signal to stop
+  patterning.** Two shapes end it, and neither is a sixth pattern: parse the
+  config with a REAL parser — `yaml` is already a production dependency here,
+  and a third-party, versioned library is not the fence checking its own work —
+  then ALLOW-LIST the tool's own keys, fail CLOSED on anything outside them,
+  and raw-scan the whole map; or, where no parser is available, REFUSE every
+  shape the reader cannot model, which is the STRICTER option, not the weaker
+  one. `tests/check-scope-checker-inputs-1837.test.ts` is this repo's worked
+  example.
+
 - **Delete the thing the fence REQUIRES, and watch it fail.** This finds a
   wrong POPULATION, and one derived from the DEFECT is the worst kind:
   `tests/gate-if-matchers-1801.test.ts` (then named for
