@@ -69,7 +69,16 @@ after staging.** Three separate traps, all hit in one lane on 2026-08-19
   calls, which makes the wrong-cwd set the DEFAULT outcome rather than a slip; it
   fired again while this very lane was written, when a relative `cd .worktrees/…`
   failed because the cwd was ALREADY inside that worktree and the chained edit
-  silently did not run. The marker store is `.git/markgate`, which every worktree
+  silently did not run. A KILLED or REFUSED call is a further named trigger: a
+  tool-call timeout that kills a call mid-run can bring the persistent shell
+  back at the session cwd, and a PreToolUse refusal aborts the WHOLE call, so a
+  directory it was going to create never exists for a later call's relative
+  `cd` — and while a failed `cd` stops an `&&` chain (the incident above), it
+  does NOT stop the later lines of a multi-line call, which then write into
+  whatever cwd was current. Both measured in a cdkd `/work-issues` run on
+  2026-08-28 (retro go-to-k/cdkd#2370). After any timeout or refusal, run `pwd`
+  and re-verify what the aborted call was supposed to create, before the next
+  relative-path command. The marker store is `.git/markgate`, which every worktree
   SHARES, but the hashes are taken from the cwd's files — so setting from the main
   checkout records `main`'s content. Measured 2026-08-19: with the worktree dirty
   and the marker set from the main checkout, a `markgate verify check` returns rc=1
