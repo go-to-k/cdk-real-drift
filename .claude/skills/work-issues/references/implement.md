@@ -200,17 +200,17 @@ with two more probes against the real tree; every fence here got them on
   tree already used `??`; widening it surfaced an unfiled real bug.
 
   **But when round three is still ADDING spellings, the instrument is wrong —
-  change it rather than write a better pattern.** Measured 2026-08-29 across
-  go-to-k/cdk-real-drift#1837, go-to-k/cdkd#2381 and go-to-k/cdk-local#630: one
-  defect class in five escalating spellings of a fence reading `.markgate.yml`
-  by hand. Block items only, so a FLOW list passed — this repo's own instance,
-  and it left the fence's "no exclude declared" tripwire GREEN while markgate
-  really did subtract from the scope. Then unquoted keys only, so `"exclude":`
-  passed; then a block scan terminating on `/^ {2}\S/`, which a two-space
-  COMMENT ended early with every case still green; then a merge key
-  (`<<: *anchor`) splicing an `exclude` declared on a SIBLING gate. Each round
-  added one more regex. **Three spellings in three rounds is the signal to stop
-  patterning.** Two shapes end it, and neither is a sixth pattern: parse the
+  change it rather than write a better pattern.** Measured 2026-08-29 in three
+  repos at once, one defect class in a hand-rolled `.markgate.yml` reader. This
+  repo's own instance (go-to-k/cdk-real-drift#1838): the fence learned to read
+  `exclude` as 6-space BLOCK items, so the FLOW spelling still parsed to
+  `exclude: []` and the "no exclude declared" tripwire stayed GREEN a second
+  time while markgate really did subtract from the scope. The sibling
+  go-to-k/cdkd#2383 tallies its own run as **four spellings across four rounds,
+  each patch moving the hole rather than closing it**, ending on a merge key
+  (`<<: *anchor`) splicing an `exclude` declared on a SIBLING gate — which the
+  raw-text tripwire added as that very backstop did not fire on. **Three
+  spellings in three rounds is the signal to stop patterning.** Two shapes end it, and neither is a sixth pattern: parse the
   config with a REAL parser — `yaml` is already a production dependency here,
   and a third-party, versioned library is not the fence checking its own work —
   then ALLOW-LIST the tool's own keys, fail CLOSED on anything outside them,

@@ -296,8 +296,9 @@ pnpm install                  # worktrees have no node_modules
   `ci-green-gate`. No `src/**` change also means no deploy: nothing for
   `/sweep-resources` to tear down, no `deploy-autoarm-gate` token to release.
 - Do not let the small diff set the review depth. This repo has no reviewer
-  ladder, so the depth IS your own read of the whole diff plus `/verify-pr`'s
-  self-review — a wrong rule here propagates into every future session.
+  ladder, so the depth is your own read of the whole diff plus the independent
+  round §8 says you owe even after a lane's own — a wrong rule here propagates
+  into every future session.
 - **Merge it before the wrap report, then remove the worktree**
   (`git worktree remove .worktrees/<name> && git worktree prune`) — §9 ends
   with every worktree gone and §10 must not undo that. This is

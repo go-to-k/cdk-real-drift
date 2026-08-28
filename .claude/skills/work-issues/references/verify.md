@@ -217,14 +217,16 @@ this repo has no ladder to fall back on.** A lane's reviewers are its children
 — same brief, same framing — so they clear what the lane already believes, and
 here nothing mechanical catches that: there is no multi-agent reviewer set and
 no review-tier skill, and the `pr-review` entry in `.markgate.yml` is wired to
-no hook. Measured 2 for 2 on 2026-08-29: go-to-k/cdk-real-drift#1838's lane ran
-its own 3-axis round, reported clean, and an independent 3-axis pass then found
-a HIGH blocker — a flow-style `exclude:` invisible to a hand-rolled YAML
-scanner, leaving its "no exclude declared" tripwire green while markgate really
-did subtract; the sibling go-to-k/cdkd#2383 repeated it one spelling deeper
-with a merge key anchored on another gate. So the depth is your own read of the
-whole diff plus a round you dispatch yourself, and a lane's clean round is not
-a measurement that lowers it.
+no hook. Measured on the sibling go-to-k/cdkd#2383 (2026-08-29), which runs a reviewer
+ladder this repo does not: three rounds of the LANE's own reviewers each found
+the next spelling of one defect, and it took an independent
+orchestrator-level round to find the last one — a YAML merge key, the spelling
+the lane's own raw-text tripwire had been added specifically to backstop and
+did not fire on. This repo's go-to-k/cdk-real-drift#1838 spent its own rounds
+on the same class, its flow-style `exclude:` staying green through the first
+fix for it. So the depth is your own read of the whole diff plus a round you
+dispatch yourself, and a lane's clean round is evidence about the lane's
+assumptions, not about the diff.
 
 **A reviewer's scratch COPY of a worktree is not detached from git, so its
 `git add -A` writes to the LIVE tree.** A linked worktree's `.git` is a FILE
@@ -236,9 +238,10 @@ tracked DELETIONS in the live tree that the lane's next commit would have
 shipped — nothing announced it, because the reviewer believed it was on a copy.
 Two lines therefore belong in every read-only reviewer's brief: **run no
 WRITING git verb** (`add` / `commit` / `restore` / `checkout` / `stash` /
-`clean`) anywhere, copy included, severing the pointer with `rm .git` if you
-must copy at all; and **report the TARGET worktree's `git status --porcelain`
-before AND after the round.** The pair is what makes damage attributable rather
+`clean`) anywhere, copy included — and if you must copy, copy OUTSIDE every
+repository, since deleting the `.git` file does not detach the copy, it only
+makes discovery walk UPWARD into whatever encloses it; and **report the TARGET
+worktree's `git status --porcelain` before AND after the round.** The pair is what makes damage attributable rather
 than a mystery a later agent finds: that incident surfaced only because the
 NEXT reviewer volunteered "the tree went dirty mid-review, not mine", after
 which the responsible one repaired the index with `git restore --staged` (index
