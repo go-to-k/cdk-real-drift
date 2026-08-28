@@ -166,7 +166,8 @@ hook), so a copy in a scratch directory points at a sibling that is not there
 and EVERY case fails on exit 127, reading as a regression you did not cause
 (2026-08-19, go-to-k/cdk-real-drift#1777: 13/13 pass in place, 13/13 fail
 copied out). When diffing the OLD suite against your
-NEW hook, write the copy BESIDE the real one as
+NEW hook, do NOT redirect `git show origin/main:.claude/hooks/<name>.test.sh`
+into a temp file elsewhere — write the copy BESIDE the real one as
 `.claude/hooks/_old-<name>.test.sh` and delete it after.
 `tests/skill-doc-paths.test.ts` asserts this self-relative resolution; amend
 the rule if a harness ever grows an override. Extend the harness that exists

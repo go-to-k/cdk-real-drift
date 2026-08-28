@@ -70,7 +70,8 @@ go-to-k/cdk-real-drift#1782):
   gates inert for a day). **An `if` carries ONE pattern; a gate guarding two
   verbs gets two ENTRIES**, written UNANCHORED (`Bash(*git commit*)`) because
   the matcher only hands the script candidates — the script re-matches
-  precisely. Fenced by `tests/gate-if-matchers-1801.test.ts`. After any change
+  precisely. Fenced by `tests/gate-if-matchers-1801.test.ts` (fails on an `or`,
+  on an anchored verb pattern, and on a gate missing an entry). After any change
   to how a gate is selected, watch it go RED once, by hand.
 - Stage new files first. A marker set while your new test is still untracked does
   not cover it.
