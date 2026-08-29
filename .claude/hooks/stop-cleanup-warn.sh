@@ -57,11 +57,23 @@ done
 
 [ "$count" -gt 0 ] || exit 0
 
+# `systemMessage` on STDOUT, not `echo >&2`. A Stop hook that exits 0 has BOTH
+# streams discarded -- the installed Claude Code (2.1.251) lists this event as
+# "Exit code 0 - stdout/stderr not shown" -- so for as long as this hook wrote
+# to stderr, a reminder about live BILLABLE AWS resources reached nobody at all.
+# `systemMessage` is the channel that survives exit 0 ("Display a message to the
+# user (all hooks)").
+#
+# Deliberately NOT `hookSpecificOutput.additionalContext`, which the sibling
+# stop-unmerged-lane-warn.sh moved to: that field CONTINUES the turn, and a
+# /hunt-bugs session legitimately keeps resources live between turns, so it
+# would force a continuation at the end of every turn of a hunt. The WARN ONLY
+# contract stated at the top of this file is deliberate, and this keeps it.
 {
   echo "⚠️  cdkrd cleanup reminder: ${count} deploy/stack token(s) are still ARMED in the"
   echo "    bughunt-clean sentinel — you deployed real AWS resources this session and have"
   echo "    NOT yet verified them gone. Do not leave them billing:"
   echo "      /sweep-resources        # discover + delete cdkrd test resources, then release the gate"
   echo "    (or: delstack the stacks, run bughunt-track.sh verify, then clear)."
-} >&2
+} | python3 -c 'import json, sys; print(json.dumps({"systemMessage": sys.stdin.read()}))'
 exit 0

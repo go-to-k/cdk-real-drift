@@ -282,8 +282,14 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
     never be forgotten. As a backstop (even for a live-test that never called
     `add`), the `deploy-autoarm-gate` hook arms a generic token on ANY
     deploy-shaped command, and the `stop-cleanup-warn` Stop hook warns at session
-    end if the sentinel is still armed. Run **`/sweep-resources`** to do the
-    cleanup + release the gate.
+    end if the sentinel is still armed. That warning is a `systemMessage`, i.e.
+    it surfaces in the terminal: a `Stop` hook exiting 0 has BOTH stdout and
+    stderr discarded, so for as long as this one printed to stderr the reminder
+    reached nobody at all. It is deliberately NOT
+    `hookSpecificOutput.additionalContext`, which would reach the model but also
+    CONTINUE the turn -- a hunt legitimately keeps resources live between turns,
+    so that would force an extra turn at the end of every one of them.
+    Run **`/sweep-resources`** to do the cleanup + release the gate.
 - **`issue-dup-check-gate` — the one PreToolUse gate that is not a markgate gate.**
   It blocks `gh issue create`, and the REST mint `gh api repos/<o>/<r>/issues`,
   unless the body carries a `Dup-check:` line recording that the OPEN issue list was

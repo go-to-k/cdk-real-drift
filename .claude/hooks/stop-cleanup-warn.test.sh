@@ -35,18 +35,36 @@ check() {
     *) printf 'X\n' > "$tmp/.markgate-bughunt-pending.d/$arm" ;;
   esac
 
-  local out exit_code
+  # STDOUT only, and STDERR is asserted EMPTY. Folding the two with `2>&1` is
+  # what let this hook write its reminder to a stream a Stop hook at exit 0
+  # discards: the suite read the text either way and stayed green while the
+  # warning reached nobody. The channel is the thing under test now, so the two
+  # streams have to be told apart.
+  local out err exit_code
+  err="$tmp/stderr"
   set +e
-  out=$(printf '{"cwd":"%s","session_id":"%s"}' "$tmp" "$sess" | CLAUDE_CODE_SESSION_ID="$sess" bash "$HOOK" 2>&1)
+  out=$(printf '{"cwd":"%s","session_id":"%s"}' "$tmp" "$sess" | CLAUDE_CODE_SESSION_ID="$sess" bash "$HOOK" 2>"$err")
   exit_code=$?
   set -e
 
+  # `warned` means the reminder came back as a `systemMessage` payload -- the
+  # only channel that survives a Stop hook exiting 0. Text on stdout that is not
+  # valid JSON, or JSON without that key, counts as NOT warned.
   local warned=0
-  printf '%s' "$out" | grep -q "cleanup reminder" && warned=1
+  printf '%s' "$out" | python3 -c '
+import json, sys
+raw = sys.stdin.read()
+try:
+    msg = json.loads(raw).get("systemMessage", "")
+except Exception:
+    msg = ""
+sys.exit(0 if "cleanup reminder" in msg else 1)
+' && warned=1
 
   local ok=1
   [ "$exit_code" -eq 0 ] || ok=0        # warn-only, never blocks
   [ "$warned" -eq "$expect" ] || ok=0
+  if [ -s "$err" ]; then ok=0; fi       # nothing on the stream Stop discards
 
   if [ "$ok" -eq 1 ]; then
     PASS=$((PASS + 1)); echo "ok   - $name (exit=$exit_code warned=$warned)"
