@@ -229,6 +229,8 @@ Every run appending one more bullet is how a long skill becomes an unread one.
 Every worktree is gone by §9 and you are back on `main`, where `branch-gate`
 blocks a commit — so the retro gets its own worktree:
 
+MAIN-CHECKOUT (SKILL.md "Launch mode") — run THIS block, and not the next one:
+
 ```bash
 # Date-suffix the branch: the previous run's branch was deleted on merge, so
 # reusing the name re-creates it as an orphan ref that no PR tracks.
@@ -237,12 +239,22 @@ git worktree add ".worktrees/${B##*/}" -b "$B" origin/main
 cd ".worktrees/${B##*/}"
 mise trust && mise install    # untrusted .mise.toml: vp / markgate will not resolve
 pnpm install                  # worktrees have no node_modules
+```
 
-# IN-PLACE (SKILL.md "Launch mode"): you are NOT on `main` and there is no
-# worktree to add -- the lane's own tree is still here with its deps installed.
-# Take the retro branch IN IT; the merged lane branch cannot be reused, and
-# nothing gates a branch switch inside a worktree (see section 5).
-git fetch origin && git switch -c "$B" origin/main
+IN-PLACE — run THIS block INSTEAD of the one above, never both: there is no
+worktree to add, and `git worktree add` from inside this tree NESTS the very
+worktree this mode exists to prevent. You are also not on `main`; the lane's own
+tree is still here with its deps installed, so take the retro branch IN IT, and
+the merged lane branch cannot be reused. `B` is re-assigned because a separate
+fenced block is a separate shell (section 9's `MAIN` trap), and the switch is
+addressed with `-C` for the reason section 5 gives: no gate in this repo refuses
+a branch switch, so a bare one after a cwd reset would take the MAIN checkout
+off `main`.
+
+```bash
+B=chore/work-issues-retro-$(date +%Y%m%d)
+git -C "<lane-worktree-abs-path>" fetch origin
+git -C "<lane-worktree-abs-path>" switch -c "$B" origin/main
 ```
 
 - `chore:` prefix — agent tooling, not `src/**`; a `fix:` / `feat:` prefix

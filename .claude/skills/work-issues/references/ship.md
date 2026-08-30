@@ -49,13 +49,21 @@ fetch + rebase + re-run; do NOT start distrusting the peer's new test
 merged in parallel). Same cause as §7's repo-wide-check collision; the same
 rebase answers both.
 
+MAIN-CHECKOUT (SKILL.md "Launch mode") — run THIS block, and not the next one:
+
+```bash
+git checkout main && git pull origin main    # bring the merges local
+```
+
+IN-PLACE — run THIS block INSTEAD, never both: `main` is checked out in the main
+tree, so a `checkout main` here fails with "already used by worktree ...". Never
+leave your own tree; pull the main checkout through `-C`. `MAIN` is derived HERE
+rather than borrowed from a neighbouring block — each fenced block is its own
+Bash call and its own shell, so a variable assigned in another one is empty here:
+
 ```bash
 # The main checkout is always the FIRST row of `git worktree list`.
 MAIN=$(git worktree list --porcelain | awk 'NR==1{print substr($0,10)}')
-git checkout main && git pull origin main    # bring the merges local
-# IN-PLACE (SKILL.md "Launch mode"): `main` is checked out in $MAIN, so a
-# `checkout main` here fails with "already used by worktree ..." -- never leave
-# your own tree; pull the main checkout through -C instead:
 git -C "$MAIN" pull origin main
 ```
 

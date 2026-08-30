@@ -144,6 +144,13 @@ mise trust .worktrees/<name>/.mise.toml
 ( cd .worktrees/<name> && vp run build )     # ...and no dist/ -- see below
 ```
 
+The two arms differ in BASE and that is not a property of the mode: this one
+branches from local `main`, the IN-PLACE one below from `origin/main`. Local
+`main` only advances on an explicit pull in the main checkout, so this arm can
+start stale — the class `stale-base-gate.sh` exists to catch. It is a separate
+defect from the nesting one, deliberately left for its own change; the new arm
+is written with the correct base rather than copying the wrong one.
+
 **IN-PLACE mode (SKILL.md "Launch mode") skips that block entirely**: this run
 was launched inside a linked worktree, so it keeps that tree and the branch
 already checked out there, and creates NOTHING — a nested worktree dies with
@@ -154,13 +161,20 @@ not. If the tree is detached, or its branch has already merged (reusing it
 would push an orphan ref), take a fresh branch WITHOUT leaving the tree:
 
 ```bash
-git fetch origin && git switch -c wt-<name> origin/main
+# `-C <this lane's own absolute path>` is load-bearing HERE in a way it is not
+# in the siblings. Nothing in this repo gates a branch switch: `branch-gate`
+# fires on `git commit` / `git push` and only when the target tree is on
+# `main` / `master`, `worktree-guard` fires on Edit/Write into the MAIN
+# checkout, and there is no `main-tree-branch-gate` here at all -- so a BARE
+# `git switch -c` run after the shell's cwd has silently reset to the main
+# checkout (the appendix's cwd-reset failure, and the reason section 9 pulls
+# through -C) takes the MAIN checkout off `main`, unblocked, in a tree other
+# lanes are sharing. Pass the ABSOLUTE path this run recorded when it adopted
+# the tree; do NOT re-derive it as `$(git rev-parse --show-toplevel)`, which
+# resolves against the same reset cwd and inherits the bug it is guarding.
+git -C "<lane-worktree-abs-path>" fetch origin
+git -C "<lane-worktree-abs-path>" switch -c wt-<name> origin/main
 ```
-
-Nothing gates that: `branch-gate` fires on `git commit` / `git push` and only
-when the target tree is on `main` / `master`, and `worktree-guard` fires on
-Edit/Write into the MAIN checkout — neither sees a branch switch inside a
-worktree.
 
 **Confirm the tree is YOURS before adopting it.** A stray `cd` into a peer's
 live lane looks exactly like a workspace handed to you. This repo ships no

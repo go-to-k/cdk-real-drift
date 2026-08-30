@@ -46,23 +46,32 @@ const MAX_REFERENCE_FILE_BYTES = 64_000; // largest stage file measured 55,137 B
 // content. Floors sit far enough below the at-split measurement that narrative
 // COMPRESSION stays legal while wholesale deletion fails.
 // Calibration (probed, not guessed): a byte floor should sit ABOVE the corpus
-// minus its LARGEST stage file where compression room allows, or deleting that
-// one file — the likeliest wholesale drop — stays green (measured: hunt-bugs at
-// a 50,000 B floor survived deleting its 55,137 B gotchas.md). work-issues'
-// corpus is spread evenly enough that no such floor also leaves compression
-// room (`skill-doc-paths.test.ts` cannot catch it either — its citation
-// extractor only resolves spans whose first segment is a repo-root directory,
-// and `references/...` is skill-relative; measured, not assumed), so the
-// pointer-integrity block below is what catches a single deleted stage file:
-// every `references/<stage>.md` the orchestrator names must exist.
-// Floors re-measured after the rule+citation compression pass (2026-08-28):
-// work-issues 94,136 B and hunt-bugs 87,180 B. Both floors deliberately KEPT at
-// 60,000 B rather than re-derived at ~50% of the new totals — for hunt-bugs,
-// 87,180 − 41,922 (its largest file) = 45,258 < 60,000, so the floor now
-// catches deleting gotchas.md outright, a property a ~43,000 floor would lose.
+// minus its LARGEST stage file, or deleting that one file — the likeliest
+// wholesale drop — stays green (measured: hunt-bugs at a 50,000 B floor
+// survived deleting its 55,137 B gotchas.md). `skill-doc-paths.test.ts` does
+// not catch it either: its citation extractor only resolves spans whose first
+// segment is a repo-root directory, and `references/...` is skill-relative
+// (measured, not assumed). Beyond the floors, the pointer-integrity block below
+// is what catches a single deleted stage file: every `references/<stage>.md`
+// the orchestrator names must exist.
+//
+// Re-measured 2026-08-31. work-issues: corpus 109,106 B, largest implement.md
+// 22,600 B, so the property needs a floor above 109,106 - 22,600 = 86,506 --
+// which the 60,000 held here had stopped providing as the stage files grew.
+// 89,000 restores it: strictly TIGHTER, and no upper bound was touched. The
+// older note declined such a floor for work-issues because it leaves little
+// compression room, and that is still the trade (~20 KB of room below the
+// floor); the call is reversed to match the sibling cdk-local (88,000 on a
+// 113,468 B corpus) because a floor that cannot catch the likeliest wholesale
+// drop is not a weaker guard but a SILENT one. A genuine compression pass
+// re-derives the floor downward in the same commit -- that stays legal; what
+// the floor stops is a deletion with no re-derivation at all.
+// hunt-bugs stays at 60,000: 88,426 - 41,922 = 46,504 < 60,000, so its property
+// still holds. Re-measure both numbers for each skill whenever a stage file
+// changes size materially -- the property is silent when it lapses.
 const SPLIT_SKILLS: Record<string, { minFiles: number; minCorpusBytes: number }> = {
   // 8 files / 125,139 B measured at the split (2026-08-28); largest 26,621 B; 94,136 B post-compression
-  'work-issues': { minFiles: 6, minCorpusBytes: 60_000 },
+  'work-issues': { minFiles: 6, minCorpusBytes: 89_000 },
   // 7 files / 108,940 B measured at the split (2026-08-28); largest 55,137 B; 87,180 B post-compression
   'hunt-bugs': { minFiles: 5, minCorpusBytes: 60_000 },
 };

@@ -25,18 +25,9 @@ The flow below adds one worktree per lane. That is right from the MAIN checkout
 and wrong when this run was launched INSIDE a linked worktree (an Orca/ADE
 workspace, a stray `cd` into `.worktrees/<x>`): `git worktree add` then NESTS
 one, and deleting the outer workspace takes the inner directory, its uncommitted
-work and its git registration with it (go-to-k/cdk-real-drift#1842). Compute the
-mode before stage 0 and state it in the opening report:
-
-```bash
-[ "$(cd "$(git rev-parse --git-dir)" && pwd -P)" \
- = "$(cd "$(git rev-parse --git-common-dir)" && pwd -P)" ] && echo MAIN-CHECKOUT || echo IN-PLACE
-```
-
-Equal only in the main checkout — a linked worktree's `--git-dir` is
-`<common-dir>/worktrees/<name>`. `pwd -P` is load-bearing both ways: the main
-checkout answers `.git` RELATIVELY for both, and macOS spells `/tmp` as
-`/private/tmp`.
+work and its git registration with it (go-to-k/cdk-real-drift#1842). Run the
+one-line probe at the top of §3 — the ONLY copy of it — before stage 0, and
+state the answer in the opening report.
 
 `IN-PLACE` changes four things: take ONE issue (§3); claim the branch/worktree
 already checked out (§4); add no worktree and work on the branch already here,

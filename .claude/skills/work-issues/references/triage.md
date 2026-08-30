@@ -143,7 +143,10 @@ PARAGRAPH still collide.
 ## 3. Pick a FEW FILE-DISJOINT issues
 
 **How many lanes you may pick is decided by the LAUNCH MODE, so settle that
-first — it is one command and it is not guessable from the prompt:**
+first — it is one command and it is not guessable from the prompt.** This is
+the ONLY copy of the probe; SKILL.md "Launch mode" points here rather than
+restating it, because a second verbatim copy of a two-line command is the drift
+shape section 10-b fences elsewhere:
 
 ```bash
 [ "$(cd "$(git rev-parse --git-dir)" && pwd -P)" \
@@ -152,7 +155,10 @@ first — it is one command and it is not guessable from the prompt:**
 
 Equal only in the main checkout: a linked worktree's `--git-dir` is
 `<common-dir>/worktrees/<name>`, and `pwd -P` settles both the main checkout's
-RELATIVE `.git` answer and macOS's `/tmp` -> `/private/tmp`. `IN-PLACE` means
+RELATIVE `.git` answer and macOS's `/tmp` -> `/private/tmp`. Run it INSIDE the
+repo: outside one, both substitutions are empty and `cd ""` returns 0, so it
+prints MAIN-CHECKOUT — a wrong verdict, caught only by the next git command
+failing loudly. `IN-PLACE` means
 this run was launched inside a worktree someone else created (an Orca/ADE
 workspace, a stray `cd`), so it has exactly ONE working tree: **take ONE issue
 and finish it** — a second lane would need a worktree nested inside this one,
