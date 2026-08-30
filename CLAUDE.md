@@ -282,7 +282,9 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
     never be forgotten. As a backstop (even for a live-test that never called
     `add`), the `deploy-autoarm-gate` hook arms a generic token on ANY
     deploy-shaped command, and the `stop-cleanup-warn` Stop hook warns at session
-    end if the sentinel is still armed. Run **`/sweep-resources`** to do the
+    end if the sentinel is still armed — to the USER on every turn and to the MODEL
+    on the cadence below, having reached NEITHER until
+    go-to-k/cdk-real-drift#1844. Run **`/sweep-resources`** to do the
     cleanup + release the gate.
 - **`issue-dup-check-gate` — the one PreToolUse gate that is not a markgate gate.**
   It blocks `gh issue create`, and the REST mint `gh api repos/<o>/<r>/issues`,
@@ -341,6 +343,70 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   foreign-`-R` half asserts the refusal MESSAGE, not just the exit code: every
   gate in that fixture already blocks for its own reasons, so an exit-code-only
   check stayed green with the refusal deleted.
+- **The two `Stop` hooks: which CHANNEL reaches which audience, and the nudge
+  cadence.** `stop-cleanup-warn.sh` and `stop-unmerged-lane-warn.sh` fire at
+  turn-end rather than on a tool call, and until go-to-k/cdk-real-drift#1844 both
+  picked an output channel their text's audience never reads. Read from the
+  installed Claude Code (2.1.251) rather than the published docs, a Stop hook has
+  exactly three ways out:
+  - `hookSpecificOutput.additionalContext` — reaches the MODEL, and the turn
+    CONTINUES so it can act on what it was told.
+  - `systemMessage` — reaches the USER only (rendered as `<hookName> says: ...`),
+    and the turn ends normally.
+  - stdout / stderr at exit 0 — reaches NOBODY. Hook stderr is surfaced only on a
+    NON-zero exit, and stdout at exit 0 is parsed as JSON and dropped when it is
+    not one.
+
+  There is no fourth option that reaches the model WITHOUT continuing the turn,
+  which is why each hook has to CHOOSE rather than simply emit. The two JSON
+  fields are independent branches in the harness, so one payload may carry both.
+  `stop-cleanup-warn` was in the third state — `echo ... >&2` then `exit 0` — so a
+  BILLING guardrail delivered its warning into a hole for months; the lane hook
+  emitted `systemMessage` only, while every word of it is addressed to the agent.
+
+- **A Stop continuation is not free, and it is not merely slow.** A Stop hook's
+  `additionalContext` travels in the SAME return value as a `decision: "block"`,
+  so both spend one budget — `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`, default 8
+  consecutive blocks — after which the harness overrides the hook and ends the turn
+  itself. A hook that nudges at every turn-end therefore spends a budget shared
+  with every other Stop hook, and the one that spends it is not necessarily the one
+  with something urgent to say. Hence the **cadence rule**, which both hooks
+  follow: `stop_hook_active` (a required boolean on the Stop payload) marks a turn
+  the harness has ALREADY resumed on a hook's account, so it stops a nudge SPINNING
+  inside one turn — and that is all it does. Across turns the condition persists,
+  so an unconditional `additionalContext` fires at every turn-end for as long as it
+  holds. Each hook therefore nudges the model at most once per distinct SUBJECT,
+  and a repeat of the same subject falls back to `systemMessage`: the user still
+  sees it, the turn ends. The subject is chosen so ORDINARY WORK does not change
+  it, or the rule bounds nothing — the lane hook keys on
+  `<own branch>:<pushed|unpushed>` and NOT on the commit count, which changes every
+  time the model commits, while the cleanup hook keys on the sorted set of armed
+  sentinel tokens. The record is ONE file in the PER-WORKTREE git dir
+  (`stop-nudge-lane` / `stop-nudge-cleanup`) holding
+  `<session id>TAB<subject>TAB<epoch>`, written tmp-then-`mv`; the cleanup hook
+  appends a fourth `armed since` field, which each nudge must not reset. One file
+  rather than one per session, so nothing accumulates in the git dir with nobody to
+  clean it up, and a concurrent session in the same worktree costs an EXTRA nudge
+  rather than a missed one — the safe direction.
+- **The two Stop hooks then DIVERGE deliberately, and the difference is the
+  point.** `stop-unmerged-lane-warn` picks ONE channel by OWNERSHIP: the session's
+  own lane (resolved from `cwd` in the payload, falling back to the hook copy's own
+  checkout) goes to the model, another session's lane goes to the user, because the
+  model cannot act on a worktree that is not its own. It has NO wall-clock re-arm —
+  an unmerged lane costs nothing while it sits, so a second telling buys only
+  annoyance, and the same wall of text every turn was the original complaint. Push
+  state is deliberately not its channel discriminator: that would go quiet on a
+  branch pushed with NO PR, one of the two failures the hook exists to catch, so it
+  lives in the cadence subject and in the message TEXT instead.
+  `stop-cleanup-warn` makes the opposite trade on both axes, because its subject is
+  real AWS resources: it emits `systemMessage` on EVERY fire and ADDS
+  `additionalContext` when the cadence arms, since a billing guardrail must never
+  go silent to the human; and it DOES re-arm on a 20-minute wall clock even when
+  the token set is unchanged, because money accrues on the clock rather than per
+  turn, with the escalated message naming how long the tokens have been armed. Both
+  hooks are exercised by `.claude/hooks/stop-cleanup-warn.test.sh` and
+  `.claude/hooks/stop-unmerged-lane-warn.test.sh` (33 and 56 cases, green under
+  bash 5.x and macOS system bash 3.2), run by `vp run test:hooks`.
 - **Registration is not execution — prove the gates are ALIVE before the first
   commit of a session**: run `git commit --dry-run -m "gate liveness probe"` from
   the repo root **as a Bash TOOL CALL**. PreToolUse hooks gate the AGENT's tool
