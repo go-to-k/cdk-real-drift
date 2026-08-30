@@ -18,6 +18,28 @@ pass=0
 fail=0
 fail_log=""
 
+# --- BASH 3.2 FENCE ---
+# macOS ships bash 3.2 as /bin/bash and this repo runs on it, so the hook has to
+# stay 3.2-clean. It was, but only ACCIDENTALLY: every case here launches the hook
+# as `bash "$hook"`, which resolves through PATH -- normally a modern Homebrew
+# build -- and the shebang is `#!/usr/bin/env bash`, which resolves the same way.
+# So running this SUITE under /bin/bash proved nothing whatsoever about the hook;
+# both interpreters stayed 5.x.
+#
+# A shim directory holding one symlink named `bash` goes FIRST on PATH, so every
+# child `bash` -- the explicit invocations, the shebang, and the ones inside the
+# stubbed-PATH case, whose `command -v bash` now resolves here -- is the fenced
+# interpreter. Default /bin/bash (3.2 on macOS, whatever the distro ships
+# elsewhere); override with HOOK_BASH to take the other tally.
+SHIMDIR="$(cd "$(mktemp -d)" && pwd -P)"
+HOOK_BASH="${HOOK_BASH:-/bin/bash}"
+[ -x "$HOOK_BASH" ] || HOOK_BASH="$(command -v bash)"
+ln -sf "$HOOK_BASH" "$SHIMDIR/bash"
+PATH="$SHIMDIR:$PATH"
+export PATH
+printf 'hook interpreter: %s (bash %s)\n' "$HOOK_BASH" \
+  "$("$HOOK_BASH" -c 'echo "$BASH_VERSION"')"
+
 check() {
   local name="$1" want="$2" got="$3"
   if [ "$got" = "$want" ]; then
@@ -117,7 +139,7 @@ print("BOTH" if ctx and sysm else "ctx" if ctx else "sys" if sysm else "none")
 # defect it was written for (a skip keyed on the hook's own checkout) could be
 # reintroduced and the suite stayed green.
 SANDBOX="$(cd "$(mktemp -d)" && pwd -P)"
-trap 'rm -rf "$SANDBOX"' EXIT
+trap 'rm -rf "$SANDBOX" "$SHIMDIR"' EXIT
 
 RC_FILE="$SANDBOX/rc"
 
@@ -302,15 +324,24 @@ ln -s "$REPO/wt-two" "$SANDBOX/wt-two-link"
 out=$(run_hook "$SANDBOX/wt-two-link" "$SANDBOX/wt-two-link/.claude/hooks/$(basename "$HOOK")")
 check "a symlinked lane path is still the session's own lane" "ctx" "$(channel_of "$out")"
 
-# --- SILENT on the continuation pass. `additionalContext` CONTINUES the turn,
+# --- USER-ONLY on the continuation pass. `additionalContext` CONTINUES the turn,
 # so a hook that keeps emitting it turns one nudge into a spin: the model is
 # pushed back to work, reaches Stop again with the same unmerged lane, and is
 # pushed again. The harness marks that second pass with `stop_hook_active`, and
-# standing down on it is what bounds this hook to a single forced continuation.
-# Without this case the loop is unfenced -- every case above passes `{}`, where
-# the flag is absent, so the branch could be deleted and the suite stay green. ---
+# dropping the MODEL half on it is what bounds this hook to a single forced
+# continuation. Without this case that branch is unfenced -- every case above
+# passes `{}`, where the flag is absent, so it could be deleted and the suite stay
+# green.
+#
+# It used to go fully SILENT here, which was wrong for the same reason the
+# neighbouring stop-cleanup-warn.sh was: the condition can first become TRUE
+# during the continuation. The continuation exists to push the model back to work,
+# and committing the lane is exactly that work -- so this pass can be the first on
+# which there is any lane at all, and a silent hook means nobody ever learns. A
+# bare `systemMessage` does not continue a turn, so the user half costs nothing. ---
 out=$(run_hook "$REPO/wt-two" "$REPO/wt-two/.claude/hooks/$(basename "$HOOK")" '{"stop_hook_active": true}')
-check "silent once the harness reports a continuation already happened" "" "$out"
+check "a resumed pass drops the model half but still tells the user" "sys" "$(channel_of "$out")"
+check "...and still enumerates the lanes" "2" "$(lanes_in "$out")"
 check "...standing down is exit 0, not a crash" "0" "$(rc_of)"
 
 # --- ...and NOT silent when the flag is present but false, which is the shape
@@ -372,14 +403,22 @@ for odd in 'bs\path' "$(printf 'tab\tpath')"; do
   git -C "$REPO" branch -q -D "feat/odd-$odd_n"
 done
 
-# --- `stop_hook_active` as the STRING "false" must not silence the hook. Python
-# treats any non-empty string as truthy, so the naive read makes this the same
-# as `true` -- and since a hook that goes quiet still exits 0, the failure looks
-# exactly like "no lanes" forever. The boolean cases above cannot see it. ---
-out=$(run_hook "$REPO" "$RUN" '{"stop_hook_active": "false"}')
-check "the string \"false\" does not count as a continuation" "2" "$(lanes_in "$out")"
-out=$(run_hook "$REPO" "$RUN" '{"stop_hook_active": "true"}')
-check "the string \"true\" does count as one" "" "$out"
+# --- `stop_hook_active` as the STRING "false" must not be read as a
+# continuation. Python treats any non-empty string as truthy, so the naive read
+# makes this the same as `true`. The boolean cases above cannot see it.
+#
+# Both run from INSIDE a lane, which is now the load-bearing half: since a
+# resumed pass emits `systemMessage` rather than nothing, the flag no longer
+# separates silence from output -- it separates the MODEL channel from the user
+# one, and only a session standing in its own lane has a model channel to lose.
+# Run from the main tree these two would read `sys` either way. ---
+WT_TWO_HOOK="$REPO/wt-two/.claude/hooks/$(basename "$HOOK")"
+out=$(run_hook "$REPO/wt-two" "$WT_TWO_HOOK" '{"stop_hook_active": "false"}')
+check "the string \"false\" does not count as a continuation" "ctx" "$(channel_of "$out")"
+check "...and it still enumerates every lane" "2" "$(lanes_in "$out")"
+out=$(run_hook "$REPO/wt-two" "$WT_TWO_HOOK" '{"stop_hook_active": "true"}')
+check "the string \"true\" does count as one" "sys" "$(channel_of "$out")"
+check "...and a continuation still enumerates the lanes for the user" "2" "$(lanes_in "$out")"
 
 # --- Malformed / absent stdin must not take the warning down with it. The hook
 # reads stdin only to find three fields; a harness that sends nothing parseable
@@ -488,12 +527,111 @@ check "...and the text switches to the pushed-but-maybe-no-PR wording" "yes" "$(
 out=$(run_hook_keep "$REPO" "$RUN" "$A1")
 check "...and a pushed lane stops nagging again after that one" "sys" "$(channel_of "$out")"
 
-# The continuation flag outranks the cadence: the harness has already resumed
-# once inside this turn, so even a freshly-armed subject must stay silent rather
-# than swap channels and print the same wall of text twice.
+# --- The predicate is DIRECTED, and a plain `prev_subject != subject` was not a
+# simplification of it but a bug. `pushed -> unpushed` is what an ordinary COMMIT
+# looks like, so an undirected test re-armed on every commit and again on every
+# push: measured on one lane as `commit ctx, repeat sys, push ctx, repeat sys,
+# commit ctx, push ctx, ...` -- two forced continuations per commit/push cycle,
+# forever, which is the per-commit cadence this hook's own comment disclaims. Only
+# `unpushed -> pushed` re-arms, because only that transition opens an action the
+# model did not have before (a PR should now exist, and a pushed branch with none
+# is the failure this hook is for). ---
+git -C "$REPO/wt-cad-a" -c user.email=t@t -c user.name=t commit -q --allow-empty -m 'more work'
+check "the fixture really did leave a commit unpushed" "1" \
+  "$(git -C "$REPO/wt-cad-a" rev-list --count '@{u}..' 2>/dev/null || echo MISSING)"
+out=$(run_hook_keep "$REPO" "$RUN" "$A1")
+check "a COMMIT on a pushed lane does NOT re-arm the nudge" "sys" "$(channel_of "$out")"
+# ...and while it is there, the MIDDLE push arm. Three arms exist -- no upstream,
+# N commits unpushed, fully pushed -- and only the outer two were ever asserted:
+# corrupting this one's wording left the suite 56/56 green.
+check "...and the text names how many commits are unpushed" "yes" \
+  "$(printf '%s' "$out" | grep -qF '1 commit(s) not yet pushed' && echo yes || echo no)"
+
+# --- The record is written on BOTH arms, because it holds the last OBSERVED
+# subject rather than the last NUDGED one. Recording only when arming freezes
+# `prev_push` at whatever state last nudged -- here `pushed`, from before the
+# commit above -- so the next genuine `unpushed -> pushed` compares against a
+# stale half and goes silent. This is the case that separates the two: it can
+# only pass if the quiet turn above still wrote what it saw. ---
+git -C "$REPO" update-ref "refs/remotes/origin/feat/cad-a" "$(git -C "$REPO" rev-parse feat/cad-a)"
+check "the fixture really did push the new commit" "0" \
+  "$(git -C "$REPO/wt-cad-a" rev-list --count '@{u}..' 2>/dev/null || echo MISSING)"
+out=$(run_hook_keep "$REPO" "$RUN" "$A1")
+check "...so the NEXT genuine unpushed -> pushed still re-arms" "ctx" "$(channel_of "$out")"
+out=$(run_hook_keep "$REPO" "$RUN" "$A1")
+check "...and then goes quiet again" "sys" "$(channel_of "$out")"
+
+# --- A MALFORMED record falls to ARMING, the safe direction. Nothing here ever
+# wrote one, so every shape below was unfenced -- while in production a record is
+# exactly what an interrupted write, a concurrent session or an older version of
+# this hook can leave behind in a shape this one does not expect. A subject that
+# cannot be split into `<branch>:<pushed|unpushed>` is not a subject this hook
+# wrote, and treating it as a match would silence a real lane. ---
+CAD_A_STATE="$(git -C "$REPO/wt-cad-a" rev-parse --absolute-git-dir)/stop-nudge-lane"
+mal_n=0
+for mal in \
+  'sess-one' \
+  "$(printf 'sess-one\t\t123')" \
+  "$(printf 'sess-one\tfeat/cad-a\t123')" \
+  "$(printf 'sess-one\tfeat/cad-a:banana\t123')" \
+  'total garbage'; do
+  mal_n=$((mal_n + 1))
+  printf '%s\n' "$mal" > "$CAD_A_STATE"
+  out=$(run_hook_keep "$REPO" "$RUN" "$A1")
+  check "a record this hook cannot parse re-arms rather than silencing [$mal_n]" "ctx" "$(channel_of "$out")"
+done
+
+# --- A record that cannot be PERSISTED costs the MODEL channel, not the warning.
+# The record is what BOUNDS the nudge, so an unwritable git dir (a read-only
+# checkout, a full disk, a directory owned by another user) meant every later turn
+# re-armed -- unbounded, which is the failure the cadence exists to remove. ---
+CAD_A_GITDIR="$(git -C "$REPO/wt-cad-a" rev-parse --absolute-git-dir)"
 clear_nudge_records
-out=$(run_hook_keep "$REPO" "$RUN" "{\"cwd\": \"$REPO/wt-cad-b\", \"session_id\": \"sess-three\", \"stop_hook_active\": true}")
-check "a resumed turn stays silent even when armed" "" "$out"
+chmod 555 "$CAD_A_GITDIR"
+out=$(run_hook_keep "$REPO" "$RUN" "$A1")
+chmod 755 "$CAD_A_GITDIR"
+check "an unpersistable record downgrades to the user channel" "sys" "$(channel_of "$out")"
+check "...but the user is still told which lane" "yes" \
+  "$(printf '%s' "$out" | grep -qF 'feat/cad-a' && echo yes || echo no)"
+
+# --- The continuation flag outranks the cadence: the harness has already resumed
+# once inside this turn, so even a freshly-armed subject drops the MODEL half. It
+# does NOT go silent -- the lane can be committed DURING the continuation (that is
+# what the continuation pushed the model back to do), in which case this pass is
+# the first on which there is any lane to report and silence means nobody ever
+# learns. A bare `systemMessage` does not continue a turn, so nothing spins. ---
+CAD_B_STATE="$(git -C "$REPO/wt-cad-b" rev-parse --absolute-git-dir)/stop-nudge-lane"
+B3_RESUMED="{\"cwd\": \"$REPO/wt-cad-b\", \"session_id\": \"sess-three\", \"stop_hook_active\": true}"
+B3_PLAIN="{\"cwd\": \"$REPO/wt-cad-b\", \"session_id\": \"sess-three\"}"
+clear_nudge_records
+out=$(run_hook_keep "$REPO" "$RUN" "$B3_RESUMED")
+check "a resumed pass drops the model half but still tells the user" "sys" "$(channel_of "$out")"
+check "...and still names the lane" "yes" \
+  "$(printf '%s' "$out" | grep -qF 'feat/cad-b' && echo yes || echo no)"
+# No nudge was spent, so none may be recorded: a record written here would consume
+# this subject's one model nudge on a pass that reached the model with nothing.
+check "...and it wrote no cadence record" "absent" \
+  "$([ -e "$CAD_B_STATE" ] && echo present || echo absent)"
+out=$(run_hook_keep "$REPO" "$RUN" "$B3_PLAIN")
+check "...so the next ordinary turn still gets its nudge" "ctx" "$(channel_of "$out")"
+
+# --- `cwd` carrying a NEWLINE must not corrupt the session id. The payload is
+# parsed by printing three LINES and picking them apart with `sed -n 1p/2p/3p`, so
+# an unstripped newline in `cwd` shifts `session_id` off the end and `sid` becomes
+# the TAIL OF THE PATH. Measured before the fix: a payload whose `cwd` was
+# "<lane path>\nJUNK" wrote `sid=JUNK` into the cadence record -- keyed on a
+# fragment of a directory name, so no two turns of one session ever agreed.
+# Folded to a space, the value no longer names a directory and the hook falls to
+# the not-mine channel, which is the safe direction for a field it cannot trust. ---
+clear_nudge_records
+NL_PAYLOAD=$(CWD="$REPO/wt-cad-b" python3 -c '
+import json, os
+print(json.dumps({"cwd": os.environ["CWD"] + "\nJUNK", "session_id": "sess-nl"}))
+')
+out=$(run_hook_keep "$REPO" "$RUN" "$NL_PAYLOAD")
+check "a cwd containing a newline is not attributed to a lane" "sys" "$(channel_of "$out")"
+check "...and no record was keyed on a fragment of the path" "absent" \
+  "$([ -e "$CAD_B_STATE" ] && echo present || echo absent)"
 
 git -C "$REPO" worktree remove --force "$REPO/wt-cad-a"
 git -C "$REPO" worktree remove --force "$REPO/wt-cad-b"

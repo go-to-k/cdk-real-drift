@@ -372,22 +372,51 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   with every other Stop hook, and the one that spends it is not necessarily the one
   with something urgent to say. Hence the **cadence rule**, which both hooks
   follow: `stop_hook_active` (a required boolean on the Stop payload) marks a turn
-  the harness has ALREADY resumed on a hook's account, so it stops a nudge SPINNING
-  inside one turn — and that is all it does. Across turns the condition persists,
-  so an unconditional `additionalContext` fires at every turn-end for as long as it
-  holds. Each hook therefore nudges the model at most once per distinct SUBJECT,
-  and a repeat of the same subject falls back to `systemMessage`: the user still
-  sees it, the turn ends. The subject is chosen so ORDINARY WORK does not change
-  it, or the rule bounds nothing — the lane hook keys on
-  `<own branch>:<pushed|unpushed>` and NOT on the commit count, which changes every
-  time the model commits, while the cleanup hook keys on the sorted set of armed
-  sentinel tokens. The record is ONE file in the PER-WORKTREE git dir
-  (`stop-nudge-lane` / `stop-nudge-cleanup`) holding
-  `<session id>TAB<subject>TAB<epoch>`, written tmp-then-`mv`; the cleanup hook
-  appends a fourth `armed since` field, which each nudge must not reset. One file
-  rather than one per session, so nothing accumulates in the git dir with nobody to
-  clean it up, and a concurrent session in the same worktree costs an EXTRA nudge
-  rather than a missed one — the safe direction.
+  the harness has ALREADY resumed on a hook's account, so it drops the MODEL half —
+  and that is all it does. It is deliberately NOT a full stand-down in either hook:
+  both used to `exit 0` on it, on the reasoning that the human had seen the message
+  on the earlier pass of the same turn, and that reasoning is false whenever the
+  condition first becomes TRUE during the continuation (the continuation exists to
+  push the model back to work, and deploying a stack or committing the lane is
+  exactly that work). A bare `systemMessage` does not continue a turn, so the user
+  half costs nothing; a resumed pass writes no cadence record either, so the nudge
+  it did not spend is still available to the next ordinary turn-end.
+
+  Across turns the condition persists, so an unconditional `additionalContext`
+  fires at every turn-end for as long as it holds. Each hook therefore nudges the
+  model at most once per distinct SUBJECT, and a repeat falls back to
+  `systemMessage`: the user still sees it, the turn ends. The subject is chosen so
+  ORDINARY WORK does not change it, or the rule bounds nothing — the lane hook keys
+  on `<own branch>:<pushed|unpushed>` and NOT on the commit count, which changes
+  every time the model commits, while the cleanup hook keys on the sorted set of
+  armed sentinel tokens.
+
+  **The lane hook's predicate is DIRECTED, and a plain inequality is not a
+  simplification of it.** `pushed -> unpushed` is what an ordinary COMMIT looks
+  like, so `prev_subject != subject` re-armed on every commit and again on every
+  push — measured as `commit ctx, repeat sys, push ctx, repeat sys, ...`, two
+  forced continuations per commit/push cycle, which is exactly the per-commit
+  cadence the subject was chosen to avoid. It arms on a new session, a lane never
+  seen, a DIFFERENT branch, a record it cannot parse, or `unpushed -> pushed` only,
+  since that is the one transition opening an action the model did not have before.
+
+  The record is ONE file in the PER-WORKTREE git dir (`stop-nudge-lane` /
+  `stop-nudge-cleanup`) holding `<session id>TAB<subject>TAB<epoch>`, written
+  tmp-then-`mv`; the cleanup hook appends a fourth `armed since` field, which each
+  nudge must not reset. One file rather than one per session, so nothing
+  accumulates in the git dir with nobody to clean it up, and a concurrent session
+  in the same worktree costs an EXTRA nudge rather than a missed one — the safe
+  direction. Three properties of the record are load-bearing and each was a live
+  bug first: it is written on BOTH arms of the lane hook's decision, because it
+  holds the last OBSERVED subject rather than the last NUDGED one (recording only
+  on the arm freezes the push half and silences the next genuine
+  `unpushed -> pushed`); every field is NORMALISED before it is written, since a
+  tab or an empty leading field in a tab-separated line read back with
+  `IFS=<TAB> read` shifts every later field and the comparison then never matches
+  — an unbounded nudge; and a record that cannot be PERSISTED (an unresolvable or
+  unwritable git dir) costs the MODEL channel rather than the warning, because a
+  nudge that cannot be recorded cannot be bounded.
+
 - **The two Stop hooks then DIVERGE deliberately, and the difference is the
   point.** `stop-unmerged-lane-warn` picks ONE channel by OWNERSHIP: the session's
   own lane (resolved from `cwd` in the payload, falling back to the hook copy's own
@@ -405,8 +434,18 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   the token set is unchanged, because money accrues on the clock rather than per
   turn, with the escalated message naming how long the tokens have been armed. Both
   hooks are exercised by `.claude/hooks/stop-cleanup-warn.test.sh` and
-  `.claude/hooks/stop-unmerged-lane-warn.test.sh` (33 and 56 cases, green under
-  bash 5.x and macOS system bash 3.2), run by `vp run test:hooks`.
+  `.claude/hooks/stop-unmerged-lane-warn.test.sh` (67 and 77 cases), run by
+  `vp run test:hooks`.
+
+  **Both suites run the HOOK under an explicitly chosen interpreter, and that is
+  not cosmetic.** They invoke it as `bash "$HOOK"` and its shebang is
+  `#!/usr/bin/env bash`, so both resolve through PATH — which means launching the
+  SUITE with `/bin/bash` proved nothing at all about the hook, and the bash 3.2
+  cleanliness these files need on macOS was only ever accidental. Each suite now
+  puts a one-symlink shim directory first on PATH so every child `bash` is the
+  fenced interpreter: `/bin/bash` by default, `HOOK_BASH=<path>` to take the other
+  tally. The suites print which one they used on their first line.
+
 - **Registration is not execution — prove the gates are ALIVE before the first
   commit of a session**: run `git commit --dry-run -m "gate liveness probe"` from
   the repo root **as a Bash TOOL CALL**. PreToolUse hooks gate the AGENT's tool

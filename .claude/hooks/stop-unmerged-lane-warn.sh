@@ -141,7 +141,19 @@ flag = data.get("stop_hook_active")
 if isinstance(flag, str):
     flag = flag.strip().lower() not in ("", "false", "0", "no")
 print("1" if flag else "0")
-print(data.get("cwd") or "")
+# `cwd` is stripped of NEWLINES for the same reason `session_id` is: this block
+# prints three LINES which the shell picks apart with `sed -n 1p/2p/3p`, so a
+# newline inside an earlier value shifts every later one. Only `session_id` was
+# stripped, so a `cwd` carrying a newline put the TAIL OF THE PATH into `sid` and
+# the cadence record was keyed on a fragment of a directory name instead of the
+# session. Measured: a payload whose `cwd` was "<lane path>\nJUNK" wrote
+# `sid=JUNK`.
+#
+# Tabs are NOT stripped from `cwd`, and that asymmetry is deliberate. `sid` is
+# written into a tab-separated record, so a tab in it would shift every field
+# after it; `cwd` is only ever compared against a worktree path, and a tab is legal
+# in one -- folding it would break the tab-in-path case this suite already fences.
+print((data.get("cwd") or "").replace("\n", " "))
 print((data.get("session_id") or "").replace("\t", " ").replace("\n", " "))
 ')
 active=$(printf '%s\n' "$parsed" | sed -n 1p)
@@ -149,9 +161,18 @@ hook_cwd=$(printf '%s\n' "$parsed" | sed -n 2p)
 sid=$(printf '%s\n' "$parsed" | sed -n 3p)
 [ -n "$sid" ] || sid="${CLAUDE_CODE_SESSION_ID:-shared}"
 
-# Already nudged once this turn and the model came back to Stop. Saying it again
-# would spin the turn instead of ending it, so stand down.
-[ "$active" = "1" ] && exit 0
+# Already nudged once this turn and the model came back to Stop. Repeating the
+# MODEL half would spin the turn instead of ending it, so that half stands
+# down -- but the warning still goes to the user. This used to `exit 0`
+# outright, on the reasoning that the human had already seen it on the earlier
+# pass of the same turn. That is false whenever the condition first becomes TRUE
+# during the continuation: the lane can be committed inside it (the continuation
+# exists precisely to push the model back to work), in which case this pass is
+# the first on which there is anything to report, and a silent hook means nobody
+# ever learns. A bare `systemMessage` does not continue a turn, so nothing spins.
+# (`stop-cleanup-warn.sh` next door takes the same shape, for the same reason.)
+resumed=0
+[ "$active" = "1" ] && resumed=1
 
 # Where is the SESSION? `cwd` from the event payload, resolved to its worktree
 # root. Falling back to this hook copy's own checkout is correct rather than
@@ -248,6 +269,7 @@ fi
 #                                          pushed branch with none is the
 #                                          failure this hook is for)
 #   the same lane, same push state      -> quiet
+#   the same lane, pushed -> unpushed   -> quiet (see the DIRECTED note below)
 #   a DIFFERENT lane                    -> nudge (it is a different subject)
 #
 # The commit COUNT is deliberately not in the key: it changes every time the
@@ -265,7 +287,15 @@ fi
 # a per-session file would accumulate with nobody to clean it up. A concurrent
 # session in the same worktree can therefore clobber it, which costs an EXTRA
 # nudge rather than a missed one, the safe direction.
-if [ "$channel" = "ctx" ]; then
+if [ "$resumed" = "1" ]; then
+  # A pass the harness already resumed never spends the model channel, and never
+  # writes a record either: no nudge was spent, so the next ordinary turn-end is
+  # still this subject's first. Recording here would consume the one nudge on a
+  # pass that emitted nothing to the model.
+  channel="sys"
+elif [ "$channel" = "ctx" ]; then
+  arm=1
+  persisted=0
   git_dir=$(git -C "$session_root" rev-parse --absolute-git-dir 2>/dev/null || true)
   if [ -n "$git_dir" ]; then
     state_file="${git_dir}/stop-nudge-lane"
@@ -275,17 +305,69 @@ if [ "$channel" = "ctx" ]; then
     if [ -r "$state_file" ]; then
       IFS="$TAB" read -r prev_sid prev_subject _ <"$state_file" 2>/dev/null || true
     fi
-    if [ "$prev_sid" = "$sid" ] && [ "$prev_subject" = "$subject" ]; then
-      channel="sys"
-    else
-      tmp="${state_file}.$$"
-      if printf '%s\t%s\t%s\n' "$sid" "$subject" "$(date +%s)" >"$tmp" 2>/dev/null; then
-        mv -f "$tmp" "$state_file" 2>/dev/null || rm -f "$tmp" 2>/dev/null || true
+    # A refname may not contain a colon, so the LAST one splits the subject
+    # unambiguously. A subject carrying none is not a subject this hook wrote --
+    # treat it as absent, which arms, the safe direction.
+    case "$prev_subject" in
+      *:*)
+        prev_branch=${prev_subject%:*}
+        prev_push=${prev_subject##*:}
+        ;;
+      *)
+        prev_branch=""
+        prev_push=""
+        ;;
+    esac
+
+    # The predicate is DIRECTED, and the plain equality it replaces was a real
+    # bug rather than a simplification. `pushed -> unpushed` is what an ordinary
+    # COMMIT looks like, so `prev_subject != subject` re-armed on every commit
+    # and again on every push: measured on one lane as
+    # `commit ctx, repeat sys, push ctx, repeat sys, commit ctx, push ctx, ...`
+    # -- two forced continuations per commit/push cycle, forever, which is the
+    # per-commit cadence the comment above explicitly disclaims.
+    #
+    # So the nudge arms on: a new session, a lane never seen, a DIFFERENT
+    # branch, a record this hook cannot make sense of, or the one transition
+    # that opens an action the model did not have before (`unpushed -> pushed`,
+    # after which a PR should exist and its absence is the failure this hook is
+    # for). Never `pushed -> unpushed`.
+    if [ "$prev_sid" = "$sid" ] && [ -n "$prev_branch" ] && [ "$prev_branch" = "$self_branch" ] &&
+      { [ "$prev_push" = "pushed" ] || [ "$prev_push" = "unpushed" ]; }; then
+      if [ "$prev_push" = "unpushed" ] && [ "$push_state" = "pushed" ]; then
+        arm=1
+      else
+        arm=0
+      fi
+    fi
+
+    # Written on BOTH arms, because the record holds the last OBSERVED subject
+    # rather than the last NUDGED one. Writing it only when arming freezes
+    # `prev_push` at whatever state last nudged, so the next genuine
+    # `unpushed -> pushed` compares against a stale half and goes silent. Only
+    # the CHANNEL branches on `arm`.
+    #
+    # `2>/dev/null` precedes the write redirect: applied the other way round,
+    # bash has already replaced fd 2 with the tmp file when it fails to open it,
+    # and reports the failure on the hook's real stderr.
+    tmp="${state_file}.$$"
+    if printf '%s\t%s\t%s\n' "$sid" "$subject" "$(date +%s)" 2>/dev/null >"$tmp"; then
+      if mv -f "$tmp" "$state_file" 2>/dev/null; then
+        persisted=1
       else
         rm -f "$tmp" 2>/dev/null || true
       fi
+    else
+      rm -f "$tmp" 2>/dev/null || true
     fi
   fi
+
+  # A nudge that cannot be RECORDED cannot be bounded, and an unbounded one is
+  # exactly what this mechanism exists to remove -- so an unresolvable or
+  # unwritable git dir (a read-only checkout, a full disk, a dir owned by
+  # someone else) costs the MODEL channel, not the warning itself.
+  [ "$persisted" = "1" ] || arm=0
+  [ "$arm" = "1" ] || channel="sys"
 fi
 
 MSG="$msg

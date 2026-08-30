@@ -11,6 +11,28 @@ HOOK="$(cd "$(dirname "$0")" && pwd)/stop-cleanup-warn.sh"
 PASS=0
 FAIL=0
 
+# --- BASH 3.2 FENCE ---
+# macOS ships bash 3.2 as /bin/bash and this repo runs on it, so the hook has to
+# stay 3.2-clean. It was, but only ACCIDENTALLY: every case here launches the hook
+# as `bash "$HOOK"`, which resolves through PATH -- normally a modern Homebrew
+# build -- and the shebang is `#!/usr/bin/env bash`, which resolves the same way.
+# So running this SUITE under /bin/bash proved nothing whatsoever about the hook;
+# both interpreters were 5.x either way.
+#
+# A shim directory holding one symlink named `bash` goes FIRST on PATH, so every
+# child `bash` -- the explicit invocations, the shebang, and the ones inside the
+# stubbed-PATH cases, whose `command -v bash` now resolves here -- is the fenced
+# interpreter. Default /bin/bash (3.2 on macOS, whatever the distro ships
+# elsewhere); override with HOOK_BASH to take the other tally.
+SHIMDIR="$(cd "$(mktemp -d)" && pwd -P)"
+HOOK_BASH="${HOOK_BASH:-/bin/bash}"
+[ -x "$HOOK_BASH" ] || HOOK_BASH="$(command -v bash)"
+ln -sf "$HOOK_BASH" "$SHIMDIR/bash"
+PATH="$SHIMDIR:$PATH"
+export PATH
+printf 'hook interpreter: %s (bash %s)\n' "$HOOK_BASH" \
+  "$("$HOOK_BASH" -c 'echo "$BASH_VERSION"')"
+
 # The warn is PER-SESSION (mirrors bughunt-clean-gate): it fires only for THIS
 # session/owner's resources — the cwd worktree's owner file, this session's
 # autoarm-<session> token, or the legacy flat file — never a peer's.
@@ -105,7 +127,7 @@ check2() {
 # strings, the owner file is never found, and every case below measures the
 # nothing-armed branch instead of the one it names.
 SANDBOX="$(cd "$(mktemp -d)" && pwd -P)"
-trap 'rm -rf "$SANDBOX"' EXIT
+trap 'rm -rf "$SANDBOX" "$SHIMDIR"' EXIT
 
 FIX="$SANDBOX/repo"
 mkdir -p "$FIX/.markgate-bughunt-pending.d"
@@ -119,6 +141,18 @@ git -C "$FIX" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
 OWNER_KEY=$(printf '%s' "$(git -C "$FIX" rev-parse --show-toplevel)" | sed 's#[^A-Za-z0-9._-]#_#g')
 OWNER_FILE="$FIX/.markgate-bughunt-pending.d/$OWNER_KEY"
 STATE="$FIX/.git/stop-nudge-cleanup"
+# The other two sentinel files the hook unions in. The cadence cases below used to
+# write ONLY the owner file, so the union itself was unfenced: a hook that read
+# just that one file passed every cadence case.
+AUTOARM_FILE="$FIX/.markgate-bughunt-pending.d/autoarm-s1"
+LEGACY_FILE="$FIX/.markgate-bughunt-pending"
+
+# A copy of the hook INSIDE the fixture, for the cases about where the hook looks
+# when the payload `cwd` is unusable: the fallback of last resort is this file's
+# own checkout, and the real one has nothing armed in it.
+mkdir -p "$FIX/.claude/hooks"
+cp "$HOOK" "$FIX/.claude/hooks/"
+FIX_HOOK="$FIX/.claude/hooks/$(basename "$HOOK")"
 
 # The exit STATUS is parked in a FILE, not a variable: every call site is a
 # `$(...)` subshell, so an assignment made here dies with it and the assertion
@@ -138,7 +172,35 @@ run_cleanup() { # <session-id> [extra-json-fragment, e.g. ,"stop_hook_active":tr
   printf '%s' "$out"
 }
 
+# The same run with the session id supplied ONLY through the environment, and no
+# `session_id` in the payload. Needed because the odd session ids below (empty, and
+# one containing a TAB) cannot be interpolated into a hand-built JSON string: a raw
+# tab is not legal inside a JSON string, `jq` would then fail on the WHOLE payload,
+# `cwd` would be lost with it, and the case would silently measure a different
+# fixture instead of the one it names.
+run_cleanup_env() { # <session-id>
+  local sess="$1" out rc
+  set +e
+  out=$(printf '{"cwd":"%s"}' "$FIX" | CLAUDE_CODE_SESSION_ID="$sess" bash "$HOOK" 2>/dev/null)
+  rc=$?
+  set -e
+  printf '%s' "$rc" > "$RC_FILE"
+  printf '%s' "$out"
+}
+
 rc_of() { cat "$RC_FILE"; }
+
+# The token count the user-facing line claims, and the armed duration the escalated
+# model line claims. Both are NUMBERS the message states, and nothing asserted them
+# before: a hook that hard-coded either passed every case in this file.
+count_in() {
+  printf '%s' "$1" | jq -r '.systemMessage // ""' |
+    sed -n 's/^cdkrd cleanup reminder: \([0-9][0-9]*\) deploy.*/\1/p'
+}
+minutes_in() {
+  printf '%s' "$1" | jq -r '.hookSpecificOutput.additionalContext // ""' |
+    sed -n 's/.*armed for ~\(-*[0-9][0-9]*\) minute(s).*/\1/p'
+}
 
 # ctx | sys | both | none. `both` is the ARMED shape here, unlike
 # stop-unmerged-lane-warn.sh next door where it would be a defect: the two hooks
@@ -252,20 +314,47 @@ fi
 out=$(run_cleanup s1)
 check2 "...and the clock re-arm resets, so the next turn is quiet again" "sys" "$(channel_of "$out")"
 
-# --- The continuation flag outranks everything. `additionalContext` CONTINUES
-# the turn, so a hook that emits it again on the resumed pass turns one nudge
-# into a spin; the harness caps that at 8 and then overrides the hook entirely.
-# Silence here is right even though the guardrail is armed: the human already saw
-# the systemMessage on the earlier pass of this same turn. ---
+# --- The continuation flag drops the MODEL half, and only that half.
+# `additionalContext` CONTINUES the turn, so emitting it again on the resumed pass
+# turns one nudge into a spin; the harness caps that at 8 and then overrides the
+# hook entirely. The hook used to `exit 0` here, taking the `systemMessage` with
+# it -- on the reasoning that the human had already seen it on the earlier pass of
+# the same turn. That reasoning is FALSE whenever the tokens were not armed then:
+# the neighbouring Stop hook forces a continuation, the model runs a deploy inside
+# it, `deploy-autoarm-gate.sh` arms, and this pass is the first on which there is
+# anything to say at all. A bare `systemMessage` does not continue a turn, so the
+# user half costs nothing. ---
 rm -f "$STATE"
 out=$(run_cleanup s1 ',"stop_hook_active":true')
-check2 "a resumed turn stays silent even when armed" "" "$out"
+check2 "a resumed turn drops the model half but still tells the user" "sys" "$(channel_of "$out")"
 check2 "...and standing down is exit 0" "0" "$(rc_of)"
+if printf '%s' "$out" | jq -r '.systemMessage' | grep -q 'stack-a'; then
+  PASS=$((PASS + 1)); printf 'ok   - ...and the surviving half still NAMES the token\n'
+else
+  FAIL=$((FAIL + 1)); printf 'FAIL - the surviving half still names the token\n'
+fi
+# No nudge was spent on that pass, so none may be recorded either -- otherwise the
+# resumed pass silently consumes this subject's one model nudge and the next
+# ordinary turn-end, which CAN continue, says nothing.
+out=$(run_cleanup s1)
+check2 "...and no record was written, so the next ordinary turn still nudges" "both" "$(channel_of "$out")"
 # ...and the flag as the STRING "false" must not be read as a continuation. A
 # naive truthiness read makes it identical to `true`, and since a quiet hook
 # still exits 0 the failure looks exactly like "nothing armed" forever.
+rm -f "$STATE"
 out=$(run_cleanup s1 ',"stop_hook_active":"false"')
 check2 "the string \"false\" does not count as a continuation" "both" "$(channel_of "$out")"
+# ...nor may a NON-boolean. `jq` and Python disagree here in opposite directions --
+# `0`, `[]` and `{}` are all truthy to jq and all falsy to Python -- so a plain
+# truthiness read made this hook treat a malformed payload as a continuation while
+# stop-unmerged-lane-warn.sh next door treated it as an ordinary turn. Measured:
+# `"stop_hook_active": 0` went fully silent here and fired there.
+rm -f "$STATE"
+out=$(run_cleanup s1 ',"stop_hook_active":0')
+check2 "a NUMERIC stop_hook_active is not a continuation" "both" "$(channel_of "$out")"
+rm -f "$STATE"
+out=$(run_cleanup s1 ',"stop_hook_active":{}')
+check2 "...and neither is an empty object" "both" "$(channel_of "$out")"
 
 # --- Nothing armed: no payload at all, on either channel. The channel cases
 # above all run armed, so without this a hook that emitted unconditionally would
@@ -275,25 +364,234 @@ out=$(run_cleanup s1)
 check2 "an empty sentinel emits nothing on any channel" "" "$out"
 check2 "...and still exits 0" "0" "$(rc_of)"
 
-# --- SILENT, and exit 0, without `jq`. It both parses the event and builds the
-# payload, so without the guard the script ends on `command not found` and
-# returns 127 -- a hook ERROR on every single turn, from a hook that is advisory
-# by design. The stub PATH carries every external the hook reaches for BEFORE the
-# guard (and `bash`/`env` themselves, since `PATH=... bash` and the `env bash`
-# shebang both resolve through it); a stub that is too small makes this pass for
-# a different reason than the one under test. ---
+# ---------------------------------------------------------------------------
+# The SUBJECT and the RECORD. Everything above drives the cadence through one
+# file and one well-formed session id, which left most of the machinery that
+# builds the subject unfenced -- each of the mutations named below survived a
+# full 33/33 green run before these cases existed.
+# ---------------------------------------------------------------------------
+
+# --- The session id goes into a TAB-separated record read back with `IFS=<TAB>
+# read`, where a tab is IFS *whitespace*: a leading empty field is dropped and a
+# run of tabs collapses. So an EMPTY id wrote `<TAB>subject<TAB>...`, every field
+# read back one to the left, `prev_sid` never compared equal, and the cadence
+# never armed down -- an unbounded `additionalContext` on the one hook that
+# guards MONEY, which is precisely what the block-cap budget cannot afford. An id
+# CONTAINING a tab did the same from the other side. Both are ordinary: the id is
+# absent whenever the harness sends no `session_id` and no environment variable.
+rm -f "$STATE" "$AUTOARM_FILE" "$LEGACY_FILE"
 printf 'stack-a\n' > "$OWNER_FILE"
+out=$(run_cleanup_env "")
+check2 "an EMPTY session id nudges the first time" "both" "$(channel_of "$out")"
+out=$(run_cleanup_env "")
+check2 "...and the cadence still bounds it" "sys" "$(channel_of "$out")"
+
+rm -f "$STATE"
+TAB_SID=$(printf 'sess\tid')
+out=$(run_cleanup_env "$TAB_SID")
+check2 "a session id containing a TAB nudges the first time" "both" "$(channel_of "$out")"
+out=$(run_cleanup_env "$TAB_SID")
+check2 "...and the cadence still bounds that one too" "sys" "$(channel_of "$out")"
+
+# --- The TOKENS get the same treatment, and for the same reason: a token
+# carrying a tab lands in the subject field of a tab-separated record and shifts
+# every field after it, so the read-back never matches and the nudge is unbounded
+# again. Removing the tab fold left the suite green before this case.
+rm -f "$STATE"
+printf 'stack-a\tus-east-1\n' > "$OWNER_FILE"
+out=$(run_cleanup s1)
+check2 "a token containing a TAB nudges the first time" "both" "$(channel_of "$out")"
+out=$(run_cleanup s1)
+check2 "...and the record still reads back as four fields" "sys" "$(channel_of "$out")"
+
+# --- The subject is a SORTED set, so the same tokens arriving in a different
+# order are the same subject. They legitimately do: the three sentinel files are
+# concatenated, and nothing orders the lines within one. Removing `LC_ALL=C sort`
+# left the suite green.
+rm -f "$STATE"
+printf 'stack-b\nstack-a\n' > "$OWNER_FILE"
+out=$(run_cleanup s1)
+check2 "a two-token set nudges the first time" "both" "$(channel_of "$out")"
+printf 'stack-a\nstack-b\n' > "$OWNER_FILE"
+out=$(run_cleanup s1)
+check2 "...and the SAME set in a different order is the same subject" "sys" "$(channel_of "$out")"
+
+# --- ...and a DEDUPED one, which is also what the message counts. The legacy
+# flat file and the owner file name the same stack whenever both are in use, and
+# counting raw lines while listing the deduped set made the text say "2 token(s)"
+# and then name one. No case asserted the NUMBER at all, so hard-coding `count=1`
+# left the suite green.
+rm -f "$STATE"
+printf 'stack-a\n' > "$OWNER_FILE"
+printf 'stack-a\n' > "$LEGACY_FILE"
+out=$(run_cleanup s1)
+check2 "one token armed through two files is counted once" "1" "$(count_in "$out")"
+printf 'stack-a\n' > "$OWNER_FILE"
+printf 'stack-z\n' > "$LEGACY_FILE"
+rm -f "$STATE"
+out=$(run_cleanup s1)
+check2 "...and two distinct tokens are counted as two" "2" "$(count_in "$out")"
+
+# --- The subject is the union of ALL THREE sentinel files. Every cadence case
+# above writes only the owner file, so a hook that read just that one satisfied
+# all of them -- while missing exactly the token `deploy-autoarm-gate.sh` writes,
+# which is the one armed by a deploy the model itself just ran.
+rm -f "$STATE" "$LEGACY_FILE" "$AUTOARM_FILE"
+printf 'stack-a\n' > "$OWNER_FILE"
+out=$(run_cleanup s1)
+check2 "the owner file alone nudges once" "both" "$(channel_of "$out")"
+out=$(run_cleanup s1)
+check2 "...then settles" "sys" "$(channel_of "$out")"
+printf 'autoarm-stack\n' > "$AUTOARM_FILE"
+out=$(run_cleanup s1)
+check2 "a token appearing in THIS SESSION'S autoarm file re-arms" "both" "$(channel_of "$out")"
+check2 "...and both files' tokens are counted" "2" "$(count_in "$out")"
+out=$(run_cleanup s1)
+check2 "...then settles again" "sys" "$(channel_of "$out")"
+printf 'legacy-stack\n' > "$LEGACY_FILE"
+out=$(run_cleanup s1)
+check2 "a token appearing in the LEGACY flat file re-arms too" "both" "$(channel_of "$out")"
+check2 "...and all three files' tokens are counted" "3" "$(count_in "$out")"
+
+# --- A MALFORMED record. Nothing here ever wrote one, so deleting BOTH `case`
+# sanitisers left the suite green -- while in production a record is exactly the
+# thing another process, an interrupted write or an older version of this hook
+# can leave in a shape this one does not expect. Two properties: the arithmetic
+# must not spill an error onto the hook's real stderr, and the hook must fall to
+# ARMING rather than to silence, because silence about live resources is the
+# direction that costs money.
+rm -f "$LEGACY_FILE" "$AUTOARM_FILE"
+printf 'stack-a\n' > "$OWNER_FILE"
+malformed_record() { # <literal record line>
+  printf '%s' "$1" > "$STATE"
+}
+err_of_run() { # stderr only, with stdout discarded
+  printf '{"cwd":"%s","session_id":"s1"}' "$FIX" | CLAUDE_CODE_SESSION_ID=s1 bash "$HOOK" 2>&1 >/dev/null
+}
+malformed_record "$(printf 's1\tstack-a\tnotanumber\talsonot\n')"
+check2 "a non-numeric stamp puts nothing on the hook's real stderr" "" "$(err_of_run)"
+malformed_record "$(printf 's1\tstack-a\tnotanumber\talsonot\n')"
+out=$(run_cleanup s1)
+check2 "...and a record it cannot parse re-arms rather than freezing" "both" "$(channel_of "$out")"
+
+# A LEADING ZERO passes a digits-only sanitiser and then fails ARITHMETIC: bash
+# reads `08` as octal and aborts with "value too great for base", twice, on the
+# hook's real stderr, every turn. `10#` is what makes the sanitiser's own output
+# safe to do arithmetic on.
+malformed_record "$(printf 's1\tstack-a\t08\t09\n')"
+check2 "a leading-zero stamp is not read as octal" "" "$(err_of_run)"
+
+# --- A FUTURE stamp. No attacker needed: a forward clock jump plus the NTP
+# correction that follows leaves one behind, and bash WRAPS an over-long value
+# silently rather than refusing it. The wall-clock test only asked whether enough
+# time had PASSED, so a future last-nudge made `now - prev_nudge` negative and the
+# model channel went silent for as long as the stamp said -- the same unbounded
+# silence as a record that never matches, in the opposite direction.
+rm -f "$STATE"
+out=$(run_cleanup s1)
+check2 "control: the future-stamp case starts from a real record" "both" "$(channel_of "$out")"
+future=$(($(date +%s) + 315360000)) # ~10 years
+awk -v t="$future" 'BEGIN{FS=OFS="\t"} {$3=t; $4=t; print}' "$STATE" > "$STATE.f"
+mv -f "$STATE.f" "$STATE"
+out=$(run_cleanup s1)
+check2 "a FUTURE last-nudge stamp does not silence the model forever" "both" "$(channel_of "$out")"
+check2 "...and a future armed-since never prints a negative duration" "0" "$(minutes_in "$out")"
+
+# --- The fourth field, ARMED-SINCE, is what lets the escalated message say how
+# long without a nudge resetting it. The wall-clock case above ages field 3 and
+# field 4 to the SAME value, which makes them indistinguishable -- dropping the
+# fourth field entirely (and measuring from the last nudge instead) left the
+# suite green. These age them DIFFERENTLY, across two clock cycles, which is the
+# only shape that separates the two readings.
+rm -f "$STATE"
+out=$(run_cleanup s1) # first nudge: the record is written with both stamps at now
+base=$(date +%s)
+age_record() { # <last-nudge epoch> <armed-since epoch>
+  awk -v n="$1" -v a="$2" 'BEGIN{FS=OFS="\t"} {$3=n; $4=a; print}' "$STATE" > "$STATE.a"
+  mv -f "$STATE.a" "$STATE"
+}
+age_record "$((base - 6000))" "$((base - 6000))"
+out=$(run_cleanup s1)
+check2 "the first clock re-arm measures the full armed age" "100" "$(minutes_in "$out")"
+check2 "...and the nudge moved ONLY the last-nudge stamp" "$((base - 6000))" "$(cut -f4 "$STATE")"
+# Second cycle: the last nudge is recent-ish, armed-since is old. Measuring from
+# the wrong field now reads 50 rather than 100.
+age_record "$((base - 3000))" "$((base - 6000))"
+out=$(run_cleanup s1)
+check2 "a second re-arm still measures from ARMED-SINCE, not the last nudge" "100" "$(minutes_in "$out")"
+
+# --- A record that cannot be PERSISTED. The record is what bounds the nudge, so
+# an unwritable git dir (a read-only checkout, a full disk, a directory owned by
+# another user) meant every later turn re-armed -- unbounded, the failure the
+# cadence exists to remove. The warning still has to reach the human; only the
+# model half is dropped. And the redirect order is asserted separately: written
+# `>"$tmp" 2>/dev/null`, bash has already replaced fd 2 by the time it fails to
+# open the file, so "Permission denied" surfaces on the hook's real stderr.
+rm -f "$STATE"
+printf 'stack-a\n' > "$OWNER_FILE"
+chmod 555 "$FIX/.git"
+out=$(run_cleanup s1)
+err=$(err_of_run)
+chmod 755 "$FIX/.git"
+check2 "an unpersistable record downgrades to the user channel" "sys" "$(channel_of "$out")"
+check2 "...and the failed redirect stays off the hook's real stderr" "" "$err"
+if printf '%s' "$out" | jq -r '.systemMessage' | grep -q 'stack-a'; then
+  PASS=$((PASS + 1)); printf 'ok   - ...and the human is still told which token\n'
+else
+  FAIL=$((FAIL + 1)); printf 'FAIL - the human is still told which token\n'
+fi
+
+# --- A STALE `cwd`. Only an EMPTY one fell back before, so a payload naming a
+# directory that has since been removed -- a worktree cleaned up mid-session --
+# made `git -C` fail and the hook exit 0, silent about resources still billing.
+# The last-resort anchor is this hook copy's own checkout, which is why the case
+# runs the copy INSIDE the fixture: the real one has nothing armed. `$PWD` is
+# deliberately outside any repository here, so the fallback under test is the
+# BASH_SOURCE one and not the middle candidate.
+rm -f "$STATE"
+printf 'stack-a\n' > "$OWNER_FILE"
+set +e
+out=$( (cd "$SANDBOX" && printf '{"cwd":"%s","session_id":"s1"}' "$SANDBOX/removed-worktree" |
+  CLAUDE_CODE_SESSION_ID=s1 bash "$FIX_HOOK" 2>/dev/null) )
+set -e
+check2 "a STALE cwd falls back to the hook's own checkout, not to silence" "both" "$(channel_of "$out")"
+
+# --- SILENT without `jq`. It both parses the event and builds the payload, so
+# without the guard the script ends on `command not found` -- a "jq: command not
+# found" line on the hook's stderr on every single turn, from a hook that is
+# advisory by design. The stub PATH carries every external the hook reaches for
+# BEFORE the guard (and `bash`/`env` themselves, since `PATH=... bash` and the
+# `env bash` shebang both resolve through it); a stub that is too small makes this
+# pass for a different reason than the one under test.
+#
+# THE CWD IS INSIDE THE ARMED FIXTURE, and that is the load-bearing half. Run from
+# anywhere else this case was VACUOUS: without `jq` the payload `cwd` cannot be
+# parsed at all, `target_dir` falls back to `$PWD`, and from the suite's own
+# directory nothing is armed -- so the hook returned at the not-armed check, long
+# before it would have reached `jq -n`, and DELETING the guard left the suite
+# 33/33 green. The control immediately below pins that the fixture really is armed
+# under this same cwd, so a future change cannot quietly restore the vacuum.
+#
+# The old companion assertion ("...and exits 0 rather than 127") is gone rather
+# than fixed: the hook ends on an unconditional `exit 0`, so no mutation of it can
+# make that line fail. ---
+printf 'stack-a\n' > "$OWNER_FILE"
+rm -f "$STATE" "$AUTOARM_FILE" "$LEGACY_FILE"
+set +e
+out=$( (cd "$FIX" && printf '{}' | CLAUDE_CODE_SESSION_ID=s1 bash "$HOOK" 2>&1) )
+set -e
+check2 "control: jq present, cwd inside the armed fixture -> it speaks" "both" "$(channel_of "$out")"
+
+rm -f "$STATE"
 STUBBIN="$SANDBOX/no-jq"
 mkdir -p "$STUBBIN"
 for c in bash env cat git sed grep date tr sort dirname awk mv rm; do
   ln -sf "$(command -v "$c")" "$STUBBIN/$c"
 done
 set +e
-out=$(printf '{"cwd":"%s","session_id":"s1"}' "$FIX" | PATH="$STUBBIN" bash "$HOOK" 2>&1)
-rc=$?
+out=$( (cd "$FIX" && printf '{"cwd":"%s","session_id":"s1"}' "$FIX" | PATH="$STUBBIN" bash "$HOOK" 2>&1) )
 set -e
 check2 "silent when jq is unavailable" "" "$out"
-check2 "...and exits 0 rather than 127" "0" "$rc"
 
 echo "----"
 echo "stop-cleanup-warn: $PASS passed, $FAIL failed"
