@@ -186,13 +186,20 @@ subject="${subject%,}"
 # measured, and the second direction is the dangerous one HERE, since reading a
 # resumed pass as fresh emits `additionalContext` again and spins the turn. So:
 # null / false / 0 / an empty container are falsy, everything else is truthy, which
-# is Python's rule spelled in jq.
+# is Python's rule spelled in jq. There is deliberately NO `null` arm: the `//
+# false` above has already mapped a null (and an absent field) to `false`, so
+# `$t` can never be "null" and such an arm is a fence no case could trip --
+# which this file argues against a few lines down.
+#
+# One shape still diverges, in the safe direction: `1e-999` reads truthy here
+# (jq preserves the literal, so `$f == 0` is false) and falsy in Python, which
+# underflows it to 0.0. The cost is the money hook going QUIET to the model on a
+# value nothing produces, rather than spinning.
 active=$(printf '%s' "$input" | jq -r '
   (.stop_hook_active // false) as $f
   | ($f | type) as $t
   | if $t == "string"
     then (if ($f | ascii_downcase | gsub("^\\s+|\\s+$"; "") | . == "" or . == "false" or . == "0" or . == "no") then "0" else "1" end)
-    elif $t == "null" then "0"
     elif $t == "boolean" then (if $f then "1" else "0" end)
     elif $t == "number" then (if $f == 0 then "0" else "1" end)
     else (if ($f | length) == 0 then "0" else "1" end) end' 2>/dev/null || echo "0")

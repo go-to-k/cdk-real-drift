@@ -254,12 +254,22 @@ if [ -n "$self_branch" ]; then
   # WHICH half of the work is left; only the framing around them changes voice.
   # (`stop-cleanup-warn.sh` next door has carried a `user_msg` / `model_msg` pair
   # from the start, for exactly this reason.)
+  # The user text says nothing about whether the AGENT has been told, and that
+  # omission is deliberate. One string reaches all THREE downgrade paths --
+  # cadence repeat, unpersistable record, resumed pass -- and "the agent has
+  # already been nudged once" is true only of the first. On the other two no
+  # nudge was ever spent, and on the unpersistable one the model half is dropped
+  # precisely BECAUSE the record cannot be kept, so the agent will never be told
+  # and the claim would repeat every turn. That is the same one-emitter,
+  # three-paths shape this comment block was written about, reproduced in the
+  # TEXT rather than in the code -- and the paragraph above already argues that
+  # "the human has already seen it" is false on the resumed path.
   user_msg="NOTE: this session's own lane is unmerged -- '$self_branch' is committed but not on origin/main.
 $push_note
-The agent has already been nudged about this lane once, so this repeat is for you: if the session ends
-here, the work stays on the branch and nothing carries it to main. One false positive is expected and is
-cheap to clear -- this repo SQUASH-merges, so an already-merged branch keeps reading as ahead, and
-clearing that one means removing its worktree and deleting the branch rather than opening another PR.
+If the session ends here, the work stays on the branch and nothing carries it to main. One false positive
+is expected and is cheap to clear -- this repo SQUASH-merges, so an already-merged branch keeps reading as
+ahead, and clearing that one means removing its worktree and deleting the branch rather than opening
+another PR.
 Every unmerged lane in this checkout:"
   model_msg="WARNING: YOUR OWN lane is unmerged -- a NOT-CLOSEABLE verdict is a TO-DO LIST, not a stopping point.
 This session's worktree is on '$self_branch', which is committed but not on origin/main, so you are not

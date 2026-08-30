@@ -111,9 +111,14 @@ run_hook_keep() {
 # that sits after the JSON parse -- so nothing in this file exercised it: every
 # payload above carries `session_id`, which means the environment fallback had zero
 # coverage and its value reached the cadence record unnormalised.
-run_hook_env() { # <dir> <hook> <session-id-from-env> [stdin]
+# Named `_keep` like its sibling because it does NOT clear the nudge record --
+# the cadence is the whole subject of the cases that use it, and a helper whose
+# name does not encode that is how a later case gets its reset silently removed.
+run_hook_env_keep() { # <dir> <hook> <session-id-from-env> [stdin]
   local dir="$1" hook="$2" sess="$3" stdin="${4-}"
-  [ -n "$stdin" ] || stdin='{}'
+  # `$#`, not `-n`: an explicitly EMPTY payload is a case (the hook must survive
+  # unparseable stdin), and `-n` would silently replace it with `{}`.
+  [ "$#" -ge 4 ] || stdin='{}'
   printf '%s' "$stdin" | (cd "$dir" && CLAUDE_CODE_SESSION_ID="$sess" bash "$hook")
   printf '%s' "$?" > "$RC_FILE"
 }
@@ -720,9 +725,9 @@ env_n=0
 for esid in 's1' "$(printf '\tabc')" "$(printf 'a\tb')" "$(printf 'a\nb')"; do
   env_n=$((env_n + 1))
   clear_nudge_records
-  out=$(run_hook_env "$REPO" "$RUN" "$esid" "$ENV_PAYLOAD")
+  out=$(run_hook_env_keep "$REPO" "$RUN" "$esid" "$ENV_PAYLOAD")
   check "an env-supplied session id nudges the model once [$env_n]" "ctx" "$(channel_of "$out")"
-  out=$(run_hook_env "$REPO" "$RUN" "$esid" "$ENV_PAYLOAD")
+  out=$(run_hook_env_keep "$REPO" "$RUN" "$esid" "$ENV_PAYLOAD")
   check "...and the cadence still bounds it [$env_n]" "sys" "$(channel_of "$out")"
 done
 
