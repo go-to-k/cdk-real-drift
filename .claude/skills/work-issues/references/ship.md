@@ -50,8 +50,19 @@ merged in parallel). Same cause as §7's repo-wide-check collision; the same
 rebase answers both.
 
 ```bash
+# The main checkout is always the FIRST row of `git worktree list`.
+MAIN=$(git worktree list --porcelain | awk 'NR==1{print substr($0,10)}')
 git checkout main && git pull origin main    # bring the merges local
+# IN-PLACE (SKILL.md "Launch mode"): `main` is checked out in $MAIN, so a
+# `checkout main` here fails with "already used by worktree ..." -- never leave
+# your own tree; pull the main checkout through -C instead:
+git -C "$MAIN" pull origin main
 ```
+
+That second form is not IN-PLACE-only trivia: it is the same
+`fatal: 'main' is already used by worktree ...` the appendix records for
+`gh pr merge --delete-branch`. What differs is that a MAIN-CHECKOUT run has a
+tree it may return to and an IN-PLACE run does not.
 
 **Release** is automated (`.github/workflows/release.yml`) — merging a `feat:` /
 `fix:` / `perf:` / `revert:` commit to `main` produces a `chore(release): <ver>
@@ -68,6 +79,12 @@ Once released, **global install by NAME** (published npm package):
 vp i -g cdk-real-drift
 ```
 
+That install is BY NAME from npm, so it is mode-independent: it resolves the
+published package and never reads any tree's build output. (The sibling cdkd
+links its global CLI at the MAIN checkout's `dist/`, which forces a post-release
+rebuild there; nothing in this repo's ship stage does, so an IN-PLACE run has no
+main-checkout rebuild to perform. Do not add one.)
+
 **A run whose lanes are all `chore:` / `docs:` releases NOTHING** (CLAUDE.md → State
 of the Repo): skip both steps above rather than polling — the bump is never
 coming and the installed binary is already current; say so in the wrap. This is
@@ -76,7 +93,13 @@ go-to-k/cdk-real-drift#1767 merged as `chore:` and this text still sent the run
 polling for a bump).
 
 **Remove every worktree you created** (a left-behind worktree is the silent
-residue of this flow):
+residue of this flow). **An IN-PLACE run created none, so it removes none**: it
+must not `git worktree remove` the tree it is running in (that deletes its own
+cwd) and must not `git branch -D` the branch it is standing on. Cleanup of that
+tree belongs to whoever created it — the outer tool, or the operator — so the
+wrap SAYS so instead of doing it, and the run ends with the tree still standing.
+`--delete-branch` on the merge still removes the REMOTE branch, which is fine;
+only the local tree and its branch are off limits:
 
 ```bash
 git worktree remove .worktrees/<name>        # --force if it refuses on artifacts
@@ -88,7 +111,7 @@ git worktree list                            # yours should be gone
 `git worktree list` cannot tell you whose it is — a finished run's leftover and a
 live session look identical, including a branch whose tip is already on `main`.
 The closing check is "every worktree I added is gone", never "only the main
-checkout remains". **Every ownership signal establishes LIFE, never absence**: a
+checkout remains" — which an IN-PLACE run satisfies by having added none. **Every ownership signal establishes LIFE, never absence**: a
 dirty tree or an open PR proves a lane is live; the absence of either proves
 nothing. A tip on `main` is not death (the owner may be in ship/retro steps), and
 a claim comment carries CLAIM time, not last activity. Measured both "finished"

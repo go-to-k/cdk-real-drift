@@ -19,6 +19,31 @@ and colliding on the same file. The run does not end at the last merge: the retr
 stage folds what this run taught you back into this skill's files, while the
 evidence still exists.
 
+## Launch mode: main checkout, or already inside a worktree
+
+The flow below adds one worktree per lane. That is right from the MAIN checkout
+and wrong when this run was launched INSIDE a linked worktree (an Orca/ADE
+workspace, a stray `cd` into `.worktrees/<x>`): `git worktree add` then NESTS
+one, and deleting the outer workspace takes the inner directory, its uncommitted
+work and its git registration with it (go-to-k/cdk-real-drift#1842). Compute the
+mode before stage 0 and state it in the opening report:
+
+```bash
+[ "$(cd "$(git rev-parse --git-dir)" && pwd -P)" \
+ = "$(cd "$(git rev-parse --git-common-dir)" && pwd -P)" ] && echo MAIN-CHECKOUT || echo IN-PLACE
+```
+
+Equal only in the main checkout — a linked worktree's `--git-dir` is
+`<common-dir>/worktrees/<name>`. `pwd -P` is load-bearing both ways: the main
+checkout answers `.git` RELATIVELY for both, and macOS spells `/tmp` as
+`/private/tmp`.
+
+`IN-PLACE` changes four things: take ONE issue (§3); claim the branch/worktree
+already checked out (§4); add no worktree and work on the branch already here,
+after confirming the tree is YOURS (§5); remove no worktree, delete no branch,
+and reach `main` through the main checkout rather than leaving this tree (§9,
+§10-d).
+
 ## How this skill is packaged (read this before stage 0)
 
 This file is a thin orchestrator. The full procedure lives in per-stage files
@@ -81,7 +106,7 @@ the user wants to watch); the stage files apply unchanged either way.
 | 2. Collision landscape       | `references/triage.md`       | Worktree/branch/PR/claim probes and their blind spots; the central contested files (`src/normalize/noise.ts` / `src/diff/classify.ts` / `src/revert/plan.ts`)                       |
 | 3. Pick file-disjoint issues | `references/triage.md`       | Disjointness gate, fresh-issue quarantine (§3-a), ranking rules, naming the next session's verification before writing `next` (§3-b), premise checks against `origin/main`          |
 | 4. Claim                     | `references/claim.md`        | Claim comment BEFORE first edit, re-check for a competing claim/PR right before starting, claim what you FILE too (a `Session-fit: now` deferral gets its claim in the filing turn) |
-| 5. Implement                 | `references/implement.md`    | One worktree per lane (`.worktrees/`), build before first test, sibling-site sweeps, dup-check window when filing                                                                   |
+| 5. Implement                 | `references/implement.md`    | One tree per lane (`.worktrees/`, or in place), build before first test, sibling-site sweeps, dup-check window when filing                                                          |
 | 6. Gates + PR                | `references/gates-and-pr.md` | `/check`, `/check-docs`, marker freshness per worktree, PR create                                                                                                                   |
 | 7. Main advanced             | `references/gates-and-pr.md` | Rebase over parallel merges, stale-base phantom diffs, re-grep what LANDED                                                                                                          |
 | 8. Verify before merge       | `references/verify.md`       | `/verify-pr`, live-test tiers, mutation probes (§8-z when a probe reports no discrimination)                                                                                        |
@@ -99,8 +124,8 @@ the user wants to watch); the stage files apply unchanged either way.
   appeared. (§4)
 - **Two lanes never edit the same file**; at most one lane per central table
   (`noise.ts` / `classify.ts` / `revert/plan.ts`). (§2, §3)
-- **Never work in the main checkout** — one worktree per lane under
-  `.worktrees/`, `mise trust` + `pnpm install` in each. (§5)
+- **Never work in the main checkout** — one tree per lane: a new worktree under
+  `.worktrees/` (`mise trust` + `pnpm install`), or, IN-PLACE, this one. (§5)
 - **Real-AWS live tests and merges are SERIALIZED across lanes** — the parent
   grants the turn, one lane at a time; a lane subagent never starts either on
   its own. Everything else (edits, unit tests, markers, PR create, reviews,

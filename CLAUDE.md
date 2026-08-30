@@ -543,7 +543,16 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   orchestrator integrates by `git checkout <branch> -- <files>` (NEVER `git merge` —
   the leaked cdkd session hooks block it), then `git worktree remove`. The main
   checkout is reserved for integration: `main` checkouts, pulls, and PR plumbing
-  only.
+  only. **That recipe is the MAIN-CHECKOUT case and is wrong from anywhere
+  else** (go-to-k/cdk-real-drift#1842): when the session is ALREADY inside a
+  linked worktree — an Orca/ADE workspace, or a stray `cd` into an existing
+  lane — `git worktree add` NESTS one worktree inside another, and deleting the
+  outer workspace takes the inner directory, its uncommitted work and its git
+  registration with it. There, create nothing and remove nothing: work on the
+  branch already checked out, take ONE line of work rather than several, and
+  leave the tree for whoever made it. `/work-issues` computes which case applies
+  before its first stage and `/hunt-bugs` points at that probe; do not
+  re-implement it here.
 - **All changes go through a pull request — never commit directly to `main`.**
   Branch (or worktree branch) → run the gates + set markers → commit → push →
   `gh pr create`. The reviewer re-reviews the PR diff before merge. cdkd's

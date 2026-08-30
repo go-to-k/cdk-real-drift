@@ -1,6 +1,6 @@
 <!-- Part of the /work-issues skill. Stage files: triage.md (§0–§3), claim.md (§4), implement.md (§5), gates-and-pr.md (§6–§7), verify.md (§8), ship.md (§9), retro.md (§10), gotchas.md (appendix). A bare §N points into the file that holds that section. READ THIS FILE IN FULL when your run enters this stage. -->
 
-## 5. One worktree per lane, then implement
+## 5. One tree per lane, then implement
 
 This stage (and stages 6-8) normally runs INSIDE a lane subagent the
 orchestrator dispatched — one general-purpose agent per claimed issue, so the
@@ -132,7 +132,10 @@ Enforced by `.claude/hooks/issue-dup-check-gate.sh`, which refuses
   LIST endpoint (`-X GET … --paginate` and `-f state=open` pass); only an
   explicit `POST`, or a `title=` field with no method (gh infers POST), mints.
 
-Never edit in the main checkout. Per lane:
+Never edit in the main checkout — `.claude/hooks/worktree-guard.sh` blocks an
+Edit/Write to the main checkout's `src/**` or `tests/**` while any worktree
+exists, and always allows a path under `.worktrees/`. Per lane, in
+MAIN-CHECKOUT mode:
 
 ```bash
 git worktree add .worktrees/<name> -b wt-<name> main
@@ -140,6 +143,35 @@ mise trust .worktrees/<name>/.mise.toml
 ( cd .worktrees/<name> && pnpm install )     # worktrees have no node_modules
 ( cd .worktrees/<name> && vp run build )     # ...and no dist/ -- see below
 ```
+
+**IN-PLACE mode (SKILL.md "Launch mode") skips that block entirely**: this run
+was launched inside a linked worktree, so it keeps that tree and the branch
+already checked out there, and creates NOTHING — a nested worktree dies with
+the outer workspace, taking its uncommitted work and leaving a registration
+that needs `git worktree prune` (go-to-k/cdk-real-drift#1842). Deps and `dist/`
+are usually already there; run `pnpm install` / `vp run build` only if they are
+not. If the tree is detached, or its branch has already merged (reusing it
+would push an orphan ref), take a fresh branch WITHOUT leaving the tree:
+
+```bash
+git fetch origin && git switch -c wt-<name> origin/main
+```
+
+Nothing gates that: `branch-gate` fires on `git commit` / `git push` and only
+when the target tree is on `main` / `master`, and `worktree-guard` fires on
+Edit/Write into the MAIN checkout — neither sees a branch switch inside a
+worktree.
+
+**Confirm the tree is YOURS before adopting it.** A stray `cd` into a peer's
+live lane looks exactly like a workspace handed to you. This repo ships no
+per-worktree session-owner sentinel (the sibling cdkd has one; do not go
+looking for it here), so the probes are `git status --porcelain` (uncommitted
+work you did not write), the branch's own history and PR
+(`git log --oneline -3`, `gh pr list --state all --head "$(git branch --show-current)"`),
+and the issue thread for a claim naming this branch. Read them under §9's rule
+that every ownership signal establishes LIFE and never absence: any one of them
+saying "someone is here" means STOP and report — never nest a worktree inside a
+peer's lane to get out of it.
 
 **Build BEFORE the first test run, and read a fresh worktree's failures with
 that in mind.** A worktree starts with no `dist/`; a test spawning the built CLI
@@ -149,8 +181,8 @@ checkout (which HAS a `dist/`) passes, so every comparison points at main
 merge broke main"; `vp run build` made them green). **A fresh worktree failing
 where the main checkout passes is evidence about the WORKTREE first.**
 
-Do the fix in the worktree (match the existing table/entry pattern exactly; ESM
-relative imports need the `.js` extension). **Always add a unit test that fails
+Do the fix in the lane's tree (match the existing table/entry pattern exactly;
+ESM relative imports need the `.js` extension). **Always add a unit test that fails
 without the fix and passes with it** — for a fold/FP fix use the issue's exact
 harvested live model; for revert, assert the update document / patch op.
 **Check first whether the artifact already has a harness** — fold-table entries

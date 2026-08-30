@@ -237,6 +237,12 @@ git worktree add ".worktrees/${B##*/}" -b "$B" origin/main
 cd ".worktrees/${B##*/}"
 mise trust && mise install    # untrusted .mise.toml: vp / markgate will not resolve
 pnpm install                  # worktrees have no node_modules
+
+# IN-PLACE (SKILL.md "Launch mode"): you are NOT on `main` and there is no
+# worktree to add -- the lane's own tree is still here with its deps installed.
+# Take the retro branch IN IT; the merged lane branch cannot be reused, and
+# nothing gates a branch switch inside a worktree (see section 5).
+git fetch origin && git switch -c "$B" origin/main
 ```
 
 - `chore:` prefix — agent tooling, not `src/**`; a `fix:` / `feat:` prefix
@@ -301,7 +307,10 @@ pnpm install                  # worktrees have no node_modules
   into every future session.
 - **Merge it before the wrap report, then remove the worktree**
   (`git worktree remove .worktrees/<name> && git worktree prune`) — §9 ends
-  with every worktree gone and §10 must not undo that. This is
+  with every worktree gone and §10 must not undo that. An IN-PLACE run added
+  none: it merges and stops there, leaving the tree on the retro branch for
+  whoever owns the workspace (the appendix has what the Stop hook will say
+  about that). This is
   `Session-fit: now` on the leaves-main-self-inconsistent criterion (the skill
   would keep telling the next run to do what this run just proved wrong); its
   evidence dies with this session, and an open PR is NOT CLOSEABLE besides.

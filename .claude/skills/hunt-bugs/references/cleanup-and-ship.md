@@ -15,12 +15,19 @@ Take it all the way to merged — do not leave a green PR hanging:
 
 1. `gh pr merge <#> --squash --delete-branch` (the remote branch). If CI is down
    for billing, `--admin` after confirming the local gates passed.
-2. **Remove the worktree** — a hunt always creates one (`.worktrees/<name>`), and a
-   left-behind worktree is the silent residue of this flow. From the MAIN checkout:
+2. **Remove the worktree YOU created** — a hunt launched from the main checkout
+   creates one (`.worktrees/<name>`), and a left-behind worktree is the silent
+   residue of this flow. From the MAIN checkout:
    `git worktree remove .worktrees/<name>` (add `--force` if it refuses on
    leftover build artifacts), then `git branch -D wt-<name>` if the branch lingers,
-   and `git worktree prune`. Confirm with `git worktree list` — only the main
-   checkout should remain. (Mirror of CLAUDE.md's integrate-then-remove rule.)
+   and `git worktree prune`. Confirm with `git worktree list` — every worktree
+   this hunt ADDED should be gone. (Mirror of CLAUDE.md's integrate-then-remove
+   rule.) **A hunt launched IN-PLACE (§1) added none, so it removes none**: it
+   must not `git worktree remove` the tree it is running in — that deletes its own
+   cwd — nor `git branch -D` the branch it is standing on. Cleanup of that tree
+   belongs to whoever created it (the outer tool, or the operator), so say so in
+   the wrap instead of doing it; `--delete-branch` on the merge still removes the
+   REMOTE branch, which is fine.
 
 ### 9. Record what you learned
 
