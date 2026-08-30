@@ -176,16 +176,26 @@ subject="${subject%,}"
 # `stop_hook_active` is a required boolean on the Stop payload. A STRING "false" is
 # truthy to a naive read, so the textual spellings are folded down rather than trusted;
 # reading one as "already continued" would silence this hook's model half permanently.
-# The non-string arm is `$f == true` rather than jq truthiness, because jq and Python
-# disagree on exactly the values a malformed payload carries -- `0`, `[]` and `{}` are
-# all TRUTHY in jq and all falsy in Python. Left as truthiness, this hook read them as a
-# continuation while stop-unmerged-lane-warn.sh next door did not, and this is the one
-# that goes quiet about money.
+#
+# The non-string arms reproduce PYTHON's truthiness rather than jq's, because
+# `stop-unmerged-lane-warn.sh` next door parses the same field with `python3` and the
+# two must not disagree about what a malformed payload means. Neither the naive jq
+# read nor a plain `$f == true` gets there, and each fails in the opposite direction:
+# jq truthiness makes `0`, `[]` and `{}` continuations (Python says no), while
+# `$f == true` makes `1`, `[1]` and `{"a":1}` ordinary turns (Python says yes) --
+# measured, and the second direction is the dangerous one HERE, since reading a
+# resumed pass as fresh emits `additionalContext` again and spins the turn. So:
+# null / false / 0 / an empty container are falsy, everything else is truthy, which
+# is Python's rule spelled in jq.
 active=$(printf '%s' "$input" | jq -r '
   (.stop_hook_active // false) as $f
-  | if ($f | type) == "string"
+  | ($f | type) as $t
+  | if $t == "string"
     then (if ($f | ascii_downcase | gsub("^\\s+|\\s+$"; "") | . == "" or . == "false" or . == "0" or . == "no") then "0" else "1" end)
-    else (if ($f == true) then "1" else "0" end) end' 2>/dev/null || echo "0")
+    elif $t == "null" then "0"
+    elif $t == "boolean" then (if $f then "1" else "0" end)
+    elif $t == "number" then (if $f == 0 then "0" else "1" end)
+    else (if ($f | length) == 0 then "0" else "1" end) end' 2>/dev/null || echo "0")
 
 now=$(date +%s)
 armed_since="$now"
@@ -280,10 +290,11 @@ fi
 # the model half is dropped for THIS turn and the user still hears it -- one telling
 # lost is cheaper than a spin that the harness eventually overrides.
 #
-# `2>/dev/null >"$tmp"`, in that order: applied the other way round, bash has already
-# replaced fd 2 with the tmp file by the time it tries to open it, so the failure to
-# open is reported on the hook's REAL stderr -- a "Permission denied" line surfacing
-# from an advisory hook on every turn.
+# `2>/dev/null >"$tmp"`, in that order, and the order is the whole point. Redirections
+# are applied left to right, and the one that FAILS here is the fd-1 open of `$tmp`.
+# Written `>"$tmp" 2>/dev/null` that open is attempted while fd 2 is still the REAL
+# stderr, so "Permission denied" is reported there -- from an advisory hook, on every
+# turn. Putting `2>/dev/null` first silences fd 2 before the open that can fail.
 if [ "$arm" = "1" ]; then
   wrote=0
   if [ -n "$state_file" ]; then

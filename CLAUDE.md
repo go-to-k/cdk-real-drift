@@ -410,12 +410,39 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   bug first: it is written on BOTH arms of the lane hook's decision, because it
   holds the last OBSERVED subject rather than the last NUDGED one (recording only
   on the arm freezes the push half and silences the next genuine
-  `unpushed -> pushed`); every field is NORMALISED before it is written, since a
-  tab or an empty leading field in a tab-separated line read back with
-  `IFS=<TAB> read` shifts every later field and the comparison then never matches
-  — an unbounded nudge; and a record that cannot be PERSISTED (an unresolvable or
+  `unpushed -> pushed`); every field is NORMALISED — folded free of tabs and
+  newlines and defaulted when empty — **once, after every source of it has been
+  consulted**, since a tab or an empty leading field in a tab-separated line read
+  back with `IFS=<TAB> read` shifts every later field and the comparison then never
+  matches, an unbounded nudge. The "after every source" half is the part that gets
+  lost: BOTH hooks read the session id from the payload AND from
+  `CLAUDE_CODE_SESSION_ID`, and normalising inside the payload parse leaves the
+  environment path raw. Measured on the lane hook in exactly that state: a
+  well-formed id gave `ctx, sys, sys` while `<TAB>abc`, `a<TAB>b` and `a<NL>b` each
+  gave `ctx, ctx, ctx`. And a record that cannot be PERSISTED (an unresolvable or
   unwritable git dir) costs the MODEL channel rather than the warning, because a
   nudge that cannot be recorded cannot be bounded.
+
+  **A downgrade to `systemMessage` must change VOICE, not only audience.** Both
+  hooks now keep a `user_msg` / `model_msg` pair. The model text is written at the
+  agent ("YOUR OWN lane", "rebase, run the gates", "the honest label is STOPPED"),
+  so routing it down the user channel hands a human instructions addressed to
+  somebody else — go-to-k/cdkd#2389 in miniature, the defect these hooks were
+  rewritten to fix. The lane hook has THREE paths that downgrade a self-lane
+  warning (a cadence repeat, an unpersistable record, a resumed pass) and one
+  shared emitter, which is precisely the shape where fixing one path leaves the
+  others; each is fenced by its own case.
+
+  **The `stop_hook_active` fold follows PYTHON's truthiness in both hooks, and
+  neither obvious spelling gets there.** The cleanup hook parses the field with
+  `jq` and the lane hook with `python3`, so a malformed payload must not mean two
+  different things. Measured: plain jq truthiness makes `0`, `[]` and `{}`
+  continuations while Python says they are not, and `$f == true` makes `1`, `[1]`
+  and `{"a":1}` ordinary turns while Python says they ARE continuations — opposite
+  errors, and the second is the dangerous one for the money hook, which then reads
+  a resumed pass as fresh and spins the turn. The rule both follow is Python's:
+  null, `false`, `0` and an empty container are falsy, every other value is truthy,
+  with the textual spellings of `false` folded down first.
 
 - **The two Stop hooks then DIVERGE deliberately, and the difference is the
   point.** `stop-unmerged-lane-warn` picks ONE channel by OWNERSHIP: the session's
@@ -434,7 +461,7 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   the token set is unchanged, because money accrues on the clock rather than per
   turn, with the escalated message naming how long the tokens have been armed. Both
   hooks are exercised by `.claude/hooks/stop-cleanup-warn.test.sh` and
-  `.claude/hooks/stop-unmerged-lane-warn.test.sh` (67 and 77 cases), run by
+  `.claude/hooks/stop-unmerged-lane-warn.test.sh` (71 and 93 cases), run by
   `vp run test:hooks`.
 
   **Both suites run the HOOK under an explicitly chosen interpreter, and that is
@@ -444,7 +471,10 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   cleanliness these files need on macOS was only ever accidental. Each suite now
   puts a one-symlink shim directory first on PATH so every child `bash` is the
   fenced interpreter: `/bin/bash` by default, `HOOK_BASH=<path>` to take the other
-  tally. The suites print which one they used on their first line.
+  tally. The suites print which one they used on their first line, and an explicitly
+  set `HOOK_BASH` that is not executable is FATAL rather than a silent fall back to
+  PATH bash — falling back would hide a typo in the one setting the fence exists to
+  pin, and report a tally under an interpreter nobody asked for.
 
 - **Registration is not execution — prove the gates are ALIVE before the first
   commit of a session**: run `git commit --dry-run -m "gate liveness probe"` from

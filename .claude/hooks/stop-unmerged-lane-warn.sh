@@ -159,7 +159,21 @@ print((data.get("session_id") or "").replace("\t", " ").replace("\n", " "))
 active=$(printf '%s\n' "$parsed" | sed -n 1p)
 hook_cwd=$(printf '%s\n' "$parsed" | sed -n 2p)
 sid=$(printf '%s\n' "$parsed" | sed -n 3p)
-[ -n "$sid" ] || sid="${CLAUDE_CODE_SESSION_ID:-shared}"
+[ -n "$sid" ] || sid="${CLAUDE_CODE_SESSION_ID:-}"
+# Normalised HERE rather than in the Python above, because there are TWO sources
+# and only one of them went through it. The environment fallback lands after the
+# parse, so `CLAUDE_CODE_SESSION_ID` reached the record RAW -- and the record is
+# tab-separated, read back with `IFS=<TAB> read`, where a tab is IFS *whitespace*:
+# a leading empty field is dropped and a run collapses. Measured in a sandbox lane
+# with a payload carrying no `session_id`: `s1` gave `ctx, sys, sys` while
+# `<TAB>abc`, `a<TAB>b` and `a<NL>b` each gave `ctx, ctx, ctx` -- an unbounded
+# `additionalContext` against the 8-block cap, which is the whole failure the
+# cadence exists to prevent. Doing it once, after both sources have been consulted,
+# is what makes "every field is normalised before it is written" true rather than
+# true-of-one-path. (`stop-cleanup-warn.sh` next door has the same two sources and
+# the same single fold.)
+sid=$(printf '%s' "$sid" | tr '\t\n' '  ')
+[ -n "$sid" ] || sid="shared"
 
 # Already nudged once this turn and the model came back to Stop. Repeating the
 # MODEL half would spin the turn instead of ending it, so that half stands
@@ -218,14 +232,36 @@ if [ -n "$self_branch" ]; then
   if [ -z "$unpushed" ]; then
     push_state="unpushed"
     push_line="It has no upstream yet, so nothing has been submitted: push it, open the PR, then merge."
+    push_note="It has no upstream yet, so nothing has been submitted."
   elif [ "$unpushed" -gt 0 ]; then
     push_state="unpushed"
     push_line="It has ${unpushed} commit(s) not yet pushed, so nothing carrying them has been submitted: push, open or update the PR, then merge."
+    push_note="It has ${unpushed} commit(s) not yet pushed, so nothing carrying them has been submitted."
   else
     push_state="pushed"
     push_line="It is fully pushed, so a PR may already be in flight -- but a pushed branch with NO PR is exactly the failure this catches. Check, and open one if there is none."
+    push_note="It is fully pushed, so a PR may already be in flight -- but a pushed branch with NO PR is exactly the failure this catches."
   fi
-  msg="WARNING: YOUR OWN lane is unmerged -- a NOT-CLOSEABLE verdict is a TO-DO LIST, not a stopping point.
+  # TWO texts for the self-lane case, not one routed twice. The model text is
+  # written AT the agent ("you are not done", "rebase, run the gates"), and every
+  # path that downgrades it to `systemMessage` -- the cadence repeat, an
+  # unpersistable record, a resumed pass -- would otherwise hand a human a list of
+  # instructions addressed to somebody else. That is go-to-k/cdkd#2389 in
+  # miniature, the very defect this hook was rewritten to fix, and the downgrades
+  # added here would have widened it from one path to three.
+  #
+  # Both keep `$push_note` / `$push_line`, which share the three phrases that name
+  # WHICH half of the work is left; only the framing around them changes voice.
+  # (`stop-cleanup-warn.sh` next door has carried a `user_msg` / `model_msg` pair
+  # from the start, for exactly this reason.)
+  user_msg="NOTE: this session's own lane is unmerged -- '$self_branch' is committed but not on origin/main.
+$push_note
+The agent has already been nudged about this lane once, so this repeat is for you: if the session ends
+here, the work stays on the branch and nothing carries it to main. One false positive is expected and is
+cheap to clear -- this repo SQUASH-merges, so an already-merged branch keeps reading as ahead, and
+clearing that one means removing its worktree and deleting the branch rather than opening another PR.
+Every unmerged lane in this checkout:"
+  model_msg="WARNING: YOUR OWN lane is unmerged -- a NOT-CLOSEABLE verdict is a TO-DO LIST, not a stopping point.
 This session's worktree is on '$self_branch', which is committed but not on origin/main, so you are not
 done: rebase, run the gates, open the PR, merge. $push_line
 If you are ending the turn with nothing that will re-invoke you, the honest label is STOPPED, not WAITING.
@@ -238,7 +274,10 @@ a lane at all.
 Every unmerged lane in this checkout:"
   channel="ctx"
 else
-  msg="NOTE: unmerged lane(s) exist in this checkout, none of them this session's.
+  # Only ever emitted on the user channel, so it needs no twin -- and it is
+  # already written for a human: the model cannot act on another session's lane.
+  model_msg=""
+  user_msg="NOTE: unmerged lane(s) exist in this checkout, none of them this session's.
 This session's worktree is not among them, so there is likely nothing here for it to do; they belong to
 other sessions, or are already merged (this repo SQUASH-merges, so a merged branch never becomes an
 ancestor of origin/main and keeps reading as ahead -- clearing one means removing its worktree and
@@ -347,9 +386,12 @@ elif [ "$channel" = "ctx" ]; then
     # `unpushed -> pushed` compares against a stale half and goes silent. Only
     # the CHANNEL branches on `arm`.
     #
-    # `2>/dev/null` precedes the write redirect: applied the other way round,
-    # bash has already replaced fd 2 with the tmp file when it fails to open it,
-    # and reports the failure on the hook's real stderr.
+    # `2>/dev/null` precedes the write redirect, and the order is the whole point.
+    # Redirections are applied left to right, and the one that FAILS here is the
+    # fd-1 open of `$tmp`. Written `>"$tmp" 2>/dev/null` that open is attempted
+    # while fd 2 is still the REAL stderr, so "Permission denied" is reported there
+    # -- from an advisory hook, on every turn. Putting `2>/dev/null` first silences
+    # fd 2 before the open that can fail.
     tmp="${state_file}.$$"
     if printf '%s\t%s\t%s\n' "$sid" "$subject" "$(date +%s)" 2>/dev/null >"$tmp"; then
       if mv -f "$tmp" "$state_file" 2>/dev/null; then
@@ -368,6 +410,15 @@ elif [ "$channel" = "ctx" ]; then
   # someone else) costs the MODEL channel, not the warning itself.
   [ "$persisted" = "1" ] || arm=0
   [ "$arm" = "1" ] || channel="sys"
+fi
+
+# The channel decides WHICH text, not just which field: `additionalContext`
+# carries the model text and `systemMessage` the user one, so a downgrade changes
+# voice as well as audience.
+if [ "$channel" = "ctx" ]; then
+  msg="$model_msg"
+else
+  msg="$user_msg"
 fi
 
 MSG="$msg

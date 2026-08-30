@@ -31,9 +31,30 @@ fail_log=""
 # stubbed-PATH case, whose `command -v bash` now resolves here -- is the fenced
 # interpreter. Default /bin/bash (3.2 on macOS, whatever the distro ships
 # elsewhere); override with HOOK_BASH to take the other tally.
+#
+# An explicitly set HOOK_BASH that is not executable is a FATAL error rather than a
+# silent fall back to PATH bash: falling back hides a typo in the one setting this
+# fence exists to pin, and the run would then report a tally under an interpreter
+# nobody asked for. Only the built-in DEFAULT may fall back, since a machine
+# without /bin/bash is a fact rather than a mistake.
+#
+# The shim is trapped for removal the moment it exists, not once the sandbox is
+# built: an early failure between the two leaked a directory per run.
 SHIMDIR="$(cd "$(mktemp -d)" && pwd -P)"
-HOOK_BASH="${HOOK_BASH:-/bin/bash}"
-[ -x "$HOOK_BASH" ] || HOOK_BASH="$(command -v bash)"
+trap 'rm -rf "$SHIMDIR"' EXIT
+if [ -n "${HOOK_BASH:-}" ]; then
+  if [ ! -x "$HOOK_BASH" ]; then
+    printf 'FATAL - HOOK_BASH is not an executable: %s\n' "$HOOK_BASH" >&2
+    exit 2
+  fi
+else
+  HOOK_BASH=/bin/bash
+  [ -x "$HOOK_BASH" ] || HOOK_BASH="$(command -v bash)"
+  [ -n "$HOOK_BASH" ] && [ -x "$HOOK_BASH" ] || {
+    printf 'FATAL - no usable bash found for the hook interpreter\n' >&2
+    exit 2
+  }
+fi
 ln -sf "$HOOK_BASH" "$SHIMDIR/bash"
 PATH="$SHIMDIR:$PATH"
 export PATH
@@ -85,8 +106,28 @@ run_hook_keep() {
   printf '%s' "$?" > "$RC_FILE"
 }
 
+# The same run with the session id supplied ONLY through the environment, and no
+# `session_id` in the payload. That is a SECOND source for `sid`, reached by a line
+# that sits after the JSON parse -- so nothing in this file exercised it: every
+# payload above carries `session_id`, which means the environment fallback had zero
+# coverage and its value reached the cadence record unnormalised.
+run_hook_env() { # <dir> <hook> <session-id-from-env> [stdin]
+  local dir="$1" hook="$2" sess="$3" stdin="${4-}"
+  [ -n "$stdin" ] || stdin='{}'
+  printf '%s' "$stdin" | (cd "$dir" && CLAUDE_CODE_SESSION_ID="$sess" bash "$hook")
+  printf '%s' "$?" > "$RC_FILE"
+}
+
 # `rc_of` -> the status of the most recent run_hook call.
 rc_of() { cat "$RC_FILE"; }
+
+# `has <output> <grep-args...>` -> yes | no. Used by the VOICE cases, where the
+# question is which of two texts the payload carries rather than which field.
+has() {
+  local out="$1"
+  shift
+  printf '%s' "$out" | grep -q "$@" && echo yes || echo no
+}
 
 # `lanes_in <output>` -> how many branch lines the payload named, whichever
 # channel carried it. Deliberately channel-AGNOSTIC: the cases below split into
@@ -420,6 +461,18 @@ out=$(run_hook "$REPO/wt-two" "$WT_TWO_HOOK" '{"stop_hook_active": "true"}')
 check "the string \"true\" does count as one" "sys" "$(channel_of "$out")"
 check "...and a continuation still enumerates the lanes for the user" "2" "$(lanes_in "$out")"
 
+# --- ...and the NON-boolean shapes must be read the same way `stop-cleanup-warn.sh`
+# reads them. That hook parses this field with `jq`, this one with `python3`, and
+# the two spellings do not agree by default -- jq truthiness makes `0` a
+# continuation, `$f == true` makes `1` an ordinary turn, and Python does neither.
+# Python's rule is the one both now follow, so these pin this side of the pair.
+out=$(run_hook "$REPO/wt-two" "$WT_TWO_HOOK" '{"stop_hook_active": 1}')
+check "a TRUTHY number counts as a continuation" "sys" "$(channel_of "$out")"
+out=$(run_hook "$REPO/wt-two" "$WT_TWO_HOOK" '{"stop_hook_active": 0}')
+check "...and a falsy one does not" "ctx" "$(channel_of "$out")"
+out=$(run_hook "$REPO/wt-two" "$WT_TWO_HOOK" '{"stop_hook_active": []}')
+check "...nor does an empty array" "ctx" "$(channel_of "$out")"
+
 # --- Malformed / absent stdin must not take the warning down with it. The hook
 # reads stdin only to find three fields; a harness that sends nothing parseable
 # is not a reason to go quiet about an unmerged lane. ---
@@ -472,8 +525,25 @@ B1="{\"cwd\": \"$REPO/wt-cad-b\", \"session_id\": \"sess-one\"}"
 clear_nudge_records
 out=$(run_hook_keep "$REPO" "$RUN" "$A1")
 check "first sight of a lane nudges the model" "ctx" "$(channel_of "$out")"
+# The armed half is the control for the voice cases below: without it a hook that
+# sent the USER text on both channels would satisfy every "not addressed to the
+# agent" check and lose the nudge's entire content.
+check "...and the model half is the text written AT the agent" "yes" \
+  "$(has "$out" -F 'WARNING: YOUR OWN lane is unmerged')"
 out=$(run_hook_keep "$REPO" "$RUN" "$A1")
 check "the same lane again does NOT force a second turn" "sys" "$(channel_of "$out")"
+# --- ...and the downgrade changes VOICE, not only audience. The model text is
+# written AT the agent ("YOUR OWN lane", "rebase, run the gates", "the honest label
+# is STOPPED"); routing it to `systemMessage` hands a human a list of instructions
+# addressed to somebody else, which is go-to-k/cdkd#2389 in miniature -- the very
+# defect this hook was rewritten to fix. There are THREE paths that downgrade a
+# self-lane warning (this cadence repeat, an unpersistable record, a resumed pass)
+# and each is checked, since one shared emitter is exactly the shape where fixing
+# one path leaves the others.
+check "...and the downgraded text carries nothing addressed to the agent" "no" \
+  "$(has "$out" -E 'YOUR OWN lane|rebase, run the gates|the honest label is STOPPED')"
+check "...while still naming the lane as the session's own" "yes" \
+  "$(has "$out" -F "own lane is unmerged -- 'feat/cad-a'")"
 # The downgrade must not be a MUTE. Choosing `systemMessage` over silence is the
 # whole point -- the human keeps seeing the lane -- and a hook that simply
 # exited would also read as "not ctx" and pass the line above.
@@ -591,8 +661,9 @@ chmod 555 "$CAD_A_GITDIR"
 out=$(run_hook_keep "$REPO" "$RUN" "$A1")
 chmod 755 "$CAD_A_GITDIR"
 check "an unpersistable record downgrades to the user channel" "sys" "$(channel_of "$out")"
-check "...but the user is still told which lane" "yes" \
-  "$(printf '%s' "$out" | grep -qF 'feat/cad-a' && echo yes || echo no)"
+check "...but the user is still told which lane" "yes" "$(has "$out" -F 'feat/cad-a')"
+check "...in the user's voice, not the agent's" "no" \
+  "$(has "$out" -E 'YOUR OWN lane|rebase, run the gates')"
 
 # --- The continuation flag outranks the cadence: the harness has already resumed
 # once inside this turn, so even a freshly-armed subject drops the MODEL half. It
@@ -606,8 +677,9 @@ B3_PLAIN="{\"cwd\": \"$REPO/wt-cad-b\", \"session_id\": \"sess-three\"}"
 clear_nudge_records
 out=$(run_hook_keep "$REPO" "$RUN" "$B3_RESUMED")
 check "a resumed pass drops the model half but still tells the user" "sys" "$(channel_of "$out")"
-check "...and still names the lane" "yes" \
-  "$(printf '%s' "$out" | grep -qF 'feat/cad-b' && echo yes || echo no)"
+check "...and still names the lane" "yes" "$(has "$out" -F 'feat/cad-b')"
+check "...in the user's voice, not the agent's" "no" \
+  "$(has "$out" -E 'YOUR OWN lane|rebase, run the gates')"
 # No nudge was spent, so none may be recorded: a record written here would consume
 # this subject's one model nudge on a pass that reached the model with nothing.
 check "...and it wrote no cadence record" "absent" \
@@ -632,6 +704,27 @@ out=$(run_hook_keep "$REPO" "$RUN" "$NL_PAYLOAD")
 check "a cwd containing a newline is not attributed to a lane" "sys" "$(channel_of "$out")"
 check "...and no record was keyed on a fragment of the path" "absent" \
   "$([ -e "$CAD_B_STATE" ] && echo present || echo absent)"
+
+# --- The session id read from the ENVIRONMENT. It is a SECOND source, consulted
+# by a line that sits after the JSON parse, so the normalisation applied inside the
+# parse never touched it -- and every other payload in this file carries a
+# `session_id`, which left that line with no coverage at all. It reaches a
+# tab-separated record read back with `IFS=<TAB> read`, where a tab is IFS
+# *whitespace*: a leading empty field is dropped and a run collapses, so the
+# read-back never compares equal and the nudge never arms down. Measured before the
+# fix: `s1` gave `ctx, sys, sys` while `<TAB>abc`, `a<TAB>b` and `a<NL>b` each gave
+# `ctx, ctx, ctx` -- an unbounded `additionalContext` against the 8-block cap. The
+# well-formed id is included as the control that these measure the env path at all.
+ENV_PAYLOAD="{\"cwd\": \"$REPO/wt-cad-b\"}"
+env_n=0
+for esid in 's1' "$(printf '\tabc')" "$(printf 'a\tb')" "$(printf 'a\nb')"; do
+  env_n=$((env_n + 1))
+  clear_nudge_records
+  out=$(run_hook_env "$REPO" "$RUN" "$esid" "$ENV_PAYLOAD")
+  check "an env-supplied session id nudges the model once [$env_n]" "ctx" "$(channel_of "$out")"
+  out=$(run_hook_env "$REPO" "$RUN" "$esid" "$ENV_PAYLOAD")
+  check "...and the cadence still bounds it [$env_n]" "sys" "$(channel_of "$out")"
+done
 
 git -C "$REPO" worktree remove --force "$REPO/wt-cad-a"
 git -C "$REPO" worktree remove --force "$REPO/wt-cad-b"

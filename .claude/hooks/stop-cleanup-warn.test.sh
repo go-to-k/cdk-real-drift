@@ -24,9 +24,30 @@ FAIL=0
 # stubbed-PATH cases, whose `command -v bash` now resolves here -- is the fenced
 # interpreter. Default /bin/bash (3.2 on macOS, whatever the distro ships
 # elsewhere); override with HOOK_BASH to take the other tally.
+#
+# An explicitly set HOOK_BASH that is not executable is a FATAL error rather than a
+# silent fall back to PATH bash: falling back hides a typo in the one setting this
+# fence exists to pin, and the run would then report a tally under an interpreter
+# nobody asked for. Only the built-in DEFAULT may fall back, since a machine
+# without /bin/bash is a fact rather than a mistake.
+#
+# The shim is trapped for removal the moment it exists, not once the sandbox is
+# built: an early failure between the two leaked a directory per run.
 SHIMDIR="$(cd "$(mktemp -d)" && pwd -P)"
-HOOK_BASH="${HOOK_BASH:-/bin/bash}"
-[ -x "$HOOK_BASH" ] || HOOK_BASH="$(command -v bash)"
+trap 'rm -rf "$SHIMDIR"' EXIT
+if [ -n "${HOOK_BASH:-}" ]; then
+  if [ ! -x "$HOOK_BASH" ]; then
+    printf 'FATAL - HOOK_BASH is not an executable: %s\n' "$HOOK_BASH" >&2
+    exit 2
+  fi
+else
+  HOOK_BASH=/bin/bash
+  [ -x "$HOOK_BASH" ] || HOOK_BASH="$(command -v bash)"
+  [ -n "$HOOK_BASH" ] && [ -x "$HOOK_BASH" ] || {
+    printf 'FATAL - no usable bash found for the hook interpreter\n' >&2
+    exit 2
+  }
+fi
 ln -sf "$HOOK_BASH" "$SHIMDIR/bash"
 PATH="$SHIMDIR:$PATH"
 export PATH
@@ -349,12 +370,33 @@ check2 "the string \"false\" does not count as a continuation" "both" "$(channel
 # truthiness read made this hook treat a malformed payload as a continuation while
 # stop-unmerged-lane-warn.sh next door treated it as an ordinary turn. Measured:
 # `"stop_hook_active": 0` went fully silent here and fired there.
+# ...nor may a NON-boolean be read differently from how the sibling hook reads it.
+# `stop-unmerged-lane-warn.sh` parses the same field with `python3`, so the pair has
+# to agree on what a malformed payload MEANS, and the two obvious jq spellings each
+# get it wrong in an opposite direction: plain truthiness makes `0`, `[]` and `{}`
+# continuations (Python says no), while `$f == true` makes `1`, `[1]` and `{"a":1}`
+# ordinary turns (Python says yes). Both directions are measured, and BOTH are
+# fenced here -- the falsy shapes must fire, the truthy ones must not. The truthy
+# half is the dangerous one for THIS hook: reading a resumed pass as fresh emits
+# `additionalContext` again and spins the turn against the 8-block cap.
 rm -f "$STATE"
 out=$(run_cleanup s1 ',"stop_hook_active":0')
-check2 "a NUMERIC stop_hook_active is not a continuation" "both" "$(channel_of "$out")"
+check2 "a FALSY number is not a continuation" "both" "$(channel_of "$out")"
 rm -f "$STATE"
 out=$(run_cleanup s1 ',"stop_hook_active":{}')
 check2 "...and neither is an empty object" "both" "$(channel_of "$out")"
+rm -f "$STATE"
+out=$(run_cleanup s1 ',"stop_hook_active":[]')
+check2 "...nor an empty array" "both" "$(channel_of "$out")"
+rm -f "$STATE"
+out=$(run_cleanup s1 ',"stop_hook_active":1')
+check2 "a TRUTHY number IS a continuation, as python3 reads it next door" "sys" "$(channel_of "$out")"
+rm -f "$STATE"
+out=$(run_cleanup s1 ',"stop_hook_active":[1]')
+check2 "...and so is a non-empty array" "sys" "$(channel_of "$out")"
+rm -f "$STATE"
+out=$(run_cleanup s1 ',"stop_hook_active":{"a":1}')
+check2 "...and a non-empty object" "sys" "$(channel_of "$out")"
 
 # --- Nothing armed: no payload at all, on either channel. The channel cases
 # above all run armed, so without this a hook that emitted unconditionally would
