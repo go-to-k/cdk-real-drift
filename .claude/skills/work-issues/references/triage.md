@@ -149,8 +149,10 @@ restating it, because a second verbatim copy of a two-line command is the drift
 shape section 10-b fences elsewhere:
 
 ```bash
+LANE_TREE=$(cd "$(git rev-parse --show-toplevel)" && pwd -P)   # capture it HERE
 [ "$(cd "$(git rev-parse --git-dir)" && pwd -P)" \
- = "$(cd "$(git rev-parse --git-common-dir)" && pwd -P)" ] && echo MAIN-CHECKOUT || echo IN-PLACE
+ = "$(cd "$(git rev-parse --git-common-dir)" && pwd -P)" ] \
+  && echo "MAIN-CHECKOUT (tree $LANE_TREE)" || echo "IN-PLACE (LANE_TREE $LANE_TREE)"
 ```
 
 Equal only in the main checkout: a linked worktree's `--git-dir` is
@@ -158,7 +160,18 @@ Equal only in the main checkout: a linked worktree's `--git-dir` is
 RELATIVE `.git` answer and macOS's `/tmp` -> `/private/tmp`. Run it INSIDE the
 repo: outside one, both substitutions are empty and `cd ""` returns 0, so it
 prints MAIN-CHECKOUT — a wrong verdict, caught only by the next git command
-failing loudly. `IN-PLACE` means
+failing loudly.
+
+**`LANE_TREE` is the whole reason the path is captured on THIS line**, and it is
+not decoration on the mode. This instant is the one moment the cwd is provably
+the tree whose mode is being decided; every later stage runs in a fresh shell
+whose cwd may have silently reset to the main checkout (appendix, "Bash cwd
+silent reset"). So **state `LANE_TREE` in the opening report beside the mode**,
+verbatim and absolute — that report is its ONLY recorded copy, and §4, §5 and
+§10 all hand it to `git -C`. A later stage that re-derives it instead, from
+`$(git rev-parse --show-toplevel)` or from `pwd`, resolves against the reset cwd
+and answers "the main checkout" in precisely the case the `-C` exists to guard:
+the guard then degrades into the bug it guards. `IN-PLACE` means
 this run was launched inside a worktree someone else created (an Orca/ADE
 workspace, a stray `cd`), so it has exactly ONE working tree: **take ONE issue
 and finish it** — a second lane would need a worktree nested inside this one,

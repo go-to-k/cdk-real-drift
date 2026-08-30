@@ -249,12 +249,17 @@ the merged lane branch cannot be reused. `B` is re-assigned because a separate
 fenced block is a separate shell (section 9's `MAIN` trap), and the switch is
 addressed with `-C` for the reason section 5 gives: no gate in this repo refuses
 a branch switch, so a bare one after a cwd reset would take the MAIN checkout
-off `main`.
+off `main`. Substitute the absolute path section 3's probe printed as
+`LANE_TREE` and the opening report recorded — captured while the cwd was
+provably right — and do NOT re-derive it here from `$(git rev-parse
+--show-toplevel)` or `pwd`, which resolve against the reset cwd and hand the
+guard the very tree it is guarding against. Keep the `&&`: unchained, a failed
+`fetch` still branches, off a stale `origin/main`.
 
 ```bash
 B=chore/work-issues-retro-$(date +%Y%m%d)
-git -C "<lane-worktree-abs-path>" fetch origin
-git -C "<lane-worktree-abs-path>" switch -c "$B" origin/main
+git -C "<LANE_TREE>" fetch origin \
+  && git -C "<LANE_TREE>" switch -c "$B" origin/main
 ```
 
 - `chore:` prefix — agent tooling, not `src/**`; a `fix:` / `feat:` prefix

@@ -58,7 +58,7 @@ const MAX_REFERENCE_FILE_BYTES = 64_000; // largest stage file measured 55,137 B
 // Re-measured 2026-08-31. work-issues: corpus 109,106 B, largest implement.md
 // 22,600 B, so the property needs a floor above 109,106 - 22,600 = 86,506 --
 // which the 60,000 held here had stopped providing as the stage files grew.
-// 89,000 restores it: strictly TIGHTER, and no upper bound was touched. The
+// 89,000 restored it: strictly TIGHTER, and no upper bound was touched. The
 // older note declined such a floor for work-issues because it leaves little
 // compression room, and that is still the trade (~20 KB of room below the
 // floor); the call is reversed to match the sibling cdk-local (88,000 on a
@@ -66,12 +66,18 @@ const MAX_REFERENCE_FILE_BYTES = 64_000; // largest stage file measured 55,137 B
 // drop is not a weaker guard but a SILENT one. A genuine compression pass
 // re-derives the floor downward in the same commit -- that stays legal; what
 // the floor stops is a deletion with no re-derivation at all.
+// Re-derived again 2026-08-31 (review round 2, after the LANE_TREE capture):
+// corpus 111,362 B, largest implement.md 23,436 B, so the floor must exceed
+// 111,362 - 23,436 = 87,926. 89,000 still HELD -- by 1,074 B, and is raised to
+// 90,000 anyway, because the MARGIN is what decays: cdk-local was left at 759 B
+// of it one day and had lapsed the next. 90,000 leaves 2,074 B of margin and
+// ~21 KB of compression room below the floor.
 // hunt-bugs stays at 60,000: 88,426 - 41,922 = 46,504 < 60,000, so its property
 // still holds. Re-measure both numbers for each skill whenever a stage file
 // changes size materially -- the property is silent when it lapses.
 const SPLIT_SKILLS: Record<string, { minFiles: number; minCorpusBytes: number }> = {
   // 8 files / 125,139 B measured at the split (2026-08-28); largest 26,621 B; 94,136 B post-compression
-  'work-issues': { minFiles: 6, minCorpusBytes: 89_000 },
+  'work-issues': { minFiles: 6, minCorpusBytes: 90_000 },
   // 7 files / 108,940 B measured at the split (2026-08-28); largest 55,137 B; 87,180 B post-compression
   'hunt-bugs': { minFiles: 5, minCorpusBytes: 60_000 },
 };

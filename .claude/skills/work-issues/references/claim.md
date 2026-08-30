@@ -10,9 +10,11 @@ holds. The competing-claim/PR re-check below also runs in the parent, right
 before dispatch. Everything else in this section is unchanged.
 
 **An IN-PLACE run names the tree it is STANDING IN** (SKILL.md "Launch mode"):
-the `<ref>` is the branch and worktree already checked out — read them out of
-git rather than composing a name (`git branch --show-current`,
-`git rev-parse --show-toplevel`) — because nothing new will be created, and a
+the `<ref>` is the branch and worktree already checked out, and neither is
+composed: the worktree is the `LANE_TREE` path §3's probe captured and the
+opening report recorded — never re-derived from `git rev-parse --show-toplevel`
+here, for §5's reason — and the branch is
+`git -C "<LANE_TREE>" branch --show-current`. Nothing new will be created, and a
 claim pointing at a worktree that never appears is exactly what §9's ownership
 probes misread. Such a run claims ONE issue (§3), not a set.
 

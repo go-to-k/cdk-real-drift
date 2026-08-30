@@ -161,28 +161,47 @@ not. If the tree is detached, or its branch has already merged (reusing it
 would push an orphan ref), take a fresh branch WITHOUT leaving the tree:
 
 ```bash
-# `-C <this lane's own absolute path>` is load-bearing HERE in a way it is not
-# in the siblings. Nothing in this repo gates a branch switch: `branch-gate`
-# fires on `git commit` / `git push` and only when the target tree is on
-# `main` / `master`, `worktree-guard` fires on Edit/Write into the MAIN
-# checkout, and there is no `main-tree-branch-gate` here at all -- so a BARE
-# `git switch -c` run after the shell's cwd has silently reset to the main
-# checkout (the appendix's cwd-reset failure, and the reason section 9 pulls
-# through -C) takes the MAIN checkout off `main`, unblocked, in a tree other
-# lanes are sharing. Pass the ABSOLUTE path this run recorded when it adopted
-# the tree; do NOT re-derive it as `$(git rev-parse --show-toplevel)`, which
-# resolves against the same reset cwd and inherits the bug it is guarding.
-git -C "<lane-worktree-abs-path>" fetch origin
-git -C "<lane-worktree-abs-path>" switch -c wt-<name> origin/main
+# `-C <LANE_TREE>` is load-bearing HERE in a way it is not in the siblings.
+# Nothing in this repo gates a branch switch: `branch-gate` fires on
+# `git commit` / `git push` and only when the target tree is on `main` /
+# `master`, `worktree-guard` fires on Edit/Write into the MAIN checkout, and
+# there is no `main-tree-branch-gate` here at all -- so a BARE `git switch -c`
+# run after the shell's cwd has silently reset to the main checkout (the
+# appendix's cwd-reset failure, and the reason section 9 pulls through -C)
+# takes the MAIN checkout off `main`, unblocked, in a tree other lanes are
+# sharing. Substitute the ABSOLUTE path section 3's probe printed as
+# `LANE_TREE` and the opening report recorded -- the one value captured while
+# the cwd was provably right. Do NOT re-derive it here as
+# `$(git rev-parse --show-toplevel)` or `pwd`: both resolve against the same
+# reset cwd, so the guard would answer "the main checkout" in exactly the case
+# it exists for, and inherit the bug it is guarding.
+#
+# The `&&` is load-bearing too: unchained, a failed `fetch` still branches, off
+# a stale `origin/main` -- the class `stale-base-gate.sh` exists to catch, and
+# the one the paragraph above this block is about.
+git -C "<LANE_TREE>" fetch origin \
+  && git -C "<LANE_TREE>" switch -c wt-<name> origin/main
 ```
 
 **Confirm the tree is YOURS before adopting it.** A stray `cd` into a peer's
 live lane looks exactly like a workspace handed to you. This repo ships no
 per-worktree session-owner sentinel (the sibling cdkd has one; do not go
-looking for it here), so the probes are `git status --porcelain` (uncommitted
-work you did not write), the branch's own history and PR
-(`git log --oneline -3`, `gh pr list --state all --head "$(git branch --show-current)"`),
-and the issue thread for a claim naming this branch. Read them under §9's rule
+looking for it here), so the probes are the three below plus the issue thread,
+read for a claim naming this branch:
+
+```bash
+git -C "<LANE_TREE>" status --porcelain          # work you did not write
+git -C "<LANE_TREE>" log --oneline -3            # whose branch this is
+gh pr list --state all \
+  --head "$(git -C "<LANE_TREE>" branch --show-current)"
+```
+
+**Every one of them takes `-C <LANE_TREE>` for the same reason the switch above
+does, and omitting it costs more here than a wrong branch**: a bare probe run
+after a cwd reset describes the MAIN checkout while READING as a description of
+this lane, so it answers "clean, no claim, no PR" about a tree nobody asked
+about — and the run then adopts a peer's live lane believing it checked. Read
+them under §9's rule
 that every ownership signal establishes LIFE and never absence: any one of them
 saying "someone is here" means STOP and report — never nest a worktree inside a
 peer's lane to get out of it.

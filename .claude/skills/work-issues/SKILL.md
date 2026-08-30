@@ -27,7 +27,9 @@ workspace, a stray `cd` into `.worktrees/<x>`): `git worktree add` then NESTS
 one, and deleting the outer workspace takes the inner directory, its uncommitted
 work and its git registration with it (go-to-k/cdk-real-drift#1842). Run the
 one-line probe at the top of §3 — the ONLY copy of it — before stage 0, and
-state the answer in the opening report.
+state BOTH of its answers in the opening report — the mode, and the absolute
+`LANE_TREE` path it captured, which §4, §5 and §10 all hand to `git -C` (§3 says
+why that path is recorded rather than re-derived later).
 
 `IN-PLACE` changes four things: take ONE issue (§3); claim the branch/worktree
 already checked out (§4); add no worktree and work on the branch already here,
