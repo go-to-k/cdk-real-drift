@@ -669,6 +669,17 @@ check "an unpersistable record downgrades to the user channel" "sys" "$(channel_
 check "...but the user is still told which lane" "yes" "$(has "$out" -F 'feat/cad-a')"
 check "...in the user's voice, not the agent's" "no" \
   "$(has "$out" -E 'YOUR OWN lane|rebase, run the gates')"
+# --- ...and it does not tell the human the AGENT has been told. That claim is
+# the delta's central fix and NOTHING pinned it: the user text is one string
+# reaching all three downgrade paths, and "the agent has already been nudged
+# about this lane once, so this repeat is for you" is true of the cadence repeat
+# ONLY. HERE it is worst -- the model half was dropped precisely BECAUSE the
+# record cannot be written, so the agent will never be told and the false claim
+# would repeat on every later turn. The voice checks above cannot see it: the
+# sentence names no agent-voice phrase and does name the lane, so restoring it
+# leaves them green. Measured: with the sentence put back, all 93 cases passed. ---
+check "...and does not claim the agent has already been nudged" "no" \
+  "$(has "$out" -E 'already been nudged|already been told|this repeat is for you')"
 
 # --- The continuation flag outranks the cadence: the harness has already resumed
 # once inside this turn, so even a freshly-armed subject drops the MODEL half. It
@@ -685,6 +696,13 @@ check "a resumed pass drops the model half but still tells the user" "sys" "$(ch
 check "...and still names the lane" "yes" "$(has "$out" -F 'feat/cad-b')"
 check "...in the user's voice, not the agent's" "no" \
   "$(has "$out" -E 'YOUR OWN lane|rebase, run the gates')"
+# The second of the two paths on which "the agent has already been nudged" is
+# false: no nudge was spent here at all -- the subject is freshly armed and the
+# model half is dropped only because the harness has already resumed once inside
+# this turn. See the unpersistable case above for why the voice checks cannot
+# stand in for this one.
+check "...and does not claim the agent has already been nudged" "no" \
+  "$(has "$out" -E 'already been nudged|already been told|this repeat is for you')"
 # No nudge was spent, so none may be recorded: a record written here would consume
 # this subject's one model nudge on a pass that reached the model with nothing.
 check "...and it wrote no cadence record" "absent" \
@@ -730,6 +748,47 @@ for esid in 's1' "$(printf '\tabc')" "$(printf 'a\tb')" "$(printf 'a\nb')"; do
   out=$(run_hook_env_keep "$REPO" "$RUN" "$esid" "$ENV_PAYLOAD")
   check "...and the cadence still bounds it [$env_n]" "sys" "$(channel_of "$out")"
 done
+
+# --- An EXPLICITLY EMPTY payload on the env path. `run_hook` has carried this
+# case from the start ("fires when stdin is empty"); the env helper had none,
+# which is why its payload guard could be written as `[ -n "$stdin" ]` -- a form
+# that silently REPLACES an empty payload with `{}` -- with nothing to notice.
+#
+# Two cases, because the obvious one alone does not fence the guard. Through the
+# real hook, empty stdin and `{}` are INDISTINGUISHABLE by construction: the
+# parse is `json.loads(os.environ.get("HOOK_INPUT") or "{}")`, so an empty string
+# IS `{}` there. Measured -- reverting the guard to `[ -n "$stdin" ]` leaves the
+# case below green. It is still worth having (the hook must survive an empty
+# payload on this path, and nothing said so), but it is documentation, not a
+# fence.
+clear_nudge_records
+out=$(run_hook_env_keep "$REPO" "$RUN" 'sess-empty' '')
+# By NAME rather than by count: this sits late in the file, after several
+# worktrees have been added and removed, so a total would pass or fail on its
+# position -- the order-dependence `clear_nudge_records` exists to remove,
+# arriving through the assertion instead of through the record.
+check "an empty payload on the env path still enumerates the lanes" "yes" \
+  "$(has "$out" -F 'feat/cad-b')"
+check "...and claims no lane it cannot attribute" "sys" "$(channel_of "$out")"
+check "...and exits 0" "0" "$(rc_of)"
+
+# The fence itself, aimed at the HELPER rather than at the hook: point it at a
+# probe that reports the byte count of the stdin it was handed. `$#` keeps an
+# explicit empty payload empty (0 bytes) and still defaults an OMITTED one to
+# `{}` (2 bytes); `[ -n "$stdin" ]` cannot tell the two apart and sends `{}`
+# both times. Both polarities are asserted, so neither a guard that always
+# defaults nor one that never does can pass.
+STDIN_PROBE="$SANDBOX/stdin-probe.sh"
+cat > "$STDIN_PROBE" <<'PROBE'
+#!/usr/bin/env bash
+printf 'bytes=%s
+' "$(cat | wc -c | tr -d ' ')"
+PROBE
+chmod +x "$STDIN_PROBE"
+out=$(run_hook_env_keep "$REPO" "$STDIN_PROBE" 'sess-empty' '')
+check "an explicitly empty env payload reaches the hook empty" "bytes=0" "$out"
+out=$(run_hook_env_keep "$REPO" "$STDIN_PROBE" 'sess-empty')
+check "...while an OMITTED env payload still defaults to {}" "bytes=2" "$out"
 
 git -C "$REPO" worktree remove --force "$REPO/wt-cad-a"
 git -C "$REPO" worktree remove --force "$REPO/wt-cad-b"

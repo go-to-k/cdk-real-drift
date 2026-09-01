@@ -191,10 +191,26 @@ subject="${subject%,}"
 # `$t` can never be "null" and such an arm is a fence no case could trip --
 # which this file argues against a few lines down.
 #
-# One shape still diverges, in the safe direction: `1e-999` reads truthy here
-# (jq preserves the literal, so `$f == 0` is false) and falsy in Python, which
-# underflows it to 0.0. The cost is the money hook going QUIET to the model on a
-# value nothing produces, rather than spinning.
+# One shape still diverges, and it has TWO sides -- which is the point, because
+# the reason this ladder exists at all is that the two Stop hooks must not
+# disagree about what a payload MEANS. `1e-999` reads truthy here (jq 1.8
+# preserves the literal, so `$f == 0` is false) and falsy in
+# `stop-unmerged-lane-warn.sh`, whose Python underflows it to 0.0. Measured on
+# jq-1.8.1 / CPython 3: this ladder answers `1` (resumed) and
+# `json.loads('1e-999')` is `0.0`, falsy (not resumed). So on ONE payload:
+#
+#   this hook   reads RESUMED     -> goes quiet to the model
+#   lane hook   reads NOT resumed -> spends its model nudge
+#
+# Naming only the first half understates it: the divergence is not "one hook is
+# conservative" but "the two hooks disagree", which is exactly the property the
+# rest of this ladder was written to guarantee. It is left as is because both
+# halves are bounded. Going quiet costs a nudge that a later ordinary turn will
+# emit anyway; the lane hook's nudge is bounded by its per-subject cadence
+# record, so it fires once rather than every turn -- neither side spins. And no
+# producer emits `1e-999`: the harness sends a JSON boolean. Special-casing it
+# would mean teaching jq to underflow, a rule with no other use, to make two
+# hooks agree about a value neither will ever see.
 active=$(printf '%s' "$input" | jq -r '
   (.stop_hook_active // false) as $f
   | ($f | type) as $t

@@ -433,6 +433,18 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   shared emitter, which is precisely the shape where fixing one path leaves the
   others; each is fenced by its own case.
 
+  The same one-emitter-three-paths shape also reproduces in the TEXT rather than
+  in the code, and it needs its own assertion. The user text once said "the agent
+  has already been nudged about this lane once, so this repeat is for you" —
+  true of the cadence repeat and false of the other two: a resumed pass spends no
+  nudge at all, and an unpersistable record drops the model half precisely
+  BECAUSE the record cannot be kept, so the agent is never told and the claim
+  would repeat every turn. Removing the clause is invisible to the voice checks —
+  the sentence names no agent-voice phrase and does name the lane — so the
+  resumed and unpersistable cases assert the ABSENCE of an "already been nudged"
+  claim as well. Measured: restoring the sentence leaves every other case green
+  and reddens exactly those two.
+
   **The `stop_hook_active` fold follows PYTHON's truthiness in both hooks, and
   neither obvious spelling gets there.** The cleanup hook parses the field with
   `jq` and the lane hook with `python3`, so a malformed payload must not mean two
@@ -443,6 +455,19 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   a resumed pass as fresh and spins the turn. The rule both follow is Python's:
   null, `false`, `0` and an empty container are falsy, every other value is truthy,
   with the textual spellings of `false` folded down first.
+
+  One shape still diverges, and it is recorded with BOTH sides because "the two
+  hooks must not disagree" is the whole reason the ladder exists. `1e-999` reads
+  truthy in jq (jq 1.8 preserves the literal, so `$f == 0` is false) and falsy in
+  Python, which underflows it to `0.0`. Measured on jq-1.8.1 / CPython 3. On that
+  one payload the cleanup hook reads RESUMED and goes quiet to the model, while
+  the lane hook reads NOT resumed and spends its model nudge — so it is a
+  disagreement, not merely one hook being conservative. Left as is because both
+  halves are bounded: the quiet costs a nudge a later ordinary turn emits anyway,
+  and the lane hook's nudge is held to one by its per-subject cadence record, so
+  neither side spins. And no producer emits it — the harness sends a JSON
+  boolean — so special-casing it would mean teaching jq to underflow, a rule with
+  no other use, to reconcile a value neither hook will see.
 
 - **The two Stop hooks then DIVERGE deliberately, and the difference is the
   point.** `stop-unmerged-lane-warn` picks ONE channel by OWNERSHIP: the session's
@@ -461,7 +486,7 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   the token set is unchanged, because money accrues on the clock rather than per
   turn, with the escalated message naming how long the tokens have been armed. Both
   hooks are exercised by `.claude/hooks/stop-cleanup-warn.test.sh` and
-  `.claude/hooks/stop-unmerged-lane-warn.test.sh` (71 and 93 cases), run by
+  `.claude/hooks/stop-unmerged-lane-warn.test.sh` (71 and 100 cases), run by
   `vp run test:hooks`.
 
   **Both suites run the HOOK under an explicitly chosen interpreter, and that is
