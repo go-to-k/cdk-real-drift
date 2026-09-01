@@ -34,7 +34,7 @@ deploy:
 ### 1. Worktree + build
 
 Per CLAUDE.md, never work in the main checkout:
-`git worktree add .worktrees/<name> -b wt-<name> main` →
+`git worktree add .worktrees/<name> -b wt-<name> origin/main` →
 `mise trust .worktrees/<name>/.mise.toml` → `pnpm install` → `vp run build` (the CLI
 runs from `dist/`).
 

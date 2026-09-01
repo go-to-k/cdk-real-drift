@@ -37,6 +37,11 @@ const SETTINGS = path.join(ROOT, '.claude', 'settings.json');
 const REQUIRED: Record<string, string[]> = {
   'check-gate.sh': ['Bash(*git*commit*)'],
   'branch-gate.sh': ['Bash(*git*commit*)', 'Bash(*git*push*)'],
+  // TWO entries, one per verb — never one `Bash(*git*switch*) or Bash(*git*checkout*)`,
+  // which matches nothing (go-to-k/cdk-real-drift#1801). `branch-gate` guards the
+  // SYMPTOM (a commit/push while the tree is on main); this one guards the CAUSE
+  // (the switch that put a feature branch in the shared checkout at all).
+  'main-tree-branch-gate.sh': ['Bash(*git*switch*)', 'Bash(*git*checkout*)'],
   'bughunt-clean-gate.sh': ['Bash(*git*commit*)', 'Bash(*gh*pr*create*)', 'Bash(*gh*pr*merge*)'],
   'stale-base-gate.sh': ['Bash(*git*push*)'],
   'verify-pr-gate.sh': ['Bash(*gh*pr*create*)', 'Bash(*gh*pr*merge*)'],

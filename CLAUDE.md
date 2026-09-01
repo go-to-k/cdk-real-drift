@@ -537,9 +537,16 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   they were alone have collided twice: a README clobber, and a branch created in
   the shared checkout that captured another session's staged R44 commit. Every
   line of work gets its OWN worktree with DISJOINT files:
-  `git worktree add .worktrees/<name> -b wt-<name> main` →
+  `git worktree add .worktrees/<name> -b wt-<name> origin/main` →
   `mise trust .worktrees/<name>/.mise.toml` → `pnpm install` (worktrees have no
-  `node_modules`) → work → run gates + set markers → commit on the branch. The
+  `node_modules`) → work → run gates + set markers → commit on the branch.
+  **`origin/main`, not local `main`**, and this is not cosmetic: local `main`
+  only advances on an explicit pull in the main checkout, so a lane cut from it
+  starts wherever the last pull left off — and `stale-base-gate.sh` opens with
+  `git merge-base --is-ancestor "$base" HEAD || exit 0`, so it is INERT for
+  exactly that lane. Basing on `origin/main` is what turns that gate ON. The
+  `/work-issues` copy of this recipe was corrected in
+  go-to-k/cdk-real-drift#1847; every copy in this repo now agrees. The
   orchestrator integrates by `git checkout <branch> -- <files>` (NEVER `git merge` —
   the leaked cdkd session hooks block it), then `git worktree remove`. The main
   checkout is reserved for integration: `main` checkouts, pulls, and PR plumbing
@@ -553,6 +560,41 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   leave the tree for whoever made it. `/work-issues` computes which case applies
   before its first stage and `/hunt-bugs` points at that probe; do not
   re-implement it here.
+- **A branch switch in the main checkout is now GATED, not merely discouraged.**
+  `.claude/hooks/main-tree-branch-gate.sh` refuses `git switch` / `git checkout`
+  onto a feature branch (and `git switch --detach`, and `git switch -`) when the
+  TARGET working tree is the main checkout, while passing `main` / `master`, a
+  `git checkout [<tree-ish>] -- <pathspec>` file restore, a detached
+  `git checkout <sha>`, `git worktree add`, and every switch made INSIDE a
+  `.worktrees/` lane. **The orchestrator's own `git checkout <branch> -- <files>`
+  integration step passes** — it restores files and leaves HEAD on `main`
+  (measured). Three spellings the sibling gates get wrong are handled here, each
+  measured against real git first: a leading flag is never mistaken for the
+  branch name (`git checkout -f <branch>` is refused, not waved through), and
+  `git checkout <name>` / `git checkout -t origin/<name>` for a branch that
+  exists only on a REMOTE are refused too — git DWIMs both into "create the local
+  branch and switch", which is how a lane's branch usually first appears in a
+  checkout. It is the
+  CAUSE-side twin of `branch-gate`, which fires on the symptom (a commit or push
+  once the tree is already off `main`) — go-to-k/cdk-real-drift#1845. Ported from
+  cdkd / cdk-local in the FIXED per-segment shape: the target tree is resolved
+  from the SAME segment that carries the arguments, so a command spanning two
+  trees is judged per segment. Resolving it once per command was live in both
+  siblings and wrong in both directions — measured here, payload cwd = the main
+  checkout, before the fix and after:
+
+  ```text
+                                                    before  after  want
+    git -C <wt> switch -c a && git switch -c b          0      2     2
+    git -C <wt> checkout -b a && git checkout -b b      0      2     2
+    git switch main && git -C <wt> switch -c a          2      0     0
+  ```
+
+  The first two let a branch be created in the SHARED checkout unjudged; the
+  third refused the worktree branch creation the convention mandates. Exercised
+  by `.claude/hooks/main-tree-branch-gate.test.sh` (54 cases) under an explicitly
+  pinned interpreter, `/bin/bash` by default — see the fence note above.
+
 - **All changes go through a pull request — never commit directly to `main`.**
   Branch (or worktree branch) → run the gates + set markers → commit → push →
   `gh pr create`. The reviewer re-reviews the PR diff before merge. cdkd's

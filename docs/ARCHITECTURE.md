@@ -1424,7 +1424,10 @@ check` green). The earlier `TS2591 'process'` errors came from oxc's type-aware
    `vp run check` + test + build; `release.yml` semantic-release; `pr-title-check.yml`),
    `.markgate.yml` (check/docs/verify-pr), `.claude/skills/{check,check-docs,verify-pr}`,
    the `.claude/hooks/` suite (+ `.claude/settings.json`) — `check-gate`,
-   `branch-gate`, `verify-pr-gate`, `ci-green-gate`, `stale-base-gate`,
+   `branch-gate`, `main-tree-branch-gate` (refuses a `git switch` / `git checkout`
+   onto a feature branch when the target tree is the MAIN checkout — the
+   cause-side twin of `branch-gate`, go-to-k/cdk-real-drift#1845),
+   `verify-pr-gate`, `ci-green-gate`, `stale-base-gate`,
    `non-english-text-gate`, `worktree-guard`, and the bug-hunt cleanup gates —
    plus `CLAUDE.md` and `CONTRIBUTING.md`. Still deliberately absent:
    `.claude/rules` / `.claude/agents` (and with them the pr-review gate) —

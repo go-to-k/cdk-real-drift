@@ -333,6 +333,18 @@ GATE_RE_GH_API_ISSUE_CREATE="^gh${GATE_GH_C}[[:space:]]+api([[:space:]]|$).*repo
 # uses all three.)
 GATE_RE_GH_ISSUE_EDIT="^gh${GATE_GH_C}[[:space:]]+issue[[:space:]]+edit([[:space:]]|$)"
 
+# main-tree-branch-gate: the two verbs that move a working tree onto another
+# branch.
+#
+# TWO CONSTANTS, NOT ONE `(switch|checkout)` ALTERNATION, and that is forced
+# rather than stylistic: the gate's verdict depends on the TAIL, and the tail
+# cannot be read without knowing which verb fired. `-c` CREATES a branch under
+# `switch` and is a per-command CONFIG OVERRIDE under `checkout`; `-b` creates
+# under `checkout` and does not exist under `switch`. A combined regex arms the
+# gate correctly and then leaves it guessing which grammar to parse.
+GATE_RE_GIT_SWITCH="^git${GATE_FLAGS}[[:space:]]+switch([[:space:]]|$)"
+GATE_RE_GIT_CHECKOUT="^git${GATE_FLAGS}[[:space:]]+checkout([[:space:]]|$)"
+
 # gate_re_any <ere>... — combine several anchored segment regexes into ONE.
 #
 # Gates that guard more than one verb used to HAND-ROLL a combined regex, and
@@ -636,4 +648,100 @@ gate_target_dir() {
     break
   done < <(gate_segments "$cmd")
   printf '%s' "$target"
+}
+
+# gate_verb_args_dir <cmd> <fallback-dir> <extended-regex>
+#
+# One "<dir><TAB><args-after-the-verb>" line per MATCHING SEGMENT: the working
+# tree that segment runs in, and the text following the verb the ERE matched.
+#
+# WHY THE TREE HAS TO COME OUT OF THE SAME WALK AS THE ARGUMENTS.
+# `gate_target_dir` answers for the WHOLE COMMAND — its walk BREAKS at the first
+# matching segment — so a gate that judges every segment judges them all against
+# segment 1's tree. That is a BYPASS in one direction and a FALSE BLOCK in the
+# other, and both were measured live in the sibling repos before this shape
+# landed, driving main-tree-branch-gate with a payload cwd of the MAIN checkout:
+#
+#   git -C <worktree> switch -c a && git switch -c b       rc=0, want 2  BYPASS
+#   git -C <worktree> checkout -b a && git checkout -b b   rc=0, want 2  BYPASS
+#   git switch main && git -C <worktree> switch -c a       rc=2, want 0  FALSE BLOCK
+#
+# The bypass lets a branch be created in the SHARED main checkout unjudged — the
+# `git fetch && git switch -c` hole one operator further along. The false block
+# refuses a branch creation INSIDE a linked worktree, which is exactly what the
+# worktree convention mandates.
+#
+# WHY THE ARGUMENTS COME FROM `BASH_REMATCH[0]` rather than a local prefix strip:
+# the strip is then the SAME constant that armed the gate, whatever flag run it
+# swallowed, so a gate can never trigger one way and parse another. This is
+# `gate_pr_selector`'s guarantee, given to callers that want something other than
+# a PR number.
+#
+# Callers split the line with `${line%%<TAB>*}` / `${line#*<TAB>}`, NOT with
+# `IFS=$'\t' read -r dir args`: tab is IFS whitespace, so that spelling folds a
+# TAB RUN inside the args and silently drops one.
+#
+# The `cd` / `-C` reading is a deliberate COPY of `gate_target_dir`'s rather than
+# a shared helper: that function BREAKS at the verb, which is the one thing this
+# walk must not do, and it has other callers riding on that. `_command-match.test.sh`
+# pins the two against each other on the single-segment shape so the copy cannot
+# drift silently.
+#
+# The `-C` read goes through `gate_tokens` rather than `gate_target_dir`'s
+# `(git|gh)[[:space:]]+-C[[:space:]]+` regex, so the GLUED spellings `-C=<path>`
+# and `-C<path>` resolve here too. That is a deliberate DIVERGENCE from
+# `gate_target_dir`, in the fail-closed direction: a `-C` this walk can read is a
+# tree this walk can judge.
+#
+# BOUND, STATED RATHER THAN HIDDEN. An UNREADABLE `-C` value (an unexpanded
+# `$VAR`, a backtick) is dropped and the segment falls back to the running `cd`
+# state, exactly as `gate_target_dir` does. From the MAIN checkout — the case
+# this gate exists for — that fallback IS the main tree, so the segment is still
+# judged and the gate fails CLOSED. From inside a linked worktree it falls back
+# to the worktree and passes; refusing there instead would need a
+# `gate_refuse_unresolved_target` contract this repo's gates do not have, and
+# adding one silently changes the verdict of every `$VAR`-carrying command.
+gate_verb_args_dir() {
+  local cmd="$1" fallback="$2" re="$3"
+  local target="$fallback" segment cd_target c_target verb_run seg_target tok want_c
+  while IFS= read -r segment; do
+    if [[ "$segment" =~ ^cd[[:space:]]+$GATE_PATH_TOKEN ]]; then
+      cd_target=$(gate_unquote "${BASH_REMATCH[1]}")
+      # An UNEXPANDED path is not a path. Skipping it leaves the running target
+      # where it was, which for this gate's own subject is the payload cwd — the
+      # fail-CLOSED direction (go-to-k/cdkd#2130 review).
+      case "$cd_target" in *'$'*|*'`'*) continue ;; esac
+      [ -z "$cd_target" ] && continue
+      [[ "$cd_target" != /* ]] && cd_target="$target/$cd_target"
+      target="$cd_target"
+      continue
+    fi
+    [[ "$segment" =~ $re ]] || continue
+    # Saved BEFORE the token walk: every `[[ =~ ]]` below overwrites BASH_REMATCH.
+    verb_run="${BASH_REMATCH[0]}"
+    # A `cd` PERSISTS into the next segment; a `-C` binds only its own command.
+    # So the segment starts from the running cd state and is overridden LOCALLY,
+    # never written back to `target`.
+    seg_target="$target"
+    c_target=""
+    want_c=0
+    while IFS= read -r tok; do
+      if [ "$want_c" = 1 ]; then c_target="$tok"; want_c=0; continue; fi
+      case "$tok" in
+        -C=*) c_target="${tok#-C=}" ;;
+        -C) want_c=1 ;;
+        -C?*) c_target="${tok#-C}" ;;
+      esac
+    done < <(gate_tokens "$verb_run")
+    if [ -n "$c_target" ]; then
+      c_target=$(gate_unquote "$c_target")
+      case "$c_target" in *'$'*|*'`'*) c_target="" ;; esac
+      if [ -n "$c_target" ]; then
+        [[ "$c_target" != /* ]] && c_target="$seg_target/$c_target"
+        seg_target="$c_target"
+      fi
+    fi
+    printf '%s\t%s\n' "$seg_target" "${segment#"$verb_run"}"
+  done < <(gate_segments "$cmd")
+  return 0
 }

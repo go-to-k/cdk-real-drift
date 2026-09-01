@@ -369,6 +369,75 @@ want_local_slug a/b "ssh:// remote"          'ssh://git@github.com/a/b.git'
 want_local_slug a/b "uppercase remote"       'https://github.com/A/B.git'
 want_local_slug a/b "trailing slash after .git" 'https://github.com/a/b.git/'
 
+# --- gate_verb_args_dir (main-tree-branch-gate) --------------------------------
+#
+# The per-segment walk: one "<dir><TAB><args-after-the-verb>" line per matching
+# segment. What it must NOT be is `gate_target_dir` + a separate argument walk:
+# that function BREAKS at the first matching segment, so segment 1's tree decides
+# every segment. Measured HERE, driving main-tree-branch-gate against THIS repo's
+# real main checkout and its real linked worktree with a payload cwd of the MAIN
+# checkout, once with the tree resolved outside the walk and once per segment:
+#
+#   git -C <wt> switch -c a && git switch -c b       rc=0, want 2  BYPASS
+#   git switch main && git -C <wt> switch -c a       rc=2, want 0  FALSE BLOCK
+SW="$GATE_RE_GIT_SWITCH"
+
+# want_lines <expected-with-\n> <label> <command> <fallback> <regex>
+want_lines() {
+  local want="$1" label="$2" cmd="$3" fallback="$4" re="$5" got
+  got=$(gate_verb_args_dir "$cmd" "$fallback" "$re" | tr '\t' '|')
+  if [ "$got" = "$want" ]; then
+    pass=$((pass + 1)); printf 'OK   %s\n' "$label"
+  else
+    fail=$((fail + 1)); printf 'FAIL %s\n  want: [%s]\n  got:  [%s]\n' "$label" "$want" "$got"
+  fi
+}
+
+want_lines '/w/t|-c feat' "one segment, fallback dir" \
+  'git switch -c feat' '/w/t' "$SW"
+want_lines '/other|-c feat' "the segment's own -C wins over the fallback" \
+  'git -C /other switch -c feat' '/w/t' "$SW"
+want_lines '/other|-c feat' "glued -C<path> is read too (gate_target_dir cannot)" \
+  'git -C/other switch -c feat' '/w/t' "$SW"
+want_lines '/other|-c feat' "-C=<path> is read too" \
+  'git -C=/other switch -c feat' '/w/t' "$SW"
+want_lines '/a b|-c feat' "a quoted -C path containing a space survives" \
+  'git -C "/a b" switch -c feat' '/w/t' "$SW"
+want_lines '/wt|-c a
+/wt|-c b' "a cd PERSISTS into every later segment" \
+  'cd /wt && git switch -c a && git switch -c b' '/w/t' "$SW"
+want_lines '/wt|-c a
+/w/t|-c b' "a -C binds ONLY its own segment, and does not leak forward" \
+  'git -C /wt switch -c a && git switch -c b' '/w/t' "$SW"
+want_lines '/w/t|main
+/wt|-c a' "EVERY matching segment is emitted, each with its OWN tree" \
+  'git switch main && git -C /wt switch -c a' '/w/t' "$SW"
+want_lines '' "a quoted mention emits nothing" \
+  'echo "do not run: git switch -c feat"' '/w/t' "$SW"
+
+# PARITY PIN. The cd / -C reading here is a deliberate COPY of gate_target_dir's,
+# because that function breaks at the verb and has other callers riding on it. A
+# copy that nothing compares is a copy that drifts, so the two are pinned against
+# each other on the SINGLE-segment shape, where they must agree by construction.
+want_parity() {
+  local label="$1" cmd="$2" fallback="$3" re="$4" a b
+  a=$(gate_target_dir "$cmd" "$fallback" "$re")
+  b=$(gate_verb_args_dir "$cmd" "$fallback" "$re" | head -1)
+  b="${b%%	*}"
+  if [ "$a" = "$b" ]; then
+    pass=$((pass + 1)); printf 'OK   parity %s\n' "$label"
+  else
+    fail=$((fail + 1)); printf 'FAIL parity %s (gate_target_dir=%s gate_verb_args_dir=%s)\n' "$label" "$a" "$b"
+  fi
+}
+want_parity "bare verb"            'git switch -c feat' '/w/t' "$SW"
+want_parity "leading cd"           'cd /wt && git switch -c feat' '/w/t' "$SW"
+want_parity "spaced -C"            'git -C /other switch -c feat' '/w/t' "$SW"
+want_parity "quoted -C with space" 'git -C "/a b" switch -c feat' '/w/t' "$SW"
+want_parity "relative -C"          'git -C sub switch -c feat' '/w/t' "$SW"
+want_parity "unexpanded cd \$VAR"  'cd "$WT" && git switch -c feat' '/w/t' "$SW"
+want_parity "unexpanded -C \$VAR"  'git -C "$WT" switch -c feat' '/w/t' "$SW"
+
 
 
 printf '\npass: %s  fail: %s\n' "$pass" "$fail"

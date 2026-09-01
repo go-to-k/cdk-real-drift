@@ -251,9 +251,11 @@ worktree this mode exists to prevent. You are also not on `main`; the lane's own
 tree is still here with its deps installed, so take the retro branch IN IT, and
 the merged lane branch cannot be reused. `B` is re-assigned because a separate
 fenced block is a separate shell (section 9's `MAIN` trap), and the switch is
-addressed with `-C` for the reason §5 gives: no gate in this repo refuses a
-branch switch, so a bare one after a cwd reset would take the MAIN checkout off
-`main`. Substitute the absolute path the launch-mode probe printed as
+addressed with `-C` for the reason §5 gives: a bare one after a cwd reset would
+target the MAIN checkout rather than this lane. Since
+go-to-k/cdk-real-drift#1845 `main-tree-branch-gate` REFUSES that instead of
+letting it through, so the failure is loud — but a refusal is not a redirect,
+and only the `-C` puts the branch in the tree you mean. Substitute the absolute path the launch-mode probe printed as
 `LANE_TREE` and the opening report recorded — captured while the cwd was
 provably right — and do NOT re-derive it here from `$(git rev-parse
 --show-toplevel)` or `pwd`, which resolve against the reset cwd and hand the

@@ -52,12 +52,14 @@
   to clear it from inside is to leave the branch —
   `git -C "<LANE_TREE>" switch --detach origin/main`, since the hook skips a
   worktree with no current branch and `main` itself is checked out in the main
-  checkout. **Never write that BARE.** Nothing in this repo gates a branch
-  switch (§5 spends fourteen lines proving it: `branch-gate` fires only on
-  commit/push, `worktree-guard` only on Edit/Write, and there is no
-  `main-tree-branch-gate` — go-to-k/cdk-real-drift#1845), so a bare
-  `git switch --detach` run after a cwd reset detaches the SHARED main checkout,
-  unblocked. Whether to detach at all belongs to whoever owns the workspace, not
+  checkout. **Never write that BARE.** As of
+  go-to-k/cdk-real-drift#1845 a bare `git switch --detach` run after a cwd reset
+  is REFUSED by `.claude/hooks/main-tree-branch-gate.sh` rather than silently
+  detaching the SHARED main checkout — its `switch` arm treats `--detach` as a
+  block, since detaching moves the shared tree off `main` exactly as a branch
+  switch does. That converts a silent clobber into a loud refusal; it does not
+  make the bare spelling correct. The `-C` is what makes the command target the
+  tree you MEAN, and a refusal still leaves the lane's detach undone. Whether to detach at all belongs to whoever owns the workspace, not
   to this run — except in §10-d, where THIS run creates the retro branch in this
   tree and therefore owns that one branch move.
 
