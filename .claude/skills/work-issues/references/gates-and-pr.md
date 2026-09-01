@@ -86,7 +86,7 @@ artifact, NOT real deletions. Confirm the TRUE diff and rebase:
 
 ```bash
 git diff --stat $(git merge-base origin/main <branch>)..<branch>   # the real change
-git -C .worktrees/<name> rebase origin/main                        # clean if disjoint
+git -C "<LANE_TREE>" rebase origin/main   # the path the launch-mode probe recorded
 ```
 
 Re-run gates, `git push --force-with-lease`.

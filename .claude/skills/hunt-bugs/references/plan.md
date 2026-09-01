@@ -38,6 +38,20 @@ Per CLAUDE.md, never work in the main checkout:
 `mise trust .worktrees/<name>/.mise.toml` → `pnpm install` → `vp run build` (the CLI
 runs from `dist/`).
 
+**That recipe is CWD-RELATIVE, so it only applies when this hunt was launched
+from the MAIN checkout.** Launched from inside a linked worktree (an Orca/ADE
+workspace, a stray `cd` into `.worktrees/<x>`) it NESTS a worktree inside one,
+and deleting the outer workspace takes the inner directory, its uncommitted work
+and its git registration with it (go-to-k/cdk-real-drift#1842). Settle the launch
+mode with the probe in `.claude/skills/work-issues/references/launch-mode.md`,
+the file that holds the ONLY copy of it — `/work-issues` SKILL.md points there
+rather than carrying it.
+IN-PLACE means create nothing and hunt on the branch already checked out here
+(deps and `dist/` are usually already built), and §8 then removes nothing. The
+probe reports a mode and two paths and carries no lane limit of its own; the
+one-lane rule is `/work-issues` prose, and a hunt takes one fix at a time
+anyway, so it costs this skill nothing.
+
 ### 2. Scaffold fixtures + ARM the cleanup gate
 
 Add fixtures under `tests/integration/<name>/` — mirror an existing one (`app.ts` +

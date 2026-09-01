@@ -1,17 +1,23 @@
 <!-- Part of the /work-issues skill. Stage files: triage.md (§0–§3), claim.md (§4), implement.md (§5), gates-and-pr.md (§6–§7), verify.md (§8), ship.md (§9), retro.md (§10), gotchas.md (appendix). A bare §N points into the file that holds that section. READ THIS FILE IN FULL when your run enters this stage. -->
 
-## 5. One worktree per lane, then implement
+## 5. One tree per lane, then implement
 
 This stage (and stages 6-8) normally runs INSIDE a lane subagent the
 orchestrator dispatched — one general-purpose agent per claimed issue, so the
 lane's diffs, test output and review round-trips never land in the parent
 context. Every rule below applies unchanged inside the lane: hooks fire on the
-lane's tool calls (measured on go-to-k/cdk-real-drift#1831, built end-to-end by
-a lane subagent on 2026-08-28), and markgate markers land in the lane's own
-worktree. Two actions are reserved to the parent's serialization turn and are
-NOT the lane's to start: a real-AWS live test (deploy → mutate → revert) and
-the merge (the orchestrator's serialization invariant; §9). A lane stops at
-merge-ready and reports.
+lane's tool calls, and markgate markers land in the lane's own worktree. Two
+actions are reserved to the parent's serialization turn and are NOT the lane's
+to start: a real-AWS live test (deploy → mutate → revert) and the merge (the
+orchestrator's serialization invariant; §9). A lane stops at merge-ready and
+reports.
+
+**That placement is live-proven, not aspirational, and SKILL.md points here for
+the run that proved it**: on 2026-08-28 this repo's own skill-split PR
+(go-to-k/cdk-real-drift#1831), like its sibling go-to-k/cdk-local#621, was built
+END-TO-END by a lane subagent — worktree, implementation, gates, CI — with the
+parent doing only claims, serialized merges and cleanup, and every hook and
+markgate gate firing inside the lane's calls exactly as in the parent.
 
 **Before fixing, ask whether the defect has SIBLING SITES — and if it does, sweep
 them in THIS lane rather than filing them.** Most defects here are a CLASS, not an
@@ -132,13 +138,115 @@ Enforced by `.claude/hooks/issue-dup-check-gate.sh`, which refuses
   LIST endpoint (`-X GET … --paginate` and `-f state=open` pass); only an
   explicit `POST`, or a `title=` field with no method (gh infers POST), mints.
 
-Never edit in the main checkout. Per lane:
+Never edit in the main checkout — `.claude/hooks/worktree-guard.sh` blocks an
+Edit/Write to the main checkout's `src/**` or `tests/**` while any worktree
+exists, and always allows a path under `.worktrees/`. Per lane, in
+MAIN-CHECKOUT mode:
 
 ```bash
-git worktree add .worktrees/<name> -b wt-<name> main
+git worktree add .worktrees/<name> -b wt-<name> origin/main
 mise trust .worktrees/<name>/.mise.toml
 ( cd .worktrees/<name> && pnpm install )     # worktrees have no node_modules
 ( cd .worktrees/<name> && vp run build )     # ...and no dist/ -- see below
+```
+
+`origin/main`, not local `main`, and both arms now agree. This one branched from
+local `main` until 2026-09-01, which only advances on an explicit pull in the
+main checkout, so the lane started whatever the last pull left behind; §1's
+refresh usually hides that, which is exactly why it survived. Both sibling repos
+already spelled it `origin/main`, so this was drift rather than a considered
+difference.
+
+The reason recorded for leaving it — that changing the base changes what
+`stale-base-gate.sh` sees, and that had to be measured — was right to demand the
+measurement and wrong about which way it points. That gate opens with
+`git merge-base --is-ancestor "$base" HEAD || exit 0`, so it fires only on a
+branch that CLAIMS to be current. A lane cut from a stale local `main` does not
+have `origin/main` as an ancestor, so the gate exited 0 and never looked: it was
+INERT for precisely this shape, and the sentence that said it "exists to catch"
+this class had it backwards. Basing on `origin/main` makes `origin/main` an
+ancestor, which is what turns the gate ON for these lanes. The change gains
+coverage rather than risking it.
+
+**IN-PLACE mode (SKILL.md "Launch mode") skips that block entirely**: this run
+was launched inside a linked worktree, so it keeps that tree and the branch
+already checked out there, and creates NOTHING — a nested worktree dies with
+the outer workspace, taking its uncommitted work and leaving a registration
+that needs `git worktree prune` (go-to-k/cdk-real-drift#1842). Deps and `dist/`
+are usually already there; run `pnpm install` / `vp run build` only if they are
+not.
+
+**Confirm the tree is YOURS before adopting it.** A stray `cd` into a peer's
+live lane looks exactly like a workspace handed to you. This repo ships no
+per-worktree session-owner sentinel (the sibling cdkd has one; do not go
+looking for it here), so the probes are the three below plus the issue thread,
+read for a claim naming this branch:
+
+```bash
+git -C "<LANE_TREE>" status --porcelain          # work you did not write
+git -C "<LANE_TREE>" log --oneline -3            # whose branch this is
+BR=$(git -C "<LANE_TREE>" branch --show-current)
+# The emptiness test is load-bearing, not defensive style: this same file
+# contemplates a DETACHED tree two paragraphs down, where `$BR` is EMPTY -- and
+# `gh pr list --state all --head ""` exits 0 and returns EVERY PR in the repo
+# (measured 2026-09-01 against this repo). Under the rule below ("any one saying
+# someone is here means STOP") that is a guaranteed FALSE STOP on every detached
+# adoption. Same empty-argument-retargets family that
+# references/launch-mode.md records for `git -C ""`. Written as if/else rather
+# than `&& ... || ...`: with the latter, a `gh` TRANSPORT failure would also
+# take the second arm and report "detached" about a tree that is not.
+if [ -n "$BR" ]; then
+  gh pr list --state all --head "$BR"
+else
+  echo 'detached: no branch to query -- ownership rests on the two probes above plus the issue thread'
+fi
+```
+
+**Every one of them takes `-C "<LANE_TREE>"` for the same reason the switch
+below does, and omitting it costs more here than a wrong branch**: a bare probe run
+after a cwd reset describes the MAIN checkout while READING as a description of
+this lane, so it answers "clean, no claim, no PR" about a tree nobody asked
+about — and the run then adopts a peer's live lane believing it checked. Read
+them under §9's rule that every ownership signal establishes LIFE and never
+absence: any one of them saying "someone is here" means STOP and report — never
+nest a worktree inside a peer's lane to get out of it.
+
+This block comes BEFORE the branch recipe below because it GUARDS it, and a
+previous revision had the two the other way round: a run following the file in
+order took a peer's live lane off its branch and only then checked whose tree it
+was. The order is the guard.
+
+**Only once the tree is confirmed yours**: if it is DETACHED, or its branch has
+already merged (reusing it would push an orphan ref), take a fresh branch
+WITHOUT leaving the tree.
+
+```bash
+# `-C <LANE_TREE>` is load-bearing HERE in a way it is not in the siblings.
+# Nothing in this repo gates a branch switch: `branch-gate` fires on
+# `git commit` / `git push` and only when the target tree is on `main` /
+# `master`, `worktree-guard` fires on Edit/Write into the MAIN checkout, and
+# there is no `main-tree-branch-gate` here at all (go-to-k/cdk-real-drift#1845
+# tracks adding one) -- so a BARE `git switch -c` run after the shell's cwd has
+# silently reset to the main checkout (§6's `cd <worktree> &&` rule, and the
+# reason section 9 pulls through -C) takes the MAIN checkout off `main`,
+# unblocked, in a tree other lanes are sharing. Both siblings DO have that gate:
+# cdkd and cdk-local carry the `-C`-free spelling because their gate refuses a
+# stray `git switch -c` in the main checkout, and it covers the chained
+# `fetch && switch -c` form as of this session's hooks change (measured there).
+# So this divergence is temporary, and it closes from the HOOK side, not by
+# copying this comment into the siblings.
+# Substitute the ABSOLUTE path the launch-mode probe printed as `LANE_TREE`
+# and the opening report recorded -- the one value captured while the cwd was
+# provably right. Do NOT re-derive it here as
+# `$(git rev-parse --show-toplevel)` or `pwd`: both resolve against the same
+# reset cwd, so the guard would answer "the main checkout" in exactly the case
+# it exists for, and inherit the bug it is guarding.
+#
+# The `&&` is load-bearing too: unchained, a failed `fetch` still branches, off
+# a stale `origin/main` -- the class `stale-base-gate.sh` exists to catch, and
+# the one the paragraph above this block is about.
+git -C "<LANE_TREE>" fetch origin \
+  && git -C "<LANE_TREE>" switch -c wt-<name> origin/main
 ```
 
 **Build BEFORE the first test run, and read a fresh worktree's failures with
@@ -149,8 +257,8 @@ checkout (which HAS a `dist/`) passes, so every comparison points at main
 merge broke main"; `vp run build` made them green). **A fresh worktree failing
 where the main checkout passes is evidence about the WORKTREE first.**
 
-Do the fix in the worktree (match the existing table/entry pattern exactly; ESM
-relative imports need the `.js` extension). **Always add a unit test that fails
+Do the fix in the lane's tree (match the existing table/entry pattern exactly;
+ESM relative imports need the `.js` extension). **Always add a unit test that fails
 without the fix and passes with it** — for a fold/FP fix use the issue's exact
 harvested live model; for revert, assert the update document / patch op.
 **Check first whether the artifact already has a harness** — fold-table entries
@@ -246,10 +354,10 @@ case reuses the first case's fixture setup, so the suite covers one row of a
 table it never drew (2026-08-27, go-to-k/cdk-local#609: a commit gate twice
 shipped green suites — 52 cases, then 93 — each hiding live fail-opens in file
 STATEs the fixture never entered: untracked, tracked-but-modified, deleted on
-disk). DRAW THE GRID: states on one axis,
-input shapes on the other, write the cells out — uncovered cells become
-NAMEABLE, and the grid surfaces FALSE blocks a one-dimensional suite cannot
-produce. Name the state axis from what the subject READS: a
+disk). DRAW THE GRID: states on one axis, input shapes on the other, write the
+cells out — uncovered cells become NAMEABLE, and the grid surfaces FALSE blocks
+a one-dimensional suite cannot produce. Name the state axis from what the subject
+READS: a
 `.claude/hooks/*.test.sh` case reads the TREE (clean, staged-only, dirty,
 untracked-only, on `main`, on a branch, inside a worktree); a fold or classify
 fence reads the TIER a property lands in (`declared`, `undeclared`, `atDefault`,

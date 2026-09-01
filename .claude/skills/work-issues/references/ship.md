@@ -49,9 +49,33 @@ fetch + rebase + re-run; do NOT start distrusting the peer's new test
 merged in parallel). Same cause as §7's repo-wide-check collision; the same
 rebase answers both.
 
+MAIN-CHECKOUT (SKILL.md "Launch mode") — run THIS block, and not the next one:
+
 ```bash
 git checkout main && git pull origin main    # bring the merges local
 ```
+
+IN-PLACE — run THIS block INSTEAD, never both: `main` is checked out in the main
+tree, so a `checkout main` here fails with "already used by worktree ...". Never
+leave your own tree; pull the main checkout through `-C`, substituting the
+absolute `<MAIN_CHECKOUT>` the launch-mode probe printed and the opening report
+recorded. Two things that spelling fixes over the `MAIN=$(git worktree list …)`
+form this block used to carry: it does not depend on the main checkout being row
+1 of the listing (true today, not a documented guarantee), and it cannot be
+EMPTY. An empty `$MAIN` is the dangerous half — `git -C "" pull origin main`
+exits 0 and pulls `origin/main` into whatever tree the shell is standing in,
+which IN-PLACE is this lane's branch. A placeholder that was never substituted
+is visible in the command you are about to run; an empty variable is not:
+
+```bash
+git -C "<MAIN_CHECKOUT>" pull origin main
+```
+
+That second form is not IN-PLACE-only trivia: it is the same
+`fatal: 'main' is already used by worktree ...` the appendix records for
+`gh pr merge --delete-branch`, and the same one §1's pull hits. What differs is
+that a MAIN-CHECKOUT run has a tree it may return to and an IN-PLACE run does
+not.
 
 **Release** is automated (`.github/workflows/release.yml`) — merging a `feat:` /
 `fix:` / `perf:` / `revert:` commit to `main` produces a `chore(release): <ver>
@@ -68,6 +92,12 @@ Once released, **global install by NAME** (published npm package):
 vp i -g cdk-real-drift
 ```
 
+That install is BY NAME from npm, so it is mode-independent: it resolves the
+published package and never reads any tree's build output. (The sibling cdkd
+links its global CLI at the MAIN checkout's `dist/`, which forces a post-release
+rebuild there; nothing in this repo's ship stage does, so an IN-PLACE run has no
+main-checkout rebuild to perform. Do not add one.)
+
 **A run whose lanes are all `chore:` / `docs:` releases NOTHING** (CLAUDE.md → State
 of the Repo): skip both steps above rather than polling — the bump is never
 coming and the installed binary is already current; say so in the wrap. This is
@@ -76,7 +106,13 @@ go-to-k/cdk-real-drift#1767 merged as `chore:` and this text still sent the run
 polling for a bump).
 
 **Remove every worktree you created** (a left-behind worktree is the silent
-residue of this flow):
+residue of this flow). **An IN-PLACE run created none, so it removes none**: it
+must not `git worktree remove` the tree it is running in (that deletes its own
+cwd) and must not `git branch -D` the branch it is standing on. Cleanup of that
+tree belongs to whoever created it — the outer tool, or the operator — so the
+wrap SAYS so instead of doing it, and the run ends with the tree still standing.
+`--delete-branch` on the merge still removes the REMOTE branch, which is fine;
+only the local tree and its branch are off limits:
 
 ```bash
 git worktree remove .worktrees/<name>        # --force if it refuses on artifacts
@@ -88,7 +124,7 @@ git worktree list                            # yours should be gone
 `git worktree list` cannot tell you whose it is — a finished run's leftover and a
 live session look identical, including a branch whose tip is already on `main`.
 The closing check is "every worktree I added is gone", never "only the main
-checkout remains". **Every ownership signal establishes LIFE, never absence**: a
+checkout remains" — which an IN-PLACE run satisfies by having added none. **Every ownership signal establishes LIFE, never absence**: a
 dirty tree or an open PR proves a lane is live; the absence of either proves
 nothing. A tip on `main` is not death (the owner may be in ship/retro steps), and
 a claim comment carries CLAIM time, not last activity. Measured both "finished"
@@ -132,7 +168,6 @@ found), so the next lane inherits the evidence rather than the diagnosis.
 A claim on an issue that DID auto-close needs nothing: a closed issue is not a
 lock, and commenting on it only adds noise.
 
-Do NOT stop
-here: what the run taught you is still only in this session's context, so go on to
-§10 — which also decides WHERE each lesson belongs (memory is the weakest of the
-options there, not the default one).
+Do NOT stop here: what the run taught you is still only in this session's
+context, so go on to §10 — which also decides WHERE each lesson belongs (memory
+is the weakest of the options there, not the default one).

@@ -73,9 +73,25 @@ FRESH issue is the MOST likely stale: filed at the end of a lane against a
 listed five asks, three shipped in go-to-k/cdk-real-drift#1772 three minutes
 earlier.
 
+MAIN-CHECKOUT — run THIS block, and not the next one:
+
 ```bash
 git fetch origin && git checkout main && git pull origin main --ff-only
 ```
+
+IN-PLACE — run THIS block INSTEAD, never both. `main` is checked out in the main
+checkout, so `git checkout main` HERE dies with
+`fatal: 'main' is already used by worktree ...` (the same failure §9 records).
+Never leave your own tree; refresh the main checkout through `-C`, substituting
+the absolute `<MAIN_CHECKOUT>` the launch-mode probe printed:
+
+```bash
+git fetch origin && git -C "<MAIN_CHECKOUT>" pull origin main --ff-only
+```
+
+Either way the reads below use `git show origin/main:<file>`, which answers from
+the fetched ref rather than from whatever tree the shell is standing in — so
+they are correct in both modes once the fetch has run.
 
 Then, per shortlisted issue, **check the FIX FILE, not the issue's claim**,
 before claiming in §4 — `git show origin/main:<target-file> | grep -n "<marker>"`
@@ -94,9 +110,16 @@ gh pr list --state open --json number,title,headRefName   # their PRs
 For each active worktree, find what it ACTUALLY edits (not the stale-base noise):
 
 ```bash
-git -C .worktrees/<w> log --oneline -1            # its own commit subject → the issue it owns
-git -C .worktrees/<w> show --stat HEAD            # the files that commit touches
-git -C .worktrees/<w> status --porcelain          # what it is editing RIGHT NOW
+# <MAIN_CHECKOUT> is the ABSOLUTE path the launch-mode probe printed
+# (references/launch-mode.md). A relative `.worktrees/<w>` is correct only from
+# the main checkout: run IN-PLACE the cwd is a lane tree, the path does not
+# exist, git errors, and this scan reports NOTHING -- which reads as "no
+# competing agents", the exact failure this stage exists to prevent, and it
+# fails QUIETLY. Substitute the recorded path; never `$MAIN_CHECKOUT`, which is
+# empty in this shell and makes `-C` re-target the cwd instead of failing.
+git -C "<MAIN_CHECKOUT>/.worktrees/<w>" log --oneline -1            # its own commit subject → the issue it owns
+git -C "<MAIN_CHECKOUT>/.worktrees/<w>" show --stat HEAD            # the files that commit touches
+git -C "<MAIN_CHECKOUT>/.worktrees/<w>" status --porcelain          # what it is editing RIGHT NOW
 ```
 
 **The third probe is the only one that sees a LIVE lane; it outranks the other
@@ -141,6 +164,32 @@ rebase applies both (go-to-k/cdk-local#518). Two lanes rewriting the same
 PARAGRAPH still collide.
 
 ## 3. Pick a FEW FILE-DISJOINT issues
+
+**How many lanes you may pick is decided by the LAUNCH MODE, and the parent
+already settled it before stage 0** — `references/launch-mode.md` holds the
+probe (the ONLY copy), the reading of its edge cases, and the rule that
+`<LANE_TREE>` / `<MAIN_CHECKOUT>` are SUBSTITUTION PLACEHOLDERS rather than
+shell variables. The dispatch that started this stage carries all three values;
+if it did not, STOP and ask for them rather than re-running the probe here — a
+triage subagent's answer is not the parent's, and the parent is the party that
+later runs `git worktree add` or does not.
+
+`IN-PLACE` means this run was launched inside a worktree someone else created
+(an Orca/ADE workspace, a stray `cd`), so it has exactly ONE working tree:
+**take ONE issue and finish it** — a second lane would need a worktree nested
+inside this one, which dies with the outer workspace and takes its uncommitted
+work (go-to-k/cdk-real-drift#1842). That one-lane limit is stated HERE, in
+prose; the probe reports a mode and two paths and carries no limit of its own.
+Rank as usual, claim the top candidate, and leave the rest for the next run.
+
+**The MAIN-CHECKOUT case is the DISJOINTNESS PARAGRAPH below and nothing
+wider.** An earlier revision said "everything below is the MAIN-CHECKOUT case",
+which told an IN-PLACE run to skip the security-first ranking, the `Severity`
+ranking, the premise-check-against-`origin/main` rule and §3-a's freshness gate
+— all mode-independent, and the last a HARD gate. The rest of what IN-PLACE
+changes lives in `references/launch-mode.md`'s table, which maps ten
+consequences to §1, §2, §4, §5, §7, §9 and §10-d — the four this sentence used
+to name were an undercount.
 
 **Two lanes must edit DISJOINT files** (same as the worktree rule): two issues
 both landing in `noise.ts` cannot be parallelized — bundle into ONE lane or

@@ -2,8 +2,9 @@
 
 ## 10. Fold what the run taught you back into this skill
 
-Trigger: after the last lane in §9 is merged and its worktree removed, BEFORE
-the wrap report — the evidence dies with this session's context. Distinct from
+Trigger: after the last lane in §9 is merged and every worktree THIS run added
+is removed — an IN-PLACE run added none, so for it the trigger is the last merge
+— BEFORE the wrap report; the evidence dies with this session's context. Distinct from
 `/verify-pr` step 8's per-LANE retrospective: the subject is **the flow
 itself** (the orchestrator `SKILL.md`, its `references/` stage files, the
 skills it drives — not the lane's code), the scope is the WHOLE run (cross-lane
@@ -226,8 +227,13 @@ Every run appending one more bullet is how a long skill becomes an unread one.
 
 ### 10-d. Ship it like any other change
 
-Every worktree is gone by §9 and you are back on `main`, where `branch-gate`
-blocks a commit — so the retro gets its own worktree:
+MAIN-CHECKOUT: every worktree is gone by §9 and you are back on `main`, where
+`branch-gate` blocks a commit — so the retro gets its own worktree. IN-PLACE:
+§9 removed nothing and you are standing in the lane's tree on its (merged)
+branch, so the retro takes a branch IN THAT TREE. The two blocks below are the
+two cases; run exactly one.
+
+MAIN-CHECKOUT (SKILL.md "Launch mode") — run THIS block, and not the next one:
 
 ```bash
 # Date-suffix the branch: the previous run's branch was deleted on merge, so
@@ -237,6 +243,30 @@ git worktree add ".worktrees/${B##*/}" -b "$B" origin/main
 cd ".worktrees/${B##*/}"
 mise trust && mise install    # untrusted .mise.toml: vp / markgate will not resolve
 pnpm install                  # worktrees have no node_modules
+```
+
+IN-PLACE — run THIS block INSTEAD of the one above, never both: there is no
+worktree to add, and `git worktree add` from inside this tree NESTS the very
+worktree this mode exists to prevent. You are also not on `main`; the lane's own
+tree is still here with its deps installed, so take the retro branch IN IT, and
+the merged lane branch cannot be reused. `B` is re-assigned because a separate
+fenced block is a separate shell (section 9's `MAIN` trap), and the switch is
+addressed with `-C` for the reason §5 gives: no gate in this repo refuses a
+branch switch, so a bare one after a cwd reset would take the MAIN checkout off
+`main`. Substitute the absolute path the launch-mode probe printed as
+`LANE_TREE` and the opening report recorded — captured while the cwd was
+provably right — and do NOT re-derive it here from `$(git rev-parse
+--show-toplevel)` or `pwd`, which resolve against the reset cwd and hand the
+guard the very tree it is guarding against. Keep the `&&`: unchained, a failed
+`fetch` still branches, off a stale `origin/main`. **Every command after this
+one takes the same `-C "<LANE_TREE>"`** — the edits, `git add`, the commit, the
+push, `gh pr create` — for the identical reason: this block never `cd`s, so a
+later bare command runs in whatever tree the shell is standing in.
+
+```bash
+B=chore/work-issues-retro-$(date +%Y%m%d)
+git -C "<LANE_TREE>" fetch origin \
+  && git -C "<LANE_TREE>" switch -c "$B" origin/main
 ```
 
 - `chore:` prefix — agent tooling, not `src/**`; a `fix:` / `feat:` prefix
@@ -301,10 +331,13 @@ pnpm install                  # worktrees have no node_modules
   into every future session.
 - **Merge it before the wrap report, then remove the worktree**
   (`git worktree remove .worktrees/<name> && git worktree prune`) — §9 ends
-  with every worktree gone and §10 must not undo that. This is
-  `Session-fit: now` on the leaves-main-self-inconsistent criterion (the skill
-  would keep telling the next run to do what this run just proved wrong); its
-  evidence dies with this session, and an open PR is NOT CLOSEABLE besides.
+  with every worktree gone and §10 must not undo that. An IN-PLACE run added
+  none: it merges and stops there, leaving the tree on the retro branch for
+  whoever owns the workspace (the appendix has what the Stop hook will say
+  about that). This is `Session-fit: now` on the leaves-main-self-inconsistent
+  criterion (the skill would keep telling the next run to do what this run just
+  proved wrong); its evidence dies with this session, and an open PR is NOT
+  CLOSEABLE besides.
 
 Then report the outcome in one wrap line: what changed, in which step, and the
 run evidence behind it — or "no skill change" plus what held.

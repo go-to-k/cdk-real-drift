@@ -41,6 +41,26 @@
     `git worktree remove …`, `git branch -D wt-…` (the `git push origin --delete` will
     report "remote ref does not exist" — benign, gh already removed it).
 
+- **An IN-PLACE run ends with the Stop hook still calling its lane unmerged, and
+  the remedy that warning names is one this mode forbids.**
+  `.claude/hooks/stop-unmerged-lane-warn.sh` lists every worktree whose branch is
+  ahead of `origin/main`, and this repo SQUASH-merges, so a merged branch reads
+  as ahead forever; its own text then says the remaining work is to remove the
+  worktree and delete the branch, which SKILL.md "Launch mode" forbids for the
+  tree you are standing in. Expected, not a defect: confirm the PR is MERGED
+  (`gh pr view <n> --json state,mergedAt`) and say so in the wrap. The only way
+  to clear it from inside is to leave the branch —
+  `git -C "<LANE_TREE>" switch --detach origin/main`, since the hook skips a
+  worktree with no current branch and `main` itself is checked out in the main
+  checkout. **Never write that BARE.** Nothing in this repo gates a branch
+  switch (§5 spends fourteen lines proving it: `branch-gate` fires only on
+  commit/push, `worktree-guard` only on Edit/Write, and there is no
+  `main-tree-branch-gate` — go-to-k/cdk-real-drift#1845), so a bare
+  `git switch --detach` run after a cwd reset detaches the SHARED main checkout,
+  unblocked. Whether to detach at all belongs to whoever owns the workspace, not
+  to this run — except in §10-d, where THIS run creates the retro branch in this
+  tree and therefore owns that one branch move.
+
 ## Important existing rules this skill leans on
 
 - **Core invariant**: a clean, un-mutated deploy has ZERO `[Potential Drift]` on
@@ -52,7 +72,9 @@
   the bodies it files).
 - **Always add unit tests** for a fix — do not wait to be asked.
 - **All changes via PR; never commit to `main`.** Develop in a git worktree with
-  DISJOINT files; the orchestrator integrates. (`CLAUDE.md` → Workflow Rules.)
+  DISJOINT files — a new one per lane, or the worktree this run was launched in
+  when the mode is IN-PLACE (SKILL.md "Launch mode"); the orchestrator
+  integrates. (`CLAUDE.md` → Workflow Rules.)
 - **Never download/run/install untrusted third-party content** (§0).
 - **Wrap with a Remaining-work section + Session-close verdict, scoped to the
   issues this run actually worked.** This skill is the easiest place to get that

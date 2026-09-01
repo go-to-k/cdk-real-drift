@@ -1,0 +1,133 @@
+<!-- Part of the /work-issues skill. Stage files: launch-mode.md (before stage 0), triage.md (§0–§3), claim.md (§4), implement.md (§5), gates-and-pr.md (§6–§7), verify.md (§8), ship.md (§9), retro.md (§10), gotchas.md (appendix). A bare §N points into the file that holds that section. READ THIS FILE IN FULL before stage 0. -->
+
+## Launch mode — the PARENT runs this BEFORE stage 0
+
+This is the ONLY copy of the probe. SKILL.md "Launch mode" points here rather
+than restating it, because a second verbatim copy of a command is the drift
+shape section 10-b fences elsewhere.
+
+```bash
+[ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" = true ] \
+  || { echo 'PROBE FAILED: not inside a git work tree -- do not guess the mode'; exit 1; }
+COMMON=$(cd "$(git rev-parse --git-common-dir)" && pwd -P)
+GITDIR=$(cd "$(git rev-parse --git-dir)" && pwd -P)
+LANE_TREE=$(cd "$(git rev-parse --show-toplevel)" && pwd -P)
+MAIN_CHECKOUT=$(dirname "$COMMON")
+[ "$GITDIR" = "$COMMON" ] && MODE=MAIN-CHECKOUT || MODE=IN-PLACE
+printf 'MODE=%s\nLANE_TREE=%s\nMAIN_CHECKOUT=%s\n' "$MODE" "$LANE_TREE" "$MAIN_CHECKOUT"
+```
+
+### Why here and not at the top of stage 3
+
+The probe used to sit at the top of §3, on the reasoning that §3 is the first
+place the answer is used. That was wrong twice over, and either half alone
+would be enough to move it:
+
+- **Stages 1 and 2 already consume the mode.** §1 runs
+  `git checkout main && git pull origin main --ff-only`, which IN-PLACE dies
+  with the same `fatal: 'main' is already used by worktree ...` §9 documents.
+  §2's collision map then runs `git -C .worktrees/<w> log|show|status` — a
+  RELATIVE path, correct only from the main checkout. IN-PLACE the cwd is a
+  lane tree, that path does not exist, git errors, and the scan returns
+  NOTHING. An empty collision map reads as "no competing agents", which is the
+  exact failure §2 exists to prevent, and unlike §1 it fails QUIETLY.
+  `MAIN_CHECKOUT` is what makes both absolute, so it has to exist before §1
+  runs, not after §2.
+- **Stages 0–3 are DELEGATED to a read-only triage subagent** (SKILL.md), whose
+  return payload is a candidate table — no git state, no paths. An answer
+  computed inside it never reaches the parent, and the parent is the party that
+  later runs `git worktree add` or does not. Computing it in the parent before
+  dispatching anything removes the problem instead of documenting it.
+
+So: run it in the parent, pass `MODE` / `LANE_TREE` / `MAIN_CHECKOUT` into the
+triage dispatch and into every lane dispatch, and state all three in the
+opening report.
+
+### Reading the three values
+
+`GITDIR` equals `COMMON` only in the main checkout — a linked worktree's
+`--git-dir` is `<common-dir>/worktrees/<name>`. `pwd -P` settles both the main
+checkout's RELATIVE `.git` answer and macOS's `/tmp` -> `/private/tmp`.
+
+`MAIN_CHECKOUT` is `dirname "$COMMON"` — the parent of the ONE shared git dir —
+never `pwd` and never `--show-toplevel`, both of which answer "the tree I am
+standing in" and so are exactly wrong in the mode that needs the value. It also
+needs no `git worktree list` row ordering, which §9 used to depend on.
+
+`LANE_TREE` is "the tree this run stands in", NOT "the lane worktree":
+MAIN-CHECKOUT records the MAIN checkout under it, and the two are equal there.
+IN-PLACE they differ, and that difference is the whole point.
+
+**The guard on the first line is not decoration.** Outside a work tree every
+`git rev-parse` fails and each substitution collapses to the empty string, so
+an unguarded compare tests `""` against `""` and prints MAIN-CHECKOUT — a wrong
+verdict, with a wrong `LANE_TREE` beside it. Measured 2026-08-31, the shells
+even disagreed about the wreckage: bash REFUSES `cd ""` (rc=1, `cd: null
+directory`) so the `&& pwd -P` never runs, while zsh accepts it (rc=0) and
+prints the same cwd twice. `--is-inside-work-tree` is compared to the literal
+`true` rather than trusted for its exit status, because inside a `.git`
+directory it prints `false` and exits 0 — measured 2026-09-01; the exit-status
+form passed there and produced an empty `LANE_TREE` under a `MAIN-CHECKOUT`
+verdict. With the value compare, both non-repo positions fail loudly in both
+shells, and the shell divergence stops mattering. That is why the guard
+replaced the prose: the divergence used to be recorded and re-checked by
+nothing.
+
+**An empty value is worse than a failed command, which is why the probe stops
+rather than warning.** Measured the same day: `git -C "" rev-parse
+--show-toplevel` exits 0 and prints the CWD's repo, so every
+`git -C "<LANE_TREE>"` recipe in §4, §5 and §10 handed a blank silently
+retargets the tree the shell is standing in — the main checkout, in exactly the
+scenario the `-C` was added for. The guard degrades into the bug it guards,
+with no failure to read.
+
+### The values are RECORDED, never re-derived
+
+This instant is the one moment the cwd is provably the tree whose mode is being
+decided; every later stage runs in a fresh shell whose cwd may have silently
+reset to the main checkout (§6's `cd <worktree> &&` rule). So **state all
+three in the opening report**, verbatim and absolute — that report is their ONLY
+recorded copy. A later stage that re-derives `LANE_TREE` from
+`$(git rev-parse --show-toplevel)` or from `pwd` resolves against the reset cwd
+and answers "the main checkout" in precisely the case the `-C` exists to guard.
+
+**`<LANE_TREE>` and `<MAIN_CHECKOUT>` in a later stage are SUBSTITUTION
+PLACEHOLDERS, not shell variables, and the difference is the whole guard.**
+Paste the absolute path from the opening report into the command text. Do NOT
+write `git -C "$LANE_TREE"`: the assignments live in THIS fenced block and every
+later block is its own Bash call and its own shell (§9 spells the same trap out
+for `MAIN`, §10-d for `B`), so the variable is already empty there — and per the
+paragraph above, an empty `-C` does not fail, it re-targets. A placeholder that
+was never substituted is visible in the command you are about to run; an empty
+variable is not visible anywhere.
+
+### What IN-PLACE changes, and where each consequence fires
+
+SKILL.md carries the same list in short form; this is the one with the stage
+pointers. IN-PLACE means this run was launched inside a worktree someone else
+created (an Orca/ADE workspace, a stray `cd`), so it has exactly ONE working
+tree:
+
+| #   | Consequence                                                                                                                                                                                 | Where     |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| 1   | Take ONE issue and finish it — a second lane would need a worktree NESTED inside this one, which dies with the outer workspace and takes its uncommitted work (go-to-k/cdk-real-drift#1842) | §3        |
+| 2   | §1's `git checkout main && git pull` cannot run here; pull through `git -C "<MAIN_CHECKOUT>"` and read the refs with `git show origin/main:<file>`                                          | §1        |
+| 3   | §2's worktree probes take `<MAIN_CHECKOUT>/.worktrees/<w>`, not a relative path                                                                                                             | §2        |
+| 4   | The claim names the branch and tree already checked out here, read out of git rather than composed                                                                                          | §4        |
+| 5   | Create no worktree; work on the branch already here, after confirming the tree is YOURS                                                                                                     | §5        |
+| 6   | A tree that is DETACHED or whose PR already merged does create a branch — in place, without leaving the tree                                                                                | §5        |
+| 7   | §7's rebase runs `git -C "<LANE_TREE>"`                                                                                                                                                     | §7        |
+| 8   | Remove no worktree and delete no branch: a lane that removes the tree it runs in deletes its own cwd. Cleanup belongs to whoever created it                                                 | §9, §10-d |
+| 9   | §9's post-merge pull goes through `git -C "<MAIN_CHECKOUT>"` for the same reason as row 2                                                                                                   | §9        |
+| 10  | The retro branch is created in THIS tree, so the run legitimately ends on a branch that is not the one it started on                                                                        | §10-d     |
+
+There is deliberately no rebuild row. The global install here is
+`vp i -g cdk-real-drift`, BY NAME from npm, so it reads no tree's build output
+and is mode-independent. The sibling cdkd links its global CLI at the MAIN
+checkout's `dist/` and must relocate that step; do not import it here (§9 says
+the same).
+
+"Four things" was the previous count and it was an undercount, in the direction
+that matters: this file is not always loaded, SKILL.md is, so a short list in
+the orchestrator wins over the reference file it points at. Count the rows
+before writing a number beside them.
