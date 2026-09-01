@@ -73,9 +73,25 @@ FRESH issue is the MOST likely stale: filed at the end of a lane against a
 listed five asks, three shipped in go-to-k/cdk-real-drift#1772 three minutes
 earlier.
 
+MAIN-CHECKOUT — run THIS block, and not the next one:
+
 ```bash
 git fetch origin && git checkout main && git pull origin main --ff-only
 ```
+
+IN-PLACE — run THIS block INSTEAD, never both. `main` is checked out in the main
+checkout, so `git checkout main` HERE dies with
+`fatal: 'main' is already used by worktree ...` (the same failure §9 records).
+Never leave your own tree; refresh the main checkout through `-C`, substituting
+the absolute `<MAIN_CHECKOUT>` the launch-mode probe printed:
+
+```bash
+git fetch origin && git -C "<MAIN_CHECKOUT>" pull origin main --ff-only
+```
+
+Either way the reads below use `git show origin/main:<file>`, which answers from
+the fetched ref rather than from whatever tree the shell is standing in — so
+they are correct in both modes once the fetch has run.
 
 Then, per shortlisted issue, **check the FIX FILE, not the issue's claim**,
 before claiming in §4 — `git show origin/main:<target-file> | grep -n "<marker>"`
@@ -94,9 +110,16 @@ gh pr list --state open --json number,title,headRefName   # their PRs
 For each active worktree, find what it ACTUALLY edits (not the stale-base noise):
 
 ```bash
-git -C .worktrees/<w> log --oneline -1            # its own commit subject → the issue it owns
-git -C .worktrees/<w> show --stat HEAD            # the files that commit touches
-git -C .worktrees/<w> status --porcelain          # what it is editing RIGHT NOW
+# <MAIN_CHECKOUT> is the ABSOLUTE path the launch-mode probe printed
+# (references/launch-mode.md). A relative `.worktrees/<w>` is correct only from
+# the main checkout: run IN-PLACE the cwd is a lane tree, the path does not
+# exist, git errors, and this scan reports NOTHING -- which reads as "no
+# competing agents", the exact failure this stage exists to prevent, and it
+# fails QUIETLY. Substitute the recorded path; never `$MAIN_CHECKOUT`, which is
+# empty in this shell and makes `-C` re-target the cwd instead of failing.
+git -C "<MAIN_CHECKOUT>/.worktrees/<w>" log --oneline -1            # its own commit subject → the issue it owns
+git -C "<MAIN_CHECKOUT>/.worktrees/<w>" show --stat HEAD            # the files that commit touches
+git -C "<MAIN_CHECKOUT>/.worktrees/<w>" status --porcelain          # what it is editing RIGHT NOW
 ```
 
 **The third probe is the only one that sees a LIVE lane; it outranks the other
@@ -142,65 +165,31 @@ PARAGRAPH still collide.
 
 ## 3. Pick a FEW FILE-DISJOINT issues
 
-**How many lanes you may pick is decided by the LAUNCH MODE, so settle that
-first — it is one command and it is not guessable from the prompt.** This is
-the ONLY copy of the probe; SKILL.md "Launch mode" points here rather than
-restating it, because a second verbatim copy of a two-line command is the drift
-shape section 10-b fences elsewhere:
+**How many lanes you may pick is decided by the LAUNCH MODE, and the parent
+already settled it before stage 0** — `references/launch-mode.md` holds the
+probe (the ONLY copy), the reading of its edge cases, and the rule that
+`<LANE_TREE>` / `<MAIN_CHECKOUT>` are SUBSTITUTION PLACEHOLDERS rather than
+shell variables. The dispatch that started this stage carries all three values;
+if it did not, STOP and ask for them rather than re-running the probe here — a
+triage subagent's answer is not the parent's, and the parent is the party that
+later runs `git worktree add` or does not.
 
-```bash
-LANE_TREE=$(cd "$(git rev-parse --show-toplevel)" && pwd -P)   # capture it HERE
-[ "$(cd "$(git rev-parse --git-dir)" && pwd -P)" \
- = "$(cd "$(git rev-parse --git-common-dir)" && pwd -P)" ] \
-  && echo "MAIN-CHECKOUT (tree $LANE_TREE)" || echo "IN-PLACE (LANE_TREE $LANE_TREE)"
-```
+`IN-PLACE` means this run was launched inside a worktree someone else created
+(an Orca/ADE workspace, a stray `cd`), so it has exactly ONE working tree:
+**take ONE issue and finish it** — a second lane would need a worktree nested
+inside this one, which dies with the outer workspace and takes its uncommitted
+work (go-to-k/cdk-real-drift#1842). That one-lane limit is stated HERE, in
+prose; the probe reports a mode and two paths and carries no limit of its own.
+Rank as usual, claim the top candidate, and leave the rest for the next run.
 
-Equal only in the main checkout: a linked worktree's `--git-dir` is
-`<common-dir>/worktrees/<name>`, and `pwd -P` settles both the main checkout's
-RELATIVE `.git` answer and macOS's `/tmp` -> `/private/tmp`. Run it INSIDE the
-repo. Outside one, `git rev-parse` fails and every substitution collapses to the
-empty string, so the test compares `""` with `""` and prints MAIN-CHECKOUT — a
-wrong verdict. Measured 2026-08-31, and the mechanism differs by shell without
-changing the answer: bash REFUSES `cd ""` (rc=1, `cd: null directory`) so the
-`&& pwd -P` never runs, while zsh accepts it (rc=0) and `pwd -P` then prints the
-same cwd twice.
-
-**And nothing downstream catches that, which is the part the previous wording
-got wrong** ("caught only by the next git command failing loudly"). Outside a
-repo `LANE_TREE` is EMPTY, and an empty `-C` argument is not an error: measured
-the same day, `git -C "" rev-parse --show-toplevel` exits 0 and prints the
-CWD's repo — so every `git -C "<LANE_TREE>"` recipe in §4, §5 and §10 silently
-retargets the tree the shell is standing in, which is the main checkout in
-exactly the scenario the `-C` was added for. The guard degrades into the bug it
-guards, with no failure to read. Re-run the probe rather than trusting a blank.
-
-**`LANE_TREE` is the whole reason the path is captured on THIS line**, and it is
-not decoration on the mode. This instant is the one moment the cwd is provably
-the tree whose mode is being decided; every later stage runs in a fresh shell
-whose cwd may have silently reset to the main checkout (appendix, "Bash cwd
-silent reset"). So **state `LANE_TREE` in the opening report beside the mode**,
-verbatim and absolute — that report is its ONLY recorded copy, and §4, §5 and
-§10 all hand it to `git -C`. A later stage that re-derives it instead, from
-`$(git rev-parse --show-toplevel)` or from `pwd`, resolves against the reset cwd
-and answers "the main checkout" in precisely the case the `-C` exists to guard:
-the guard then degrades into the bug it guards.
-
-**`<LANE_TREE>` in a later stage is a SUBSTITUTION PLACEHOLDER, not a shell
-variable, and the difference is the whole guard.** Paste the absolute path from
-the opening report into the command text. Do NOT write `git -C "$LANE_TREE"`:
-the assignment above lives in THIS fenced block and every later block is its own
-Bash call and its own shell (§9 spells the same trap out for `MAIN`, §10-d for
-`B`), so the variable is already empty there — and per the paragraph above, an
-empty `-C` does not fail, it re-targets the cwd. A placeholder that was never
-substituted is visible in the command you are about to run; an empty variable is
-not visible anywhere. `IN-PLACE` means
-this run was launched inside a worktree someone else created (an Orca/ADE
-workspace, a stray `cd`), so it has exactly ONE working tree: **take ONE issue
-and finish it** — a second lane would need a worktree nested inside this one,
-which dies with the outer workspace and takes its uncommitted work
-(go-to-k/cdk-real-drift#1842). Rank as usual, claim the top candidate, and leave
-the rest for the next run. Everything below is the MAIN-CHECKOUT case; SKILL.md
-"Launch mode" carries the other three consequences (§4, §5, §9).
+**The MAIN-CHECKOUT case is the DISJOINTNESS PARAGRAPH below and nothing
+wider.** An earlier revision said "everything below is the MAIN-CHECKOUT case",
+which told an IN-PLACE run to skip the security-first ranking, the `Severity`
+ranking, the premise-check-against-`origin/main` rule and §3-a's freshness gate
+— all mode-independent, and the last a HARD gate. The rest of what IN-PLACE
+changes lives in `references/launch-mode.md`'s table, which maps ten
+consequences to §1, §2, §4, §5, §7, §9 and §10-d — the four this sentence used
+to name were an undercount.
 
 **Two lanes must edit DISJOINT files** (same as the worktree rule): two issues
 both landing in `noise.ts` cannot be parallelized — bundle into ONE lane or

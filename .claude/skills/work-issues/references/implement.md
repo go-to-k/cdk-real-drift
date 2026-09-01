@@ -154,8 +154,11 @@ The two arms differ in BASE and that is not a property of the mode: this one
 branches from local `main`, the IN-PLACE one below from `origin/main`. Local
 `main` only advances on an explicit pull in the main checkout, so this arm can
 start stale — the class `stale-base-gate.sh` exists to catch. It is a separate
-defect from the nesting one, deliberately left for its own change; the new arm
-is written with the correct base rather than copying the wrong one.
+defect from the nesting one and NO issue tracks it yet (unlike the branch-gate
+gap below, which is go-to-k/cdk-real-drift#1845); it is left for its own change
+because moving this arm to `origin/main` changes what `stale-base-gate.sh`
+sees, and that gate's behaviour has to be re-measured rather than assumed. The
+new arm is written with the correct base rather than copying the wrong one.
 
 **IN-PLACE mode (SKILL.md "Launch mode") skips that block entirely**: this run
 was launched inside a linked worktree, so it keeps that tree and the branch
@@ -163,37 +166,7 @@ already checked out there, and creates NOTHING — a nested worktree dies with
 the outer workspace, taking its uncommitted work and leaving a registration
 that needs `git worktree prune` (go-to-k/cdk-real-drift#1842). Deps and `dist/`
 are usually already there; run `pnpm install` / `vp run build` only if they are
-not. If the tree is detached, or its branch has already merged (reusing it
-would push an orphan ref), take a fresh branch WITHOUT leaving the tree:
-
-```bash
-# `-C <LANE_TREE>` is load-bearing HERE in a way it is not in the siblings.
-# Nothing in this repo gates a branch switch: `branch-gate` fires on
-# `git commit` / `git push` and only when the target tree is on `main` /
-# `master`, `worktree-guard` fires on Edit/Write into the MAIN checkout, and
-# there is no `main-tree-branch-gate` here at all (go-to-k/cdk-real-drift#1845
-# tracks adding one) -- so a BARE `git switch -c` run after the shell's cwd has
-# silently reset to the main checkout (the appendix's cwd-reset failure, and the
-# reason section 9 pulls through -C) takes the MAIN checkout off `main`,
-# unblocked, in a tree other lanes are sharing. Both siblings DO have that gate:
-# cdkd and cdk-local carry the `-C`-free spelling because their gate refuses a
-# stray `git switch -c` in the main checkout, and it covers the chained
-# `fetch && switch -c` form as of this session's hooks change (measured there).
-# So this divergence is temporary, and it closes from the HOOK side, not by
-# copying this comment into the siblings.
-# Substitute the ABSOLUTE path section 3's probe printed as
-# `LANE_TREE` and the opening report recorded -- the one value captured while
-# the cwd was provably right. Do NOT re-derive it here as
-# `$(git rev-parse --show-toplevel)` or `pwd`: both resolve against the same
-# reset cwd, so the guard would answer "the main checkout" in exactly the case
-# it exists for, and inherit the bug it is guarding.
-#
-# The `&&` is load-bearing too: unchained, a failed `fetch` still branches, off
-# a stale `origin/main` -- the class `stale-base-gate.sh` exists to catch, and
-# the one the paragraph above this block is about.
-git -C "<LANE_TREE>" fetch origin \
-  && git -C "<LANE_TREE>" switch -c wt-<name> origin/main
-```
+not.
 
 **Confirm the tree is YOURS before adopting it.** A stray `cd` into a peer's
 live lane looks exactly like a workspace handed to you. This repo ships no
@@ -204,19 +177,69 @@ read for a claim naming this branch:
 ```bash
 git -C "<LANE_TREE>" status --porcelain          # work you did not write
 git -C "<LANE_TREE>" log --oneline -3            # whose branch this is
-gh pr list --state all \
-  --head "$(git -C "<LANE_TREE>" branch --show-current)"
+BR=$(git -C "<LANE_TREE>" branch --show-current)
+# The emptiness test is load-bearing, not defensive style: this same file
+# contemplates a DETACHED tree two paragraphs down, where `$BR` is EMPTY -- and
+# `gh pr list --state all --head ""` exits 0 and returns EVERY PR in the repo
+# (measured 2026-09-01 against this repo). Under the rule below ("any one saying
+# someone is here means STOP") that is a guaranteed FALSE STOP on every detached
+# adoption. Same empty-argument-retargets family that
+# references/launch-mode.md records for `git -C ""`. Written as if/else rather
+# than `&& ... || ...`: with the latter, a `gh` TRANSPORT failure would also
+# take the second arm and report "detached" about a tree that is not.
+if [ -n "$BR" ]; then
+  gh pr list --state all --head "$BR"
+else
+  echo 'detached: no branch to query -- ownership rests on the two probes above plus the issue thread'
+fi
 ```
 
-**Every one of them takes `-C <LANE_TREE>` for the same reason the switch above
-does, and omitting it costs more here than a wrong branch**: a bare probe run
+**Every one of them takes `-C "<LANE_TREE>"` for the same reason the switch
+below does, and omitting it costs more here than a wrong branch**: a bare probe run
 after a cwd reset describes the MAIN checkout while READING as a description of
 this lane, so it answers "clean, no claim, no PR" about a tree nobody asked
 about — and the run then adopts a peer's live lane believing it checked. Read
-them under §9's rule
-that every ownership signal establishes LIFE and never absence: any one of them
-saying "someone is here" means STOP and report — never nest a worktree inside a
-peer's lane to get out of it.
+them under §9's rule that every ownership signal establishes LIFE and never
+absence: any one of them saying "someone is here" means STOP and report — never
+nest a worktree inside a peer's lane to get out of it.
+
+This block comes BEFORE the branch recipe below because it GUARDS it, and a
+previous revision had the two the other way round: a run following the file in
+order took a peer's live lane off its branch and only then checked whose tree it
+was. The order is the guard.
+
+**Only once the tree is confirmed yours**: if it is DETACHED, or its branch has
+already merged (reusing it would push an orphan ref), take a fresh branch
+WITHOUT leaving the tree.
+
+```bash
+# `-C <LANE_TREE>` is load-bearing HERE in a way it is not in the siblings.
+# Nothing in this repo gates a branch switch: `branch-gate` fires on
+# `git commit` / `git push` and only when the target tree is on `main` /
+# `master`, `worktree-guard` fires on Edit/Write into the MAIN checkout, and
+# there is no `main-tree-branch-gate` here at all (go-to-k/cdk-real-drift#1845
+# tracks adding one) -- so a BARE `git switch -c` run after the shell's cwd has
+# silently reset to the main checkout (§6's `cd <worktree> &&` rule, and the
+# reason section 9 pulls through -C) takes the MAIN checkout off `main`,
+# unblocked, in a tree other lanes are sharing. Both siblings DO have that gate:
+# cdkd and cdk-local carry the `-C`-free spelling because their gate refuses a
+# stray `git switch -c` in the main checkout, and it covers the chained
+# `fetch && switch -c` form as of this session's hooks change (measured there).
+# So this divergence is temporary, and it closes from the HOOK side, not by
+# copying this comment into the siblings.
+# Substitute the ABSOLUTE path the launch-mode probe printed as `LANE_TREE`
+# and the opening report recorded -- the one value captured while the cwd was
+# provably right. Do NOT re-derive it here as
+# `$(git rev-parse --show-toplevel)` or `pwd`: both resolve against the same
+# reset cwd, so the guard would answer "the main checkout" in exactly the case
+# it exists for, and inherit the bug it is guarding.
+#
+# The `&&` is load-bearing too: unchained, a failed `fetch` still branches, off
+# a stale `origin/main` -- the class `stale-base-gate.sh` exists to catch, and
+# the one the paragraph above this block is about.
+git -C "<LANE_TREE>" fetch origin \
+  && git -C "<LANE_TREE>" switch -c wt-<name> origin/main
+```
 
 **Build BEFORE the first test run, and read a fresh worktree's failures with
 that in mind.** A worktree starts with no `dist/`; a test spawning the built CLI
@@ -323,10 +346,10 @@ case reuses the first case's fixture setup, so the suite covers one row of a
 table it never drew (2026-08-27, go-to-k/cdk-local#609: a commit gate twice
 shipped green suites — 52 cases, then 93 — each hiding live fail-opens in file
 STATEs the fixture never entered: untracked, tracked-but-modified, deleted on
-disk). DRAW THE GRID: states on one axis,
-input shapes on the other, write the cells out — uncovered cells become
-NAMEABLE, and the grid surfaces FALSE blocks a one-dimensional suite cannot
-produce. Name the state axis from what the subject READS: a
+disk). DRAW THE GRID: states on one axis, input shapes on the other, write the
+cells out — uncovered cells become NAMEABLE, and the grid surfaces FALSE blocks
+a one-dimensional suite cannot produce. Name the state axis from what the subject
+READS: a
 `.claude/hooks/*.test.sh` case reads the TREE (clean, staged-only, dirty,
 untracked-only, on `main`, on a branch, inside a worktree); a fold or classify
 fence reads the TIER a property lands in (`declared`, `undeclared`, `atDefault`,

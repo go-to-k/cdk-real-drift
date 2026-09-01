@@ -49,10 +49,17 @@
   worktree and delete the branch, which SKILL.md "Launch mode" forbids for the
   tree you are standing in. Expected, not a defect: confirm the PR is MERGED
   (`gh pr view <n> --json state,mergedAt`) and say so in the wrap. The only way
-  to clear it from inside is to leave the branch, `git switch --detach origin/main`
-  — the hook skips a worktree with no current branch, and `main` itself is
-  checked out in the main checkout — and whether to do that belongs to whoever
-  owns the workspace, not to this run.
+  to clear it from inside is to leave the branch —
+  `git -C "<LANE_TREE>" switch --detach origin/main`, since the hook skips a
+  worktree with no current branch and `main` itself is checked out in the main
+  checkout. **Never write that BARE.** Nothing in this repo gates a branch
+  switch (§5 spends fourteen lines proving it: `branch-gate` fires only on
+  commit/push, `worktree-guard` only on Edit/Write, and there is no
+  `main-tree-branch-gate` — go-to-k/cdk-real-drift#1845), so a bare
+  `git switch --detach` run after a cwd reset detaches the SHARED main checkout,
+  unblocked. Whether to detach at all belongs to whoever owns the workspace, not
+  to this run — except in §10-d, where THIS run creates the retro branch in this
+  tree and therefore owns that one branch move.
 
 ## Important existing rules this skill leans on
 

@@ -57,20 +57,25 @@ git checkout main && git pull origin main    # bring the merges local
 
 IN-PLACE — run THIS block INSTEAD, never both: `main` is checked out in the main
 tree, so a `checkout main` here fails with "already used by worktree ...". Never
-leave your own tree; pull the main checkout through `-C`. `MAIN` is derived HERE
-rather than borrowed from a neighbouring block — each fenced block is its own
-Bash call and its own shell, so a variable assigned in another one is empty here:
+leave your own tree; pull the main checkout through `-C`, substituting the
+absolute `<MAIN_CHECKOUT>` the launch-mode probe printed and the opening report
+recorded. Two things that spelling fixes over the `MAIN=$(git worktree list …)`
+form this block used to carry: it does not depend on the main checkout being row
+1 of the listing (true today, not a documented guarantee), and it cannot be
+EMPTY. An empty `$MAIN` is the dangerous half — `git -C "" pull origin main`
+exits 0 and pulls `origin/main` into whatever tree the shell is standing in,
+which IN-PLACE is this lane's branch. A placeholder that was never substituted
+is visible in the command you are about to run; an empty variable is not:
 
 ```bash
-# The main checkout is always the FIRST row of `git worktree list`.
-MAIN=$(git worktree list --porcelain | awk 'NR==1{print substr($0,10)}')
-git -C "$MAIN" pull origin main
+git -C "<MAIN_CHECKOUT>" pull origin main
 ```
 
 That second form is not IN-PLACE-only trivia: it is the same
 `fatal: 'main' is already used by worktree ...` the appendix records for
-`gh pr merge --delete-branch`. What differs is that a MAIN-CHECKOUT run has a
-tree it may return to and an IN-PLACE run does not.
+`gh pr merge --delete-branch`, and the same one §1's pull hits. What differs is
+that a MAIN-CHECKOUT run has a tree it may return to and an IN-PLACE run does
+not.
 
 **Release** is automated (`.github/workflows/release.yml`) — merging a `feat:` /
 `fix:` / `perf:` / `revert:` commit to `main` produces a `chore(release): <ver>
@@ -163,7 +168,6 @@ found), so the next lane inherits the evidence rather than the diagnosis.
 A claim on an issue that DID auto-close needs nothing: a closed issue is not a
 lock, and commenting on it only adds noise.
 
-Do NOT stop
-here: what the run taught you is still only in this session's context, so go on to
-§10 — which also decides WHERE each lesson belongs (memory is the weakest of the
-options there, not the default one).
+Do NOT stop here: what the run taught you is still only in this session's
+context, so go on to §10 — which also decides WHERE each lesson belongs (memory
+is the weakest of the options there, not the default one).

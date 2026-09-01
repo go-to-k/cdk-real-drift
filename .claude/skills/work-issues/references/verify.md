@@ -178,7 +178,10 @@ at once, not trickled.
   **ESM `import` ignores `NODE_PATH`**), and `ln -s <repo>/node_modules
 node_modules` to borrow `aws-cdk-lib` (rm any existing dir first — `ln -sfn` into
   an existing dir nests a symlink). Inline/no-asset stacks need no bootstrap. Build
-  the FIX binary with `vp pack` and run `node .worktrees/<w>/dist/cli.js`.
+  the FIX binary with `vp pack` and run `node "<LANE_TREE>/dist/cli.js"` —
+  the absolute path from the launch-mode probe, not `.worktrees/<w>/…`, which
+  is wrong twice: it is relative to the main checkout, and an IN-PLACE launch
+  tree (an Orca/ADE workspace) need not live under `.worktrees/` at all.
 
 **Fresh deploys: UNIQUE hunt-style stack names only** (`Cdkrd<issue>Verify`),
 never a shared fixed name and never a real prod stack — the account may hold

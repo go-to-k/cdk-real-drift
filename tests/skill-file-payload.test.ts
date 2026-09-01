@@ -38,17 +38,20 @@ import { describe, expect, it } from 'vite-plus/test';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKILLS_DIR = path.join(ROOT, '.claude', 'skills');
 
-const MAX_SKILL_MD_BYTES = 36_000; // largest non-split skill re-measured 12,571 B (verify-pr, 2026-09-01) -- the 12,175 B this line used to quote was stale
-const MAX_ORCHESTRATOR_BYTES = 12_000; // orchestrators were 7,952 B / 6,932 B at the 2026-08-28 split; re-measured 2026-09-01, review round 4: work-issues 11,617 B (383 B of margin), hunt-bugs 6,932 B
-// The re-measurement is the point, not trivia: work-issues had grown to 11,746 B
-// -- 254 B under its cap -- while this comment still quoted the at-split figure,
-// so nobody adding a paragraph could see how little room was left. This pass
-// MOVED the split-PR provenance paragraph into references/implement.md (where the
-// lane subagent it describes actually reads) and replaced the duplicated
-// serialization caveats with a pointer to the section 9 that states them in full,
-// rather than compressing anything away. Re-measure whenever an orchestrator is
-// edited -- a cap with an unmeasured margin is one nobody can plan against.
-const MAX_REFERENCE_FILE_BYTES = 64_000; // largest stage file measured 55,137 B (hunt-bugs gotchas.md); 41,922 B after the rule+citation compression pass (2026-08-28)
+const MAX_SKILL_MD_BYTES = 36_000; // largest non-split skill re-measured 12,571 B (verify-pr, 2026-09-01, unchanged in round 6) -- the 12,175 B this line used to quote was stale
+const MAX_ORCHESTRATOR_BYTES = 12_000; // orchestrators were 7,952 B / 6,932 B at the 2026-08-28 split; re-measured 2026-09-01, review round 6: work-issues 11,694 B (306 B of margin), hunt-bugs 6,932 B
+// The re-measurement is the point, not trivia: work-issues has repeatedly grown to
+// within a few hundred bytes of its cap while this comment still quoted the
+// at-split figure, so nobody adding a paragraph could see how little room was
+// left. Round 6 added the parent-runs-the-probe design and paid for it three ways
+// rather than by loosening anything: the probe and its edge-case reading moved to
+// references/launch-mode.md (9,519 B, read once before stage 0), the IN-PLACE
+// consequence list became a pointer to that file's table, and the stage table's
+// widest cells were shortened -- which, since `vp fmt` pads markdown table columns
+// to the widest cell, reclaimed the padding on all fourteen rows at once.
+// Re-measure whenever an orchestrator is edited -- a cap with an unmeasured margin
+// is one nobody can plan against.
+const MAX_REFERENCE_FILE_BYTES = 64_000; // largest stage file measured 55,137 B (hunt-bugs gotchas.md); 41,922 B after the rule+citation compression pass (2026-08-28), re-measured unchanged 2026-09-01
 
 // The split skills' stage files must still exist and still carry the moved
 // content. Floors sit far enough below the at-split measurement that narrative
@@ -59,37 +62,48 @@ const MAX_REFERENCE_FILE_BYTES = 64_000; // largest stage file measured 55,137 B
 // survived deleting its 55,137 B gotchas.md). `skill-doc-paths.test.ts` does
 // not catch it either: its citation extractor only resolves spans whose first
 // segment is a repo-root directory, and `references/...` is skill-relative
-// (measured, not assumed). Beyond the floors, the pointer-integrity block below
-// is what catches a single deleted stage file: every `references/<stage>.md`
-// the orchestrator names must exist.
+// (measured, not assumed).
 //
-// Re-measured 2026-08-31. work-issues: corpus 109,106 B, largest implement.md
-// 22,600 B, so the property needs a floor above 109,106 - 22,600 = 86,506 --
-// which the 60,000 held here had stopped providing as the stage files grew.
-// 89,000 restored it: strictly TIGHTER, and no upper bound was touched. The
-// older note declined such a floor for work-issues because it leaves little
-// compression room, and that is still the trade (~20 KB of room below the
-// floor); the call is reversed to match the sibling cdk-local (88,000 on a
-// 113,468 B corpus) because a floor that cannot catch the likeliest wholesale
+// A SINGLE deleted stage file is caught by `minFiles`, pinned to the EXACT
+// count on disk rather than left slack. The pointer-integrity block below is
+// NOT that guard, and this comment used to claim it was: deleting a stage file
+// TOGETHER WITH the orchestrator row pointing at it leaves both sides
+// consistent, so `retro.md` or `verify.md` could go with its pointer and stay
+// green (measured 2026-09-01). Pointer integrity catches the OTHER half -- a
+// row left dangling by a deletion -- and the two are complementary, not
+// redundant. Raising `minFiles` when a stage file is ADDED is the price of the
+// exact pin, and it is the same edit that already updates this comment.
+//
+// The older note declined such a floor for work-issues because it leaves little
+// compression room, and that is still the trade; the call was reversed to match
+// the sibling cdk-local because a floor that cannot catch the likeliest wholesale
 // drop is not a weaker guard but a SILENT one. A genuine compression pass
 // re-derives the floor downward in the same commit -- that stays legal; what
-// the floor stops is a deletion with no re-derivation at all.
-// Re-derived again 2026-09-01 (review round 3) at the final tree: corpus
-// 113,699 B, largest implement.md 24,238 B, so the floor must exceed
-// 113,699 - 24,238 = 89,461. The 90,000 set one round earlier still HELD, but by
-// 539 B -- half the margin it was raised to take, one round later, which is the
-// decay this comment keeps warning about and keeps under-pricing. 93,000 leaves
-// 3,539 B of margin and ~20 KB (113,699 - 93,000 = 20,699 B) of compression room
-// below the floor.
-// hunt-bugs stays at 60,000: re-measured 2026-09-01, corpus 88,426 B and largest
-// gotchas.md 41,922 B, so 88,426 - 41,922 = 46,504 < 60,000 and its property
-// still holds. Re-measure both numbers for each skill whenever a stage file
-// changes size materially -- the property is silent when it lapses.
+// the floor stops is a deletion with no re-derivation at all. The property is
+// now ASSERTED at the bottom of this file as well as described here, because
+// three consecutive rounds re-derived it BY HAND and one of them found it
+// lapsed.
+// Re-derived 2026-09-01 (review round 6) at the final tree. work-issues: 9 stage
+// files, corpus 125,713 B, largest implement.md 25,599 B, so the floor must
+// exceed 125,713 - 25,599 = 100,114 -- the 93,000 set one round earlier no
+// longer does. The binding number is not the worst case here: triage.md is
+// 20,782 B, only 4,817 B behind, and round 3 already warned that a flip would
+// leave the floor clearing by under 1 KB. Sizing against the FLIP instead
+// (125,713 - 20,782 = 104,931), 108,000 clears the binding number by 7,886 B and
+// the flip case by 3,069 B, and leaves ~17 KB (125,713 - 108,000 = 17,713 B) of
+// compression room below the floor.
+// hunt-bugs stays at 60,000: re-measured the same day, corpus 88,598 B and
+// largest gotchas.md 41,922 B, so 88,598 - 41,922 = 46,676 < 60,000 and its
+// property still holds. Re-measure both numbers for each skill whenever a stage
+// file changes size materially -- the property is silent when it lapses.
 const SPLIT_SKILLS: Record<string, { minFiles: number; minCorpusBytes: number }> = {
-  // 8 files / 125,139 B measured at the split (2026-08-28); largest 26,621 B; 94,136 B post-compression
-  'work-issues': { minFiles: 6, minCorpusBytes: 93_000 },
+  // 8 files / 125,139 B measured at the split (2026-08-28); largest 26,621 B; 94,136 B
+  // post-compression. 9 files as of 2026-09-01, when the launch-mode probe and its
+  // reading moved out of triage.md into references/launch-mode.md, which the PARENT
+  // reads before stage 0.
+  'work-issues': { minFiles: 9, minCorpusBytes: 108_000 },
   // 7 files / 108,940 B measured at the split (2026-08-28); largest 55,137 B; 87,180 B post-compression
-  'hunt-bugs': { minFiles: 5, minCorpusBytes: 60_000 },
+  'hunt-bugs': { minFiles: 7, minCorpusBytes: 60_000 },
 };
 
 function skillNames(): string[] {
@@ -188,6 +202,26 @@ describe('skill file payload budget', () => {
           `wholesale deletion as an improvement; this floor is what notices content ` +
           `being DROPPED rather than moved or compressed.`
       ).toBeGreaterThanOrEqual(floors.minCorpusBytes);
+
+      // The floor's OWN invariant, asserted rather than described. Everything
+      // above only says "the corpus is big enough"; what the floor is FOR is
+      // that deleting the single largest stage file cannot pass, which holds
+      // only while the floor sits above `corpus - largest`. That property decays
+      // silently as the OTHER files grow -- the comment above records it lapsing
+      // at 60,000 and then holding by only 539 B at 90,000, each time found by a
+      // human re-deriving it by hand. Asserting it makes the next lapse a red
+      // test at the commit that causes it, including the flip case that comment
+      // worries about (implement.md and triage.md are close enough that either
+      // can become "largest"), and the message carries the number to raise to.
+      const largest = Math.max(...refs.map((f) => statSync(f).size));
+      expect(
+        floors.minCorpusBytes,
+        `minCorpusBytes (${floors.minCorpusBytes}) has lapsed for ${name}: the corpus is ` +
+          `${total} B and its largest stage file is ${largest} B, so deleting that one ` +
+          `file would leave ${total - largest} B and still pass. Raise the floor above ` +
+          `${total - largest} (and re-derive the comment beside it), or re-derive it ` +
+          `DOWNWARD in the same commit as a genuine compression pass.`
+      ).toBeGreaterThan(total - largest);
     });
   }
 });
