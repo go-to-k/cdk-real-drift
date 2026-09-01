@@ -34,9 +34,14 @@
 #                         told. This is a different trade from stop-unmerged-lane-warn
 #                         next door, where the same wall of text every turn WAS the
 #                         complaint; an unmerged lane costs nothing while it sits.
-#   additionalContext  -- additionally, when the cadence below arms. The text names a
-#                         command to run (`/sweep-resources`), so it is written at the
-#                         model, and only the model can act on it.
+#   additionalContext  -- additionally, when the cadence below arms. What makes it the
+#                         MODEL's channel is not that it names `/sweep-resources` -- the
+#                         `systemMessage` names the same command, deliberately, so a
+#                         person can run it themselves. It is that only
+#                         `additionalContext` CONTINUES the turn, so it is the only way
+#                         to hand the work back to an agent that was about to stop; and
+#                         its text is phrased as an instruction ("you deployed ... do not
+#                         leave them billing") rather than as a report.
 #
 # CADENCE. `stop_hook_active` marks a turn the harness has already resumed on a hook's
 # account, so it drops the MODEL half -- and that is all it does. It is deliberately not
@@ -223,7 +228,29 @@ active=$(printf '%s' "$input" | jq -r '
 now=$(date +%s)
 armed_since="$now"
 arm=1
+# `arm_reason` has ONE value that is ever read: `clock`, tested far below to
+# decide whether the model text carries the escalated "this is a REPEAT" line.
+# `new` and `active` are the two ways of being not-`clock`; `new` also
+# initialises the variable under `set -u`. They are not dead, but neither is
+# read by name, so do not add a third value expecting it to do something.
 arm_reason="new"
+
+# DELIBERATELY NOT DELETED when the condition clears, unlike the record in
+# `stop-unmerged-lane-warn.sh` next door. That hook drops its record the moment
+# no worktree is ahead, because its stale record can SWALLOW a later first
+# sighting of the same subject -- a missed nudge, the unsafe direction.
+#
+# This one cannot go silent the same way, and the difference is the wall clock.
+# The subject here is the SET OF ARMED TOKENS: it changes whenever a token is
+# armed or cleared, so a stale record stops matching as soon as the situation
+# actually differs. When it does keep matching -- the same resources still
+# armed, the same session -- staying quiet on the MODEL channel is the intended
+# cadence, the `systemMessage` still fires on every turn so the human is never
+# unaware, and `REARM_SECONDS` re-arms the model channel anyway after 20
+# minutes. So the worst case is bounded at "the model is not re-told for up to
+# 20 minutes about resources the user is being told about every turn", against
+# the lane hook's unbounded "never told again". Reviewed and left as is rather
+# than left unstated.
 
 git_dir=$(git -C "$target_dir" rev-parse --absolute-git-dir 2>/dev/null || true)
 state_file=""
@@ -324,10 +351,21 @@ if [ "$arm" = "1" ]; then
     # tmp + `mv` so a Stop racing another never leaves a half-written line behind.
     tmp="${state_file}.$$"
     if printf '%s\t%s\t%s\t%s\n' "$sid" "$subject" "$now" "$armed_since" 2>/dev/null >"$tmp"; then
-      if mv -f "$tmp" "$state_file" 2>/dev/null; then
+      # `mv -f <file> <dir>` returns SUCCESS -- it moves the tmp INSIDE the
+      # directory -- so `mv` alone certified a record that was never written.
+      # The readback next turn then found nothing, `wrote` was 1 anyway, and
+      # every later turn re-armed: the UNBOUNDED `additionalContext` against
+      # CLAUDE_CODE_STOP_HOOK_BLOCK_CAP that this whole cadence exists to
+      # remove, arriving through the success check. Measured: `mv -f <file>
+      # <dir>` -> rc 0, file inside the directory, and with the record path a
+      # directory the hook emitted `both both both both` where the cadence
+      # promises `both sys sys sys`. So the destination is confirmed to be a
+      # regular FILE, and the tmp the non-move left inside it is swept --
+      # otherwise the git dir grows one orphan per turn.
+      if mv -f "$tmp" "$state_file" 2>/dev/null && [ -f "$state_file" ]; then
         wrote=1
       else
-        rm -f "$tmp" 2>/dev/null || true
+        rm -f "$tmp" "$state_file/${tmp##*/}" 2>/dev/null || true
       fi
     else
       rm -f "$tmp" 2>/dev/null || true

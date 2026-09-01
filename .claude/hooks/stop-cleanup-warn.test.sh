@@ -141,6 +141,23 @@ check2() {
   fi
 }
 
+# `require_state <label>` -- assert the hook actually WROTE a cadence record,
+# and report it as a case. Every block below that AGES the record needs one to
+# age, and a bare `awk ... "$STATE"` on a missing file aborts this `set -e`
+# suite mid-file. Measured before this was shared: the suite died at the
+# future-stamp block with `awk: can't open file .../stop-nudge-cleanup`, rc=2,
+# after emitting 60 of 71 cases -- ELEVEN cases hidden by ANY mutation that
+# stops the hook writing a record, which is exactly the class a mutation probe
+# is looking for. rc=2 is loud, so it was never a false green; the mutation
+# tallies taken through it were simply not re-derivable. One site was guarded
+# and two were not, which is why this is a helper rather than a third copy.
+require_state() {
+  if [ -r "$STATE" ]; then
+    PASS=$((PASS + 1)); printf 'ok   - %s\n' "$1"; return 0
+  fi
+  FAIL=$((FAIL + 1)); printf 'FAIL - %s (no record was written)\n' "$1"; return 1
+}
+
 # `pwd -P` is load-bearing, not tidiness: on macOS `mktemp -d` returns a
 # `/var/folders/...` path whose real location is `/private/var/...`, while git
 # canonicalises every path it reports. An uncanonicalised sandbox therefore makes
@@ -307,12 +324,9 @@ check2 "...settling again afterwards" "sys" "$(channel_of "$out")"
 # bare `awk` would abort this `set -e` suite mid-file and hide every case after
 # it, which is exactly what a mutation probe needs to see.
 aged=$(( $(date +%s) - 3000 ))
-if [ -r "$STATE" ]; then
-  PASS=$((PASS + 1)); printf 'ok   - the hook wrote a cadence record to age\n'
+if require_state "the hook wrote a cadence record to age"; then
   awk -v t="$aged" 'BEGIN{FS=OFS="\t"} {$3=t; $4=t; print}' "$STATE" > "$STATE.aged"
   mv -f "$STATE.aged" "$STATE"
-else
-  FAIL=$((FAIL + 1)); printf 'FAIL - the hook wrote a cadence record to age\n'
 fi
 check2 "the fixture really did age the record" "$aged" "$(cut -f3 "$STATE" 2>/dev/null || echo MISSING)"
 out=$(run_cleanup s1)
@@ -533,8 +547,10 @@ rm -f "$STATE"
 out=$(run_cleanup s1)
 check2 "control: the future-stamp case starts from a real record" "both" "$(channel_of "$out")"
 future=$(($(date +%s) + 315360000)) # ~10 years
-awk -v t="$future" 'BEGIN{FS=OFS="\t"} {$3=t; $4=t; print}' "$STATE" > "$STATE.f"
-mv -f "$STATE.f" "$STATE"
+if require_state "the future-stamp fixture has a record to age"; then
+  awk -v t="$future" 'BEGIN{FS=OFS="\t"} {$3=t; $4=t; print}' "$STATE" > "$STATE.f"
+  mv -f "$STATE.f" "$STATE"
+fi
 out=$(run_cleanup s1)
 check2 "a FUTURE last-nudge stamp does not silence the model forever" "both" "$(channel_of "$out")"
 check2 "...and a future armed-since never prints a negative duration" "0" "$(minutes_in "$out")"
@@ -549,13 +565,14 @@ rm -f "$STATE"
 out=$(run_cleanup s1) # first nudge: the record is written with both stamps at now
 base=$(date +%s)
 age_record() { # <last-nudge epoch> <armed-since epoch>
+  require_state "the armed-since fixture has a record to age" || return 0
   awk -v n="$1" -v a="$2" 'BEGIN{FS=OFS="\t"} {$3=n; $4=a; print}' "$STATE" > "$STATE.a"
   mv -f "$STATE.a" "$STATE"
 }
 age_record "$((base - 6000))" "$((base - 6000))"
 out=$(run_cleanup s1)
 check2 "the first clock re-arm measures the full armed age" "100" "$(minutes_in "$out")"
-check2 "...and the nudge moved ONLY the last-nudge stamp" "$((base - 6000))" "$(cut -f4 "$STATE")"
+check2 "...and the nudge moved ONLY the last-nudge stamp" "$((base - 6000))" "$(cut -f4 "$STATE" 2>/dev/null || echo MISSING)"
 # Second cycle: the last nudge is recent-ish, armed-since is old. Measuring from
 # the wrong field now reads 50 rather than 100.
 age_record "$((base - 3000))" "$((base - 6000))"
@@ -636,5 +653,46 @@ set -e
 check2 "silent when jq is unavailable" "" "$out"
 
 echo "----"
+# --- The record path is a DIRECTORY. `mv -f <file> <dir>` returns SUCCESS -- it
+# moves the tmp INSIDE the directory -- so `wrote` was set, the readback on the
+# next turn found nothing, and EVERY turn re-armed `additionalContext` against
+# CLAUDE_CODE_STOP_HOOK_BLOCK_CAP while the git dir grew one orphan tmp per
+# turn. That is the unbounded cadence this whole mechanism exists to remove,
+# arriving through the success check -- the one failure `mv`'s own exit code
+# cannot report, so the unwritable-git-dir case above does not cover it.
+# Measured with `mv` alone: `both both both both`. The shipped answer is
+# `sys sys sys sys` -- the model half is dropped on EVERY turn including the
+# first, because `[ "$wrote" = "1" ] || arm=0` is what a record that can never
+# be written costs -- while the USER half is still promised on every one, which
+# is this hook's whole point and the half the lane twin does not keep.
+rm -f "$STATE"
+mkdir -p "$STATE"
+dir_channels=""
+for _ in 1 2 3 4; do
+  out=$(run_cleanup s1)
+  dir_channels="${dir_channels}$(channel_of "$out") "
+done
+dir_orphans=$(find "$STATE" -type f 2>/dev/null | wc -l | tr -d ' ')
+rm -f "$STATE"/* 2>/dev/null || true
+rmdir "$STATE" 2>/dev/null || true
+check2 "a record path that is a DIRECTORY never arms the model channel" "sys sys sys sys " "$dir_channels"
+check2 "...and leaves no orphan tmp behind in the git dir" "0" "$dir_orphans"
+# ...and the CONTROL: with the directory gone the hook arms again, so the four
+# `sys` above are the directory's doing rather than a hook that stopped arming.
+out=$(run_cleanup s1)
+check2 "...and it arms again once the record path is writable" "both" "$(channel_of "$out")"
+
+
+# A FLOOR on the case total. Every `for` loop above expands a LIST, and emptying
+# one -- or deleting a case -- removes assertions SILENTLY while the tally still
+# reads `fail: 0`. No suite in this repo had one, so the only thing standing
+# between a gutted loop and a green run was somebody noticing the number move.
+# Raise it when cases are added; never lower it to make a red run green.
+CASE_FLOOR=77
+if [ "$((PASS + FAIL))" -lt "$CASE_FLOOR" ]; then
+  FAIL=$((FAIL + 1))
+  printf 'FAIL case floor: only %s cases ran, expected at least %s\n' "$((PASS + FAIL))" "$CASE_FLOOR"
+fi
+
 echo "stop-cleanup-warn: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

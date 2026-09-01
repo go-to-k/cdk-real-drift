@@ -423,6 +423,27 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   unwritable git dir) costs the MODEL channel rather than the warning, because a
   nudge that cannot be recorded cannot be bounded.
 
+  Three corrections landed 2026-09-01, each mutation-proved. **`mv -f` is not
+  proof of a write**: `mv -f <tmp> <dir>` returns 0 and moves the tmp INSIDE the
+  directory, so a record path that is a DIRECTORY set `wrote`/`persisted`, the
+  readback found nothing, and every turn re-armed — unbounded
+  `additionalContext` against `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`, arriving
+  through the success check, plus one orphan tmp per turn. Both hooks now
+  confirm the destination is a regular FILE and sweep the stray tmp. **The
+  record's THIRD field is now READ**: the lane hook consults a record only when
+  it is well-formed (exactly three tab-separated fields, numeric epoch), which
+  both makes that field load-bearing and closes the `IFS=<TAB>` fold — a record
+  with an EMPTY subject field shifted the next field into `prev_subject`, and
+  when that field parsed as `<branch>:<state>` the lane went QUIET. **The lane
+  hook DELETES the record when no worktree is ahead**, so the next lane starts
+  armed; without it the stored subject outlived the condition and the same
+  subject returning was downgraded — a missed nudge, reachable through the
+  `git switch --detach origin/main` remedy the hook itself prints. The cleanup
+  hook deliberately does NOT delete, and says why in the file: its subject is
+  the armed-token SET, its `systemMessage` fires every turn regardless, and
+  `REARM_SECONDS` re-arms the model channel within 20 minutes, so the worst case
+  is bounded where the lane hook's was not.
+
   **A downgrade to `systemMessage` must change VOICE, not only audience.** Both
   hooks now keep a `user_msg` / `model_msg` pair. The model text is written at the
   agent ("YOUR OWN lane", "rebase, run the gates", "the honest label is STOPPED"),
@@ -486,7 +507,7 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   the token set is unchanged, because money accrues on the clock rather than per
   turn, with the escalated message naming how long the tokens have been armed. Both
   hooks are exercised by `.claude/hooks/stop-cleanup-warn.test.sh` and
-  `.claude/hooks/stop-unmerged-lane-warn.test.sh` (71 and 100 cases), run by
+  `.claude/hooks/stop-unmerged-lane-warn.test.sh` (74 and 121 cases), run by
   `vp run test:hooks`.
 
   **Both suites run the HOOK under an explicitly chosen interpreter, and that is

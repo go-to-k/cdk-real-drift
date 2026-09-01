@@ -49,7 +49,16 @@ input=$(cat 2>/dev/null || true)
 # fallback for `session_root` further down, where it answers the opposite
 # question -- which worktree IS the session's -- and being the lane is exactly
 # what makes it the right answer there.
-REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." 2>/dev/null && pwd)"
+# `[ -n "$REPO" ]` FIRST, and it is not belt-and-braces. When the subshell above
+# fails, `REPO` is EMPTY, and `cd "" || exit 0` does not stand the hook down:
+# measured, `cd ""` returns 0 on bash 3.2 (macOS's /bin/bash, which
+# `#!/usr/bin/env bash` finds on a machine without Homebrew bash first on PATH)
+# and 1 on bash 5.3. So on 3.2 the guard passed and the hook went on to run
+# `git` against whatever cwd the harness happened to hand it. The `2>/dev/null`
+# on the assignment is the same correction one line up: the sibling hook has it
+# and this one did not, so a failing `cd` also wrote to the hook's REAL stderr.
+[ -n "$REPO" ] || exit 0
 cd "$REPO" 2>/dev/null || exit 0
 
 # Cheap: no fetch. A stale `origin/main` can only OVER-report: `rev-list --count
@@ -73,8 +82,13 @@ git rev-parse --verify origin/main >/dev/null 2>&1 || exit 0
 # about a lane that exists, which is the one failure direction it must not have.
 lanes=""
 lane_paths=""
+# EVERY worktree, not only the lanes: the no-lane exit below has to be able
+# to clear a cadence record wherever one was left.
+all_worktrees=""
 while IFS= read -r wt; do
   [ -n "$wt" ] || continue
+  all_worktrees="${all_worktrees}${wt}
+"
   br=$(git -C "$wt" branch --show-current 2>/dev/null) || continue
   [ -n "$br" ] || continue
   case "$br" in main | master) continue ;; esac
@@ -86,7 +100,47 @@ while IFS= read -r wt; do
 "
 done < <(git worktree list --porcelain 2>/dev/null | awk '/^worktree /{print substr($0, 10)}')
 
-[ -n "$lanes" ] || exit 0
+if [ -z "$lanes" ]; then
+  # The condition has CLEARED: no worktree in this repo is ahead of
+  # `origin/main`. Drop every cadence record, so the NEXT lane starts ARMED.
+  #
+  # Without this the record outlived the condition, and the miss is reachable
+  # by the very remedy this hook prints. Measured: nudge (ctx), repeat (sys),
+  # `git switch --detach origin/main` so nothing is a lane, re-attach and
+  # commit again in the SAME session -> `sys`, never `ctx`. The subject is
+  # `<branch>:<push state>`, so returning to the same branch in the same push
+  # state reproduces the stored subject exactly and the nudge is SWALLOWED --
+  # a MISSED nudge, which this file and `CLAUDE.md` both call the
+  # unsafe direction. `stop-warn.sh` in the sibling repo has always dropped its
+  # record on the clean-tree exit for exactly this reason.
+  #
+  # EVERY worktree's record is dropped, including other sessions'. "No lane is
+  # ahead" is a REPO-GLOBAL fact, so no session has anything left to be quiet
+  # about; and the cost of being wrong is one EXTRA nudge, which is the trade
+  # the record's own concurrent-clobber comment already accepts.
+  #
+  # The git dir is derived without forking -- a main worktree has `.git` as a
+  # DIRECTORY, a linked one has it as a FILE holding `gitdir: <path>`. This
+  # runs on the silent path, which is most turns, so a `git rev-parse` per
+  # worktree here would be a per-turn cost paid by every clean session.
+  while IFS= read -r wt; do
+    [ -n "$wt" ] || continue
+    wt_git_dir=""
+    if [ -d "$wt/.git" ]; then
+      wt_git_dir="$wt/.git"
+    elif [ -f "$wt/.git" ]; then
+      IFS=' ' read -r _ wt_git_dir <"$wt/.git" 2>/dev/null || wt_git_dir=""
+    fi
+    # git writes an ABSOLUTE `gitdir:`; a relative one would resolve against
+    # this hook's own cwd and the `rm -f` would simply find nothing, which is
+    # the safe direction (an extra nudge, never a missed one).
+    [ -n "$wt_git_dir" ] || continue
+    rm -f "$wt_git_dir/stop-nudge-lane" 2>/dev/null || true
+  done <<CLEAR_RECORDS_EOF
+$all_worktrees
+CLEAR_RECORDS_EOF
+  exit 0
+fi
 
 # Everything past here builds a payload with `python3`. Without it the script
 # would end on a `command not found` and exit 127 -- on every turn, for a hook
@@ -149,12 +203,24 @@ print("1" if flag else "0")
 # session. Measured: a payload whose `cwd` was "<lane path>\nJUNK" wrote
 # `sid=JUNK`.
 #
-# Tabs are NOT stripped from `cwd`, and that asymmetry is deliberate. `sid` is
-# written into a tab-separated record, so a tab in it would shift every field
-# after it; `cwd` is only ever compared against a worktree path, and a tab is legal
-# in one -- folding it would break the tab-in-path case this suite already fences.
-print((data.get("cwd") or "").replace("\n", " "))
-print((data.get("session_id") or "").replace("\t", " ").replace("\n", " "))
+# Tabs are stripped from NEITHER here, and that is not the asymmetry this
+# comment used to describe. `cwd` must keep its tabs: it is only ever compared
+# against a worktree path, a tab is legal in one, and folding it would break the
+# tab-in-path case this suite fences. `session_id` must lose them, because it is
+# written into a tab-separated record -- but that fold now happens ONCE, below,
+# after BOTH of its sources have been consulted. Doing it here as well was a
+# second spelling of the same rule that covered only one of the two paths.
+# `str()` around each, because `(data.get(x) or "")` is only a STRING when the
+# field is absent, null or a string. A payload whose `cwd` is a number or a list
+# hands `.replace` a non-string and raises AttributeError -- an advisory hook
+# writing a traceback to its REAL stderr, which is the one thing this file
+# spends paragraphs avoiding, and `cwd` prints first so BOTH values are lost.
+# The block already hardens `json.loads` and `isinstance(data, dict)`; this is
+# that same check, stopped one field short. (`stop-cleanup-warn.sh` reads its
+# fields with `jq -r`, which COERCES instead of raising, so the pair diverged
+# here too.)
+print(str(data.get("cwd") or "").replace("\n", " "))
+print(str(data.get("session_id") or "").replace("\n", " "))
 ')
 active=$(printf '%s\n' "$parsed" | sed -n 1p)
 hook_cwd=$(printf '%s\n' "$parsed" | sed -n 2p)
@@ -170,8 +236,18 @@ sid=$(printf '%s\n' "$parsed" | sed -n 3p)
 # `additionalContext` against the 8-block cap, which is the whole failure the
 # cadence exists to prevent. Doing it once, after both sources have been consulted,
 # is what makes "every field is normalised before it is written" true rather than
-# true-of-one-path. (`stop-cleanup-warn.sh` next door has the same two sources and
-# the same single fold.)
+# true-of-one-path.
+#
+# `stop-cleanup-warn.sh` next door has the same two sources and the same single
+# fold, but NOT the same PRECEDENCE, and both files used to claim symmetry they
+# do not have. This hook is PAYLOAD-first (the harness's `session_id` is the
+# authority on which session this is; the env var is the fallback for a payload
+# that omits it). That hook is ENV-first, because its sid also keys the
+# `autoarm-<sid>` sentinel filename it shares with `deploy-autoarm-gate.sh` and
+# `bughunt-clean-gate.sh`, which read the env var and never see a Stop payload.
+# The two agree whenever both sources are present and identical, which is every
+# real session; they are left divergent because converging them would rename
+# that shared sentinel.
 sid=$(printf '%s' "$sid" | tr '\t\n' '  ')
 [ -n "$sid" ] || sid="shared"
 
@@ -351,12 +427,39 @@ elif [ "$channel" = "ctx" ]; then
     subject="${self_branch}:${push_state}"
     prev_sid=""
     prev_subject=""
+    prev_ts=""
+    prev_rest=""
     if [ -r "$state_file" ]; then
-      IFS="$TAB" read -r prev_sid prev_subject _ <"$state_file" 2>/dev/null || true
+      IFS="$TAB" read -r prev_sid prev_subject prev_ts prev_rest <"$state_file" 2>/dev/null || true
     fi
+    # A record is consulted only when it is WELL-FORMED: exactly three
+    # tab-separated fields with a numeric epoch. Anything else -- an empty file,
+    # a truncated write, a fourth field from a future format, a clobber that
+    # interleaved two writers -- is treated as NO record, which falls to ARM.
+    # That is the safe direction: an extra nudge, never a missed one.
+    #
+    # It is also what makes the record's THIRD field load-bearing. Before this
+    # the epoch was written on every turn and read by nothing, while CLAUDE.md
+    # documented it as part of the shape -- and its absence was precisely what
+    # could not be detected. A TAB is IFS *whitespace*, so `read` folds a RUN of
+    # them into one separator: a record with an EMPTY subject field
+    # (`<sid><TAB><TAB><subject>`) shifted the real subject INTO `prev_subject`,
+    # the predicate below matched it, and the lane went QUIET -- a malformed
+    # record SILENCING the nudge, the one direction this must not fail in. With
+    # the shape check that same record leaves `prev_ts` empty and arms.
+    # (Ported from go-to-k/cdk-local's copy of this hook, which had it; this one
+    # did not, so only the twin that already had the fix could detect its own
+    # regression.)
+    case "$prev_ts" in
+      "" | *[!0-9]*) prev_sid=""; prev_subject="" ;;
+    esac
+    [ -z "$prev_rest" ] || { prev_sid=""; prev_subject=""; }
     # A refname may not contain a colon, so the LAST one splits the subject
     # unambiguously. A subject carrying none is not a subject this hook wrote --
-    # treat it as absent, which arms, the safe direction.
+    # treat it as absent, which arms, the safe direction. Reachable only through
+    # a HAND-EDITED record now that the shape check above runs first: this hook
+    # never writes a colon-free subject, and any record it did not write is
+    # already rejected unless it also carries a numeric third field.
     case "$prev_subject" in
       *:*)
         prev_branch=${prev_subject%:*}
@@ -404,10 +507,19 @@ elif [ "$channel" = "ctx" ]; then
     # fd 2 before the open that can fail.
     tmp="${state_file}.$$"
     if printf '%s\t%s\t%s\n' "$sid" "$subject" "$(date +%s)" 2>/dev/null >"$tmp"; then
-      if mv -f "$tmp" "$state_file" 2>/dev/null; then
+      # `mv -f <file> <dir>` returns SUCCESS -- it moves the tmp INSIDE the
+      # directory -- so `mv` alone certified a record that was never written.
+      # The readback next turn then found nothing, `persisted` was 1 anyway,
+      # and every later turn re-armed: the UNBOUNDED model channel this whole
+      # cadence exists to remove, arriving through the success check.
+      # Measured: `mv -f <file> <dir>` -> rc 0, file inside the directory.
+      # So the destination is confirmed to be a regular FILE, and the tmp the
+      # non-move left inside it is swept -- otherwise the git dir grows one
+      # orphan per turn.
+      if mv -f "$tmp" "$state_file" 2>/dev/null && [ -f "$state_file" ]; then
         persisted=1
       else
-        rm -f "$tmp" 2>/dev/null || true
+        rm -f "$tmp" "$state_file/${tmp##*/}" 2>/dev/null || true
       fi
     else
       rm -f "$tmp" 2>/dev/null || true
