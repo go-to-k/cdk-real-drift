@@ -628,6 +628,56 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   measured). An unbalanced quote is now REFUSED rather than silently truncated —
   `-b agent's-branch` used to yield the single token `-b` and pass.
 
+  **A fifth cause, found inside the fourth's own fix.** "An incomplete parse may
+  not ALLOW" was implemented for unknown GIT OPTIONS only; `gate_argv` did the
+  OPPOSITE for SHELL WORDS, enumerating the forms it recognised (a redirection, a
+  trailing `&`, a `#` comment) and passing everything else through as a git
+  argument. So a word the shell removes but the stripper does not model became a
+  phantom second positional and the verdict relaxed to "file restore". Measured
+  against the parse above, `OLD` being `origin/main` (which has no copy of this
+  gate at all, so it scores 0 on every row INCLUDING the control), `NEW` the
+  round-3 parse, `now` this one:
+
+  ```text
+    command                                     OLD  NEW  now  want
+    git checkout <branch> $EMPTY                  0    0    2     2
+    git checkout <branch> ${EMPTY}                0    0    2     2
+    git checkout <branch> {fd}>/dev/null          0    0    2     2
+    git checkout <branch> {fd}<f.txt              0    0    2     2
+    git checkout main # don't switch lanes        0    2    0     0
+    git checkout main -- f.txt # agent's file     0    2    0     0
+    git checkout --end-of-options main            0    2    0     0
+    git checkout --end-of-options -- f.txt        0    2    0     0
+    git checkout --git-completion-helper          0    2    0     0
+    control: git checkout <branch>                0    2    2     2
+  ```
+
+  The answer is the same fence applied to the other grammar rather than a fourth
+  enumeration: a word `gate_argv` cannot fully account for sets `parse_certain=0`.
+  `gate_word_is_literal` admits a word only when every character outside a quoted
+  span is on `GATE_INERT_CHARS`, a CLOSED list of characters that trigger no
+  shell processing, each carrying its reason. A shape nobody has thought of lands
+  on BLOCK because every shell construct is SPELLED, so one outside the list
+  necessarily carries a character the list does not hold — `{fd}>/dev/null` is
+  caught by `>` and `{` without either being named as a redirection form. One
+  exemption is proved rather than assumed: a word beginning with the literal
+  `@{-` cannot vanish (no expansion produces or removes those characters), and
+  its verdict is a BLOCK that only more positionals relax.
+
+  **Three claims retired here too.** The `parse_certain` arm was documented as
+  firing "only on commands git itself refuses"; against git 2.53.0 it also fired
+  on `--end-of-options main`, `--end-of-options -- <path>` and
+  `--git-completion-helper`, all rc=0. Those, plus `--git-completion-helper-all`
+  and `--help-all`, are `parse-options` built-ins absent from `-h` and are in the
+  tables now at arity 0 — `--end-of-options` ending the OPTIONS without giving
+  the next token checkout's pathspec meaning, since
+  `git checkout --end-of-options <branch>` really switches. The unbalanced-quote
+  refusal was justified as "the text is a shell syntax error in the first place";
+  `bash -n "git checkout main # don't switch lanes"` reports VALID syntax, and the
+  gate blocked a command git answers with "Already on 'main'" — the comment is now
+  cut BEFORE the split. And `--help` used to return ahead of the fence, the one
+  relaxing verdict that skipped it; it no longer does.
+
   Two claims are retired rather than carried. This hook said "the same probes run
   against the sibling gates score them identically wrong"; that stopped being
   true when the siblings landed their own parse, and they now score those rows
@@ -637,7 +687,7 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   check, and with one name on two remotes git refuses while the gate blocks — the
   conservative direction, so the behaviour stays and only the sentence goes.
 
-  Exercised by `.claude/hooks/main-tree-branch-gate.test.sh` (144 cases) under an
+  Exercised by `.claude/hooks/main-tree-branch-gate.test.sh` (172 cases) under an
   explicitly pinned interpreter, `/bin/bash` by default — see the fence note
   above.
 
