@@ -282,7 +282,9 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
     never be forgotten. As a backstop (even for a live-test that never called
     `add`), the `deploy-autoarm-gate` hook arms a generic token on ANY
     deploy-shaped command, and the `stop-cleanup-warn` Stop hook warns at session
-    end if the sentinel is still armed. Run **`/sweep-resources`** to do the
+    end if the sentinel is still armed — to the USER on every turn and to the MODEL
+    on the cadence below, having reached NEITHER until
+    go-to-k/cdk-real-drift#1844. Run **`/sweep-resources`** to do the
     cleanup + release the gate.
 - **`issue-dup-check-gate` — the one PreToolUse gate that is not a markgate gate.**
   It blocks `gh issue create`, and the REST mint `gh api repos/<o>/<r>/issues`,
@@ -341,6 +343,185 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   foreign-`-R` half asserts the refusal MESSAGE, not just the exit code: every
   gate in that fixture already blocks for its own reasons, so an exit-code-only
   check stayed green with the refusal deleted.
+- **The two `Stop` hooks: which CHANNEL reaches which audience, and the nudge
+  cadence.** `stop-cleanup-warn.sh` and `stop-unmerged-lane-warn.sh` fire at
+  turn-end rather than on a tool call, and until go-to-k/cdk-real-drift#1844 both
+  picked an output channel their text's audience never reads. Read from the
+  installed Claude Code (2.1.251) rather than the published docs, a Stop hook has
+  exactly three ways out:
+  - `hookSpecificOutput.additionalContext` — reaches the MODEL, and the turn
+    CONTINUES so it can act on what it was told.
+  - `systemMessage` — reaches the USER only (rendered as `<hookName> says: ...`),
+    and the turn ends normally.
+  - stdout / stderr at exit 0 — reaches NOBODY. Hook stderr is surfaced only on a
+    NON-zero exit, and stdout at exit 0 is parsed as JSON and dropped when it is
+    not one.
+
+  There is no fourth option that reaches the model WITHOUT continuing the turn,
+  which is why each hook has to CHOOSE rather than simply emit. The two JSON
+  fields are independent branches in the harness, so one payload may carry both.
+  `stop-cleanup-warn` was in the third state — `echo ... >&2` then `exit 0` — so a
+  BILLING guardrail delivered its warning into a hole for months; the lane hook
+  emitted `systemMessage` only, while every word of it is addressed to the agent.
+
+- **A Stop continuation is not free, and it is not merely slow.** A Stop hook's
+  `additionalContext` travels in the SAME return value as a `decision: "block"`,
+  so both spend one budget — `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`, default 8
+  consecutive blocks — after which the harness overrides the hook and ends the turn
+  itself. A hook that nudges at every turn-end therefore spends a budget shared
+  with every other Stop hook, and the one that spends it is not necessarily the one
+  with something urgent to say. Hence the **cadence rule**, which both hooks
+  follow: `stop_hook_active` (a required boolean on the Stop payload) marks a turn
+  the harness has ALREADY resumed on a hook's account, so it drops the MODEL half —
+  and that is all it does. It is deliberately NOT a full stand-down in either hook:
+  both used to `exit 0` on it, on the reasoning that the human had seen the message
+  on the earlier pass of the same turn, and that reasoning is false whenever the
+  condition first becomes TRUE during the continuation (the continuation exists to
+  push the model back to work, and deploying a stack or committing the lane is
+  exactly that work). A bare `systemMessage` does not continue a turn, so the user
+  half costs nothing; a resumed pass writes no cadence record either, so the nudge
+  it did not spend is still available to the next ordinary turn-end.
+
+  Across turns the condition persists, so an unconditional `additionalContext`
+  fires at every turn-end for as long as it holds. Each hook therefore nudges the
+  model at most once per distinct SUBJECT, and a repeat falls back to
+  `systemMessage`: the user still sees it, the turn ends. The subject is chosen so
+  ORDINARY WORK does not change it, or the rule bounds nothing — the lane hook keys
+  on `<own branch>:<pushed|unpushed>` and NOT on the commit count, which changes
+  every time the model commits, while the cleanup hook keys on the sorted set of
+  armed sentinel tokens.
+
+  **The lane hook's predicate is DIRECTED, and a plain inequality is not a
+  simplification of it.** `pushed -> unpushed` is what an ordinary COMMIT looks
+  like, so `prev_subject != subject` re-armed on every commit and again on every
+  push — measured as `commit ctx, repeat sys, push ctx, repeat sys, ...`, two
+  forced continuations per commit/push cycle, which is exactly the per-commit
+  cadence the subject was chosen to avoid. It arms on a new session, a lane never
+  seen, a DIFFERENT branch, a record it cannot parse, or `unpushed -> pushed` only,
+  since that is the one transition opening an action the model did not have before.
+
+  The record is ONE file in the PER-WORKTREE git dir (`stop-nudge-lane` /
+  `stop-nudge-cleanup`) holding `<session id>TAB<subject>TAB<epoch>`, written
+  tmp-then-`mv`; the cleanup hook appends a fourth `armed since` field, which each
+  nudge must not reset. One file rather than one per session, so nothing
+  accumulates in the git dir with nobody to clean it up, and a concurrent session
+  in the same worktree costs an EXTRA nudge rather than a missed one — the safe
+  direction. Three properties of the record are load-bearing and each was a live
+  bug first: it is written on BOTH arms of the lane hook's decision, because it
+  holds the last OBSERVED subject rather than the last NUDGED one (recording only
+  on the arm freezes the push half and silences the next genuine
+  `unpushed -> pushed`); every field is NORMALISED — folded free of tabs and
+  newlines and defaulted when empty — **once, after every source of it has been
+  consulted**, since a tab or an empty leading field in a tab-separated line read
+  back with `IFS=<TAB> read` shifts every later field and the comparison then never
+  matches, an unbounded nudge. The "after every source" half is the part that gets
+  lost: BOTH hooks read the session id from the payload AND from
+  `CLAUDE_CODE_SESSION_ID`, and normalising inside the payload parse leaves the
+  environment path raw. Measured on the lane hook in exactly that state: a
+  well-formed id gave `ctx, sys, sys` while `<TAB>abc`, `a<TAB>b` and `a<NL>b` each
+  gave `ctx, ctx, ctx`. And a record that cannot be PERSISTED (an unresolvable or
+  unwritable git dir) costs the MODEL channel rather than the warning, because a
+  nudge that cannot be recorded cannot be bounded.
+
+  Three corrections landed 2026-09-01, each mutation-proved. **`mv -f` is not
+  proof of a write**: `mv -f <tmp> <dir>` returns 0 and moves the tmp INSIDE the
+  directory, so a record path that is a DIRECTORY set `wrote`/`persisted`, the
+  readback found nothing, and every turn re-armed — unbounded
+  `additionalContext` against `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`, arriving
+  through the success check, plus one orphan tmp per turn. Both hooks now
+  confirm the destination is a regular FILE and sweep the stray tmp. **The
+  record's THIRD field is now READ**: the lane hook consults a record only when
+  it is well-formed (exactly three tab-separated fields, numeric epoch), which
+  both makes that field load-bearing and closes the `IFS=<TAB>` fold — a record
+  with an EMPTY subject field shifted the next field into `prev_subject`, and
+  when that field parsed as `<branch>:<state>` the lane went QUIET. **The lane
+  hook DELETES the record when no worktree is ahead**, so the next lane starts
+  armed; without it the stored subject outlived the condition and the same
+  subject returning was downgraded — a missed nudge, reachable through the
+  `git switch --detach origin/main` remedy the hook itself prints. The cleanup
+  hook deliberately does NOT delete, and says why in the file: its subject is
+  the armed-token SET, its `systemMessage` fires every turn regardless, and
+  `REARM_SECONDS` re-arms the model channel within 20 minutes, so the worst case
+  is bounded where the lane hook's was not.
+
+  **A downgrade to `systemMessage` must change VOICE, not only audience.** Both
+  hooks now keep a `user_msg` / `model_msg` pair. The model text is written at the
+  agent ("YOUR OWN lane", "rebase, run the gates", "the honest label is STOPPED"),
+  so routing it down the user channel hands a human instructions addressed to
+  somebody else — go-to-k/cdkd#2389 in miniature, the defect these hooks were
+  rewritten to fix. The lane hook has THREE paths that downgrade a self-lane
+  warning (a cadence repeat, an unpersistable record, a resumed pass) and one
+  shared emitter, which is precisely the shape where fixing one path leaves the
+  others; each is fenced by its own case.
+
+  The same one-emitter-three-paths shape also reproduces in the TEXT rather than
+  in the code, and it needs its own assertion. The user text once said "the agent
+  has already been nudged about this lane once, so this repeat is for you" —
+  true of the cadence repeat and false of the other two: a resumed pass spends no
+  nudge at all, and an unpersistable record drops the model half precisely
+  BECAUSE the record cannot be kept, so the agent is never told and the claim
+  would repeat every turn. Removing the clause is invisible to the voice checks —
+  the sentence names no agent-voice phrase and does name the lane — so the
+  resumed and unpersistable cases assert the ABSENCE of an "already been nudged"
+  claim as well. Measured: restoring the sentence leaves every other case green
+  and reddens exactly those two.
+
+  **The `stop_hook_active` fold follows PYTHON's truthiness in both hooks, and
+  neither obvious spelling gets there.** The cleanup hook parses the field with
+  `jq` and the lane hook with `python3`, so a malformed payload must not mean two
+  different things. Measured: plain jq truthiness makes `0`, `[]` and `{}`
+  continuations while Python says they are not, and `$f == true` makes `1`, `[1]`
+  and `{"a":1}` ordinary turns while Python says they ARE continuations — opposite
+  errors, and the second is the dangerous one for the money hook, which then reads
+  a resumed pass as fresh and spins the turn. The rule both follow is Python's:
+  null, `false`, `0` and an empty container are falsy, every other value is truthy,
+  with the textual spellings of `false` folded down first.
+
+  One shape still diverges, and it is recorded with BOTH sides because "the two
+  hooks must not disagree" is the whole reason the ladder exists. `1e-999` reads
+  truthy in jq (jq 1.8 preserves the literal, so `$f == 0` is false) and falsy in
+  Python, which underflows it to `0.0`. Measured on jq-1.8.1 / CPython 3. On that
+  one payload the cleanup hook reads RESUMED and goes quiet to the model, while
+  the lane hook reads NOT resumed and spends its model nudge — so it is a
+  disagreement, not merely one hook being conservative. Left as is because both
+  halves are bounded: the quiet costs a nudge a later ordinary turn emits anyway,
+  and the lane hook's nudge is held to one by its per-subject cadence record, so
+  neither side spins. And no producer emits it — the harness sends a JSON
+  boolean — so special-casing it would mean teaching jq to underflow, a rule with
+  no other use, to reconcile a value neither hook will see.
+
+- **The two Stop hooks then DIVERGE deliberately, and the difference is the
+  point.** `stop-unmerged-lane-warn` picks ONE channel by OWNERSHIP: the session's
+  own lane (resolved from `cwd` in the payload, falling back to the hook copy's own
+  checkout) goes to the model, another session's lane goes to the user, because the
+  model cannot act on a worktree that is not its own. It has NO wall-clock re-arm —
+  an unmerged lane costs nothing while it sits, so a second telling buys only
+  annoyance, and the same wall of text every turn was the original complaint. Push
+  state is deliberately not its channel discriminator: that would go quiet on a
+  branch pushed with NO PR, one of the two failures the hook exists to catch, so it
+  lives in the cadence subject and in the message TEXT instead.
+  `stop-cleanup-warn` makes the opposite trade on both axes, because its subject is
+  real AWS resources: it emits `systemMessage` on EVERY fire and ADDS
+  `additionalContext` when the cadence arms, since a billing guardrail must never
+  go silent to the human; and it DOES re-arm on a 20-minute wall clock even when
+  the token set is unchanged, because money accrues on the clock rather than per
+  turn, with the escalated message naming how long the tokens have been armed. Both
+  hooks are exercised by `.claude/hooks/stop-cleanup-warn.test.sh` and
+  `.claude/hooks/stop-unmerged-lane-warn.test.sh` (74 and 121 cases), run by
+  `vp run test:hooks`.
+
+  **Both suites run the HOOK under an explicitly chosen interpreter, and that is
+  not cosmetic.** They invoke it as `bash "$HOOK"` and its shebang is
+  `#!/usr/bin/env bash`, so both resolve through PATH — which means launching the
+  SUITE with `/bin/bash` proved nothing at all about the hook, and the bash 3.2
+  cleanliness these files need on macOS was only ever accidental. Each suite now
+  puts a one-symlink shim directory first on PATH so every child `bash` is the
+  fenced interpreter: `/bin/bash` by default, `HOOK_BASH=<path>` to take the other
+  tally. The suites print which one they used on their first line, and an explicitly
+  set `HOOK_BASH` that is not executable is FATAL rather than a silent fall back to
+  PATH bash — falling back would hide a typo in the one setting the fence exists to
+  pin, and report a tally under an interpreter nobody asked for.
+
 - **Registration is not execution — prove the gates are ALIVE before the first
   commit of a session**: run `git commit --dry-run -m "gate liveness probe"` from
   the repo root **as a Bash TOOL CALL**. PreToolUse hooks gate the AGENT's tool
