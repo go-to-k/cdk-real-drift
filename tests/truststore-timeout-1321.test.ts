@@ -14,7 +14,11 @@ import {
 } from '@aws-sdk/client-elastic-load-balancing-v2';
 import { mockClient } from 'aws-sdk-client-mock';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
-import { CLIENT_REQUEST_HANDLER } from '../src/read/client-config.js';
+import {
+  CLIENT_REQUEST_HANDLER,
+  PROXY_ENV_VARS,
+  resetProxyConfig,
+} from '../src/read/client-config.js';
 import { readLive } from '../src/read/router.js';
 import type { DesiredResource } from '../src/types.js';
 
@@ -31,7 +35,21 @@ const ts = (): DesiredResource => ({
   declared: { Name: 'cdkrd-ts' },
 });
 
+// The fetch-stub describes below assert the UNPROXIED branch (#1841 keeps it
+// byte-identical), so pin the environment to unproxied rather than inheriting whatever
+// the developer's shell exports; the proxied branch has its own describe at the bottom.
+// NO_PROXY is pinned too — PROXY_ENV_VARS deliberately excludes it (it configures no
+// proxy), but a shell exporting `NO_PROXY='*'` would exempt the proxied describe's
+// endpoint and dial direct, failing its CONNECT assertion.
+const PINNED_PROXY_ENV = [...PROXY_ENV_VARS, 'NO_PROXY', 'no_proxy'] as const;
+const savedProxyEnv: Record<string, string | undefined> = {};
+
 beforeEach(() => {
+  for (const name of PINNED_PROXY_ENV) {
+    savedProxyEnv[name] = process.env[name];
+    delete process.env[name];
+  }
+  resetProxyConfig();
   cc.reset();
   elbv2.reset();
   cc.on(GetResourceCommand).resolves({
@@ -44,6 +62,12 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  for (const name of PINNED_PROXY_ENV) {
+    const value = savedProxyEnv[name];
+    if (value === undefined) delete process.env[name];
+    else process.env[name] = value;
+  }
+  resetProxyConfig();
 });
 
 describe('supplementTrustStore CA-bundle fetch honors the #1066 timeout contract (#1321)', () => {
@@ -111,5 +135,48 @@ describe('supplementTrustStore CA-bundle fetch honors the #1066 timeout contract
 
     expect(r.live).toEqual({ TrustStoreArn: arn, Name: 'cdkrd-ts' });
     expect(r.skippedReason).toBeUndefined();
+  });
+});
+
+describe('the presigned CA-bundle fetch honours HTTPS_PROXY (#1841)', () => {
+  it('routes through the proxy (undici fetch never consulted), degrading when it fails', async () => {
+    // undici ignores the proxy variables, so under a proxy the supplement makes the GET
+    // through node:https + ProxyRoutingAgent instead. Point HTTPS_PROXY at a local TCP
+    // server that records what arrives and then kills the connection: the proxy must
+    // receive a CONNECT for the presigned URL's host, the stubbed global fetch must stay
+    // untouched, and the failed read must degrade to the documented best-effort skip.
+    const { createServer } = await import('node:net');
+    const received: string[] = [];
+    const proxy = createServer((sock) => {
+      sock.once('data', (chunk) => {
+        received.push(chunk.toString('utf-8'));
+        sock.destroy();
+      });
+    });
+    await new Promise<void>((resolve) => proxy.listen(0, '127.0.0.1', resolve));
+    const addr = proxy.address();
+    const proxyPort = typeof addr === 'object' && addr ? addr.port : 0;
+    process.env['HTTPS_PROXY'] = `http://127.0.0.1:${proxyPort}`;
+    resetProxyConfig();
+
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, text: () => Promise.resolve(bundle) });
+    vi.stubGlobal('fetch', fetchMock);
+    elbv2
+      .on(GetTrustStoreCaCertificatesBundleCommand)
+      .resolves({ Location: 'https://cdkrd-bundle.invalid/presigned' });
+
+    try {
+      const r = await readLive(cc as unknown as CloudControlClient, ts(), 'us-east-1', '1');
+
+      expect(received.length).toBeGreaterThan(0);
+      expect(received[0]).toMatch(/^CONNECT cdkrd-bundle\.invalid:443/);
+      expect(fetchMock).not.toHaveBeenCalled();
+      // the destroyed tunnel degrades to the best-effort skip, exactly like a fetch error
+      expect(r.live).toEqual({ TrustStoreArn: arn, Name: 'cdkrd-ts' });
+      expect(r.live?.CaCertificatesBundleSha256).toBeUndefined();
+      expect(r.skippedReason).toBeUndefined();
+    } finally {
+      await new Promise<void>((resolve) => proxy.close(() => resolve()));
+    }
   });
 });
