@@ -41,6 +41,30 @@ changes** before testing manually. Integration tests (real AWS, self-cleaning)
 live under `tests/integration/` — see
 [tests/integration/README.md](tests/integration/README.md).
 
+## Integration tests
+
+The integration tests deploy and inspect **real AWS resources**, so running
+them incurs real AWS charges. CI does not run them.
+
+**You are not required to run them.** If your change needs integration
+coverage (see below), just say so in your PR — the maintainer runs the
+required tests before merging, at no cost to you. The maintainer's pre-merge
+checklist requires a fresh real-AWS integration run for any PR that touches
+`src/**`, and merging is blocked until it has passed, so coverage is
+guaranteed either way; asking is never a burden.
+
+You are welcome to run them yourself against your own AWS account if you
+prefer — see [tests/integration/README.md](tests/integration/README.md).
+
+### When is an integration run needed?
+
+Which verification a PR needs is derived mechanically from the paths it
+touches — the `integ` gate scope in [`.markgate.yml`](.markgate.yml) is the
+source of truth. In summary: any change under `src/**` or
+`tests/integration/**` needs a real-AWS integration run before merge; a
+docs / tooling-only PR needs none (unit tests and CI are enough). When in
+doubt, open the PR and ask.
+
 ## Conventions
 
 - **English-only**: all committed files (source, comments, scripts, docs, config,
