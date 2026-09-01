@@ -39,7 +39,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKILLS_DIR = path.join(ROOT, '.claude', 'skills');
 
 const MAX_SKILL_MD_BYTES = 36_000; // largest non-split skill re-measured 12,571 B (verify-pr, 2026-09-01) -- the 12,175 B this line used to quote was stale
-const MAX_ORCHESTRATOR_BYTES = 12_000; // orchestrators were 7,952 B / 6,932 B at the 2026-08-28 split; re-measured 2026-09-01: work-issues 11,476 B (524 B of margin), hunt-bugs 6,932 B
+const MAX_ORCHESTRATOR_BYTES = 12_000; // orchestrators were 7,952 B / 6,932 B at the 2026-08-28 split; re-measured 2026-09-01, review round 4: work-issues 11,617 B (383 B of margin), hunt-bugs 6,932 B
 // The re-measurement is the point, not trivia: work-issues had grown to 11,746 B
 // -- 254 B under its cap -- while this comment still quoted the at-split figure,
 // so nobody adding a paragraph could see how little room was left. This pass

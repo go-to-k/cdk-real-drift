@@ -25,11 +25,13 @@ The flow below adds one worktree per lane. That is right from the MAIN checkout
 and wrong when this run was launched INSIDE a linked worktree (an Orca/ADE
 workspace, a stray `cd` into `.worktrees/<x>`): `git worktree add` then NESTS
 one, and deleting the outer workspace takes the inner directory, its uncommitted
-work and its git registration with it (go-to-k/cdk-real-drift#1842). Run the
-one-line probe at the top of §3 — the ONLY copy of it — before stage 0, and
-state BOTH of its answers in the opening report: the mode, and the absolute
-`LANE_TREE` path. Read that name as "the tree this run stands in", NOT "the lane
-worktree" — MAIN-CHECKOUT records the MAIN checkout under it, and the `git -C
+work and its git registration with it (go-to-k/cdk-real-drift#1842). COMPUTE
+which one you are in AT THE TOP OF STAGE 3, which holds the ONLY copy of the
+one-line probe and is the first place the answer is used. State BOTH of its
+answers — the mode, and the absolute `LANE_TREE` path — in the opening report,
+the first message you write after running the probe and before any lane starts.
+Read that name as "the tree this run stands in", NOT "the lane worktree" —
+MAIN-CHECKOUT records the MAIN checkout under it, and the `git -C
 "<LANE_TREE>"` recipes consuming it in §4, §5 and §10 are IN-PLACE-only arms
 (every MAIN-CHECKOUT arm beside them uses no `-C`). §3 says why it is captured
 there and why it is SUBSTITUTED into a command, never kept as a shell variable.
