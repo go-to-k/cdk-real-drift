@@ -1,3 +1,10 @@
+# [0.27.0](https://github.com/go-to-k/cdk-real-drift/compare/v0.26.8...v0.27.0) (2026-09-01)
+
+
+### Features
+
+* honor HTTPS_PROXY / HTTP_PROXY / NO_PROXY for every AWS call ([#1852](https://github.com/go-to-k/cdk-real-drift/issues/1852)) ([14a1962](https://github.com/go-to-k/cdk-real-drift/commit/14a1962184ee7279588e2e863c544761cd67340e))
+
 ## [0.26.8](https://github.com/go-to-k/cdk-real-drift/compare/v0.26.7...v0.26.8) (2026-08-27)
 
 
