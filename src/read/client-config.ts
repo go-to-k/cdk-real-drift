@@ -127,6 +127,16 @@ export function isProxyConfigured(): boolean {
             `(e.g. http://proxy.example:8080) or unset it.`
         );
       }
+      if (/^socks/i.test(value.trim())) {
+        // SOCKS is not supported: the routing agent speaks HTTP CONNECT only, so a
+        // socks:// value would be accepted here and then fail every AWS call mid-run
+        // with an opaque proxy-protocol error naming neither the variable nor cdkrd.
+        // Same philosophy as the whitespace guard: name the variable, fail up front.
+        throw new Error(
+          `${name} names a SOCKS proxy, which cdkrd does not support (HTTP(S) proxies ` +
+            `only). Use an http:// or https:// proxy URL, or unset ${name}.`
+        );
+      }
       configured = true;
     }
     proxyConfigured = configured;

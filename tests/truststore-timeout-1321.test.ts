@@ -38,10 +38,14 @@ const ts = (): DesiredResource => ({
 // The fetch-stub describes below assert the UNPROXIED branch (#1841 keeps it
 // byte-identical), so pin the environment to unproxied rather than inheriting whatever
 // the developer's shell exports; the proxied branch has its own describe at the bottom.
+// NO_PROXY is pinned too — PROXY_ENV_VARS deliberately excludes it (it configures no
+// proxy), but a shell exporting `NO_PROXY='*'` would exempt the proxied describe's
+// endpoint and dial direct, failing its CONNECT assertion.
+const PINNED_PROXY_ENV = [...PROXY_ENV_VARS, 'NO_PROXY', 'no_proxy'] as const;
 const savedProxyEnv: Record<string, string | undefined> = {};
 
 beforeEach(() => {
-  for (const name of PROXY_ENV_VARS) {
+  for (const name of PINNED_PROXY_ENV) {
     savedProxyEnv[name] = process.env[name];
     delete process.env[name];
   }
@@ -58,7 +62,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  for (const name of PROXY_ENV_VARS) {
+  for (const name of PINNED_PROXY_ENV) {
     const value = savedProxyEnv[name];
     if (value === undefined) delete process.env[name];
     else process.env[name] = value;

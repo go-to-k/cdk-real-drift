@@ -4098,7 +4098,11 @@ const supplementTrustStore: SupplementReader = async ({ physicalId, region }) =>
 //   configured, keep the exact pre-#1841 undici path, byte-identical.
 //
 // Returns undefined on a non-2xx status (the best-effort skip); rejects on timeout /
-// network errors, which the caller's catch also folds to the skip.
+// network errors, which the caller's catch also folds to the skip. One knowing
+// divergence: undici follows 3xx redirects and the proxied branch treats them as the
+// non-2xx skip — a redirected presigned URL (rare: the API returns a regional
+// direct-object URL) loses the OPTIONAL digest under a proxy rather than mis-hashing,
+// which is exactly the documented degrade.
 async function fetchPresignedText(url: string): Promise<string | undefined> {
   if (!isProxyConfigured()) {
     const resp = await fetch(url, {

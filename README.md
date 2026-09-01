@@ -1297,6 +1297,10 @@ A few sharp edges worth knowing:
   certificate, and Node must be told to trust it:
   `export NODE_EXTRA_CA_CERTS=/path/to/corporate-root-ca.pem`. (The AWS CLI's
   equivalent is `AWS_CA_BUNDLE`; it does not affect `cdkrd`.)
+- **SOCKS proxies are not supported.** A `socks5://` (or any `socks*://`) value
+  in a proxy variable is rejected up front with the variable's name — the
+  routing speaks HTTP CONNECT only, and accepting it would fail every call
+  mid-run with an opaque proxy-protocol error instead.
 - **A whitespace-only proxy variable is an error**, reported with the variable's
   name — treating it as set would fail later with an unnamed URL-parse error,
   and treating it as unset would silently go direct.

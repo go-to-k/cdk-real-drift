@@ -13,9 +13,19 @@
  * `http.Agent` rather than a socket, the base class delegates the request to it
  * via `socket.addRequest(req, connectOpts)`.
  *
- * That delegation is also why the INNER agents carry `keepAlive` rather than
- * this one: the sockets pool on whichever agent `connect()` hands back, so a
- * `keepAlive` set only here would never be consulted.
+ * KEEP-ALIVE NEEDS BOTH LAYERS, for different reasons. Sockets POOL on
+ * whichever agent `connect()` hands back, so the INNER agents carry
+ * `keepAlive` (and `maxSockets`) to do the pooling. But Node's
+ * `ClientRequest` decides the `Connection:` header from the agent handed to
+ * the REQUEST — this one — and with a default outer agent
+ * (`keepAlive: false`, `maxSockets: Infinity`) it stamps `Connection: close`
+ * on every request, so the response teardown destroys the socket before the
+ * inner pool ever keeps it (measured: two sequential proxied SDK calls opened
+ * two CONNECT tunnels; with the outer `keepAlive` they share one). Hence the
+ * constructor passes `keepAlive: true` UP as well; the outer `maxSockets`
+ * stays unlimited on purpose — concurrency is bounded by the inner agents,
+ * and an outer bound would add agent-base's fake-socket accounting for no
+ * benefit.
  *
  * WHY THE INNER CACHE IS PER INSTANCE
  *
@@ -77,6 +87,13 @@ function requestUrl(options: AgentConnectOpts): string {
 }
 
 export class ProxyRoutingAgent extends Agent {
+  constructor() {
+    // The outer `keepAlive` is what makes `ClientRequest` stamp
+    // `Connection: keep-alive` (see the header comment); the POOLING still
+    // happens on the inner agents `connect()` returns.
+    super({ keepAlive: true });
+  }
+
   /**
    * Inner agents by `<scheme>|<proxy url or "direct">`.
    *

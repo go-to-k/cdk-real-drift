@@ -92,6 +92,14 @@ describe('#1841 clientRequestHandler', () => {
     expect(() => isProxyConfigured()).toThrow(/http_proxy/);
   });
 
+  it('rejects a SOCKS proxy URL up front, naming the variable', () => {
+    // the routing agent speaks HTTP CONNECT only — accepting socks:// here would fail
+    // every AWS call mid-run with an opaque proxy-protocol error instead
+    process.env['ALL_PROXY'] = 'socks5://127.0.0.1:1080';
+    resetProxyConfig();
+    expect(() => isProxyConfigured()).toThrow(/ALL_PROXY.*SOCKS/);
+  });
+
   it('resetProxyConfig() drops the memoized read', () => {
     expect(isProxyConfigured()).toBe(false);
     process.env['HTTPS_PROXY'] = 'http://proxy.example:8080';
@@ -118,13 +126,28 @@ describe("#1841 toolkit-lib's Toolkit gets the routing agent too", () => {
 
   it('synthApp actually spreads it into the Toolkit sdkConfig', () => {
     // the helper being right proves nothing if the construction site drops the spread —
-    // pin the source until a Toolkit-level seam exists
+    // pin the source until a Toolkit-level seam exists. The span is the BALANCED
+    // argument of `new Toolkit(`, not an unbounded regex, so a spread that migrates
+    // elsewhere in the file cannot satisfy this by accident.
     const source = readFileSync(
       join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'synth', 'synth.ts'),
       'utf-8'
     );
-    const toolkitConstruction = /new Toolkit\(\{[\s\S]*?\.\.\.proxyHttpOptions\(\)/;
-    expect(source).toMatch(toolkitConstruction);
+    const start = source.indexOf('new Toolkit(');
+    expect(start).toBeGreaterThanOrEqual(0);
+    let depth = 0;
+    let end = source.length;
+    for (let i = start + 'new Toolkit'.length; i < source.length; i++) {
+      if (source[i] === '(') depth++;
+      else if (source[i] === ')') {
+        depth--;
+        if (depth === 0) {
+          end = i;
+          break;
+        }
+      }
+    }
+    expect(source.slice(start, end)).toContain('...proxyHttpOptions()');
   });
 });
 

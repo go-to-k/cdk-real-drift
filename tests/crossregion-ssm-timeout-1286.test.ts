@@ -20,8 +20,13 @@ import {
   ListStackResourcesCommand,
 } from '@aws-sdk/client-cloudformation';
 import { mockClient } from 'aws-sdk-client-mock';
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
-import { CLIENT_TIMEOUTS, READ_RETRY } from '../src/read/client-config.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import {
+  CLIENT_TIMEOUTS,
+  PROXY_ENV_VARS,
+  READ_RETRY,
+  resetProxyConfig,
+} from '../src/read/client-config.js';
 
 // Capture every SSMClient config the code under test constructs. `vi.hoisted` so the array is
 // live when the mock factory (hoisted above the imports) runs.
@@ -110,6 +115,25 @@ function mockCfn(account: string): CloudFormationClient {
 }
 
 describe('#1286 crossRegion SSM prefetch client gets READ_RETRY (timeouts + adaptive retry)', () => {
+  // The `.toBe(CLIENT_TIMEOUTS.requestHandler)` identity asserts below hold only on the
+  // UNPROXIED path (#1841: under a proxy the getter mints a fresh handler per read), so
+  // pin the environment rather than inheriting the developer shell's proxy exports.
+  const savedProxyEnv: Record<string, string | undefined> = {};
+  beforeEach(() => {
+    for (const name of PROXY_ENV_VARS) {
+      savedProxyEnv[name] = process.env[name];
+      delete process.env[name];
+    }
+    resetProxyConfig();
+  });
+  afterEach(() => {
+    for (const name of PROXY_ENV_VARS) {
+      const value = savedProxyEnv[name];
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+    resetProxyConfig();
+  });
   beforeEach(() => {
     captured.configs.length = 0;
   });

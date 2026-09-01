@@ -1,6 +1,7 @@
-import { Agent as HttpAgent } from 'node:http';
+import { Agent as HttpAgent, createServer, get as httpGet } from 'node:http';
 import type { ClientRequest } from 'node:http';
 import { Agent as HttpsAgent } from 'node:https';
+import type { Socket } from 'node:net';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test';
 
@@ -176,6 +177,54 @@ describe('ProxyRoutingAgent', () => {
       first.destroy();
       expect(route(second, 'sts.us-east-1.amazonaws.com')).toBe(survivor);
       second.destroy();
+    });
+
+    it('the OUTER agent advertises keepAlive too — ClientRequest consults IT for the Connection header', () => {
+      // Node's ClientRequest stamps `Connection: close` when the agent handed to the
+      // REQUEST (the outer one) has neither keepAlive nor a finite maxSockets, and the
+      // response teardown then destroys the socket before the inner pool ever keeps
+      // it. The inner keepAlive alone is NOT enough — measured as one CONNECT tunnel
+      // per request until the constructor passed keepAlive up as well.
+      const agent = new ProxyRoutingAgent() as ProxyRoutingAgent & { keepAlive?: boolean };
+      expect(agent.keepAlive).toBe(true);
+      agent.destroy();
+    });
+
+    it('reuses ONE proxy connection across sequential requests', async () => {
+      // The behavioral half of the assertion above: a local plain-HTTP "proxy" counts
+      // its inbound connections; two sequential proxied GETs must share one. Without
+      // the outer keepAlive this measures TWO (Connection: close per request).
+      const connections: Socket[] = [];
+      const server = createServer((_req, res) => {
+        res.end('ok');
+      });
+      server.on('connection', (sock) => connections.push(sock));
+      await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+      const addr = server.address();
+      const port = typeof addr === 'object' && addr ? addr.port : 0;
+      process.env['HTTP_PROXY'] = `http://127.0.0.1:${port}`;
+
+      const agent = new ProxyRoutingAgent();
+      const getOnce = (): Promise<void> =>
+        new Promise((resolve, reject) => {
+          const req = httpGet('http://cdkrd-keepalive.invalid/', { agent }, (res) => {
+            res.resume();
+            res.on('end', resolve);
+            res.on('error', reject);
+          });
+          req.on('error', reject);
+        });
+      try {
+        await getOnce();
+        // one macrotask so the agent's free-socket bookkeeping settles before reuse
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        await getOnce();
+        expect(connections).toHaveLength(1);
+      } finally {
+        agent.destroy();
+        for (const sock of connections) sock.destroy();
+        await new Promise<void>((resolve) => server.close(() => resolve()));
+      }
     });
 
     it('forwards destroy() to the inner agents', () => {
