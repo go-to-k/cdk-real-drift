@@ -414,6 +414,18 @@ want_lines '/w/t|main
   'git switch main && git -C /wt switch -c a' '/w/t' "$SW"
 want_lines '' "a quoted mention emits nothing" \
   'echo "do not run: git switch -c feat"' '/w/t' "$SW"
+# A RELATIVE `cd` resolves against the running target, and nothing pinned it: the
+# `[[ "$cd_target" != /* ]] && cd_target="$target/$cd_target"` line could be
+# deleted with this suite at 177/0 and the gate suite at 54/0. The parity block
+# below covers a relative `-C`, which is the OTHER branch of the same rule.
+want_lines '/w/t/sub|-c feat' "a RELATIVE cd resolves against the running target" \
+  'cd sub && git switch -c feat' '/w/t' "$SW"
+want_lines '/w/t/sub/deeper|-c feat' "relative cds COMPOSE across segments" \
+  'cd sub && cd deeper && git switch -c feat' '/w/t' "$SW"
+# ...and its control: an ABSOLUTE cd replaces the target rather than extending it,
+# so the two cases above are not satisfied by "always concatenate".
+want_lines '/elsewhere|-c feat' "an ABSOLUTE cd replaces the running target" \
+  'cd sub && cd /elsewhere && git switch -c feat' '/w/t' "$SW"
 
 # PARITY PIN. The cd / -C reading here is a deliberate COPY of gate_target_dir's,
 # because that function breaks at the verb and has other callers riding on it. A
@@ -437,8 +449,20 @@ want_parity "quoted -C with space" 'git -C "/a b" switch -c feat' '/w/t' "$SW"
 want_parity "relative -C"          'git -C sub switch -c feat' '/w/t' "$SW"
 want_parity "unexpanded cd \$VAR"  'cd "$WT" && git switch -c feat' '/w/t' "$SW"
 want_parity "unexpanded -C \$VAR"  'git -C "$WT" switch -c feat' '/w/t' "$SW"
+want_parity "relative cd"          'cd sub && git switch -c feat' '/w/t' "$SW"
 
 
+# A FLOOR on the case total, for the same reason the gate suite carries one:
+# deleting a case removes its assertions SILENTLY while the tally still reads
+# `fail: 0`, so without a floor the sixteen `gate_verb_args_dir` cases added for
+# main-tree-branch-gate could be dropped and this file would still report green.
+# Raise it when cases are added; never lower it to make a red run green.
+CASE_FLOOR=181
+ran=$((pass + fail))
+if [ "$ran" -lt "$CASE_FLOOR" ]; then
+  fail=$((fail + 1))
+  printf 'FAIL case floor: only %s cases ran, expected at least %s\n' "$ran" "$CASE_FLOOR"
+fi
 
 printf '\npass: %s  fail: %s\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

@@ -59,9 +59,10 @@
   block, since detaching moves the shared tree off `main` exactly as a branch
   switch does. That converts a silent clobber into a loud refusal; it does not
   make the bare spelling correct. The `-C` is what makes the command target the
-  tree you MEAN, and a refusal still leaves the lane's detach undone. Whether to detach at all belongs to whoever owns the workspace, not
-  to this run — except in §10-d, where THIS run creates the retro branch in this
-  tree and therefore owns that one branch move.
+  tree you MEAN, and a refusal still leaves the lane's detach undone. Whether to
+  detach at all belongs to whoever owns the workspace, not to this run — except
+  in §10-d, where THIS run creates the retro branch in this tree and therefore
+  owns that one branch move.
 
 ## Important existing rules this skill leans on
 

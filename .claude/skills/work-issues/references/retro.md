@@ -255,8 +255,9 @@ addressed with `-C` for the reason §5 gives: a bare one after a cwd reset would
 target the MAIN checkout rather than this lane. Since
 go-to-k/cdk-real-drift#1845 `main-tree-branch-gate` REFUSES that instead of
 letting it through, so the failure is loud — but a refusal is not a redirect,
-and only the `-C` puts the branch in the tree you mean. Substitute the absolute path the launch-mode probe printed as
-`LANE_TREE` and the opening report recorded — captured while the cwd was
+and only the `-C` puts the branch in the tree you mean. Substitute the absolute
+path the launch-mode probe printed as `LANE_TREE` and the opening report
+recorded — captured while the cwd was
 provably right — and do NOT re-derive it here from `$(git rev-parse
 --show-toplevel)` or `pwd`, which resolve against the reset cwd and hand the
 guard the very tree it is guarding against. Keep the `&&`: unchained, a failed

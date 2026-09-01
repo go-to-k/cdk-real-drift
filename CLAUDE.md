@@ -562,20 +562,26 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   re-implement it here.
 - **A branch switch in the main checkout is now GATED, not merely discouraged.**
   `.claude/hooks/main-tree-branch-gate.sh` refuses `git switch` / `git checkout`
-  onto a feature branch (and `git switch --detach`, and `git switch -`) when the
-  TARGET working tree is the main checkout, while passing `main` / `master`, a
-  `git checkout [<tree-ish>] -- <pathspec>` file restore, a detached
+  onto a feature branch (and `git switch --detach`, and `git switch -` /
+  `git checkout -`) when the TARGET working tree is the main checkout, while
+  passing `main` / `master`, a `git checkout [<tree-ish>] -- <pathspec>` file
+  restore, the restore FLAGS `-p` / `--ours` / `--theirs`, a detached
   `git checkout <sha>`, `git worktree add`, and every switch made INSIDE a
   `.worktrees/` lane. **The orchestrator's own `git checkout <branch> -- <files>`
   integration step passes** — it restores files and leaves HEAD on `main`
-  (measured). Three spellings the sibling gates get wrong are handled here, each
-  measured against real git first: a leading flag is never mistaken for the
-  branch name (`git checkout -f <branch>` is refused, not waved through), and
+  (measured). The argument tail is PARSED the way git's own parse-options parses
+  it, rather than matched against a list of spellings, and each behaviour was
+  settled against real git first: a leading flag is never mistaken for the branch
+  name (`git checkout -f <branch>` is refused, not waved through); a glued value
+  is read (`-bfeat`, `-fbfeat`, `--orphan=feat`, `--track=direct` all name the
+  branch they really create); a value-taking flag's argument is consumed rather
+  than counted as a pathspec (`git checkout --conflict merge <branch>` really
+  switches); `-` and `@{-1}` are the previous branch under BOTH verbs; and
   `git checkout <name>` / `git checkout -t origin/<name>` for a branch that
-  exists only on a REMOTE are refused too — git DWIMs both into "create the local
-  branch and switch", which is how a lane's branch usually first appears in a
-  checkout. It is the
-  CAUSE-side twin of `branch-gate`, which fires on the symptom (a commit or push
+  exists only on a CONFIGURED remote are refused too — git DWIMs both into
+  "create the local branch and switch", which is how a lane's branch usually
+  first appears in a checkout. It is the CAUSE-side twin of `branch-gate`, which
+  fires on the symptom (a commit or push
   once the tree is already off `main`) — go-to-k/cdk-real-drift#1845. Ported from
   cdkd / cdk-local in the FIXED per-segment shape: the target tree is resolved
   from the SAME segment that carries the arguments, so a command spanning two
@@ -592,7 +598,7 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
 
   The first two let a branch be created in the SHARED checkout unjudged; the
   third refused the worktree branch creation the convention mandates. Exercised
-  by `.claude/hooks/main-tree-branch-gate.test.sh` (54 cases) under an explicitly
+  by `.claude/hooks/main-tree-branch-gate.test.sh` (92 cases) under an explicitly
   pinned interpreter, `/bin/bash` by default — see the fence note above.
 
 - **All changes go through a pull request — never commit directly to `main`.**
