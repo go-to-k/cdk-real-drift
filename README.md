@@ -1261,6 +1261,54 @@ access-log / route settings back to unset).
 
 </details>
 
+## Behind a corporate proxy
+
+`cdkrd` honours the standard proxy environment variables for **every** AWS call
+it makes — the live reads, the revert writes, credential resolution (STS / SSO),
+and the CDK synth/discovery path:
+
+| variable                      | effect                                                      |
+| ----------------------------- | ----------------------------------------------------------- |
+| `HTTPS_PROXY` / `https_proxy` | proxy for `https://` requests — all AWS traffic in practice |
+| `HTTP_PROXY` / `http_proxy`   | proxy for plain `http://` requests                          |
+| `ALL_PROXY` / `all_proxy`     | fallback for either scheme                                  |
+| `NO_PROXY` / `no_proxy`       | hosts to reach directly, bypassing the proxy                |
+
+Both spellings work; the lower-case ones win where a tool sets both. The proxy
+is chosen **per request**, so `HTTPS_PROXY` and `HTTP_PROXY` may name different
+proxies and each scheme goes to its own. This needed explicit support in
+`cdkrd` because the AWS SDK for JavaScript v3 does not read these variables the
+way the AWS CLI does — without it, a machine whose only egress is a corporate
+proxy fails on the very first call, typically with a certificate error naming
+the network's TLS interceptor rather than the proxy.
+
+A few sharp edges worth knowing:
+
+- **`NO_PROXY` matching is exact, unlike curl.** An entry that does not start
+  with `.` or `*` must equal the hostname exactly: `NO_PROXY=example.com` does
+  NOT cover `api.example.com`, and `.example.com` does not cover the apex — so
+  covering a domain and its subdomains takes two entries
+  (`NO_PROXY=example.com,.example.com`). CIDR ranges (`10.0.0.0/8`) are
+  silently ignored; IP addresses must be listed literally. For a VPC-endpoint
+  setup, write `NO_PROXY=.amazonaws.com,amazonaws.com`.
+- **A TLS-terminating proxy still needs `NODE_EXTRA_CA_CERTS`.** A proxy that
+  opens a CONNECT tunnel needs nothing extra (the origin's own certificate is
+  validated end to end), but one that terminates TLS presents its own
+  certificate, and Node must be told to trust it:
+  `export NODE_EXTRA_CA_CERTS=/path/to/corporate-root-ca.pem`. (The AWS CLI's
+  equivalent is `AWS_CA_BUNDLE`; it does not affect `cdkrd`.)
+- **A whitespace-only proxy variable is an error**, reported with the variable's
+  name — treating it as set would fail later with an unnamed URL-parse error,
+  and treating it as unset would silently go direct.
+
+To verify traffic is actually routed, point `cdkrd` at a proxy that cannot work
+and confirm the command fails (if it succeeds, the variable is not reaching the
+process):
+
+```bash
+HTTPS_PROXY=http://127.0.0.1:1 https_proxy=http://127.0.0.1:1 cdkrd check MyStack
+```
+
 ## Limitations
 
 `cdkrd` is **fail-closed**: anything it can't confidently compare is reported as

@@ -1,20 +1,48 @@
 import { createServer, type Server } from 'node:net';
 import { CloudControlClient, GetResourceCommand } from '@aws-sdk/client-cloudcontrol';
-import { afterAll, beforeAll, describe, expect, it } from 'vite-plus/test';
-import { CLIENT_TIMEOUTS, READ_RETRY } from '../src/read/client-config.js';
+import { afterEach, afterAll, beforeEach, beforeAll, describe, expect, it } from 'vite-plus/test';
+import {
+  CLIENT_REQUEST_HANDLER,
+  CLIENT_TIMEOUTS,
+  PROXY_ENV_VARS,
+  READ_RETRY,
+  resetProxyConfig,
+} from '../src/read/client-config.js';
 
 // #1066 — no cdkrd AWS client configured any timeout, so a stalled TCP connect or a
 // connected-but-silent server hung check/record/revert FOREVER. CLIENT_TIMEOUTS carries the
 // connection + per-request timeouts applied to every client (READ clients via READ_RETRY,
 // revert WRITE clients spread directly).
-describe('#1066 CLIENT_TIMEOUTS config', () => {
-  it('carries a connectionTimeout and requestTimeout', () => {
-    expect(typeof CLIENT_TIMEOUTS.requestHandler.connectionTimeout).toBe('number');
-    expect(typeof CLIENT_TIMEOUTS.requestHandler.requestTimeout).toBe('number');
-    expect(CLIENT_TIMEOUTS.requestHandler.connectionTimeout).toBeGreaterThan(0);
-    expect(CLIENT_TIMEOUTS.requestHandler.requestTimeout).toBeGreaterThan(0);
+//
+// Since #1841 `requestHandler` is a getter (proxied runs get a per-client NodeHttpHandler);
+// this suite asserts the UNPROXIED contract, so it pins the environment to unproxied
+// rather than inheriting whatever the developer's shell exports.
+describe('#1066 CLIENT_TIMEOUTS config (unproxied)', () => {
+  const saved: Record<string, string | undefined> = {};
+  beforeEach(() => {
+    for (const name of PROXY_ENV_VARS) {
+      saved[name] = process.env[name];
+      delete process.env[name];
+    }
+    resetProxyConfig();
+  });
+  afterEach(() => {
+    for (const name of PROXY_ENV_VARS) {
+      const value = saved[name];
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+    resetProxyConfig();
+  });
+
+  it('hands every client the shared option bag with connectionTimeout and requestTimeout', () => {
+    // unproxied, the getter returns the SAME shared bag as before #1841 — byte-identical
+    // client config for every existing user
+    expect(CLIENT_TIMEOUTS.requestHandler).toBe(CLIENT_REQUEST_HANDLER);
+    expect(CLIENT_REQUEST_HANDLER.connectionTimeout).toBeGreaterThan(0);
+    expect(CLIENT_REQUEST_HANDLER.requestTimeout).toBeGreaterThan(0);
     // without this the requestTimeout only WARNS and the request keeps hanging
-    expect(CLIENT_TIMEOUTS.requestHandler.throwOnRequestTimeout).toBe(true);
+    expect(CLIENT_REQUEST_HANDLER.throwOnRequestTimeout).toBe(true);
   });
 
   it('READ_RETRY keeps the adaptive read retry AND inherits the timeouts', () => {

@@ -5,6 +5,8 @@ import {
   CLIENT_CREDENTIALS,
   CLIENT_REQUEST_HANDLER,
   CLIENT_TIMEOUTS,
+  PROXY_ENV_VARS,
+  resetProxyConfig,
 } from '../src/read/client-config.js';
 
 // #1319 — credential resolution had NO timeouts. CLIENT_CREDENTIALS called fromNodeProviderChain
@@ -24,10 +26,28 @@ describe('#1319 CLIENT_REQUEST_HANDLER is the single source of truth', () => {
     expect(CLIENT_REQUEST_HANDLER.throwOnRequestTimeout).toBe(true);
   });
 
-  it('CLIENT_TIMEOUTS reuses the SAME shared requestHandler reference', () => {
+  it('CLIENT_TIMEOUTS reuses the SAME shared requestHandler reference (unproxied)', () => {
     // one source of truth — a regression that gives the wired clients a different handler
-    // (or drops it) fails here
-    expect(CLIENT_TIMEOUTS.requestHandler).toBe(CLIENT_REQUEST_HANDLER);
+    // (or drops it) fails here. Pinned to the UNPROXIED environment: since #1841 the
+    // getter hands out per-client NodeHttpHandlers when a proxy variable is set (see
+    // tests/client-config-proxy-1841.test.ts), so a developer shell exporting HTTPS_PROXY
+    // must not decide this assertion.
+    const saved: Record<string, string | undefined> = {};
+    for (const name of PROXY_ENV_VARS) {
+      saved[name] = process.env[name];
+      delete process.env[name];
+    }
+    resetProxyConfig();
+    try {
+      expect(CLIENT_TIMEOUTS.requestHandler).toBe(CLIENT_REQUEST_HANDLER);
+    } finally {
+      for (const name of PROXY_ENV_VARS) {
+        const value = saved[name];
+        if (value === undefined) delete process.env[name];
+        else process.env[name] = value;
+      }
+      resetProxyConfig();
+    }
   });
 });
 

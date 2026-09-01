@@ -66,6 +66,10 @@ export function defaultProfileRegionFromIni(): string | undefined {
 // AWS_EC2_METADATA_DISABLED exactly like toolkit-lib, best-effort with a short timeout so
 // a non-EC2 host (where the link-local IMDS address blackholes) never hangs the CLI.
 // IMDSv2: fetch a token, then placement/region. Any error → undefined. Exported for tests.
+// The undici `fetch` here CORRECTLY ignores HTTPS_PROXY (#1841): IMDS is link-local
+// (169.254.169.254), reachable only from the instance itself — a corporate proxy could
+// never relay to it, so this call must always go direct, exactly as the SDK's own IMDS
+// credential provider does.
 export async function regionFromImds(): Promise<string | undefined> {
   if (process.env.AWS_EC2_METADATA_DISABLED === 'true') return undefined;
   const base = 'http://169.254.169.254';
@@ -108,6 +112,13 @@ export async function resolveProfileRegion(
   profile: string | undefined
 ): Promise<string | undefined> {
   try {
+    // Deliberately OUTSIDE the shared CLIENT_TIMEOUTS/READ_RETRY config (#1841): this
+    // client never sends a request — `config.region()` resolves purely from env vars and
+    // the shared ini files — so it needs neither the proxy routing nor the timeouts. It
+    // must also keep constructing its own transport: it is the one call site that invokes
+    // `client.destroy()`, which tears down the handler's agents (harmless here, on a
+    // handler nothing else shares). Fenced by tests/client-proxy-conformance-1841.test.ts
+    // (this is its single ALLOWED entry).
     const client = new CloudControlClient(profile ? { profile } : {});
     const region = await client.config.region();
     client.destroy();

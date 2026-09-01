@@ -11,12 +11,25 @@ import {
   StackSelectionStrategy,
   Toolkit,
 } from '@aws-cdk/toolkit-lib';
+import { isProxyConfigured } from '../read/client-config.js';
+import { ProxyRoutingAgent } from '../read/proxy-routing-agent.js';
 import { QuietIoHost } from './io-host.js';
 import {
   collectMissingRecursively,
   missingContextKeys,
   missingContextWarning,
 } from './missing-context.js';
+
+// #1841: toolkit-lib builds its OWN SDK clients (context lookups, environment
+// resolution) and, like the raw SDK, never reads HTTPS_PROXY on its own — its SdkConfig
+// takes an explicit agent instead. Route it through the same per-request
+// ProxyRoutingAgent the raw clients use (read/client-config.ts), so discovery and synth
+// work behind a corporate proxy too. Spread into the Toolkit's sdkConfig; empty when no
+// proxy is configured, so the unproxied path stays byte-identical to toolkit-lib's own
+// default (the SDK's per-client keepAlive agent). Exported for unit tests.
+export function proxyHttpOptions(): { httpOptions?: { agent: ProxyRoutingAgent } } {
+  return isProxyConfigured() ? { httpOptions: { agent: new ProxyRoutingAgent() } } : {};
+}
 
 export interface SynthOptions {
   region?: string | undefined;
@@ -265,6 +278,7 @@ export async function synthApp(app: string, opts: SynthOptions = {}): Promise<Sy
         ...(region && { defaultRegion: region }),
         ...(profile && { profile }),
       }),
+      ...proxyHttpOptions(),
     },
   });
 

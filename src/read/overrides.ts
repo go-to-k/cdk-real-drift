@@ -6,6 +6,7 @@
 // differ from the underlying target. Returns CFn-shaped properties for the
 // classifier; undefined when the target can't be resolved/read (→ skipped).
 
+import { get as httpsGet } from 'node:https';
 import {
   ACMClient,
   DescribeCertificateCommand,
@@ -193,7 +194,8 @@ import { GetQueueAttributesCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { ResourceGoneError } from '../aws-errors.js';
 import { partitionForRegion } from '../desired/template-adapter.js';
 import { pageResourceRecordSets, unescapeRoute53Name } from './child-enumerators.js';
-import { CLIENT_REQUEST_HANDLER, READ_RETRY } from './client-config.js';
+import { CLIENT_REQUEST_HANDLER, isProxyConfigured, READ_RETRY } from './client-config.js';
+import { ProxyRoutingAgent } from './proxy-routing-agent.js';
 import { isDefinitiveDenial } from './kms-aliases.js';
 import { hashCaBundle, sha256Hex } from './pem.js';
 
@@ -4068,19 +4070,9 @@ const supplementTrustStore: SupplementReader = async ({ physicalId, region }) =>
   const url = str(r.Location);
   if (!url) return undefined;
   try {
-    // The ONLY non-SDK HTTP call on the read path — the global undici `fetch`, which
-    // predates #1066 and so bypassed its timeout contract: undici bounds headers only
-    // at 300s, so a trickling / never-completing body hung `check` FOREVER (#1321).
-    // Bound it with the SAME #1066 requestTimeout the wired SDK clients use
-    // (CLIENT_REQUEST_HANDLER.requestTimeout) via AbortSignal.timeout — the one signal
-    // aborts BOTH the fetch and the subsequent `resp.text()` body read. On timeout the
-    // AbortError falls into this catch and DEGRADES to the documented best-effort skip
-    // (keep the CC model), never a fatal hang or a false-flag.
-    const resp = await fetch(url, {
-      signal: AbortSignal.timeout(CLIENT_REQUEST_HANDLER.requestTimeout),
-    });
-    if (!resp.ok) return undefined;
-    const hash = hashCaBundle(await resp.text());
+    const body = await fetchPresignedText(url);
+    if (body === undefined) return undefined;
+    const hash = hashCaBundle(body);
     return hash !== undefined ? { CaCertificatesBundleSha256: hash } : undefined;
   } catch {
     // Fetch/read failed (timeout/abort, network error, non-PEM body): the CA-bundle
@@ -4088,6 +4080,58 @@ const supplementTrustStore: SupplementReader = async ({ physicalId, region }) =>
     return undefined;
   }
 };
+
+// GET the TrustStore presigned S3 URL's body — the ONLY non-SDK HTTP call on the read
+// path. Two contracts meet here:
+//
+// - #1066/#1321 timeouts: the global undici `fetch` bounds headers only at 300s, so a
+//   trickling / never-completing body hung `check` FOREVER. Both branches below bound the
+//   whole exchange with the SAME requestTimeout the wired SDK clients use
+//   (CLIENT_REQUEST_HANDLER.requestTimeout) via AbortSignal.timeout — on the fetch branch
+//   the one signal aborts BOTH the fetch and the `resp.text()` body read. A timeout
+//   rejects into the caller's catch and DEGRADES to the documented best-effort skip.
+// - #1841 proxy: undici does not read HTTPS_PROXY (and takes an undici dispatcher, not an
+//   http.Agent, so the shared ProxyRoutingAgent cannot be handed to it). When a proxy is
+//   configured, make the same GET through node:https with a fresh ProxyRoutingAgent —
+//   NO_PROXY is still consulted per request, matching every SDK call — and destroy the
+//   agent after (its sockets must not outlive this one-shot read). When no proxy is
+//   configured, keep the exact pre-#1841 undici path, byte-identical.
+//
+// Returns undefined on a non-2xx status (the best-effort skip); rejects on timeout /
+// network errors, which the caller's catch also folds to the skip.
+async function fetchPresignedText(url: string): Promise<string | undefined> {
+  if (!isProxyConfigured()) {
+    const resp = await fetch(url, {
+      signal: AbortSignal.timeout(CLIENT_REQUEST_HANDLER.requestTimeout),
+    });
+    if (!resp.ok) return undefined;
+    return resp.text();
+  }
+  const agent = new ProxyRoutingAgent();
+  try {
+    return await new Promise<string | undefined>((resolvePromise, rejectPromise) => {
+      const req = httpsGet(
+        url,
+        { agent, signal: AbortSignal.timeout(CLIENT_REQUEST_HANDLER.requestTimeout) },
+        (res) => {
+          const status = res.statusCode ?? 0;
+          if (status < 200 || status >= 300) {
+            res.resume(); // drain so the socket is released
+            resolvePromise(undefined);
+            return;
+          }
+          const chunks: Buffer[] = [];
+          res.on('data', (c: Buffer) => chunks.push(c));
+          res.on('end', () => resolvePromise(Buffer.concat(chunks).toString('utf-8')));
+          res.on('error', rejectPromise);
+        }
+      );
+      req.on('error', rejectPromise);
+    });
+  } finally {
+    agent.destroy();
+  }
+}
 
 // AWS::Lambda::Function — the function `Code` is writeOnly (Cloud Control returns a
 // pointer, never the bytes), so an out-of-band code swap (`aws lambda

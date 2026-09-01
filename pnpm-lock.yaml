@@ -194,18 +194,33 @@ importers:
       '@clack/prompts':
         specifier: ^1.5.1
         version: 1.5.1
+      '@smithy/node-http-handler':
+        specifier: ^4.12.0
+        version: 4.12.0
+      agent-base:
+        specifier: ^9.0.0
+        version: 9.0.0
       aws-cdk-lib:
         specifier: ^2.0.0
         version: 2.258.1(constructs@10.6.0)
       constructs:
         specifier: ^10.0.0
         version: 10.6.0
+      http-proxy-agent:
+        specifier: ^9.1.0
+        version: 9.1.0
+      https-proxy-agent:
+        specifier: ^9.1.0
+        version: 9.1.0
       jsonata:
         specifier: ^1.8.7
         version: 1.8.7
       picocolors:
         specifier: ^1.1.1
         version: 1.1.1
+      proxy-from-env:
+        specifier: ^2.1.0
+        version: 2.1.0
       yaml:
         specifier: ^2.9.0
         version: 2.9.0
@@ -228,6 +243,9 @@ importers:
       '@types/node':
         specifier: ^20.19.0
         version: 20.19.43
+      '@types/proxy-from-env':
+        specifier: ^1.0.4
+        version: 1.0.4
       aws-sdk-client-mock:
         specifier: ^4.1.0
         version: 4.1.0
@@ -1467,6 +1485,10 @@ packages:
     resolution: {integrity: sha512-CyogUINxvi7C7LDsh8Syo6hVJOT9ckz4rG8dRZfTJ8r91HkMY59PnNooaj7WcHyxEkxPfBAmbgztZU+xTo76lg==}
     engines: {node: '>=18.0.0'}
 
+  '@smithy/core@3.33.3':
+    resolution: {integrity: sha512-CsOeKq/9kA3y6VJHt+/+VTCtBaxJ4OTFpgrjIUhPpDIKxBci1k2bJaQASF2h/ELWrulGp+t97DZ0mevfAD8idg==}
+    engines: {node: '>=18.0.0'}
+
   '@smithy/credential-provider-imds@4.4.16':
     resolution: {integrity: sha512-QfuLWAkLzptffFW980AFeHZFdqds2B64rpEd3uJ6lgs3xVn9QegGMUgUcj+4d7dRrAsya3r58ZKpku97WcFb4w==}
     engines: {node: '>=18.0.0'}
@@ -1499,12 +1521,8 @@ packages:
     resolution: {integrity: sha512-M+gG6eQ0y073mSmNB+erRXJvwpsqsN72ol2w6vcd8FEKeG7pqYK0JvzfVqONkPj2ElBB2pg+cU13I850b//Wag==}
     engines: {node: '>=18.0.0'}
 
-  '@smithy/node-http-handler@4.9.13':
-    resolution: {integrity: sha512-Nmd/Nl35zfYrd+a6OO2cDJb3GPh9bgTjIUhcM+JFfjpp8/osCgboDV5nCT1I01Pv6R13eSKDKLSoVa5ZB6Zsfw==}
-    engines: {node: '>=18.0.0'}
-
-  '@smithy/node-http-handler@4.9.6':
-    resolution: {integrity: sha512-odd+HYx3OLcXRSEz0ZeF3JQdSYdK8QnRgA2N87cPW7coWIbKfRk7a9VQjfeWQLqnzrDLk23KMEn46p8N7M/JFg==}
+  '@smithy/node-http-handler@4.12.0':
+    resolution: {integrity: sha512-0mq1pHadfyXCYCqm2cNpbjNIT+fbaUpNxewZb/YNr2L0IrEVMOb8gM/Fl4K6XvHCW3uSNDFwPl/+iKm0bx9jYg==}
     engines: {node: '>=18.0.0'}
 
   '@smithy/property-provider@4.3.6':
@@ -1576,6 +1594,9 @@ packages:
 
   '@types/normalize-package-data@2.4.4':
     resolution: {integrity: sha512-37i+OaWTh9qeK4LSHPsyRC7NahnGotNuZvjLSgcPzblpHB3rrCJxAOgI5gCdKm7coonsaX1Of0ILiTcnZjbfxA==}
+
+  '@types/proxy-from-env@1.0.4':
+    resolution: {integrity: sha512-TPR9/bCZAr3V1eHN4G3LD3OLicdJjqX1QRXWuNcCYgE66f/K8jO2ZRtHxI2D9MbnuUP6+qiKSS8eUHp6TFHGCw==}
 
   '@types/sinon@17.0.4':
     resolution: {integrity: sha512-RHnIrhfPO3+tJT0s7cFaXGZvsL4bbR3/k7z3P312qMS4JaS2Tk+KiwiLx1S0rQ56ERj00u1/BtdyVd0FY+Pdew==}
@@ -2872,34 +2893,16 @@ packages:
     resolution: {integrity: sha512-b94GiNHQNy6JNTrt5w6zNyffMrNkXZb3KTkCZJb2V1xaEGCk093vkZ2jk3tpaeP33/OiXC+WvK9AxUebnf5nbw==}
     engines: {node: '>= 0.6.3'}
 
-  lightningcss-android-arm64@1.32.0:
-    resolution: {integrity: sha512-YK7/ClTt4kAK0vo6w3X+Pnm0D2cf2vPHbhOXdoNti1Ga0al1P4TBZhwjATvjNwLEBCnKvjJc2jQgHXH0NEwlAg==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [arm64]
-    os: [android]
-
   lightningcss-android-arm64@1.33.0:
     resolution: {integrity: sha512-gEpRTalKdosp4Bb8qWtc2iOgE5SeIHlpS1up9bFq2wAyYhl1UdTObYiHe98zEM9SQvSoqQZ1IQD0JNpg3Ml5pg==}
     engines: {node: '>= 12.0.0'}
     cpu: [arm64]
     os: [android]
 
-  lightningcss-darwin-arm64@1.32.0:
-    resolution: {integrity: sha512-RzeG9Ju5bag2Bv1/lwlVJvBE3q6TtXskdZLLCyfg5pt+HLz9BqlICO7LZM7VHNTTn/5PRhHFBSjk5lc4cmscPQ==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [arm64]
-    os: [darwin]
-
   lightningcss-darwin-arm64@1.33.0:
     resolution: {integrity: sha512-Sciaz8eenNTKn9b3t7+xr0ipTp9YxKQY4npwQ3mrRuL0BAVHBLyZxofhaKBAVtzmtRZ/zTyo0/to4B1uWG/Djg==}
     engines: {node: '>= 12.0.0'}
     cpu: [arm64]
-    os: [darwin]
-
-  lightningcss-darwin-x64@1.32.0:
-    resolution: {integrity: sha512-U+QsBp2m/s2wqpUYT/6wnlagdZbtZdndSmut/NJqlCcMLTWp5muCrID+K5UJ6jqD2BFshejCYXniPDbNh73V8w==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [x64]
     os: [darwin]
 
   lightningcss-darwin-x64@1.33.0:
@@ -2908,36 +2911,17 @@ packages:
     cpu: [x64]
     os: [darwin]
 
-  lightningcss-freebsd-x64@1.32.0:
-    resolution: {integrity: sha512-JCTigedEksZk3tHTTthnMdVfGf61Fky8Ji2E4YjUTEQX14xiy/lTzXnu1vwiZe3bYe0q+SpsSH/CTeDXK6WHig==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [x64]
-    os: [freebsd]
-
   lightningcss-freebsd-x64@1.33.0:
     resolution: {integrity: sha512-QQM/Ti/hQajJwCY+RiWuCZ9sdtI/XQk7nDK5vC8kkdwixezOlDgvDx7+RT+QjK6FcFT4MpsuoBnHIo/O3StRRg==}
     engines: {node: '>= 12.0.0'}
     cpu: [x64]
     os: [freebsd]
 
-  lightningcss-linux-arm-gnueabihf@1.32.0:
-    resolution: {integrity: sha512-x6rnnpRa2GL0zQOkt6rts3YDPzduLpWvwAF6EMhXFVZXD4tPrBkEFqzGowzCsIWsPjqSK+tyNEODUBXeeVHSkw==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [arm]
-    os: [linux]
-
   lightningcss-linux-arm-gnueabihf@1.33.0:
     resolution: {integrity: sha512-N7FVBe6iS24MlM6R/4RBTxGhQheZGs7tiQ9U32UtF75NzP5Q7xWPRqLBCKxlRQRk3rY1jCIPLzx7WzOhuUIRLQ==}
     engines: {node: '>= 12.0.0'}
     cpu: [arm]
     os: [linux]
-
-  lightningcss-linux-arm64-gnu@1.32.0:
-    resolution: {integrity: sha512-0nnMyoyOLRJXfbMOilaSRcLH3Jw5z9HDNGfT/gwCPgaDjnx0i8w7vBzFLFR1f6CMLKF8gVbebmkUN3fa/kQJpQ==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [arm64]
-    os: [linux]
-    libc: [glibc]
 
   lightningcss-linux-arm64-gnu@1.33.0:
     resolution: {integrity: sha512-j2v/itmy4HlNxlc6voKXYgBqNi0Ng2LShg4z7GufpEgs05P+2suBVyi9I6YHq5uoVFx9ETin3eCEhLVyXGQnKg==}
@@ -2946,26 +2930,12 @@ packages:
     os: [linux]
     libc: [glibc]
 
-  lightningcss-linux-arm64-musl@1.32.0:
-    resolution: {integrity: sha512-UpQkoenr4UJEzgVIYpI80lDFvRmPVg6oqboNHfoH4CQIfNA+HOrZ7Mo7KZP02dC6LjghPQJeBsvXhJod/wnIBg==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [arm64]
-    os: [linux]
-    libc: [musl]
-
   lightningcss-linux-arm64-musl@1.33.0:
     resolution: {integrity: sha512-yiO5ROMuYQgXbC60yjZU5CYSFZGKXL0HFATXt9mHJn1+zW55oCtMI9NfcVhYLMFDL7gV7oBPon/EmMMGg2OvtQ==}
     engines: {node: '>= 12.0.0'}
     cpu: [arm64]
     os: [linux]
     libc: [musl]
-
-  lightningcss-linux-x64-gnu@1.32.0:
-    resolution: {integrity: sha512-V7Qr52IhZmdKPVr+Vtw8o+WLsQJYCTd8loIfpDaMRWGUZfBOYEJeyJIkqGIDMZPwPx24pUMfwSxxI8phr/MbOA==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [x64]
-    os: [linux]
-    libc: [glibc]
 
   lightningcss-linux-x64-gnu@1.33.0:
     resolution: {integrity: sha512-ar+Ju7LmcN0Jo4FpL4hpFybwNG9/3A/Br5KW2n2jyODg3MEZXaDYADdemoNS+BDNfMgKvylJLj4S5tyRActuAg==}
@@ -2974,13 +2944,6 @@ packages:
     os: [linux]
     libc: [glibc]
 
-  lightningcss-linux-x64-musl@1.32.0:
-    resolution: {integrity: sha512-bYcLp+Vb0awsiXg/80uCRezCYHNg1/l3mt0gzHnWV9XP1W5sKa5/TCdGWaR/zBM2PeF/HbsQv/j2URNOiVuxWg==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [x64]
-    os: [linux]
-    libc: [musl]
-
   lightningcss-linux-x64-musl@1.33.0:
     resolution: {integrity: sha512-RYiYbkokw0trfKqqzfF55lginwEPrD3OJDfTuJzFs1MK6iFnDenaz1fqLLtX4ITG3OktJQXOeTaw1awrBAlZPw==}
     engines: {node: '>= 12.0.0'}
@@ -2988,22 +2951,10 @@ packages:
     os: [linux]
     libc: [musl]
 
-  lightningcss-win32-arm64-msvc@1.32.0:
-    resolution: {integrity: sha512-8SbC8BR40pS6baCM8sbtYDSwEVQd4JlFTOlaD3gWGHfThTcABnNDBda6eTZeqbofalIJhFx0qKzgHJmcPTnGdw==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [arm64]
-    os: [win32]
-
   lightningcss-win32-arm64-msvc@1.33.0:
     resolution: {integrity: sha512-1K+MPfLSFVpphzpdbfkhlWk6wBrTObBzS2T6db10PNOZgR9GoVsAWzwNyuhUYYbTp23j+4RrncfujZ4uAzXvwA==}
     engines: {node: '>= 12.0.0'}
     cpu: [arm64]
-    os: [win32]
-
-  lightningcss-win32-x64-msvc@1.32.0:
-    resolution: {integrity: sha512-Amq9B/SoZYdDi1kFrojnoqPLxYhQ4Wo5XiL8EVJrVsB8ARoC1PWW6VGtT0WKCemjy8aC+louJnjS7U18x3b06Q==}
-    engines: {node: '>= 12.0.0'}
-    cpu: [x64]
     os: [win32]
 
   lightningcss-win32-x64-msvc@1.33.0:
@@ -3011,10 +2962,6 @@ packages:
     engines: {node: '>= 12.0.0'}
     cpu: [x64]
     os: [win32]
-
-  lightningcss@1.32.0:
-    resolution: {integrity: sha512-NXYBzinNrblfraPGyrbPoD19C1h9lfI/1mzgWYvXUTe414Gz/X1FD2XBZSZM7rRTrMA8JL3OtAaGifrIKhQ5yQ==}
-    engines: {node: '>= 12.0.0'}
 
   lightningcss@1.33.0:
     resolution: {integrity: sha512-WkUDrojuJs0xkgGf2udWxa3yGBRxPtxUkB79i6aCZLRgc7PM8fZe9TosfPDcvEpQZbuFASnHYmRLBLUbmLOIIA==}
@@ -3464,6 +3411,10 @@ packages:
     peerDependenciesMeta:
       kerberos:
         optional: true
+
+  proxy-from-env@2.1.0:
+    resolution: {integrity: sha512-cJ+oHTW1VAEa8cJslgmUZrc+sjRKgAKl3Zyse6+PV38hZe/V6Z14TbCuXcan9F9ghlz4QrFr2c92TNF82UkYHA==}
+    engines: {node: '>=10'}
 
   quansync@1.0.0:
     resolution: {integrity: sha512-5xZacEEufv3HSTPQuchrvV6soaiACMFnq1H8wkVioctoH3TRha9Sz66lOxRwPK/qZj7HPiSveih9yAyh98gvqA==}
@@ -4342,7 +4293,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4356,7 +4307,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4369,7 +4320,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4382,7 +4333,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4393,7 +4344,7 @@ snapshots:
       '@aws-sdk/types': 3.974.2
       '@smithy/core': 3.31.1
       '@smithy/fetch-http-handler': 5.6.13
-      '@smithy/node-http-handler': 4.9.13
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4406,7 +4357,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4417,7 +4368,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4430,7 +4381,7 @@ snapshots:
       '@aws-sdk/types': 3.974.2
       '@smithy/core': 3.31.1
       '@smithy/fetch-http-handler': 5.6.13
-      '@smithy/node-http-handler': 4.9.13
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4443,7 +4394,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4456,7 +4407,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4469,7 +4420,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4482,7 +4433,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4495,7 +4446,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4507,7 +4458,7 @@ snapshots:
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
       '@smithy/middleware-compression': 4.5.5
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4520,7 +4471,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4531,7 +4482,7 @@ snapshots:
       '@aws-sdk/types': 3.974.2
       '@smithy/core': 3.31.1
       '@smithy/fetch-http-handler': 5.6.13
-      '@smithy/node-http-handler': 4.9.13
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4544,7 +4495,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4557,7 +4508,7 @@ snapshots:
       '@aws-sdk/types': 3.974.2
       '@smithy/core': 3.31.1
       '@smithy/fetch-http-handler': 5.6.13
-      '@smithy/node-http-handler': 4.9.13
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4570,7 +4521,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4583,7 +4534,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4594,7 +4545,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4605,7 +4556,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4616,7 +4567,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4630,7 +4581,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4644,7 +4595,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4657,7 +4608,7 @@ snapshots:
       '@aws-sdk/types': 3.974.2
       '@smithy/core': 3.31.1
       '@smithy/fetch-http-handler': 5.6.13
-      '@smithy/node-http-handler': 4.9.13
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4670,7 +4621,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4683,7 +4634,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4694,7 +4645,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4707,7 +4658,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4720,7 +4671,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4734,7 +4685,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4747,7 +4698,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4758,7 +4709,7 @@ snapshots:
       '@aws-sdk/types': 3.974.2
       '@smithy/core': 3.31.1
       '@smithy/fetch-http-handler': 5.6.13
-      '@smithy/node-http-handler': 4.9.13
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4771,7 +4722,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4782,7 +4733,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4793,7 +4744,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4806,7 +4757,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4817,7 +4768,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4830,7 +4781,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4841,7 +4792,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4852,7 +4803,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4863,7 +4814,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4876,7 +4827,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4890,7 +4841,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4901,7 +4852,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4915,7 +4866,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4932,7 +4883,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4943,7 +4894,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4956,7 +4907,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4969,7 +4920,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4982,7 +4933,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -4995,7 +4946,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -5007,7 +4958,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -5020,7 +4971,7 @@ snapshots:
       '@aws-sdk/types': 3.974.2
       '@smithy/core': 3.31.1
       '@smithy/fetch-http-handler': 5.6.13
-      '@smithy/node-http-handler': 4.9.13
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -5033,7 +4984,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -5047,7 +4998,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -5060,7 +5011,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -5074,7 +5025,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -5087,7 +5038,7 @@ snapshots:
       '@aws-sdk/types': 3.974.1
       '@smithy/core': 3.29.4
       '@smithy/fetch-http-handler': 5.6.6
-      '@smithy/node-http-handler': 4.9.6
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -5143,7 +5094,7 @@ snapshots:
       '@aws-sdk/types': 3.974.2
       '@smithy/core': 3.31.1
       '@smithy/fetch-http-handler': 5.6.13
-      '@smithy/node-http-handler': 4.9.13
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -5153,7 +5104,7 @@ snapshots:
       '@aws-sdk/types': 3.974.2
       '@smithy/core': 3.31.1
       '@smithy/fetch-http-handler': 5.6.13
-      '@smithy/node-http-handler': 4.9.13
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -5313,7 +5264,7 @@ snapshots:
     dependencies:
       '@aws-sdk/types': 3.974.2
       '@smithy/core': 3.31.1
-      '@smithy/node-http-handler': 4.9.13
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -5386,7 +5337,7 @@ snapshots:
       '@aws-sdk/types': 3.974.2
       '@smithy/core': 3.31.1
       '@smithy/fetch-http-handler': 5.6.13
-      '@smithy/node-http-handler': 4.9.13
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -5397,7 +5348,7 @@ snapshots:
       '@aws-sdk/types': 3.974.2
       '@smithy/core': 3.31.1
       '@smithy/fetch-http-handler': 5.6.13
-      '@smithy/node-http-handler': 4.9.13
+      '@smithy/node-http-handler': 4.12.0
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -6029,6 +5980,11 @@ snapshots:
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
+  '@smithy/core@3.33.3':
+    dependencies:
+      '@smithy/types': 4.15.0
+      tslib: 2.8.1
+
   '@smithy/credential-provider-imds@4.4.16':
     dependencies:
       '@smithy/core': 3.31.1
@@ -6074,15 +6030,9 @@ snapshots:
       '@smithy/core': 3.31.1
       tslib: 2.8.1
 
-  '@smithy/node-http-handler@4.9.13':
+  '@smithy/node-http-handler@4.12.0':
     dependencies:
-      '@smithy/core': 3.31.1
-      '@smithy/types': 4.15.0
-      tslib: 2.8.1
-
-  '@smithy/node-http-handler@4.9.6':
-    dependencies:
-      '@smithy/core': 3.31.1
+      '@smithy/core': 3.33.3
       '@smithy/types': 4.15.0
       tslib: 2.8.1
 
@@ -6170,6 +6120,10 @@ snapshots:
       undici-types: 6.21.0
 
   '@types/normalize-package-data@2.4.4': {}
+
+  '@types/proxy-from-env@1.0.4':
+    dependencies:
+      '@types/node': 20.19.43
 
   '@types/sinon@17.0.4':
     dependencies:
@@ -7189,87 +7143,38 @@ snapshots:
     dependencies:
       readable-stream: 2.3.8
 
-  lightningcss-android-arm64@1.32.0:
-    optional: true
-
   lightningcss-android-arm64@1.33.0:
-    optional: true
-
-  lightningcss-darwin-arm64@1.32.0:
     optional: true
 
   lightningcss-darwin-arm64@1.33.0:
     optional: true
 
-  lightningcss-darwin-x64@1.32.0:
-    optional: true
-
   lightningcss-darwin-x64@1.33.0:
-    optional: true
-
-  lightningcss-freebsd-x64@1.32.0:
     optional: true
 
   lightningcss-freebsd-x64@1.33.0:
     optional: true
 
-  lightningcss-linux-arm-gnueabihf@1.32.0:
-    optional: true
-
   lightningcss-linux-arm-gnueabihf@1.33.0:
-    optional: true
-
-  lightningcss-linux-arm64-gnu@1.32.0:
     optional: true
 
   lightningcss-linux-arm64-gnu@1.33.0:
     optional: true
 
-  lightningcss-linux-arm64-musl@1.32.0:
-    optional: true
-
   lightningcss-linux-arm64-musl@1.33.0:
-    optional: true
-
-  lightningcss-linux-x64-gnu@1.32.0:
     optional: true
 
   lightningcss-linux-x64-gnu@1.33.0:
     optional: true
 
-  lightningcss-linux-x64-musl@1.32.0:
-    optional: true
-
   lightningcss-linux-x64-musl@1.33.0:
-    optional: true
-
-  lightningcss-win32-arm64-msvc@1.32.0:
     optional: true
 
   lightningcss-win32-arm64-msvc@1.33.0:
     optional: true
 
-  lightningcss-win32-x64-msvc@1.32.0:
-    optional: true
-
   lightningcss-win32-x64-msvc@1.33.0:
     optional: true
-
-  lightningcss@1.32.0:
-    dependencies:
-      detect-libc: 2.1.2
-    optionalDependencies:
-      lightningcss-android-arm64: 1.32.0
-      lightningcss-darwin-arm64: 1.32.0
-      lightningcss-darwin-x64: 1.32.0
-      lightningcss-freebsd-x64: 1.32.0
-      lightningcss-linux-arm-gnueabihf: 1.32.0
-      lightningcss-linux-arm64-gnu: 1.32.0
-      lightningcss-linux-arm64-musl: 1.32.0
-      lightningcss-linux-x64-gnu: 1.32.0
-      lightningcss-linux-x64-musl: 1.32.0
-      lightningcss-win32-arm64-msvc: 1.32.0
-      lightningcss-win32-x64-msvc: 1.32.0
 
   lightningcss@1.33.0:
     dependencies:
@@ -7631,6 +7536,8 @@ snapshots:
   proto-list@1.2.4: {}
 
   proxy-agent-negotiate@1.1.0: {}
+
+  proxy-from-env@2.1.0: {}
 
   quansync@1.0.0: {}
 
@@ -8229,7 +8136,7 @@ snapshots:
 
   vite@8.0.16(@types/node@20.19.43)(yaml@2.9.0):
     dependencies:
-      lightningcss: 1.32.0
+      lightningcss: 1.33.0
       picomatch: 4.0.5
       postcss: 8.5.19
       rolldown: 1.0.3
