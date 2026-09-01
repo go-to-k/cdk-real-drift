@@ -144,21 +144,29 @@ exists, and always allows a path under `.worktrees/`. Per lane, in
 MAIN-CHECKOUT mode:
 
 ```bash
-git worktree add .worktrees/<name> -b wt-<name> main
+git worktree add .worktrees/<name> -b wt-<name> origin/main
 mise trust .worktrees/<name>/.mise.toml
 ( cd .worktrees/<name> && pnpm install )     # worktrees have no node_modules
 ( cd .worktrees/<name> && vp run build )     # ...and no dist/ -- see below
 ```
 
-The two arms differ in BASE and that is not a property of the mode: this one
-branches from local `main`, the IN-PLACE one below from `origin/main`. Local
-`main` only advances on an explicit pull in the main checkout, so this arm can
-start stale — the class `stale-base-gate.sh` exists to catch. It is a separate
-defect from the nesting one and NO issue tracks it yet (unlike the branch-gate
-gap below, which is go-to-k/cdk-real-drift#1845); it is left for its own change
-because moving this arm to `origin/main` changes what `stale-base-gate.sh`
-sees, and that gate's behaviour has to be re-measured rather than assumed. The
-new arm is written with the correct base rather than copying the wrong one.
+`origin/main`, not local `main`, and both arms now agree. This one branched from
+local `main` until 2026-09-01, which only advances on an explicit pull in the
+main checkout, so the lane started whatever the last pull left behind; §1's
+refresh usually hides that, which is exactly why it survived. Both sibling repos
+already spelled it `origin/main`, so this was drift rather than a considered
+difference.
+
+The reason recorded for leaving it — that changing the base changes what
+`stale-base-gate.sh` sees, and that had to be measured — was right to demand the
+measurement and wrong about which way it points. That gate opens with
+`git merge-base --is-ancestor "$base" HEAD || exit 0`, so it fires only on a
+branch that CLAIMS to be current. A lane cut from a stale local `main` does not
+have `origin/main` as an ancestor, so the gate exited 0 and never looked: it was
+INERT for precisely this shape, and the sentence that said it "exists to catch"
+this class had it backwards. Basing on `origin/main` makes `origin/main` an
+ancestor, which is what turns the gate ON for these lanes. The change gains
+coverage rather than risking it.
 
 **IN-PLACE mode (SKILL.md "Launch mode") skips that block entirely**: this run
 was launched inside a linked worktree, so it keeps that tree and the branch
