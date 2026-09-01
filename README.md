@@ -1301,6 +1301,10 @@ A few sharp edges worth knowing:
   in a proxy variable is rejected up front with the variable's name — the
   routing speaks HTTP CONNECT only, and accepting it would fail every call
   mid-run with an opaque proxy-protocol error instead.
+- **A proxy value needs an explicit scheme.** `proxy.example:8080` (which curl
+  accepts as `http://`) is rejected up front with the variable's name — the
+  library `cdkrd` routes with would prepend the _request's_ scheme, turning it
+  into a TLS handshake against a plaintext proxy port mid-run.
 - **A whitespace-only proxy variable is an error**, reported with the variable's
   name — treating it as set would fail later with an unnamed URL-parse error,
   and treating it as unset would silently go direct.

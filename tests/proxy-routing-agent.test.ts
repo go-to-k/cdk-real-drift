@@ -68,6 +68,15 @@ describe('ProxyRoutingAgent', () => {
       agent.destroy();
     });
 
+    it('falls back to ALL_PROXY when the scheme-specific variables are unset', () => {
+      // The one PROXY_ENV_VARS entry no other test exercises at ROUTING time —
+      // proxy-from-env's fallback line, not just the presence check.
+      process.env['ALL_PROXY'] = 'http://fallback.example:8080';
+      const agent = new ProxyRoutingAgent();
+      expect(route(agent, 'sts.us-east-1.amazonaws.com').constructor.name).toBe('HttpsProxyAgent');
+      agent.destroy();
+    });
+
     it('routes an http request through HTTP_PROXY, not HTTPS_PROXY', () => {
       // The bug a `HTTPS_PROXY || HTTP_PROXY` fallback chain produces: with
       // only HTTPS_PROXY set, plain-http traffic must NOT be sent to it.

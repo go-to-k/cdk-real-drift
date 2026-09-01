@@ -100,6 +100,16 @@ describe('#1841 clientRequestHandler', () => {
     expect(() => isProxyConfigured()).toThrow(/ALL_PROXY.*SOCKS/);
   });
 
+  it('rejects a scheme-less proxy value up front, naming the variable', () => {
+    // proxy-from-env prepends the REQUEST's scheme to a scheme-less value, so an https
+    // request would turn `proxy.example:8080` into an https:// proxy URL and open a TLS
+    // handshake to a plaintext port — a mid-run `wrong version number` error naming
+    // neither the variable nor cdkrd.
+    process.env['HTTPS_PROXY'] = 'proxy.example:8080';
+    resetProxyConfig();
+    expect(() => isProxyConfigured()).toThrow(/HTTPS_PROXY.*scheme/);
+  });
+
   it('resetProxyConfig() drops the memoized read', () => {
     expect(isProxyConfigured()).toBe(false);
     process.env['HTTPS_PROXY'] = 'http://proxy.example:8080';

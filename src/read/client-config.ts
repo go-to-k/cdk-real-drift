@@ -87,11 +87,14 @@ export const CLIENT_REQUEST_HANDLER = {
 // TLS interceptor, not the proxy). Node's own NODE_USE_ENV_PROXY=1 is not a way out: it
 // rewires the GLOBAL agent, and every SDK client builds its own.
 //
-// The variables below, in the order proxy-from-env itself reads them. Only their PRESENCE
-// is decided here. Which one applies to a given request — and whether NO_PROXY exempts
-// it — is getProxyForUrl's job, per request, inside ProxyRoutingAgent. Deciding it here
-// instead would collapse HTTP_PROXY and HTTPS_PROXY into one answer and send http://
-// traffic to an HTTPS proxy.
+// The variables proxy-from-env consults (its getEnv reads the LOWERCASE spelling first;
+// the guard below deliberately examines BOTH spellings, so a typo'd value is reported even
+// when a valid other-case twin would shadow it at routing time — fail closed, with the
+// variable's name, rather than half-working per request). Only their PRESENCE is decided
+// here. Which one applies to a given request — and whether NO_PROXY exempts it — is
+// getProxyForUrl's job, per request, inside ProxyRoutingAgent. Deciding it here instead
+// would collapse HTTP_PROXY and HTTPS_PROXY into one answer and send http:// traffic to
+// an HTTPS proxy.
 export const PROXY_ENV_VARS = [
   'HTTPS_PROXY',
   'https_proxy',
@@ -135,6 +138,18 @@ export function isProxyConfigured(): boolean {
         throw new Error(
           `${name} names a SOCKS proxy, which cdkrd does not support (HTTP(S) proxies ` +
             `only). Use an http:// or https:// proxy URL, or unset ${name}.`
+        );
+      }
+      if (!value.includes('://')) {
+        // A scheme-less value (`proxy.example:8080` — curl treats it as http://) is NOT
+        // normalized by proxy-from-env: it prepends the REQUEST's scheme, so an https
+        // request turns it into `https://proxy.example:8080` and HttpsProxyAgent then
+        // opens a TLS handshake to a plaintext proxy port — failing mid-run with a
+        // `wrong version number` error naming neither the variable nor cdkrd. Same
+        // philosophy as the guards beside it: name the variable, fail up front.
+        throw new Error(
+          `${name} has no scheme. Set it to a full proxy URL ` +
+            `(e.g. http://proxy.example:8080) or unset ${name}.`
         );
       }
       configured = true;
