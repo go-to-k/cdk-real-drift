@@ -158,9 +158,21 @@ LANE_TREE=$(cd "$(git rev-parse --show-toplevel)" && pwd -P)   # capture it HERE
 Equal only in the main checkout: a linked worktree's `--git-dir` is
 `<common-dir>/worktrees/<name>`, and `pwd -P` settles both the main checkout's
 RELATIVE `.git` answer and macOS's `/tmp` -> `/private/tmp`. Run it INSIDE the
-repo: outside one, both substitutions are empty and `cd ""` returns 0, so it
-prints MAIN-CHECKOUT — a wrong verdict, caught only by the next git command
-failing loudly.
+repo. Outside one, `git rev-parse` fails and every substitution collapses to the
+empty string, so the test compares `""` with `""` and prints MAIN-CHECKOUT — a
+wrong verdict. Measured 2026-08-31, and the mechanism differs by shell without
+changing the answer: bash REFUSES `cd ""` (rc=1, `cd: null directory`) so the
+`&& pwd -P` never runs, while zsh accepts it (rc=0) and `pwd -P` then prints the
+same cwd twice.
+
+**And nothing downstream catches that, which is the part the previous wording
+got wrong** ("caught only by the next git command failing loudly"). Outside a
+repo `LANE_TREE` is EMPTY, and an empty `-C` argument is not an error: measured
+the same day, `git -C "" rev-parse --show-toplevel` exits 0 and prints the
+CWD's repo — so every `git -C "<LANE_TREE>"` recipe in §4, §5 and §10 silently
+retargets the tree the shell is standing in, which is the main checkout in
+exactly the scenario the `-C` was added for. The guard degrades into the bug it
+guards, with no failure to read. Re-run the probe rather than trusting a blank.
 
 **`LANE_TREE` is the whole reason the path is captured on THIS line**, and it is
 not decoration on the mode. This instant is the one moment the cwd is provably
@@ -171,7 +183,17 @@ verbatim and absolute — that report is its ONLY recorded copy, and §4, §5 an
 §10 all hand it to `git -C`. A later stage that re-derives it instead, from
 `$(git rev-parse --show-toplevel)` or from `pwd`, resolves against the reset cwd
 and answers "the main checkout" in precisely the case the `-C` exists to guard:
-the guard then degrades into the bug it guards. `IN-PLACE` means
+the guard then degrades into the bug it guards.
+
+**`<LANE_TREE>` in a later stage is a SUBSTITUTION PLACEHOLDER, not a shell
+variable, and the difference is the whole guard.** Paste the absolute path from
+the opening report into the command text. Do NOT write `git -C "$LANE_TREE"`:
+the assignment above lives in THIS fenced block and every later block is its own
+Bash call and its own shell (§9 spells the same trap out for `MAIN`, §10-d for
+`B`), so the variable is already empty there — and per the paragraph above, an
+empty `-C` does not fail, it re-targets the cwd. A placeholder that was never
+substituted is visible in the command you are about to run; an empty variable is
+not visible anywhere. `IN-PLACE` means
 this run was launched inside a worktree someone else created (an Orca/ADE
 workspace, a stray `cd`), so it has exactly ONE working tree: **take ONE issue
 and finish it** — a second lane would need a worktree nested inside this one,

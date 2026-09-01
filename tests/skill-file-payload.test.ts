@@ -38,8 +38,16 @@ import { describe, expect, it } from 'vite-plus/test';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKILLS_DIR = path.join(ROOT, '.claude', 'skills');
 
-const MAX_SKILL_MD_BYTES = 36_000; // largest non-split skill measured 12,175 B (verify-pr)
-const MAX_ORCHESTRATOR_BYTES = 12_000; // orchestrators measured 7,952 B / 6,932 B at the split
+const MAX_SKILL_MD_BYTES = 36_000; // largest non-split skill re-measured 12,571 B (verify-pr, 2026-09-01) -- the 12,175 B this line used to quote was stale
+const MAX_ORCHESTRATOR_BYTES = 12_000; // orchestrators were 7,952 B / 6,932 B at the 2026-08-28 split; re-measured 2026-09-01: work-issues 11,476 B (524 B of margin), hunt-bugs 6,932 B
+// The re-measurement is the point, not trivia: work-issues had grown to 11,746 B
+// -- 254 B under its cap -- while this comment still quoted the at-split figure,
+// so nobody adding a paragraph could see how little room was left. This pass
+// MOVED the split-PR provenance paragraph into references/implement.md (where the
+// lane subagent it describes actually reads) and replaced the duplicated
+// serialization caveats with a pointer to the section 9 that states them in full,
+// rather than compressing anything away. Re-measure whenever an orchestrator is
+// edited -- a cap with an unmeasured margin is one nobody can plan against.
 const MAX_REFERENCE_FILE_BYTES = 64_000; // largest stage file measured 55,137 B (hunt-bugs gotchas.md); 41,922 B after the rule+citation compression pass (2026-08-28)
 
 // The split skills' stage files must still exist and still carry the moved
@@ -66,18 +74,20 @@ const MAX_REFERENCE_FILE_BYTES = 64_000; // largest stage file measured 55,137 B
 // drop is not a weaker guard but a SILENT one. A genuine compression pass
 // re-derives the floor downward in the same commit -- that stays legal; what
 // the floor stops is a deletion with no re-derivation at all.
-// Re-derived again 2026-08-31 (review round 2, after the LANE_TREE capture):
-// corpus 111,362 B, largest implement.md 23,436 B, so the floor must exceed
-// 111,362 - 23,436 = 87,926. 89,000 still HELD -- by 1,074 B, and is raised to
-// 90,000 anyway, because the MARGIN is what decays: cdk-local was left at 759 B
-// of it one day and had lapsed the next. 90,000 leaves 2,074 B of margin and
-// ~21 KB of compression room below the floor.
-// hunt-bugs stays at 60,000: 88,426 - 41,922 = 46,504 < 60,000, so its property
+// Re-derived again 2026-09-01 (review round 3) at the final tree: corpus
+// 113,699 B, largest implement.md 24,238 B, so the floor must exceed
+// 113,699 - 24,238 = 89,461. The 90,000 set one round earlier still HELD, but by
+// 539 B -- half the margin it was raised to take, one round later, which is the
+// decay this comment keeps warning about and keeps under-pricing. 93,000 leaves
+// 3,539 B of margin and ~20 KB (113,699 - 93,000 = 20,699 B) of compression room
+// below the floor.
+// hunt-bugs stays at 60,000: re-measured 2026-09-01, corpus 88,426 B and largest
+// gotchas.md 41,922 B, so 88,426 - 41,922 = 46,504 < 60,000 and its property
 // still holds. Re-measure both numbers for each skill whenever a stage file
 // changes size materially -- the property is silent when it lapses.
 const SPLIT_SKILLS: Record<string, { minFiles: number; minCorpusBytes: number }> = {
   // 8 files / 125,139 B measured at the split (2026-08-28); largest 26,621 B; 94,136 B post-compression
-  'work-issues': { minFiles: 6, minCorpusBytes: 90_000 },
+  'work-issues': { minFiles: 6, minCorpusBytes: 93_000 },
   // 7 files / 108,940 B measured at the split (2026-08-28); largest 55,137 B; 87,180 B post-compression
   'hunt-bugs': { minFiles: 5, minCorpusBytes: 60_000 },
 };

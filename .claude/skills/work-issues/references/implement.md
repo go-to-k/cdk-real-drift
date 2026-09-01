@@ -6,12 +6,18 @@ This stage (and stages 6-8) normally runs INSIDE a lane subagent the
 orchestrator dispatched — one general-purpose agent per claimed issue, so the
 lane's diffs, test output and review round-trips never land in the parent
 context. Every rule below applies unchanged inside the lane: hooks fire on the
-lane's tool calls (measured on go-to-k/cdk-real-drift#1831, built end-to-end by
-a lane subagent on 2026-08-28), and markgate markers land in the lane's own
-worktree. Two actions are reserved to the parent's serialization turn and are
-NOT the lane's to start: a real-AWS live test (deploy → mutate → revert) and
-the merge (the orchestrator's serialization invariant; §9). A lane stops at
-merge-ready and reports.
+lane's tool calls, and markgate markers land in the lane's own worktree. Two
+actions are reserved to the parent's serialization turn and are NOT the lane's
+to start: a real-AWS live test (deploy → mutate → revert) and the merge (the
+orchestrator's serialization invariant; §9). A lane stops at merge-ready and
+reports.
+
+**That placement is live-proven, not aspirational, and SKILL.md points here for
+the run that proved it**: on 2026-08-28 this repo's own skill-split PR
+(go-to-k/cdk-real-drift#1831), like its sibling go-to-k/cdk-local#621, was built
+END-TO-END by a lane subagent — worktree, implementation, gates, CI — with the
+parent doing only claims, serialized merges and cleanup, and every hook and
+markgate gate firing inside the lane's calls exactly as in the parent.
 
 **Before fixing, ask whether the defect has SIBLING SITES — and if it does, sweep
 them in THIS lane rather than filing them.** Most defects here are a CLASS, not an
@@ -165,11 +171,17 @@ would push an orphan ref), take a fresh branch WITHOUT leaving the tree:
 # Nothing in this repo gates a branch switch: `branch-gate` fires on
 # `git commit` / `git push` and only when the target tree is on `main` /
 # `master`, `worktree-guard` fires on Edit/Write into the MAIN checkout, and
-# there is no `main-tree-branch-gate` here at all -- so a BARE `git switch -c`
-# run after the shell's cwd has silently reset to the main checkout (the
-# appendix's cwd-reset failure, and the reason section 9 pulls through -C)
-# takes the MAIN checkout off `main`, unblocked, in a tree other lanes are
-# sharing. Substitute the ABSOLUTE path section 3's probe printed as
+# there is no `main-tree-branch-gate` here at all (go-to-k/cdk-real-drift#1845
+# tracks adding one) -- so a BARE `git switch -c` run after the shell's cwd has
+# silently reset to the main checkout (the appendix's cwd-reset failure, and the
+# reason section 9 pulls through -C) takes the MAIN checkout off `main`,
+# unblocked, in a tree other lanes are sharing. Both siblings DO have that gate:
+# cdkd and cdk-local carry the `-C`-free spelling because their gate refuses a
+# stray `git switch -c` in the main checkout, and it covers the chained
+# `fetch && switch -c` form as of this session's hooks change (measured there).
+# So this divergence is temporary, and it closes from the HOOK side, not by
+# copying this comment into the siblings.
+# Substitute the ABSOLUTE path section 3's probe printed as
 # `LANE_TREE` and the opening report recorded -- the one value captured while
 # the cwd was provably right. Do NOT re-derive it here as
 # `$(git rev-parse --show-toplevel)` or `pwd`: both resolve against the same

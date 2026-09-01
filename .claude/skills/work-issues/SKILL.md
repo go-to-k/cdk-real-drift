@@ -27,9 +27,12 @@ workspace, a stray `cd` into `.worktrees/<x>`): `git worktree add` then NESTS
 one, and deleting the outer workspace takes the inner directory, its uncommitted
 work and its git registration with it (go-to-k/cdk-real-drift#1842). Run the
 one-line probe at the top of §3 — the ONLY copy of it — before stage 0, and
-state BOTH of its answers in the opening report — the mode, and the absolute
-`LANE_TREE` path it captured, which §4, §5 and §10 all hand to `git -C` (§3 says
-why that path is recorded rather than re-derived later).
+state BOTH of its answers in the opening report: the mode, and the absolute
+`LANE_TREE` path. Read that name as "the tree this run stands in", NOT "the lane
+worktree" — MAIN-CHECKOUT records the MAIN checkout under it, and the `git -C
+"<LANE_TREE>"` recipes consuming it in §4, §5 and §10 are IN-PLACE-only arms
+(every MAIN-CHECKOUT arm beside them uses no `-C`). §3 says why it is captured
+there and why it is SUBSTITUTED into a command, never kept as a shell variable.
 
 `IN-PLACE` changes four things: take ONE issue (§3); claim the branch/worktree
 already checked out (§4); add no worktree and work on the branch already here,
@@ -47,12 +50,8 @@ which the stage summary below is not executable. A bare `§N` anywhere in this
 skill points into the file that holds that section (map in the table).
 
 **Delegate for context; keep the locks and the serialization in the parent.**
-The placements below are live-proven, not aspirational: on 2026-08-28 this
-repo's own skill-split PR (go-to-k/cdk-real-drift#1831), like its sibling
-go-to-k/cdk-local#621, was built END-TO-END by a lane subagent — worktree,
-implementation, gates, CI — with the parent doing only claims, serialized
-merges and cleanup, and every hook and markgate gate fired inside the lane's
-calls exactly as in the parent.
+The placements below are live-proven, not aspirational — §5 carries the run
+that proved them.
 
 - **Triage (stages 0–3): a read-only subagent** (general-purpose or Explore)
   whose prompt is: read `references/triage.md` in full, execute it against
@@ -122,12 +121,9 @@ the user wants to watch); the stage files apply unchanged either way.
 - **Real-AWS live tests and merges are SERIALIZED across lanes** — the parent
   grants the turn, one lane at a time; a lane subagent never starts either on
   its own. Everything else (edits, unit tests, markers, PR create, reviews,
-  CI) runs concurrently, with two repo-local caveats: the markgate store is
-  SHARED across worktrees with hashes from the setter's cwd, so a peer's
-  `markgate set` landing between your set and your commit fails closed (a
-  re-run, not a wrong pass); and the deploy-autoarm sentinel is per-SESSION,
-  so one lane's live deploy blocks EVERY lane's commit and PR until the
-  sweep clears it. (§9)
+  CI) runs concurrently, subject to two repo-local caveats §9 states in full
+  (the markgate store is SHARED across worktrees, and the deploy-autoarm
+  sentinel is per-SESSION). (§9)
 - **English only in every published artifact** — issue bodies/comments, PR
   titles/bodies, commits, code. (CLAUDE.md)
 - **The run ends with the retro (stage 10) and the standard wrap report**
