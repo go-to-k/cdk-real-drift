@@ -171,6 +171,17 @@ at once, not trickled.
   bold paragraph. Root cause + toolchain bump: go-to-k/cdk-real-drift#1771 /
   go-to-k/cdk-real-drift#1780.
 
+- **transport / client-config change** (`src/read/client-config.ts`
+  requestHandler / agents / timeouts, proxy routing) → live-verify with ZERO
+  deployed resources: `check` on an UNDEPLOYED unique-named stack still makes
+  real AWS calls (STS + CloudFormation DescribeStacks) and exits 0 with "not
+  deployed yet — skipped", so the transport is exercised end-to-end with
+  nothing to sweep and no sentinel armed. The oracle is whatever observes the
+  transport — for go-to-k/cdk-real-drift#1841 (PR
+  go-to-k/cdk-real-drift#1852) a ~25-line local logging HTTP CONNECT proxy
+  proved every call tunneled, plus dead-proxy (no silent direct fallback),
+  `NO_PROXY` bypass, and no-proxy control arms. Reach for the deploy tier below
+  only when the change needs a real RESOURCE, not just real calls.
 - **revert / read HOT-PATH fix** → live-verify with a MINIMAL, UNIQUE-named
   fixture: deploy → mutate out of band → `check` detects → `revert --yes`
   converges → confirm the live value. A throwaway CDK app works:
@@ -252,6 +263,16 @@ only, never the working tree). This repo's lanes live under a `.worktrees/`
 directory, so the hazard is identical here.
 
 ### 8-z. When a mutation probe reports NO discrimination
+
+**First, a rule that applies BEFORE any probe runs: COMMIT the round's real
+fixes, then probe.** A probe deliberately breaks the tree, so an interruption
+mid-probe (a session limit, a crash) leaves deliberate breakage and unfinished
+fixes in ONE undifferentiated dirty tree. Measured 2026-09-02 on the
+go-to-k/cdk-real-drift#1841 lane: the subagent died at the 5-hour session limit
+mid-probe with 9 dirty files, and the resuming session had to read the full
+diff to establish that none of it was probe wreckage before it could commit.
+With a pre-probe commit the separator is just `git diff` — anything unstaged
+after a probe is the probe's.
 
 **A probe that reports NO discrimination is a claim about the FENCE, and three
 other things produce the identical output.** Ask them in order before touching
