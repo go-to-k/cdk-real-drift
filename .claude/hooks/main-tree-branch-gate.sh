@@ -85,9 +85,22 @@ fi
 # segment loop through a process substitution, so a library that predates it
 # yields NO lines, the loop body never runs, and the gate exits 0 — a silent
 # bypass with no error anywhere. That is exactly what this check exists to stop.
+#
+# `gate_argv` and its two CONSTANTS are named for a second reason: they are what
+# turns the argument text into git's ARGV. A library predating either constant
+# leaves that ERE EMPTY, and an empty ERE matches EVERY string at position 0
+# with every capture group empty -- so `gate_tokens` would print an empty first
+# token forever and `gate_argv` would drop every word as a redirection. Either
+# way the option walk sees nothing and every command reads like a bare
+# `git checkout`. `declare -F` cannot see a missing constant; only this can.
 if ! declare -F gate_matches >/dev/null 2>&1 \
-  || ! declare -F gate_verb_args_dir >/dev/null 2>&1; then
-  echo "Blocked: .claude/hooks/_command-match.sh loaded but gate_matches / gate_verb_args_dir is undefined (truncated or stale file?)." >&2
+  || ! declare -F gate_verb_args_dir >/dev/null 2>&1 \
+  || ! declare -F gate_unquote >/dev/null 2>&1 \
+  || ! declare -F gate_tokens >/dev/null 2>&1 \
+  || ! declare -F gate_argv >/dev/null 2>&1 \
+  || [ -z "${GATE_EMBEDDING_TOKEN:-}" ] \
+  || [ -z "${GATE_REDIR_TOKEN:-}" ]; then
+  echo "Blocked: .claude/hooks/_command-match.sh loaded but gate_matches / gate_verb_args_dir / gate_unquote / gate_tokens / gate_argv / GATE_EMBEDDING_TOKEN / GATE_REDIR_TOKEN is undefined (truncated or stale file?)." >&2
   exit 2
 fi
 
@@ -202,26 +215,41 @@ main_tree_of() {
 
 # remote_dwim_names <dir>
 #
-# One candidate DWIM branch name per line: the names `git checkout <name>` would
-# CREATE a local branch for and switch to, because exactly one remote carries
-# them. Two things it must get right, both measured against real git 2.53:
+# One candidate DWIM name per line: the names `git checkout <name>` may CREATE a
+# local branch for and switch to, because a remote carries them. Two things it
+# must get right, both measured against real git 2.53 on a fixture clone:
 #
 #   SYMREFS ARE NOT BRANCHES. `refs/remotes/<remote>/HEAD` exists in essentially
-#     every clone (16 of this repo's own remote refs, one of them HEAD), and
-#     `%(refname:lstrip=3)` renders it as the bare name `HEAD`. That made
-#     `git checkout HEAD` a BLOCK reported as "creates a local branch tracking
-#     remote 'HEAD'", while real git leaves HEAD exactly where it was — measured,
-#     `before=main after=main`. `git branch HEAD` is refused by git itself
-#     ("'HEAD' is not a valid branch name"), so dropping symrefs costs no real
-#     candidate.
+#     every clone, and `%(refname:lstrip=3)` renders it as the bare name `HEAD`.
+#     Real git leaves HEAD exactly where it was for `git checkout HEAD`
+#     (measured: "Your branch is ahead of 'origin/main'", HEAD stayed `main`), so
+#     a list carrying it false-blocks a read-only command. `git branch HEAD` is
+#     refused by git itself, so dropping symrefs costs no real candidate.
 #
 #   A REMOTE NAME MAY CONTAIN A SLASH, so a fixed `lstrip=3` is wrong. `git
-#     remote add a/b <url>` is accepted — measured — and the branch `deep-only`
-#     on it lands at `refs/remotes/a/b/deep-only`, which lstrips to `b/deep-only`
-#     while git DWIMs plain `deep-only` ("Switched to a new branch 'deep-only'",
-#     HEAD moved). A gate comparing against `b/deep-only` passes the switch. The
-#     prefix is therefore stripped PER REMOTE, using the remote's own name, so it
-#     is right whatever the name contains.
+#     remote add a/b <url>` is accepted -- measured -- and the branch `deep-only`
+#     on it lands at `refs/remotes/a/b/deep-only`, which lstrips to
+#     `b/deep-only` while git DWIMs plain `deep-only` ("Switched to a new branch
+#     'deep-only'", HEAD moved). A gate comparing against `b/deep-only` PASSES
+#     that switch -- measured against this gate before this function replaced the
+#     `lstrip=3` scan: rc=0 where 2 is wanted. The prefix is therefore stripped
+#     PER REMOTE using the remote's own name, so it is right whatever the name
+#     contains.
+#
+# ITERATING THE CONFIGURED REMOTES is also what makes the list stop at what git
+# will actually DWIM. A ref can sit under `refs/remotes/<name>/` with no remote
+# `<name>` configured -- `git update-ref` puts one there, and a removed remote
+# can leave one behind. Measured: with `refs/remotes/ghostremote/ghost` present
+# and no `ghostremote` remote, `git checkout ghost` answers "pathspec 'ghost'
+# did not match any file(s) known to git" and HEAD stays -- while a scan of
+# `refs/remotes/` alone offered `ghost` as a candidate and this gate blocked it.
+#
+# WHAT IT DOES NOT CHECK, stated because an earlier wording claimed it did: there
+# is no UNIQUENESS check. With the same name on two remotes git REFUSES ("hint:
+# If you meant to check out a remote tracking branch on, e.g. 'origin'", HEAD
+# stays -- measured) while this list still offers the name and the gate blocks.
+# That is the conservative direction, so the behaviour stays; the claim that the
+# list holds only names "exactly one remote carries" does not.
 #
 # The pattern stays the PREFIX `refs/remotes/<remote>/`, never `.../*/*`: in
 # `for-each-ref` a `*` does not cross a `/`, so the two-star form misses every
@@ -233,10 +261,9 @@ remote_dwim_names() {
     # `%(refname)` FIRST and the symref second: with `IFS=<tab>` a LEADING empty
     # field is eaten (tab is IFS whitespace), so the symref-first spelling shifts
     # every ordinary ref's name into the wrong variable. In this order the
-    # `IFS=$'\t' read` spelling is safe — git refuses a ref name containing any
+    # `IFS=$'\t' read` spelling is safe -- git refuses a ref name containing any
     # ASCII control character, tab included, so neither field can hold a tab run
-    # for `read` to fold. That is NOT true of the segment split further down,
-    # which is why that one uses `${line%%<TAB>*}` instead.
+    # for `read` to fold.
     while IFS=$'\t' read -r refname symref; do
       [ -n "$refname" ] || continue
       [ -z "$symref" ] || continue
@@ -246,231 +273,467 @@ remote_dwim_names() {
   done < <(git -C "$dir" remote 2>/dev/null)
 }
 
+# The LONG-OPTION grammar of each verb, transcribed from `git checkout -h` /
+# `git switch -h` (git 2.53.0), one `<name>:<arity>` per line:
+#
+#   0   takes nothing
+#   1   REQUIRES a value, which the spaced spelling takes from the NEXT token
+#   ?   OPTIONAL value, which the spaced spelling does NOT take -- measured,
+#       `git checkout -t origin/remote-only` creates local `remote-only`, so the
+#       ref that follows is a start-point POSITIONAL and not the flag's argument
+#
+# It is COMPLETE rather than a list of the interesting flags, and that is
+# load-bearing twice over.
+#
+#   git ACCEPTS ANY UNAMBIGUOUS PREFIX of a long name, which `-h` does not show
+#     and an earlier revision of this parse took from `-h` alone. Measured:
+#     `git checkout --orph newb` prints "Switched to a new branch 'newb'",
+#     `git checkout --or newb` does the same (`orphan` is the only name starting
+#     `or`), and `git checkout --trac origin/<b>` creates local `<b>` and
+#     switches. All three scored rc=0 against this gate before the table existed.
+#     A prefix can only be resolved against the WHOLE name set, so a table
+#     holding just the flags this gate cares about would answer "unknown" for
+#     `--or` one day and "ambiguous" the next as the set changed.
+#
+#   AN UNMODELLED VALUE-TAKING FLAG MOVES EVERY POSITIONAL AFTER IT. That is the
+#     `--conflict merge <branch>` defect, and it is a defect of the TABLE, not of
+#     the walk.
+#
+# Every `--[no-]x` line in `-h` contributes BOTH `x` and `no-x`. The negated form
+# takes no value and carries no effect -- measured: `git checkout --no-orphan
+# some-feature` and `git checkout --no-conflict some-feature` both switch, so the
+# name after them is a positional.
+GATE_CHECKOUT_LONG_OPTS='help:0
+guess:0
+no-guess:0
+overlay:0
+no-overlay:0
+quiet:0
+no-quiet:0
+recurse-submodules:?
+no-recurse-submodules:0
+progress:0
+no-progress:0
+merge:0
+no-merge:0
+conflict:1
+no-conflict:0
+detach:0
+no-detach:0
+track:?
+no-track:0
+force:0
+no-force:0
+orphan:1
+no-orphan:0
+overwrite-ignore:0
+no-overwrite-ignore:0
+ignore-other-worktrees:0
+no-ignore-other-worktrees:0
+ours:0
+theirs:0
+patch:0
+no-patch:0
+unified:1
+inter-hunk-context:1
+ignore-skip-worktree-bits:0
+no-ignore-skip-worktree-bits:0
+pathspec-from-file:1
+no-pathspec-from-file:0
+pathspec-file-nul:0
+no-pathspec-file-nul:0'
+
+GATE_SWITCH_LONG_OPTS='help:0
+create:1
+no-create:0
+force-create:1
+no-force-create:0
+guess:0
+no-guess:0
+discard-changes:0
+no-discard-changes:0
+quiet:0
+no-quiet:0
+recurse-submodules:?
+no-recurse-submodules:0
+progress:0
+no-progress:0
+merge:0
+no-merge:0
+conflict:1
+no-conflict:0
+detach:0
+no-detach:0
+track:?
+no-track:0
+force:0
+no-force:0
+orphan:1
+no-orphan:0
+overwrite-ignore:0
+no-overwrite-ignore:0
+ignore-other-worktrees:0
+no-ignore-other-worktrees:0'
+
+# resolve_long_opt <verb> <name-without-dashes>
+#
+# Answers in the globals `gate_long` (the canonical name) and `gate_long_arity`.
+# Returns 0 on a resolved name, 1 on an unknown one, 2 on an AMBIGUOUS prefix --
+# and git's own answers for those two are "error: unknown option" and "error:
+# ambiguous option", both of which abort the command without touching HEAD.
+# An EXACT match wins over any prefix, as it does in git's parse-options.
+gate_long=""
+gate_long_arity=""
+resolve_long_opt() {
+  local verb="$1" name="$2" table n a hits=0
+  gate_long=""
+  gate_long_arity=""
+  if [ "$verb" = switch ]; then table="$GATE_SWITCH_LONG_OPTS"; else table="$GATE_CHECKOUT_LONG_OPTS"; fi
+  while IFS=: read -r n a; do
+    [ -n "$n" ] || continue
+    if [ "$n" = "$name" ]; then
+      gate_long="$n"
+      gate_long_arity="$a"
+      return 0
+    fi
+  done <<EOF
+$table
+EOF
+  while IFS=: read -r n a; do
+    [ -n "$n" ] || continue
+    # `$name` is QUOTED so a glob character inside it is literal; the trailing
+    # `*` is the only wildcard.
+    case "$n" in
+      "$name"*) hits=$((hits + 1)); gate_long="$n"; gate_long_arity="$a" ;;
+    esac
+  done <<EOF
+$table
+EOF
+  [ "$hits" -eq 1 ] && return 0
+  gate_long=""
+  gate_long_arity=""
+  [ "$hits" -eq 0 ] && return 1
+  return 2
+}
+
 # verdict_for <verb> <args> <dir>
 # 0 = this segment must be BLOCKED (with `target_branch` / `block_reason` set),
 # 1 = allowed. <args> is everything after the matched verb, flags included,
-# because the verb ERE already consumed the leading `git -C … ` flag run.
+# because the verb ERE already consumed the leading `git -C ... ` flag run.
 #
 #   `git switch <main|master>`             -> allow
 #   `git checkout <main|master>`           -> allow
-#   `git switch -c|--create <branch>`      -> block
-#   `git switch <other-branch>`            -> block
-#   `git checkout -b|-B|--orphan <branch>` -> block
-#   `git checkout -t <remote-ref>`         -> block (DWIM create + switch)
-#   `git switch|checkout -` / `@{-1}`      -> block (the previous branch)
-#   `git checkout <other-branch>`          -> block when it is the only
-#                                            positional AND names a LOCAL branch
-#                                            or a branch on some REMOTE
+#   `git switch -- <main|master>`          -> allow (`--` under switch only ends
+#                                            the options; switch has no pathspec)
+#   `git switch -c|-C|--create|--force-create <branch>` -> block
+#   `git switch|checkout --orphan <branch>`             -> block
+#   `git switch <other-branch>` / `git switch -- <other-branch>` -> block
+#   `git switch|checkout -` / `@{-1}`      -> block (previous branch, unknowable)
+#   `git switch --detach`                  -> block
+#   `git checkout -b|-B <branch>`          -> block
+#   `git switch|checkout -t|--track <remote-ref>` -> block (DWIM create + switch)
+#   `git checkout <other-branch>`          -> block when NO pathspec operand
+#                                            follows it AND it names a LOCAL
+#                                            branch or a branch on a CONFIGURED
+#                                            remote
+#   `git checkout <branch> --`             -> block: a `--` with nothing after it
+#                                            leaves no pathspec, so this is the
+#                                            switch (measured: HEAD moved)
 #   `git checkout [<tree-ish>] -- <paths>` -> allow (file restore)
 #   `git checkout <tree-ish> <paths>`      -> allow (file restore, no `--`)
-#   `git checkout -p|--ours|--theirs …`    -> allow (file restore, no positional
-#                                            count involved)
-#   `git checkout <sha>`                   -> allow (detached HEAD)
+#   `git checkout -p|--ours|--theirs|--pathspec-from-file ...` -> allow (restore)
+#   `git checkout --no-guess <remote-only-name>` -> allow (DWIM is off; measured,
+#                                            "pathspec did not match", HEAD stays)
+#   `git checkout <sha>` / `HEAD`          -> allow (detached HEAD / a rev)
 #   `git switch|checkout --help`           -> allow
 #
-# A TOKEN WALK, not "read token 1 and token 2". The two-token form ported from
-# the siblings is wrong in BOTH directions -- three defects, each measured
-# against real git before it was fixed here (the same probes run against the
-# sibling gates score them identically wrong):
+# A REAL OPTION PARSE over git's ARGV. Three properties carry the whole design,
+# and each replaced a class of defect rather than a spelling:
+#
+# 1. THE INPUT IS ARGV, NOT SHELL WORDS. `gate_argv` drops the words the SHELL
+#    owns -- a redirection and its target, a trailing `&`, a `#` comment -- so
+#    they cannot be miscounted as arguments. Reading `gate_tokens` output
+#    directly made `git checkout <branch> 2>/dev/null`, `... >/dev/null 2>&1` and
+#    `... # switch lane` read as two-positional file restores and PASS; all three
+#    really move HEAD (measured, `main` -> `some-feature`).
+#
+# 2. FLAGS ARE RESOLVED AGAINST A COMPLETE GRAMMAR, prefixes included (see the
+#    tables above), and a SHORT token is walked as a CLUSTER because git's
+#    parse-options accepts `-qbfeat` as `-q -b feat` and takes the remainder of
+#    the cluster as a value-taking letter's value. Every glued spelling --
+#    `-bfeat`, `-Bfeat`, `-cfeat`, `-Cfeat`, `--create=feat`, `--orphan=feat` --
+#    was measured creating the branch and switching to it.
+#
+# 3. AN INCOMPLETE PARSE MAY NOT ALLOW. When a long name resolves to no entry or
+#    to more than one, or a cluster letter is unknown, the walk does not know
+#    where the positionals are -- it cannot tell whether the flag would have
+#    eaten the next token. Every arm below that ALLOWS depends on that knowledge;
+#    the arms that BLOCK do not. So an unresolved option sets `parse_certain=0`
+#    and the verdict is a conservative block naming the option. This is the
+#    general form of the two defects that a POSITIONAL COUNT produced -- first
+#    `--conflict merge <branch>` (a value read as a positional), then
+#    `<branch> 2>/dev/null` (a shell word read as a positional). Both were the
+#    count RELAXING a verdict on a parse that was not complete. Today the arm
+#    fires only on commands git itself refuses ("error: unknown option" /
+#    "error: ambiguous option"), so it costs nothing now; it is what keeps a
+#    FUTURE git option from re-opening the same hole silently.
+#
+# The positional structure this parse still reads is the one GIT reads, and it is
+# a boolean rather than a tally: `first_pos` (the switch target) and
+# `pathspec_seen` (a pathspec operand exists). Git's own grammar is
+# `git checkout [<options>] <branch>` OR
+# `git checkout [<options>] [<branch>] -- <file>...`, so no correct gate can
+# avoid asking whether an operand follows the target -- `git checkout <branch>
+# <path>` restores a file and leaves HEAD alone while `git checkout <branch>`
+# switches, and only the extra operand tells them apart (both measured). What is
+# fixed is WHAT is examined: git's argv, fully parsed, or nothing.
+#
+# Verdicts settled against real git first, printing HEAD and the local branch
+# list before and after. The defects this parse replaced, in the order found:
 #
 #   git checkout <branch> -- <paths>   was BLOCKED, and must not be: it restores
-#     FILES and leaves HEAD on `main`. Measured — HEAD stayed `main`, f.txt took
-#     the other branch's content. It is also the spelling CLAUDE.md MANDATES for
-#     the orchestrator ("integrates by `git checkout <branch> -- <files>`, NEVER
-#     `git merge`"), so the ported shape refuses this repo's own integration step.
-#     `git checkout <branch> <paths>` without the `--` behaves identically, which
-#     is why the rule is "two or more positionals is a restore", not "`--` seen".
+#     FILES and leaves HEAD alone. `git checkout <branch> <paths>` without the
+#     `--` behaves identically. go-to-k/cdk-real-drift MANDATES the `--` spelling
+#     for its integration step, so the old reading refused a sibling repo's own
+#     documented flow.
 #
-#   git checkout -f <branch>           was ALLOWED, and must not be: `-f` was read
-#     AS the branch name, `refs/heads/-f` does not resolve, and the gate passed.
-#     Measured — it switched the tree to `feat`. Any flag before the branch does
-#     this, so flags are SKIPPED rather than treated as the positional.
+#   git checkout <branch> --           was ALLOWED once that fix shipped, and
+#     must not be: a `--` with NOTHING after it leaves no pathspec at all.
+#     Measured -- "Switched to branch 'some-feature'", HEAD moved. The rule is
+#     therefore "a pathspec operand exists", not "a `--` was seen".
 #
-#   git checkout <name>  /  git checkout -t origin/<name>
-#     ALLOWED by all three, and must not be. With no LOCAL `<name>` but a remote
-#     carrying it, both CREATE the local branch and switch — measured on a real
-#     clone: HEAD went `main` -> `feat`, "Switched to a new branch". That is how
-#     a lane's branch usually FIRST appears in a checkout, so a local-only
-#     `show-ref` was blind to the commonest spelling of the thing it guards.
+#   git switch -- main                 was BLOCKED, and must not be: `git switch`
+#     has NO pathspec form (`usage: git switch [<options>] [<branch>]`), so `--`
+#     there only ends the options. Measured -- "Already on 'main'". The same
+#     token walk was applying checkout's grammar to both verbs, and the command
+#     landed on the "no resolvable target" arm. `git switch -- <feature>` DOES
+#     switch (measured), so that one still blocks.
 #
-# THE WALK PARSES FLAGS THE WAY GIT'S OWN parse-options DOES, and the first
-# revision of it did not, which cost six LIVE FAIL-OPENS — every one of them a
-# command that really moves HEAD, waved through by the gate whose whole job is to
-# stop exactly that. Measured against the shipped hook with the payload cwd on a
-# real main checkout, and every "want" settled first against real git with HEAD
-# printed before and after:
+#   git checkout -f <branch>           was ALLOWED: `-f` was read AS the branch
+#     name, `refs/heads/-f` does not resolve, and the gate passed.
 #
-#     git checkout -bfeat                          rc=0  want 2
-#     git checkout -Bfeat                          rc=0  want 2
-#     git checkout --orphan=feat                   rc=0  want 2
-#     git checkout --conflict merge some-feature   rc=0  want 2
-#     git checkout -                               rc=0  want 2
-#     git checkout @{-1}                           rc=0  want 2
-#     git checkout --track=direct origin/<b>       rc=0  want 2
-#     git checkout -tdirect origin/<b>             rc=0  want 2
+#   git checkout --orphan <branch>     was ALLOWED: `--orphan` was read as the
+#     branch name.
 #
-# Three causes, and the fix is to each cause rather than to the eight spellings:
+#   git checkout <name> / -t origin/<name>
+#     were ALLOWED. With no LOCAL `<name>` but a remote carrying it, both CREATE
+#     the local branch and switch -- measured, HEAD went `main` -> `feat`. That is
+#     how a lane's branch usually FIRST appears in a checkout.
 #
-#   GLUED VALUES. `-bfeat`, `-B feat` and `-fbfeat` are all "create branch feat"
-#     to git — parse-options takes the remainder of a short cluster as the
-#     option's value, and takes `--long=value`. Measured: `git checkout -fb clus`
-#     and `git checkout -qbclus` both created `clus` and switched. So a short
-#     token is walked CHARACTER BY CHARACTER and a long one is split at its first
-#     `=`, instead of being matched against a list of exact spellings. The old
-#     comment said a glued `--track=direct` "never reaches here", which was true
-#     of the case arm and was the bug: unjudged means PASSED.
+#   git checkout -  /  git checkout @{-1}   were ALLOWED while `git switch -`
+#     blocked. Measured -- both print "Switched to branch 'other'" and move HEAD.
 #
-#   A POSITIONAL COUNT STANDING IN FOR A PARSE. `[ "$npos" -ne 1 ] && return 1`
-#     reads any command with two leftover positionals as a file restore, so ONE
-#     value-taking flag in front of the branch turned a switch into a restore:
-#     `git checkout --conflict merge some-feature` really switches (measured,
-#     HEAD `main` -> `some-feature`) and scored rc=0. Every REQUIRED-value flag
-#     of both verbs is now consumed during the walk, taken from `git checkout -h`
-#     / `git switch -h` rather than from memory: `-b` `-B` `-c` `-C` `--create`
-#     `--force-create` `--orphan` `--conflict` `-U`/`--unified`
-#     `--inter-hunk-context` `--pathspec-from-file`. `-t`/`--track` and
-#     `--recurse-submodules` are OPTIONAL-value and consume NOTHING — measured,
-#     `git checkout -t origin/remote-only` creates local `remote-only`, i.e. the
-#     ref is a start-point POSITIONAL, not the flag's argument.
+#   git checkout --conflict merge <branch>   was ALLOWED: `merge` inflated a
+#     positional count and the command read as a restore. Measured -- it switches.
 #
-#   `-` AND `@{-1}` ARE THE PREVIOUS BRANCH UNDER BOTH VERBS. Only `switch` had
-#     an arm, and the comment claimed both were "counted as a positional and
-#     judged below" — under `checkout` that judging is `show-ref refs/heads/-`
-#     plus a DWIM lookup, both of which miss, so it fell through to allow.
-#     Measured with a real previous branch: `git checkout -`, `git checkout
-#     @{-1}`, `git switch -` and `git switch @{-1}` all moved HEAD from `main` to
-#     `some-feature`. With a `--` or a second positional the same token is a
-#     tree-ish to restore FROM and HEAD stays (measured), so the block is
-#     conditioned on it being the ONLY positional.
+#   git checkout --orph <branch> / --trac origin/<b> / --or <b>   were ALLOWED:
+#     git accepts unambiguous PREFIXES of a long name and the parse only knew the
+#     full spellings. Measured -- all three move HEAD.
 #
-# `--detach` is asymmetric between the verbs, deliberately: `git switch --detach`
-# blocks, `git checkout <sha>` (and `git checkout --detach <sha>` / `-d`) passes.
-# THE REASON IS NOT "read-only inspection" — an earlier revision said that and it
-# is false. Measured on a real checkout: `git checkout <sha>` REWRITES the shared
-# working tree (a file present at `main` was gone from the directory afterwards)
-# and leaves HEAD detached. The consequence chains, which is the part worth
-# stating: `branch-gate.sh` decides with
-# `git -C <dir> symbolic-ref --short HEAD`, which is EMPTY on a detached HEAD, so
-# its `case` matches nothing and it exits 0 — measured, a `git commit` payload
-# against that same main checkout scored rc=2 while on `main` and rc=0 while
-# detached. So allowing the sha form does not merely permit a look around; it
-# opens the commit gate behind it. It stays allowed because that is the ported
-# behaviour and both siblings share it, and diverging silently on a verdict is
-# worse than carrying a documented asymmetry — but the honest label is "an
-# accepted hole", not "harmless".
+#   git checkout deep-only             was ALLOWED where `deep-only` lives on a
+#     remote whose NAME contains a slash. Measured -- "Switched to a new branch
+#     'deep-only'". The DWIM list was built with a fixed `lstrip=3`.
+#
+#   git checkout ghost                 was BLOCKED where `refs/remotes/ghostremote/ghost`
+#     exists with NO `ghostremote` remote configured. Measured -- "pathspec
+#     'ghost' did not match", HEAD stays.
+#
+#   git checkout --pathspec-from-file <f> <branch>   was BLOCKED: the pathspecs
+#     come FROM THE FILE, so the trailing token is the tree-ish and the command is
+#     a RESTORE. Measured -- "Updated 1 path from ...", HEAD stayed `main`. The
+#     flag had been filed with `--conflict` as merely value-taking.
+#
+#   git checkout --no-guess <remote-only-name>   was BLOCKED: `--no-guess` turns
+#     the DWIM off, so git answers "pathspec did not match" and HEAD stays --
+#     measured, against a name that DID move HEAD without the flag.
+#
+# `--detach` stays asymmetric between the verbs: `git switch --detach` blocks
+# while `git checkout <sha>` / `git checkout --detach <sha>` passes. That is the
+# behaviour this gate shipped with, kept rather than silently changed here --
+# but the rationale it shipped with, "the sha form is read-only inspection", is
+# FALSE and is not repeated. `git checkout <sha>` REWRITES the shared working
+# tree and leaves a detached HEAD, and the detached HEAD then disarms the
+# sibling gate: `branch-gate.sh` reads
+# `git -C <dir> symbolic-ref --short HEAD`, which is EMPTY while detached, and
+# falls through to its `exit 0`. Measured in a throwaway repo carrying a
+# `.markgate.yml`, driving branch-gate with `git commit -m x`: rc=2 on `main`,
+# rc=0 once detached. So allowing the sha form leaves a two-step path to an
+# ungated commit in the main checkout. Changing the verdict is a behaviour
+# change with its own blast radius (it would refuse a legitimate inspection
+# spelling in three repos) and belongs in its own PR, not smuggled into a parse
+# fix -- recorded here and in .claude/rules/hooks.md so the next reader inherits
+# the measurement rather than the old claim. What IS fixed here is the WORDING:
+# `git checkout -d <branch>` / `--detach <branch>` really detaches (measured,
+# HEAD went to a raw sha), and the block used to announce it as "switches to
+# feature branch '<branch>'" -- a verdict that was right about an operation git
+# would not perform.
+#
+# KNOWN BOUND, in the message rather than the verdict: `gate_segments` truncates
+# a segment at a `}`, so `git switch -c 'feat/{id}'` blocks correctly but the
+# message and its `git worktree add` recipe name `feat/{id` . The cause is in the
+# shared splitter, which every gate in the library calls; it is recorded in
+# .claude/rules/hooks-main-tree-branch.md rather than worked around here.
 verdict_for() {
   local verb="$1" rest="$2" dir="$3"
-  local tok name glued has_glued cluster c pending=""
-  local create_val="" create_flag="" detach_flag="" track_flag="" prev_ref=""
-  local saw_help=0 saw_ddash=0 saw_restore=0
-  local npos=0 first_pos=""
+  local tok pending="" create_val="" create_flag="" detach_flag="" track_flag=""
+  local prev_ref="" bad_opt=""
+  local saw_help=0 saw_restore=0 end_opts=0 no_guess=0 detach_seen=0
+  local pathspec_seen=0 parse_certain=1 is_pos=0
+  local npos=0 first_pos="" name lval lhas letters ch rc
   target_branch=""
   block_reason=""
+
+  # The argument text must be splittable into shell words at all. It is NOT when
+  # a quote is unbalanced, and `gate_argv` reports that rather than returning a
+  # truncation -- `-b agent's-branch` used to yield the single token `-b`, which
+  # read as a bare `git checkout` and PASSED. Refusing is the deliberate choice
+  # over a coarser second scan: the text is a shell syntax error in the first
+  # place (measured: "unexpected EOF while looking for matching `''"), so nothing
+  # legitimate is lost, and the message says exactly why.
+  if ! gate_argv "$rest" >/dev/null 2>&1; then
+    target_branch=""
+    block_reason="carries an argument list this gate cannot split into shell words (unbalanced quote), so its target cannot be read -- block conservatively"
+    return 0
+  fi
+
   while IFS= read -r tok; do
     tok=$(gate_unquote "$tok")
+    is_pos=0
     if [ -n "$pending" ]; then
-      # The awaited value of a REQUIRED-value flag. `create` keeps it (it names
-      # the branch); `ignore` merely stops it being counted as a positional,
-      # which is the whole of cause 2 above.
-      [ "$pending" = create ] && create_val="$tok"
+      # `value` is a branch name; `skip` is some other flag's required argument,
+      # consumed only so it cannot be miscounted as a positional.
+      [ "$pending" = value ] && create_val="$tok"
       pending=""
-      continue
-    fi
-    case "$tok" in
-      # Everything after `--` is a pathspec, never a branch. Under `checkout` the
-      # token BEFORE it is then a tree-ish to restore FROM, not a switch target —
-      # measured: `git checkout <branch> -- <paths>` leaves HEAD on `main`.
-      # Remembered rather than just breaking, since the positional has already
-      # been counted by then.
-      --) saw_ddash=1; break ;;
-      # `-` and `@{-N}` name the PREVIOUS branch under BOTH verbs.
-      -|@{-*)
-        prev_ref="$tok"
-        npos=$((npos + 1))
-        [ "$npos" -eq 1 ] && first_pos="$tok"
-        ;;
-      --*)
-        name="${tok%%=*}"
-        glued=""
-        has_glued=0
-        case "$tok" in *=*) glued="${tok#*=}"; has_glued=1 ;; esac
-        case "$name" in
-          --help) saw_help=1 ;;
-          --create|--force-create)
-            # `--create` / `--force-create` exist only under `switch`.
-            if [ "$verb" = switch ]; then
-              create_flag="$name"
-              if [ "$has_glued" -eq 1 ]; then create_val="$glued"; else pending=create; fi
-            fi
-            ;;
-          --orphan)
-            create_flag="$name"
-            if [ "$has_glued" -eq 1 ]; then create_val="$glued"; else pending=create; fi
-            ;;
-          --track)
-            # OPTIONAL value (`--track=direct` / `--track=inherit`), so it never
-            # consumes the next token; the ref that follows is a start-point
-            # POSITIONAL and the branch git creates is that ref's last segment.
-            track_flag="$name"
-            ;;
-          --detach)
-            [ "$verb" = switch ] && detach_flag="$name"
-            ;;
-          --patch|--ours|--theirs|--pathspec-from-file)
-            # File-restore markers. Real git refuses to combine `--ours` /
-            # `--theirs` with a branch switch at all ("fatal: '--ours/--theirs'
-            # cannot be used with switching branches") and `-p <branch>` prints a
-            # hunk picker — measured, HEAD stayed on `main` for every one.
-            saw_restore=1
-            [ "$name" = --pathspec-from-file ] && [ "$has_glued" -eq 0 ] && pending=ignore
-            ;;
-          --conflict|--unified|--inter-hunk-context)
-            # REQUIRED value. Left unconsumed it becomes a phantom positional and
-            # the count below then reads a real switch as a restore — cause 2.
-            [ "$has_glued" -eq 0 ] && pending=ignore
-            ;;
-          *) : ;;
-        esac
-        ;;
-      -?*)
-        # A SHORT CLUSTER, walked character by character exactly as git's
-        # parse-options does: `-fbfeat` is `-f -b feat`, and the remainder after a
-        # value-taking letter IS that letter's value.
-        cluster="${tok#-}"
-        while [ -n "$cluster" ]; do
-          c="${cluster:0:1}"
-          cluster="${cluster:1}"
-          case "$verb:$c" in
-            checkout:b|checkout:B|switch:c|switch:C)
-              create_flag="-$c"
-              if [ -n "$cluster" ]; then create_val="$cluster"; else pending=create; fi
-              cluster=""
-              ;;
-            *:t)
-              track_flag="-t"
-              # Optional value, so anything glued after `t` is that value and
-              # nothing further in the token is a flag.
-              cluster=""
-              ;;
-            *:h) saw_help=1 ;;
-            switch:d) detach_flag="-d" ;;
-            checkout:p|checkout:2|checkout:3) saw_restore=1 ;;
-            checkout:U)
-              [ -n "$cluster" ] || pending=ignore
-              cluster=""
-              ;;
-            *) : ;;
+    elif [ "$end_opts" -eq 1 ]; then
+      is_pos=1
+    else
+      case "$tok" in
+        # `--` ends the options. Under CHECKOUT everything after it is a
+        # pathspec; under SWITCH there is no pathspec form, so what follows is
+        # still the branch. Both measured.
+        --) end_opts=1 ;;
+        # `-` and `@{-N}` name the PREVIOUS branch under BOTH verbs. The pattern
+        # is the PREFIX `@{-`, without the closing brace, and that is measured
+        # rather than sloppy: `gate_segments` TRUNCATES a segment at a `}`, so
+        # the shared walk hands this gate `git checkout @{-1` for an input of
+        # `git checkout @{-1}`. A pattern requiring the `}` matched nothing.
+        -|@{-*) prev_ref="$tok"; is_pos=1 ;;
+        --*)
+          # A long flag. Split on the FIRST `=`, so the glued and spaced
+          # spellings of a value-taking flag reach the same arm, then resolve the
+          # NAME against the verb's grammar -- exact match, else unique prefix.
+          case "$tok" in
+            --*=*) name="${tok%%=*}"; lval="${tok#*=}"; lhas=1 ;;
+            *)     name="$tok";       lval="";          lhas=0 ;;
           esac
-        done
-        ;;
-      *)
+          resolve_long_opt "$verb" "${name#--}"
+          rc=$?
+          if [ "$rc" -ne 0 ]; then
+            parse_certain=0
+            [ -n "$bad_opt" ] || bad_opt="$name"
+          else
+            # A REQUIRED value that is not glued comes from the next token. The
+            # effect arms below override `skip` with `value` where the argument
+            # is the branch name itself.
+            [ "$gate_long_arity" = 1 ] && [ "$lhas" -eq 0 ] && pending=skip
+            case "$gate_long" in
+              help) saw_help=1 ;;
+              create|force-create|orphan)
+                create_flag="--$gate_long"
+                if [ "$lhas" -eq 1 ]; then create_val="$lval"; else pending=value; fi
+                ;;
+              track) track_flag="--track" ;;
+              detach)
+                detach_seen=1
+                [ "$verb" = switch ] && detach_flag="--detach"
+                ;;
+              # File-restore markers. `--pathspec-from-file` belongs HERE and not
+              # with the merely value-taking flags: the pathspecs come from the
+              # FILE, so a trailing token is the tree-ish and the command is a
+              # restore (measured: "Updated 1 path", HEAD stayed). Its value is
+              # still consumed, by the arity line above.
+              patch|ours|theirs|pathspec-from-file) saw_restore=1 ;;
+              # `--pathspec-file-nul` is NOT a restore marker on its own: real git
+              # refuses it without `--pathspec-from-file` ("fatal: the option
+              # '--pathspec-file-nul' requires '--pathspec-from-file'"), so it
+              # never appears in an accepted command that this arm would need to
+              # judge.
+              guess) no_guess=0 ;;
+              no-guess) no_guess=1 ;;
+              *) : ;;
+            esac
+          fi
+          ;;
+        -?*)
+          # A SHORT flag CLUSTER: git's parse-options accepts `-qbfeat` as
+          # `-q -b feat`, so the letters are walked one at a time and a
+          # value-taking letter takes the REST of the token as its value, or the
+          # next token when nothing is left.
+          letters="${tok#-}"
+          while [ -n "$letters" ]; do
+            ch="${letters%"${letters#?}"}"
+            letters="${letters#?}"
+            case "$verb:$ch" in
+              checkout:b|checkout:B|switch:c|switch:C)
+                create_flag="-$ch"
+                if [ -n "$letters" ]; then create_val="$letters"; letters=""
+                else pending=value; fi
+                ;;
+              *:h) saw_help=1 ;;
+              *:t)
+                # OPTIONAL value: anything glued after `t` IS that value, and the
+                # SPACED form consumes nothing -- measured, `git checkout -t
+                # origin/remote-only` creates local `remote-only`, so the ref is
+                # a start-point positional.
+                track_flag="-t"
+                letters=""
+                ;;
+              *:d)
+                detach_seen=1
+                [ "$verb" = switch ] && detach_flag="-d"
+                ;;
+              checkout:p|checkout:2|checkout:3) saw_restore=1 ;;
+              checkout:U)
+                # REQUIRED value.
+                if [ -n "$letters" ]; then letters=""; else pending=skip; fi
+                ;;
+              *:q|*:m|*:f|checkout:l) : ;;
+              *)
+                # An unrecognised letter. git answers "error: unknown switch" and
+                # aborts; this walk cannot know whether the letter would have
+                # taken the rest of the cluster or the next token, so it stops
+                # reading and marks the parse incomplete.
+                parse_certain=0
+                [ -n "$bad_opt" ] || bad_opt="-$ch"
+                letters=""
+                ;;
+            esac
+          done
+          ;;
+        *) is_pos=1 ;;
+      esac
+    fi
+    if [ "$is_pos" -eq 1 ]; then
+      if [ "$end_opts" -eq 1 ] && [ "$verb" = checkout ]; then
+        pathspec_seen=1
+      else
         npos=$((npos + 1))
-        [ "$npos" -eq 1 ] && first_pos="$tok"
-        ;;
-    esac
-  done < <(gate_tokens "$rest")
+        if [ "$npos" -eq 1 ]; then first_pos="$tok"; else pathspec_seen=1; fi
+      fi
+    fi
+  done < <(gate_argv "$rest")
 
   [ "$saw_help" -eq 1 ] && return 1
+
+  if [ "$parse_certain" -eq 0 ]; then
+    # Property 3 in the header. The walk met an option it could not resolve, so
+    # it does not know where the positionals are; refusing is the only answer
+    # that cannot be wrong in the dangerous direction.
+    target_branch=""
+    block_reason="uses an option this gate cannot resolve against \`git $verb\`'s grammar ($bad_opt), so its target cannot be read -- block conservatively"
+    return 0
+  fi
+
   if [ -n "$create_flag" ]; then
     target_branch="$create_val"
     block_reason="creates new feature branch '$target_branch'"
@@ -484,22 +747,19 @@ verdict_for() {
     block_reason="detaches HEAD in the main checkout (\`git switch $detach_flag\`)"
     return 0
   fi
-  if [ -n "$track_flag" ] && [ "$saw_ddash" -eq 0 ] && [ "$saw_restore" -eq 0 ] \
+  if [ -n "$track_flag" ] && [ "$saw_restore" -eq 0 ] && [ "$pathspec_seen" -eq 0 ] \
     && [ "$npos" -eq 1 ]; then
-    # `-t <remote-ref>` / `--track <remote-ref>`: git creates a LOCAL branch named
-    # after the start point's LAST SEGMENT and switches to it — measured, HEAD
-    # went `main` -> `remote-only` for `git checkout -t origin/remote-only`. The
-    # `-z "$create_flag"` reading is the RETURN ORDER above rather than a guard
-    # inside the walk, so `-b feat -t origin/x` and `-t origin/x -b feat` both
-    # name `feat` (measured: git creates `feat` for both).
+    # `git checkout -t origin/feat` / `git switch --track origin/feat` CREATE a
+    # local `feat` and switch to it -- measured, and the local branch appeared.
+    # The name is the start-point's LAST segment, so `origin/topic/x` yields `x`.
     target_branch="${first_pos##*/}"
     block_reason="creates new feature branch '$target_branch'"
     return 0
   fi
-  if [ -n "$prev_ref" ] && [ "$saw_ddash" -eq 0 ] && [ "$saw_restore" -eq 0 ] \
+  if [ -n "$prev_ref" ] && [ "$saw_restore" -eq 0 ] && [ "$pathspec_seen" -eq 0 ] \
     && [ "$npos" -eq 1 ]; then
     target_branch="$prev_ref"
-    block_reason="switches to the previous branch (\`git $verb $prev_ref\`); the resolved name is not knowable from the command text — block conservatively"
+    block_reason="switches to the previous branch (\`git $verb $prev_ref\`); resolved branch unknown -- block conservatively"
     return 0
   fi
 
@@ -512,7 +772,7 @@ verdict_for() {
           # error, but block conservatively rather than reason about a shape
           # nothing legitimate produces.
           target_branch=""
-          block_reason="runs \`git switch\` in the main checkout with no resolvable target — block conservatively"
+          block_reason="runs \`git switch\` in the main checkout with no resolvable target -- block conservatively"
           return 0
           ;;
         *)
@@ -523,39 +783,50 @@ verdict_for() {
       esac
       ;;
     checkout)
-      # A `--` makes everything a pathspec and the leading positional a tree-ish
-      # to restore FROM: a file restore, whatever it names.
-      [ "$saw_ddash" -eq 1 ] && return 1
-      # `-p` / `--ours` / `--theirs` / `--pathspec-from-file` do the same without
-      # a `--`, and they do it whatever the positional count is.
+      # `-p` / `--ours` / `--theirs` / `--pathspec-from-file` are RESTORE modes
+      # whatever the operands look like: measured, `-p <branch>` prints a diff and
+      # leaves HEAD on `main`, `--ours` / `--theirs` refuse to run without paths,
+      # and `--pathspec-from-file <f> <branch>` updates paths from `<branch>`.
       [ "$saw_restore" -eq 1 ] && return 1
-      # No positional: a bare `git checkout` is a NOP or a restore depending on
-      # the git version. TWO OR MORE: `<tree-ish> <paths...>`, the same restore
-      # without the `--` — measured, see the header.
-      [ "$npos" -ne 1 ] && return 1
+      # A PATHSPEC OPERAND exists -- either after a `--` or as a second
+      # positional. That is `git checkout [<branch>] -- <file>...`, a file
+      # restore, whatever it names. Note this is the operand's EXISTENCE, not a
+      # count: `git checkout <branch> --` has a `--` and no operand, and it
+      # switches.
+      [ "$pathspec_seen" -eq 1 ] && return 1
+      # No positional at all: a bare `git checkout` or `git checkout --`, both of
+      # which leave HEAD alone (measured).
+      [ "$npos" -eq 0 ] && return 1
       case "$first_pos" in
         main|master) return 1 ;;
         *)
           # A branch name or a sha. A name resolving to a LOCAL branch is a
-          # branch switch; so is one that resolves only on a REMOTE (the DWIM arm
-          # below). A sha or a pathspec passes. Both questions are asked of the
-          # SEGMENT's own tree, since that is where the command would run.
+          # branch switch; so is one that resolves on a CONFIGURED REMOTE (the
+          # DWIM arm below). A sha or a pathspec passes. Both questions are asked
+          # of the SEGMENT's own tree, since that is where the command would run.
           if git -C "$dir" show-ref --verify --quiet "refs/heads/$first_pos" 2>/dev/null; then
             target_branch="$first_pos"
-            block_reason="switches to feature branch '$first_pos'"
+            if [ "$detach_seen" -eq 1 ]; then
+              block_reason="detaches HEAD in the main checkout at '$first_pos'"
+            else
+              block_reason="switches to feature branch '$first_pos'"
+            fi
             return 0
           fi
-          # DWIM. With no LOCAL `<name>` but exactly one remote carrying it,
-          # `git checkout <name>` CREATES the local branch and switches to it --
-          # measured on a real clone, HEAD went from `main` to `feat` with
-          # "Switched to a new branch". A local-branch check alone therefore
-          # passes the commonest way a lane's branch first appears in a fresh
-          # checkout. `grep -qxF` is an exact whole-LINE match, so a name that is
-          # merely a SUBSTRING of a remote branch does not false-block; see
-          # `remote_dwim_names` for what the candidate list excludes and why.
-          if remote_dwim_names "$dir" | grep -qxF -- "$first_pos"; then
+          # DWIM. With no LOCAL `<name>` but a configured remote carrying it,
+          # `git checkout <name>` CREATES the local branch and switches to it.
+          # `--no-guess` turns that off, and then git answers "pathspec did not
+          # match" and HEAD stays -- measured, so the arm is skipped for it.
+          # `grep -qxF` is an exact whole-LINE match, so a name that is merely a
+          # SUBSTRING of a remote branch does not false-block either.
+          if [ "$no_guess" -eq 0 ] \
+            && remote_dwim_names "$dir" | grep -qxF -- "$first_pos"; then
             target_branch="$first_pos"
-            block_reason="creates a local branch tracking remote '$first_pos' and switches to it"
+            if [ "$detach_seen" -eq 1 ]; then
+              block_reason="detaches HEAD in the main checkout at remote branch '$first_pos'"
+            else
+              block_reason="creates a local branch tracking remote '$first_pos' and switches to it"
+            fi
             return 0
           fi
           return 1

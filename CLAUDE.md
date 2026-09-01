@@ -597,9 +597,49 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   ```
 
   The first two let a branch be created in the SHARED checkout unjudged; the
-  third refused the worktree branch creation the convention mandates. Exercised
-  by `.claude/hooks/main-tree-branch-gate.test.sh` (92 cases) under an explicitly
-  pinned interpreter, `/bin/bash` by default — see the fence note above.
+  third refused the worktree branch creation the convention mandates.
+
+  **A second round, 2026-09-02, closed six more — one of them a REGRESSION the
+  parse itself introduced.** The token walk read SHELL words, and a redirection,
+  its spaced target, a trailing `&` and a `#` comment are the shell's, not git's:
+  counting them as arguments turned a real switch into a "file restore" and
+  passed it. Measured, with `OLD` being cdkd's `origin/main` copy of the gate so
+  the regressions read as regressions:
+
+  ```text
+    command                                     OLD  NEW  now  want
+    git checkout <branch> 2>/dev/null             2    0    2     2
+    git checkout <branch> # switch lane           2    0    2     2
+    git checkout <branch> --                      2    0    2     2
+    git checkout --orph <b> / --trac origin/<b>   0    0    2     2
+    git switch -- main                            2    2    0     0
+    git checkout --no-guess <remote-only>         0    2    0     0
+    control: git checkout <branch>                2    2    2     2
+  ```
+
+  Four causes, each fixed at the cause: the parse now reads git's ARGV through a
+  new shared `gate_argv` rather than raw shell words; an INCOMPLETE parse may no
+  longer ALLOW (an unresolvable or ambiguous option blocks, naming it), which is
+  the general form of the two defects a positional COUNT produced; each verb
+  carries its COMPLETE long-option table with per-name arity, because git accepts
+  any unambiguous PREFIX of a long name and `-h` does not show that; and `--` is
+  checkout's pathspec separator but only switch's end-of-options, so
+  `git checkout <b> --` switches while `git switch -- main` stays put (both
+  measured). An unbalanced quote is now REFUSED rather than silently truncated —
+  `-b agent's-branch` used to yield the single token `-b` and pass.
+
+  Two claims are retired rather than carried. This hook said "the same probes run
+  against the sibling gates score them identically wrong"; that stopped being
+  true when the siblings landed their own parse, and they now score those rows
+  correctly — the siblings have since been converged onto THIS repo's
+  `remote_dwim_names`, which was ahead of theirs. And `remote_dwim_names` claimed
+  its list held only names "exactly one remote carries": there is no uniqueness
+  check, and with one name on two remotes git refuses while the gate blocks — the
+  conservative direction, so the behaviour stays and only the sentence goes.
+
+  Exercised by `.claude/hooks/main-tree-branch-gate.test.sh` (144 cases) under an
+  explicitly pinned interpreter, `/bin/bash` by default — see the fence note
+  above.
 
 - **All changes go through a pull request — never commit directly to `main`.**
   Branch (or worktree branch) → run the gates + set markers → commit → push →
