@@ -34,8 +34,9 @@ stage 0 because §1 and §2 already consume the answer — §1's
 collision scan, whose relative `.worktrees/<w>` paths resolve to nothing there,
 reports an empty board that reads as "no competing agents". In the PARENT
 because stages 0–3 are delegated to a subagent whose return payload carries no
-git state. State all three printed values — `MODE`, which is
-`MAIN-CHECKOUT` or `IN-PLACE`, plus `LANE_TREE` and `MAIN_CHECKOUT` — in the
+git state. State all four printed values — `MODE`, which is
+`MAIN-CHECKOUT` or `IN-PLACE`, plus `LANE_TREE`, `MAIN_CHECKOUT` and
+`LAUNCH_BRANCH` (the branch §9 puts back; empty if launched detached) — in the
 opening report, the first message you write after running the probe and before
 any lane starts, and pass them into the triage dispatch and into every lane
 dispatch. Read `LANE_TREE` as "the tree this run stands in", NOT "the lane
@@ -45,7 +46,8 @@ IN-PLACE-only arms (every MAIN-CHECKOUT arm beside them uses no `-C`).
 
 `IN-PLACE` changes a great deal more than the lane count: §1's pull, the
 collision scan's paths, the claim, the branch recipe, §7's rebase, the worktree
-and branch cleanup, and where the retro branch is created.
+and branch cleanup, where the retro branch is created, and the `LAUNCH_BRANCH`
+restore that ends the run.
 `references/launch-mode.md` carries the COMPLETE list as a table mapping each
 consequence to the stage that fires it — read it there, and do NOT re-summarise
 it here. The previous revision of this paragraph said "changes four things" and
@@ -108,7 +110,7 @@ wants to watch); the stage files apply unchanged either way.
 
 | Stage                        | File (read at entry)         | What it covers                                                                                                                     |
 | ---------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Before 0. Launch mode        | `references/launch-mode.md`  | The probe (the ONLY copy), its three values, and the table mapping every IN-PLACE consequence to its stage                         |
+| Before 0. Launch mode        | `references/launch-mode.md`  | The probe (the ONLY copy), its four values, and the table mapping every IN-PLACE consequence to its stage                          |
 | 0. Safety screen             | `references/triage.md`       | Untrusted issues/comments: `author_association` via REST, never run third-party content, defer engage/block to the maintainer      |
 | 1. List backlog              | `references/triage.md`       | REST listing (PR filter, `per_page=100`, `created_at`), volume assessment                                                          |
 | 2. Collision landscape       | `references/triage.md`       | Worktree/branch/PR/claim probes (absolute, via `<MAIN_CHECKOUT>`) and their blind spots; the central contested files               |

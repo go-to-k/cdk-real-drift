@@ -10,19 +10,21 @@ holds. The competing-claim/PR re-check below also runs in the parent, right
 before dispatch. Everything else in this section is unchanged.
 
 **An IN-PLACE run names the tree it is STANDING IN**
-(`references/launch-mode.md`): the `<ref>` is the branch and worktree already
-checked out, and neither is composed. The worktree is the `LANE_TREE` path the
+(`references/launch-mode.md`): the `<ref>` is the branch §5 will create plus the
+worktree already checked out. The worktree is the `LANE_TREE` path the
 launch-mode probe captured and the opening report recorded — never re-derived
-from `git rev-parse --show-toplevel` here, for §5's reason — and the branch is
-`git -C "<LANE_TREE>" branch --show-current`. Nothing new will be created, and a
-claim pointing at a worktree that never appears is exactly what §9's ownership
-probes misread.
+from `git rev-parse --show-toplevel` here, for §5's reason. No WORKTREE will be
+created, and a claim pointing at a worktree that never appears is exactly what
+§9's ownership probes misread.
 
-**An empty branch name means the tree is DETACHED, not that the claim is
-blocked.** The branch is created in §5, after this stage — so write "the branch
-§5 will create in `<LANE_TREE>`" and post the claim on time. A claim delayed
-until a branch exists is a claim posted after the first edit, which is the one
-thing this stage forbids. Such a run claims ONE issue (§3), not a set.
+**Do NOT claim `LAUNCH_BRANCH` — the branch checked out here right now is the
+OUTER TOOL's, not this run's** (`references/launch-mode.md`: "a branch to PUT
+BACK, never one to commit to"). So the name is COMPOSED here rather than read out
+of git with `git -C "<LANE_TREE>" branch --show-current`, and it does not exist
+yet: §5 creates it, after this stage. Write "the branch §5 will create in
+`<LANE_TREE>`" and post the claim on time. A claim delayed until the branch
+exists is a claim posted after the first edit, which is the one thing this stage
+forbids. Such a run claims ONE issue (§3), not a set.
 
 For EACH issue you will start:
 

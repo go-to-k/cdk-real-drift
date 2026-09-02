@@ -39,7 +39,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKILLS_DIR = path.join(ROOT, '.claude', 'skills');
 
 const MAX_SKILL_MD_BYTES = 36_000; // largest non-split skill re-measured 12,571 B (verify-pr, 2026-09-01, unchanged in round 6) -- the 12,175 B this line used to quote was stale
-const MAX_ORCHESTRATOR_BYTES = 12_000; // orchestrators were 7,952 B / 6,932 B at the 2026-08-28 split; re-measured 2026-09-01, review round 6: work-issues 11,694 B (306 B of margin), hunt-bugs 6,932 B
+const MAX_ORCHESTRATOR_BYTES = 12_000; // orchestrators were 7,952 B / 6,932 B at the 2026-08-28 split; re-measured 2026-09-02 (go-to-k/cdk-real-drift#1854): work-issues 11,812 B (188 B of margin), hunt-bugs 6,932 B
 // The re-measurement is the point, not trivia: work-issues has repeatedly grown to
 // within a few hundred bytes of its cap while this comment still quoted the
 // at-split figure, so nobody adding a paragraph could see how little room was
@@ -50,7 +50,11 @@ const MAX_ORCHESTRATOR_BYTES = 12_000; // orchestrators were 7,952 B / 6,932 B a
 // widest cells were shortened -- which, since `vp fmt` pads markdown table columns
 // to the widest cell, reclaimed the padding on all fourteen rows at once.
 // Re-measure whenever an orchestrator is edited -- a cap with an unmeasured margin
-// is one nobody can plan against.
+// is one nobody can plan against. The 2026-09-02 LAUNCH_BRANCH round spent 118 B
+// of the 306 B that were left: the fourth probe value has to be NAMED in the
+// always-loaded file (a lane cannot pass on a value it was never told to record),
+// while its reading, its restore recipe and the IN-PLACE consequence rows all
+// went to references/launch-mode.md and references/ship.md.
 const MAX_REFERENCE_FILE_BYTES = 64_000; // largest stage file measured 55,137 B (hunt-bugs gotchas.md); 41,922 B after the rule+citation compression pass (2026-08-28), re-measured unchanged 2026-09-01
 
 // The split skills' stage files must still exist and still carry the moved
@@ -83,15 +87,18 @@ const MAX_REFERENCE_FILE_BYTES = 64_000; // largest stage file measured 55,137 B
 // now ASSERTED at the bottom of this file as well as described here, because
 // three consecutive rounds re-derived it BY HAND and one of them found it
 // lapsed.
-// Re-derived 2026-09-01 (review round 6) at the final tree. work-issues: 9 stage
-// files, corpus 125,713 B, largest implement.md 25,599 B, so the floor must
-// exceed 125,713 - 25,599 = 100,114 -- the 93,000 set one round earlier no
-// longer does. The binding number is not the worst case here: triage.md is
-// 20,782 B, only 4,817 B behind, and round 3 already warned that a flip would
-// leave the floor clearing by under 1 KB. Sizing against the FLIP instead
-// (125,713 - 20,782 = 104,931), 108,000 clears the binding number by 7,886 B and
-// the flip case by 3,069 B, and leaves ~17 KB (125,713 - 108,000 = 17,713 B) of
-// compression room below the floor.
+// Re-derived 2026-09-02 (go-to-k/cdk-real-drift#1854) at the final tree.
+// work-issues: 9 stage files, corpus 134,827 B, largest implement.md 26,041 B, so
+// the floor must exceed 134,827 - 26,041 = 108,786 -- the 108,000 set one round
+// earlier no longer does, and the assertion at the bottom of this file is what
+// said so rather than a human re-deriving it. The binding number is again not
+// the worst case: triage.md is 22,342 B, 3,699 B behind implement.md, so a flip
+// would put the requirement at 134,827 - 22,342 = 112,485. Sizing against the
+// FLIP, 116,000 clears the binding number by 7,214 B and the flip case by
+// 3,515 B, and leaves ~18 KB (134,827 - 116,000 = 18,827 B) of compression room
+// below the floor. The growth is the LAUNCH_BRANCH restore contract landing
+// across launch-mode.md (+1,541 B), ship.md (+3,471 B), retro.md (+471 B) and
+// claim.md (+152 B).
 // hunt-bugs stays at 60,000: re-measured the same day, corpus 88,598 B and
 // largest gotchas.md 41,922 B, so 88,598 - 41,922 = 46,676 < 60,000 and its
 // property still holds. Re-measure both numbers for each skill whenever a stage
@@ -101,7 +108,7 @@ const SPLIT_SKILLS: Record<string, { minFiles: number; minCorpusBytes: number }>
   // post-compression. 9 files as of 2026-09-01, when the launch-mode probe and its
   // reading moved out of triage.md into references/launch-mode.md, which the PARENT
   // reads before stage 0.
-  'work-issues': { minFiles: 9, minCorpusBytes: 108_000 },
+  'work-issues': { minFiles: 9, minCorpusBytes: 116_000 },
   // 7 files / 108,940 B measured at the split (2026-08-28); largest 55,137 B; 87,180 B post-compression
   'hunt-bugs': { minFiles: 7, minCorpusBytes: 60_000 },
 };
