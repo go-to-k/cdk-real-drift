@@ -24,7 +24,23 @@ of git with `git -C "<LANE_TREE>" branch --show-current`, and it does not exist
 yet: §5 creates it, after this stage. Write "the branch §5 will create in
 `<LANE_TREE>`" and post the claim on time. A claim delayed until the branch
 exists is a claim posted after the first edit, which is the one thing this stage
-forbids. Such a run claims ONE issue (§3), not a set.
+forbids. Such a run's lanes are SERIAL (§3), which bounds CONCURRENCY and not
+the issue count: claiming only the top candidate is fine, and so is claiming a
+whole set — but a claimed set must mark every lane after the first `QUEUED`,
+because a reader has to tell a lane that is RUNNING from one merely spoken for.
+
+```bash
+# The QUEUED form, posted up front with the rest of the set.
+gh issue comment <n> --body "QUEUED behind #<the lane running first> in \
+<LANE_TREE> — this session will start it only after that lane merges. Not \
+started: no branch exists yet and no file is held. If you want this issue, take \
+it and say so here; I will stand down."
+```
+
+When the run ends before reaching one, **stand it down rather than leaving the
+claim standing** — a QUEUED claim outliving its session is a stale lock, and the
+four classification fields in the stand-down comment hand the next session the
+triage instead of making it redo the ranking.
 
 For EACH issue you will start:
 

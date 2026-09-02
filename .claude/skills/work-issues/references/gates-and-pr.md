@@ -57,13 +57,30 @@ go-to-k/cdk-real-drift#1782):
   the cwd is ALREADY inside that worktree — no timeout, no refusal, and the
   chained edit silently does not run — after any timeout or refusal, `pwd` and
   re-verify what the aborted call was to create. The marker store is
-  `.git/markgate`, SHARED by every worktree, but the hashes come from the cwd's
-  files, so setting from the main checkout records `main`'s content; it fails
-  CLOSED (`markgate verify check` rc=1 from the dirty worktree, rc=0 from main —
-  2026-08-19): a wasted cycle, not a bad merge. `/check` / `/check-docs`'s "repo
-  root" means the WORKTREE root here. The sibling repo shows the same symptom via
-  a DIFFERENT mechanism (per-worktree stores: marker missing, not wrong) —
-  import the advice, not its explanation.
+  PER-WORKTREE — `<git rev-parse --absolute-git-dir>/markgate/`, which is
+  `.git/markgate` only for the MAIN checkout and `.git/worktrees/<name>/markgate/`
+  for a lane — so a marker set from the main checkout is not merely hashed over
+  the wrong files, it is INVISIBLE from the lane, which reports `no marker`. It
+  fails CLOSED either way: a wasted cycle, not a bad merge. `/check` /
+  `/check-docs`'s "repo root" means the WORKTREE root here, and `/check` carries
+  the three-tree measurement.
+  **This paragraph asserted the opposite until 2026-09-03 and the correction is
+  the lesson**: it called the store `.git/markgate`, SHARED by every worktree,
+  and told the reader that the sibling repo reaches the same symptom by a
+  DIFFERENT mechanism — "import the advice, not its explanation". Re-measured on
+  markgate 0.4.1 (the `.mise.toml` pin), three trees of this ONE repo answer
+  `markgate status check` three ways: main `mismatch` rc=1 (created
+  2026-07-21T13:17:24Z), an existing lane `match` rc=0 (created
+  2026-08-29T19:42:42Z), a freshly-added worktree `no marker` rc=1 with no store
+  on disk. The mechanism is the SAME as the sibling's, and the sentence telling
+  the reader to discard the explanation was protecting the wrong half. The
+  ADVICE — set markers from the worktree — never changed, which is exactly why
+  nothing caught it: a false premise reaching a true conclusion produces no
+  failing command. markgate state is the WHOLE of the per-worktree question
+  here: the siblings additionally bind `pr-review` to a `.markgate-pr-review-sha`
+  sentinel, and that gate is INERT in this repo (no companion skill, no hook —
+  `.markgate.yml`) with no such file on disk, so none of its behaviour applies
+  to a cdkrd lane.
 - `cd <worktree> &&` on a GATED command is safe only while the hook conditions
   match it, and twice they did not: go-to-k/cdk-real-drift#1786 (three gates
   lacked the `cd` spelling — `cd <wt> && git commit` ran UNGATED), then

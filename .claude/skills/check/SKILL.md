@@ -95,13 +95,25 @@ reads it, and this copy has already gone stale once (go-to-k/cdk-real-drift#1837
 widened the gate and had to repair the enumeration here in the same PR).
 
 Run from the root of the tree you are WORKING in — the worktree, not the main
-checkout, whenever the lane lives in one. The marker store is `.git/markgate`,
-shared by every worktree, but the hashes come from the cwd's files, so setting it
-from the main checkout records `main`'s content instead of yours: measured
-2026-08-19, with the worktree dirty and the marker set from the main checkout,
-`markgate verify check` returns rc=1 from the worktree and rc=0 from main. It fails
-CLOSED, so the cost is a wasted gate cycle plus a "run /check first" message right
-after you ran it. Also set it in its OWN command, separate from the `git commit` —
+checkout, whenever the lane lives in one. The marker store is PER-WORKTREE --
+`<git rev-parse --absolute-git-dir>/markgate/`, which resolves to `.git/markgate`
+only for the MAIN checkout and to `.git/worktrees/<name>/markgate/` for a lane --
+so a marker set from the main checkout is not merely computed over the wrong
+files, it is INVISIBLE from the lane. Re-measured 2026-09-03 on the `.mise.toml`
+pin (markgate 0.4.1), three trees of this ONE repo answering
+`markgate status check` three different ways:
+
+| tree                     | store on disk                     | answer                                         |
+| ------------------------ | --------------------------------- | ---------------------------------------------- |
+| main checkout            | `.git/markgate/`                  | `created 2026-07-21T13:17:24Z / mismatch` rc=1 |
+| an existing lane         | `.git/worktrees/<name>/markgate/` | `created 2026-08-29T19:42:42Z / match` rc=0    |
+| a freshly-added worktree | none                              | `state: no marker` rc=1                        |
+
+It fails CLOSED either way, so the cost is a wasted gate cycle plus a "run /check
+first" message right after you ran it -- but the lane prints `no marker`, not a
+digest mismatch, so do not go hunting for one. This paragraph used to say the
+store was `.git/markgate`, SHARED by every worktree, and dated the reading
+2026-08-19; the rc pair it recorded was real, the mechanism behind it was not. Also set it in its OWN command, separate from the `git commit` —
 `check-gate` is a PreToolUse hook and judges the call before anything in it runs, so
 a `markgate set … && git commit` one-liner is blocked in full.
 

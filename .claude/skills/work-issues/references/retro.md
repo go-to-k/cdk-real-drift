@@ -204,6 +204,25 @@ Every run appending one more bullet is how a long skill becomes an unread one.
   against that repo's files — caught four such false claims in the first mirror
   of this section (2026-08-18). This rule lives here, not in memory: memory is
   per-project-path and per-machine, so it would not load in the target repos.
+  **Verify the MECHANISM at the SOURCE, not only the applicability at the
+  TARGET.** The two feel like one check and are not. Applicability asks "does
+  this repo have that gate / hook / file", which the target-repo reviewer above
+  answers well. The mechanism asks "was the claim ever true where it was
+  WRITTEN", and once a lesson is in transit nobody is positioned to ask it: the
+  originating repo is no longer being read, and the target repo cannot see a
+  defect in machinery it does not have. Measured 2026-09-03 on the mirror that
+  produced this section's own edits: a lesson arrived describing a leaked
+  `.markgate-pr-review-sha` as a FALSE PASS that would merge a PR on the
+  strength of an already-merged one's review. The recon correctly ruled it
+  INAPPLICABLE here — `pr-review` is inert in this repo and the sentinel file
+  does not exist — and the framing was still wrong at the source: the siblings'
+  `pr-review-gate.sh` passes only on `recorded_sha = head_sha`, so a leaked
+  sentinel MISMATCHES and blocks, printing `bound to <sha> (mismatch)`. Fail
+  CLOSED, not fail open; the real sibling cost is a confusing block naming an
+  unrelated PR's sha. A correctly-REJECTED claim can still be false, and a
+  mirror that only ever asks "does this apply here" launders it intact into
+  every repo that DOES have the machinery. Reading the source hook cost two
+  commands.
   **Verify the cited EVIDENCE too — open the issue or PR the sentence names and
   confirm it says what the sentence claims.** Wrong evidence is wrong where
   WRITTEN and travels intact past every per-repo noun check: this file claimed

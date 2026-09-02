@@ -70,10 +70,11 @@ docs describe.
 After documentation is verified consistent (no issues found, or all fixed),
 record the `docs` marker so the markgate `docs` gate is satisfied. Run it from the
 root of the tree you are WORKING in — the worktree, not the main checkout, whenever
-the lane lives in one: the marker store (`.git/markgate`) is shared across
-worktrees, but the hashes come from the cwd's files, so setting it from the main
-checkout records `main`'s content and the gate then fails from your worktree (see
-`/check` for the measurement). Set it in its OWN command too, separate from the
+the lane lives in one: the marker store is PER-WORKTREE
+(`<git rev-parse --absolute-git-dir>/markgate/`), so a marker set from the main
+checkout is not visible to your worktree at all and the gate fails there with
+`no marker` (see `/check` for the three-tree measurement, re-taken 2026-09-03 --
+"shared across worktrees" was wrong). Set it in its OWN command too, separate from the
 `git commit` — `check-gate` is a PreToolUse hook, so it judges a
 `markgate set … && git commit` one-liner before the `set` inside it ever runs. Use
 `mise exec` to avoid PATH issues when shims aren't active:

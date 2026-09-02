@@ -315,8 +315,28 @@ if [ -n "$self_branch" ]; then
     push_note="It has ${unpushed} commit(s) not yet pushed, so nothing carrying them has been submitted."
   else
     push_state="pushed"
-    push_line="It is fully pushed, so a PR may already be in flight -- but a pushed branch with NO PR is exactly the failure this catches. Check, and open one if there is none."
-    push_note="It is fully pushed, so a PR may already be in flight -- but a pushed branch with NO PR is exactly the failure this catches."
+    # This arm is QUALIFIED on purpose. Unqualified, it told the agent to open a
+    # PR in a state this repo's own flow walks every src/** lane through:
+    # references/gates-and-pr.md orders "commit, push, and open the PR", and
+    # verify-pr-gate.sh then refuses `gh pr create` until the verify-pr marker is
+    # fresh -- so the branch sits on the remote, PR-less, for the whole of a
+    # /verify-pr run. Telling the agent to retry a command a gate is deliberately
+    # holding is advice that cannot be followed, and a warning that cannot be
+    # acted on is how a real one stops being read.
+    #
+    # The qualifier is NARROW, and three measured bounds are why it names WHICH
+    # lane it covers rather than dropping the warning outright:
+    #   - verify-pr-gate.sh EXEMPTS a diff touching no src/** (its own
+    #     "docs/tooling-only" arm), so a docs / skills / hooks-only lane never
+    #     enters the state and the plain warning is exactly right for it;
+    #   - nothing heavier than the skill sits behind the marker HERE: the integ
+    #     gate is INERT in this repo (no companion skill, no hook, see
+    #     .markgate.yml), so the wait is one /verify-pr run and not a fixture run;
+    #   - ci-green-gate.sh gates ONLY `gh pr merge` ("create/edit pass -- CI has
+    #     not run yet at create time"), so CI does not force the push either.
+    # The push comes from the FLOW, not from any gate.
+    push_line="It is fully pushed, so a PR may already be in flight -- but a pushed branch with NO PR is exactly the failure this catches. Check, and open one if there is none -- unless this lane touches src/** and /verify-pr has not finished, where verify-pr-gate is still holding gh pr create and the missing PR is the expected state, not the failure."
+    push_note="It is fully pushed, so a PR may already be in flight -- but a pushed branch with NO PR is exactly the failure this catches, unless this is a src/** lane still mid-/verify-pr, where verify-pr-gate holds gh pr create until the marker is fresh."
   fi
   # TWO texts for the self-lane case, not one routed twice. The model text is
   # written AT the agent ("you are not done", "rebase, run the gates"), and every

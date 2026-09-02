@@ -7,10 +7,11 @@ merge-ready lane at a time its turn — resume that lane agent (SendMessage) to
 run its owed §8 live test + `/sweep-resources` and merge while it holds the
 turn, or run them yourself FROM THAT LANE'S WORKTREE. The worktree matters
 mechanically, not stylistically: gate verdicts are computed against the tree
-the command runs from — this repo's markgate store is shared across worktrees
-but the HASHES come from the cwd's files (the `/check` skill's 2026-08-19
-measurement), and the bughunt-clean gate keys the committing WORKTREE owner —
-so a marker set or a merge issued from the main tree attests to MAIN's
+the command runs from — this repo's markgate store is PER-WORKTREE
+(`<git rev-parse --absolute-git-dir>/markgate/`; §6 carries the 2026-09-03
+re-measurement that corrected "shared across worktrees"), and the bughunt-clean
+gate keys the committing WORKTREE owner — so a marker set from the main tree is
+not even visible to the lane, and a merge issued from there attests to MAIN's
 content, not the lane's. cdkd measured the merge-time failure live on
 2026-08-28 (go-to-k/cdkd#2363 records the cwd-race side of it).
 Live-AWS runs have a second, repo-specific reason to stay inside the granted

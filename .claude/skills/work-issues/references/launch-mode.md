@@ -129,18 +129,18 @@ pointers. IN-PLACE means this run was launched inside a worktree someone else
 created (an Orca/ADE workspace, a stray `cd`), so it has exactly ONE working
 tree:
 
-| #   | Consequence                                                                                                                                                                                             | Where     |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
-| 1   | Take ONE issue and finish it — a second lane would need a worktree NESTED inside this one, which dies with the outer workspace and takes its uncommitted work (go-to-k/cdk-real-drift#1842)             | §3        |
-| 2   | §1's `git checkout main && git pull` cannot run here; pull through `git -C "<MAIN_CHECKOUT>"` and read the refs with `git show origin/main:<file>`                                                      | §1        |
-| 3   | §2's worktree probes take `<MAIN_CHECKOUT>/.worktrees/<w>`, not a relative path                                                                                                                         | §2        |
-| 4   | The claim names the tree already checked out here plus the branch §5 WILL create in it — never `LAUNCH_BRANCH`, which belongs to the outer tool                                                         | §4        |
-| 5   | Create no worktree; after confirming the tree is YOURS, branch IN PLACE off `origin/main` — ALWAYS, not only when the tree is detached or its PR has merged — and never commit onto `LAUNCH_BRANCH`     | §5        |
-| 6   | Switch back to `LAUNCH_BRANCH` **as-is** — no pull, no rebase, no fast-forward — and delete only the branches THIS run created; detach only when `LAUNCH_BRANCH` was empty at probe time or is now gone | §9        |
-| 7   | §7's rebase runs `git -C "<LANE_TREE>"`                                                                                                                                                                 | §7        |
-| 8   | Remove no worktree: a lane that removes the tree it runs in deletes its own cwd. Cleanup of the TREE belongs to whoever created it                                                                      | §9, §10-d |
-| 9   | §9's post-merge pull goes through `git -C "<MAIN_CHECKOUT>"` for the same reason as row 2                                                                                                               | §9        |
-| 10  | The retro branch is created in THIS tree too, so the `LAUNCH_BRANCH` restore is the run's LAST step — after the retro PR merges, not inside §9's per-lane cleanup                                       | §10-d     |
+| #   | Consequence                                                                                                                                                                                                     | Where     |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| 1   | Lanes run SERIALLY — a CONCURRENT second lane needs a worktree NESTED inside this one, which dies with the outer workspace and takes its uncommitted work (go-to-k/cdk-real-drift#1842). Not an issue-count cap | §3        |
+| 2   | §1's `git checkout main && git pull` cannot run here; pull through `git -C "<MAIN_CHECKOUT>"` and read the refs with `git show origin/main:<file>`                                                              | §1        |
+| 3   | §2's worktree probes take `<MAIN_CHECKOUT>/.worktrees/<w>`, not a relative path                                                                                                                                 | §2        |
+| 4   | The claim names the tree already checked out here plus the branch §5 WILL create in it — never `LAUNCH_BRANCH`, which belongs to the outer tool                                                                 | §4        |
+| 5   | Create no worktree; after confirming the tree is YOURS, branch IN PLACE off `origin/main` — ALWAYS, not only when the tree is detached or its PR has merged — and never commit onto `LAUNCH_BRANCH`             | §5        |
+| 6   | Switch back to `LAUNCH_BRANCH` **as-is** — no pull, no rebase, no fast-forward — and delete only the branches THIS run created; detach only when `LAUNCH_BRANCH` was empty at probe time or is now gone         | §9        |
+| 7   | §7's rebase runs `git -C "<LANE_TREE>"`                                                                                                                                                                         | §7        |
+| 8   | Remove no worktree: a lane that removes the tree it runs in deletes its own cwd. Cleanup of the TREE belongs to whoever created it                                                                              | §9, §10-d |
+| 9   | §9's post-merge pull goes through `git -C "<MAIN_CHECKOUT>"` for the same reason as row 2                                                                                                                       | §9        |
+| 10  | The retro branch is created in THIS tree too, so the `LAUNCH_BRANCH` restore is the run's LAST step — after the retro PR merges, not inside §9's per-lane cleanup                                               | §10-d     |
 
 There is deliberately no rebuild row. The global install here is
 `vp i -g cdk-real-drift`, BY NAME from npm, so it reads no tree's build output

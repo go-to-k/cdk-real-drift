@@ -139,8 +139,8 @@ wants to watch); the stage files apply unchanged either way.
 - **Real-AWS live tests and merges are SERIALIZED across lanes** — the parent
   grants the turn, one lane at a time; a lane subagent never starts either on
   its own. Everything else runs concurrently, subject to two repo-local caveats
-  §9 states in full (the markgate store is SHARED across worktrees, the
-  deploy-autoarm sentinel is per-SESSION). (§9)
+  §9 states in full (the markgate store is PER-WORKTREE, the deploy-autoarm
+  sentinel is per-SESSION). (§9)
 - **English only in every published artifact** — issue bodies/comments, PR
   titles/bodies, commits, code. (CLAUDE.md)
 - **The run ends with the retro (stage 10) and the standard wrap report**

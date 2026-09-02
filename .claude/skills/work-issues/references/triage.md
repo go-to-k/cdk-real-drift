@@ -176,11 +176,28 @@ later runs `git worktree add` or does not.
 
 `IN-PLACE` means this run was launched inside a worktree someone else created
 (an Orca/ADE workspace, a stray `cd`), so it has exactly ONE working tree:
-**take ONE issue and finish it** — a second lane would need a worktree nested
+**run lanes SERIALLY** — a second CONCURRENT lane would need a worktree nested
 inside this one, which dies with the outer workspace and takes its uncommitted
-work (go-to-k/cdk-real-drift#1842). That one-lane limit is stated HERE, in
+work (go-to-k/cdk-real-drift#1842). That serialization limit is stated HERE, in
 prose; the probe reports a mode and two paths and carries no limit of its own.
-Rank as usual, claim the top candidate, and leave the rest for the next run.
+Rank as usual.
+
+**It bounds CONCURRENT lanes, not the ISSUE COUNT** — and until 2026-09-03 this
+paragraph said "take ONE issue and finish it ... leave the rest for the next
+run", with the same limit restated in `references/launch-mode.md`'s IN-PLACE
+table row 1 and in `references/claim.md`; all three were corrected together.
+Sequential work in one tree nests nothing: a cdk-local run took FOUR issues one after another, each on a
+branch cut from `origin/main`, deleting the previous branch after its merge, with
+zero collisions. So several issues in one run is fine when they share this tree
+in SEQUENCE: claim them all UP FRONT (§4) with every lane after the first marked
+`QUEUED`, finish them one at a time, and if the run ends before reaching one,
+stand it down with a comment carrying the four classification fields — which
+leaves it visibly claimable rather than silently locked (the shape cdkd measured
+on 2026-09-02, go-to-k/cdkd#2417: three lanes claimed, one merged, two left
+pickup-ready). Claiming only the top candidate is still fine; the point is that a
+QUEUED issue is spoken for rather than abandoned. The old wording read a hazard
+about trees EXISTING AT THE SAME TIME as a budget on work, which is the one thing
+it does not constrain.
 
 **The MAIN-CHECKOUT case is the DISJOINTNESS PARAGRAPH below and nothing
 wider.** An earlier revision said "everything below is the MAIN-CHECKOUT case",
