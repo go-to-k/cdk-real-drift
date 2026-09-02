@@ -335,9 +335,14 @@ if [ -n "$self_branch" ]; then
     # The push comes from the FLOW -- references/gates-and-pr.md has the lane
     # commit, push, then open the PR -- not from any gate.
     #
-    # Errs toward the PLAIN text: an unresolvable `origin/main` (a fresh clone,
-    # a sandbox fixture) makes the diff empty and the grep fail, and an
-    # indeterminate state must not buy an excuse for not opening a PR.
+    # The `^src/` test is byte-identical to the gate's, but the BASE is not:
+    # verify-pr-gate.sh tries origin/main, origin/master, main, master in turn,
+    # while this reads origin/main alone. Both diverge in the SAFE direction --
+    # the gate fails closed on a diff it cannot compute and keeps gating, this
+    # falls to the PLAIN text -- so neither invents an exemption. Same reason on
+    # an unresolvable `origin/main` (a fresh clone, a sandbox fixture): the diff
+    # is empty, the grep fails, and an indeterminate state must not buy an
+    # excuse for not opening a PR.
     if git -C "$session_root" diff --name-only origin/main...HEAD 2>/dev/null | grep -qE '^src/'; then
       push_line="It is fully pushed, so a PR may already be in flight -- but a pushed branch with NO PR is exactly the failure this catches. This lane touches src/**, so if /verify-pr has not finished yet, verify-pr-gate is still holding gh pr create and the missing PR is the expected state rather than the failure. Otherwise, open one."
       push_note="It is fully pushed, so a PR may already be in flight -- but a pushed branch with NO PR is exactly the failure this catches. This lane touches src/**, so verify-pr-gate may still be holding gh pr create until the verify-pr marker is fresh."

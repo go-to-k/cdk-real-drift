@@ -94,26 +94,51 @@ const MAX_REFERENCE_FILE_BYTES = 64_000; // largest stage file measured 55,137 B
 // now ASSERTED at the bottom of this file as well as described here, because
 // three consecutive rounds re-derived it BY HAND and one of them found it
 // lapsed.
-// Re-derived 2026-09-03 at the final tree of the mirror round. work-issues: 9
-// stage files, corpus 149,286 B, largest implement.md 28,148 B, so the BINDING
-// requirement is 149,286 - 28,148 = 121,138 -- and at the 120,000 the round
-// before set, the corpus had cleared it by only 91 B before this round's last
-// edit and would NOT have cleared it after. That is the number to watch: the previous round
-// left 7,708 B of margin there and one ordinary round of prose ate 99% of it,
-// without touching this file, because the floor moves with the corpus while the
-// largest file does not. The FLIP case had already gone red: the next candidates
-// to become largest are verify.md at 26,027 B and triage.md at 24,327 B, and the
-// worst of those requires 151,879 - 28,149 = 123,730, which 120,000 sits BELOW --
-// so a later verify.md edit of 2,122 B would have reddened an assertion whose
-// comment told its author the opposite. Raised to 128,000: clears the binding
-// number by 6,862 B and the worst flip (triage.md, 124,959) by 3,041 B, and
-// leaves 149,286 - 128,000 = 21,286 B of compression room below the floor, the
-// same shape the 2026-09-02 derivation aimed for. Probed rather than reasoned,
-// as that derivation demands: grown to the verify.md flip, the OLD 120,000
-// fails with "would leave 122,030 B and still pass" and 128,000 passes. The
-// growth this round is the mutation-harness item and the destructive-restore
-// reason in verify.md (+2,723 B), the serialization correction in triage.md
-// (+1,188 B) and the recon-scope lesson in retro.md (+1,229 B).
+// Re-derived 2026-09-03 at the FINAL tree of the mirror round, every figure at
+// that ONE tree. An earlier revision of this block mixed two trees and quoted
+// the same quantity twice with two different numbers -- and it went stale twice
+// more while being written, because editing a stage file to fix the prose moves
+// the corpus the comment is about. Re-derive this block LAST, after the skill
+// files are final; nothing else in this file shares that hazard.
+//
+// work-issues: 9 stage files, corpus 149,851 B, largest implement.md 28,148 B,
+// so the BINDING requirement is 149,851 - 28,148 = 121,703. The 120,000 the
+// previous round set is BELOW that, so this raise is a REPAIR, not a
+// precaution: the assertion was already red at HEAD on the binding case alone,
+// with no flip needed. Probed rather than reasoned, as this derivation demands
+// -- at 120,000 the suite fails with "the corpus is 149851 B and its largest
+// stage file is 28148 B, so deleting that one file would leave 121703 B and
+// still pass", and 128,000 passes. How the margin went across the round:
+// +7,708 B at the base, +225, +91, then -1,138. One round of PROSE consumed it,
+// touching this file only to raise it, because the floor moves with the corpus
+// while the largest file does not.
+//
+// THE FLIP CASE, correctly: when a file grows past implement.md and becomes the
+// largest, the residual is `total - v` where v is that file's size BEFORE the
+// growth -- the growth cancels, since it lands in the corpus and in the largest
+// file alike. So the residual is worst for the SMALLEST stage file, not the
+// nearest one: claim.md (5,429 B) would leave 144,422. Being flip-proof against
+// every candidate would therefore need a floor above 144,422, leaving 5,429 B of
+// compression room, which is not this floor's design. It is calibrated against
+// the NEAR candidates instead -- verify.md needs +1,837 and leaves 123,539,
+// triage.md +3,811 leaves 125,513, retro.md +4,015 leaves 125,717 -- so 128,000
+// clears the binding number by 6,297 B and the nearest flips by 2,283 B. For
+// everything past those, the ASSERTION is the backstop by design: it fires at
+// the commit that causes the flip and its message names the number to raise to.
+// Compression room is 149,851 - 128,000 = 21,851 B (14.6%, against 14.2% at the
+// 2026-09-02 derivation -- the same shape).
+//
+// HONEST LIMIT: 6,297 B of margin is less than the 7,708 B the previous round
+// consumed in one pass, so this buys roughly ONE round. A cap with an unmeasured
+// margin is one nobody can plan against; so is one whose margin is measured and
+// left unstated.
+//
+// The growth this round is +10,050 B across all 8 changed stage files, listed in
+// FULL because a partial list is the same silent under-reporting
+// references/retro.md now carries a rule against: verify.md +3,008,
+// retro.md +2,893, gates-and-pr.md +1,237, triage.md +1,199, claim.md +898,
+// implement.md +639, launch-mode.md +96, ship.md +80. Base corpus 139,801 +
+// 10,050 = 149,851, which is the arithmetic that makes the list checkable.
 //
 // SUPERSEDED, kept because the reasoning is the same and only the numbers moved:
 // work-issues: 9 stage files, corpus 139,801 B, largest implement.md 27,509 B, so
@@ -132,8 +157,9 @@ const MAX_REFERENCE_FILE_BYTES = 64_000; // largest stage file measured 55,137 B
 // in implement.md (+1,628 B) plus the reviewer-reporting and host-load lessons
 // in verify.md (+2,316 B); the round before it was the LAUNCH_BRANCH restore
 // contract across launch-mode.md, ship.md, retro.md and claim.md.
-// hunt-bugs stays at 60,000: re-measured the same day, corpus 88,598 B and
-// largest gotchas.md 41,922 B, so 88,598 - 41,922 = 46,676 < 60,000 and its
+// hunt-bugs stays at 60,000: corpus 88,683 B at this round's final tree (+78 of
+// it from this round's hunt-bugs/references/plan.md edit) and
+// largest gotchas.md 41,922 B, so 88,683 - 41,922 = 46,761 < 60,000 and its
 // property still holds. Re-measure both numbers for each skill whenever a stage
 // file changes size materially -- the property is silent when it lapses.
 const SPLIT_SKILLS: Record<string, { minFiles: number; minCorpusBytes: number }> = {

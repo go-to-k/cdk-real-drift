@@ -373,12 +373,15 @@ The original four shapes were ported from cdkd, all measured in one session
 the shell and the tooling, not anything cdkd-specific, so they apply here
 unchanged. Item 4 was added on 2026-09-03 and did NOT come from that session.
 
-**When you add a shape here, move EVERY count in this section, not just the
-closer.** This edit had to move four places: three counts — the "N other things"
-opener, the "all N" closer, the "all four shapes" port note — plus the
-session-attribution line, which is a SCOPE rather than a numeral and is
-therefore the one a sweep for digits does not return. Only the closer is
-anywhere near the list. `references/launch-mode.md`
+**When you add a shape here, fix every place that COUNTS it — and only half of
+them contain a digit that moves.** Adding item 4 touched four places, of which
+exactly TWO carried a changed numeral: the "N other things" opener (three ->
+four) and the "all N" closer (four -> five). The other two kept their numeral
+and moved their SCOPE — the port note still reads "four shapes", now narrowed to
+the ORIGINAL four, and the session-attribution still names one session, now
+narrowed to the first three plus the fixture shape. So a sweep for changed
+digits returns half of the work and looks complete, which is worse than
+returning none; and only the closer sits anywhere near the list. `references/launch-mode.md`
 records the same failure on its IN-PLACE table ("Four things" left standing
 after the rows grew), which is the second instance of it in this skill: a count
 written beside a list is maintained, a count written a paragraph away is not.

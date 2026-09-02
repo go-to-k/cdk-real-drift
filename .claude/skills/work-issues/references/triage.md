@@ -179,7 +179,8 @@ later runs `git worktree add` or does not.
 **run lanes SERIALLY** — a second CONCURRENT lane would need a worktree nested
 inside this one, which dies with the outer workspace and takes its uncommitted
 work (go-to-k/cdk-real-drift#1842). That serialization limit is stated HERE, in
-prose; the probe reports a mode and two paths and carries no limit of its own.
+prose; the probe reports a mode, two paths and a branch, and carries no limit of
+its own.
 Rank as usual.
 
 **It bounds CONCURRENT lanes, not the ISSUE COUNT** — and until 2026-09-03 this

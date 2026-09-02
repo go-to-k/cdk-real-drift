@@ -1005,10 +1005,16 @@ clear_nudge_records
 # between a gutted loop and a green run was somebody noticing the number move.
 # Raise it when cases are added; never lower it to make a red run green.
 CASE_FLOOR=126
-if [ "$((pass + fail))" -lt "$CASE_FLOOR" ]; then
+ran=$((pass + fail))
+if [ "$ran" -lt "$CASE_FLOOR" ]; then
+  # `ran` is captured BEFORE the increment below. Incrementing `fail` first and
+  # then interpolating `$((pass + fail))` counts the floor's OWN failure as one
+  # of the cases it is counting, so a run of 125 announced "only 126 cases ran,
+  # expected at least 126" -- a message that disproves itself, emitted only when
+  # something is already wrong.
   fail=$((fail + 1))
-  fail_log+="FAIL case floor: only $((pass + fail)) cases ran, expected at least 126\n"
-  printf 'FAIL case floor: only %s cases ran, expected at least %s\n' "$((pass + fail))" "$CASE_FLOOR"
+  fail_log+="FAIL case floor: only $ran cases ran, expected at least $CASE_FLOOR\n"
+  printf 'FAIL case floor: only %s cases ran, expected at least %s\n' "$ran" "$CASE_FLOOR"
 fi
 printf '\nPass: %d  Fail: %d\n' "$pass" "$fail"
 if [ "$fail" -gt 0 ]; then

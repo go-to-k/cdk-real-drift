@@ -229,8 +229,12 @@ Every run appending one more bullet is how a long skill becomes an unread one.
   files, and it was still stale in ten places and wrong about scope twice — both
   times UNDER-reporting. The false markgate-store claim sat at FIVE sites, not
   the three it named, and the two it missed were the `/check` and `/check-docs`
-  skills that are the ORIGIN of the measurement the other three cite; adding one
-  item to `verify.md`'s §8-z required moving FOUR counts, not the one it flagged.
+  skills — and `/check` is the ORIGIN the others point back at, so correcting only
+  the three named would have left the source still asserting it. Adding one item
+  to `verify.md`'s §8-z touched FOUR places rather than the one it flagged, and
+  only TWO of those carried a digit that changed; the other two kept their
+  numeral and moved their scope, so even a careful grep for numerals finds half
+  the work and looks finished.
   The two error kinds are not equally dangerous. A drifted line number announces
   itself the moment you open the file, but an under-reported scope is SILENT: a
   lane that treats the list as complete lands a partial fix and reports it done,
