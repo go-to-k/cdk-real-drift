@@ -376,6 +376,18 @@ the rc table were all in hand, and a later session would have re-derived all
 three. Re-classified `now` in the same session on the maintainer's challenge,
 and shipped; the port then found four more defects in the shape it was copying,
 none of which a fresh session would have known to look for.)
+**And when the issue body offers more than one fix, say which one the four
+fields cost.** Cost the CHEAPEST one you would actually accept. A deferral
+justified by the expensive option is not a measurement, it is a choice of
+comparand -- and the fields are supposed to be the measurement.
+
+(2026-09-02, an hour after the paragraph above went in: an issue was filed
+listing two fixes -- block the spelling in the gate that let the tree detach, a
+behaviour change across three repos, or teach the OTHER gate to recognise a
+detached HEAD, about six lines and no behaviour change. The `Session-fit: next`
+reason read "a behaviour change across three repos with its own review surface",
+which costs only the first. Nobody had decided which fix to take; the first one
+described became the one measured.)
 
 Origin: go-to-k/cdk-local#560 was deferred on "a fixture / base-image change on
 a different axis" — the KIND of work, not who could check it. The defect was a
