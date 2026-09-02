@@ -221,20 +221,18 @@ already merged (reusing it would push an orphan ref), take a fresh branch
 WITHOUT leaving the tree.
 
 ```bash
-# `-C <LANE_TREE>` is load-bearing HERE in a way it is not in the siblings.
-# Nothing in this repo gates a branch switch: `branch-gate` fires on
-# `git commit` / `git push` and only when the target tree is on `main` /
-# `master`, `worktree-guard` fires on Edit/Write into the MAIN checkout, and
-# there is no `main-tree-branch-gate` here at all (go-to-k/cdk-real-drift#1845
-# tracks adding one) -- so a BARE `git switch -c` run after the shell's cwd has
-# silently reset to the main checkout (§6's `cd <worktree> &&` rule, and the
-# reason section 9 pulls through -C) takes the MAIN checkout off `main`,
-# unblocked, in a tree other lanes are sharing. Both siblings DO have that gate:
-# cdkd and cdk-local carry the `-C`-free spelling because their gate refuses a
-# stray `git switch -c` in the main checkout, and it covers the chained
-# `fetch && switch -c` form as of this session's hooks change (measured there).
-# So this divergence is temporary, and it closes from the HOOK side, not by
-# copying this comment into the siblings.
+# `-C <LANE_TREE>` is load-bearing, and the REASON changed on 2026-09-01.
+# Until then nothing in this repo gated a branch switch, so a BARE
+# `git switch -c` run after the shell's cwd had silently reset to the main
+# checkout (§6's `cd <worktree> &&` rule, and the reason section 9 pulls
+# through -C) took the MAIN checkout off `main`, unblocked, in a tree other
+# lanes share. `.claude/hooks/main-tree-branch-gate.sh` now REFUSES that
+# (go-to-k/cdk-real-drift#1845), including the chained `fetch && switch -c`
+# form and the two-tree spellings, so the failure is loud rather than silent.
+# The `-C` stays, because a refusal is not a redirect: the gate stops the wrong
+# tree from being branched, and only `-C <LANE_TREE>` makes the command branch
+# the RIGHT one. Dropping it to match the siblings' `-C`-free spelling is a
+# separate change, tracked on the issue above.
 # Substitute the ABSOLUTE path the launch-mode probe printed as `LANE_TREE`
 # and the opening report recorded -- the one value captured while the cwd was
 # provably right. Do NOT re-derive it here as

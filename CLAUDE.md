@@ -537,9 +537,16 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   they were alone have collided twice: a README clobber, and a branch created in
   the shared checkout that captured another session's staged R44 commit. Every
   line of work gets its OWN worktree with DISJOINT files:
-  `git worktree add .worktrees/<name> -b wt-<name> main` →
+  `git worktree add .worktrees/<name> -b wt-<name> origin/main` →
   `mise trust .worktrees/<name>/.mise.toml` → `pnpm install` (worktrees have no
-  `node_modules`) → work → run gates + set markers → commit on the branch. The
+  `node_modules`) → work → run gates + set markers → commit on the branch.
+  **`origin/main`, not local `main`**, and this is not cosmetic: local `main`
+  only advances on an explicit pull in the main checkout, so a lane cut from it
+  starts wherever the last pull left off — and `stale-base-gate.sh` opens with
+  `git merge-base --is-ancestor "$base" HEAD || exit 0`, so it is INERT for
+  exactly that lane. Basing on `origin/main` is what turns that gate ON. The
+  `/work-issues` copy of this recipe was corrected in
+  go-to-k/cdk-real-drift#1847; every copy in this repo now agrees. The
   orchestrator integrates by `git checkout <branch> -- <files>` (NEVER `git merge` —
   the leaked cdkd session hooks block it), then `git worktree remove`. The main
   checkout is reserved for integration: `main` checkouts, pulls, and PR plumbing
@@ -553,6 +560,137 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   leave the tree for whoever made it. `/work-issues` computes which case applies
   before its first stage and `/hunt-bugs` points at that probe; do not
   re-implement it here.
+- **A branch switch in the main checkout is now GATED, not merely discouraged.**
+  `.claude/hooks/main-tree-branch-gate.sh` refuses `git switch` / `git checkout`
+  onto a feature branch (and `git switch --detach`, and `git switch -` /
+  `git checkout -`) when the TARGET working tree is the main checkout, while
+  passing `main` / `master`, a `git checkout [<tree-ish>] -- <pathspec>` file
+  restore, the restore FLAGS `-p` / `--ours` / `--theirs`, a detached
+  `git checkout <sha>`, `git worktree add`, and every switch made INSIDE a
+  `.worktrees/` lane. **The orchestrator's own `git checkout <branch> -- <files>`
+  integration step passes** — it restores files and leaves HEAD on `main`
+  (measured). The argument tail is PARSED the way git's own parse-options parses
+  it, rather than matched against a list of spellings, and each behaviour was
+  settled against real git first: a leading flag is never mistaken for the branch
+  name (`git checkout -f <branch>` is refused, not waved through); a glued value
+  is read (`-bfeat`, `-fbfeat`, `--orphan=feat`, `--track=direct` all name the
+  branch they really create); a value-taking flag's argument is consumed rather
+  than counted as a pathspec (`git checkout --conflict merge <branch>` really
+  switches); `-` and `@{-1}` are the previous branch under BOTH verbs; and
+  `git checkout <name>` / `git checkout -t origin/<name>` for a branch that
+  exists only on a CONFIGURED remote are refused too — git DWIMs both into
+  "create the local branch and switch", which is how a lane's branch usually
+  first appears in a checkout. It is the CAUSE-side twin of `branch-gate`, which
+  fires on the symptom (a commit or push
+  once the tree is already off `main`) — go-to-k/cdk-real-drift#1845. Ported from
+  cdkd / cdk-local in the FIXED per-segment shape: the target tree is resolved
+  from the SAME segment that carries the arguments, so a command spanning two
+  trees is judged per segment. Resolving it once per command was live in both
+  siblings and wrong in both directions — measured here, payload cwd = the main
+  checkout, before the fix and after:
+
+  ```text
+                                                    before  after  want
+    git -C <wt> switch -c a && git switch -c b          0      2     2
+    git -C <wt> checkout -b a && git checkout -b b      0      2     2
+    git switch main && git -C <wt> switch -c a          2      0     0
+  ```
+
+  The first two let a branch be created in the SHARED checkout unjudged; the
+  third refused the worktree branch creation the convention mandates.
+
+  **A second round, 2026-09-02, closed six more — one of them a REGRESSION the
+  parse itself introduced.** The token walk read SHELL words, and a redirection,
+  its spaced target, a trailing `&` and a `#` comment are the shell's, not git's:
+  counting them as arguments turned a real switch into a "file restore" and
+  passed it. Measured, with `OLD` being cdkd's `origin/main` copy of the gate so
+  the regressions read as regressions:
+
+  ```text
+    command                                     OLD  NEW  now  want
+    git checkout <branch> 2>/dev/null             2    0    2     2
+    git checkout <branch> # switch lane           2    0    2     2
+    git checkout <branch> --                      2    0    2     2
+    git checkout --orph <b> / --trac origin/<b>   0    0    2     2
+    git switch -- main                            2    2    0     0
+    git checkout --no-guess <remote-only>         0    2    0     0
+    control: git checkout <branch>                2    2    2     2
+  ```
+
+  Four causes, each fixed at the cause: the parse now reads git's ARGV through a
+  new shared `gate_argv` rather than raw shell words; an INCOMPLETE parse may no
+  longer ALLOW (an unresolvable or ambiguous option blocks, naming it), which is
+  the general form of the two defects a positional COUNT produced; each verb
+  carries its COMPLETE long-option table with per-name arity, because git accepts
+  any unambiguous PREFIX of a long name and `-h` does not show that; and `--` is
+  checkout's pathspec separator but only switch's end-of-options, so
+  `git checkout <b> --` switches while `git switch -- main` stays put (both
+  measured). An unbalanced quote is now REFUSED rather than silently truncated —
+  `-b agent's-branch` used to yield the single token `-b` and pass.
+
+  **A fifth cause, found inside the fourth's own fix.** "An incomplete parse may
+  not ALLOW" was implemented for unknown GIT OPTIONS only; `gate_argv` did the
+  OPPOSITE for SHELL WORDS, enumerating the forms it recognised (a redirection, a
+  trailing `&`, a `#` comment) and passing everything else through as a git
+  argument. So a word the shell removes but the stripper does not model became a
+  phantom second positional and the verdict relaxed to "file restore". Measured
+  against the parse above, `OLD` being `origin/main` (which has no copy of this
+  gate at all, so it scores 0 on every row INCLUDING the control), `NEW` the
+  round-3 parse, `now` this one:
+
+  ```text
+    command                                     OLD  NEW  now  want
+    git checkout <branch> $EMPTY                  0    0    2     2
+    git checkout <branch> ${EMPTY}                0    0    2     2
+    git checkout <branch> {fd}>/dev/null          0    0    2     2
+    git checkout <branch> {fd}<f.txt              0    0    2     2
+    git checkout main # don't switch lanes        0    2    0     0
+    git checkout main -- f.txt # agent's file     0    2    0     0
+    git checkout --end-of-options main            0    2    0     0
+    git checkout --end-of-options -- f.txt        0    2    0     0
+    git checkout --git-completion-helper          0    2    0     0
+    control: git checkout <branch>                0    2    2     2
+  ```
+
+  The answer is the same fence applied to the other grammar rather than a fourth
+  enumeration: a word `gate_argv` cannot fully account for sets `parse_certain=0`.
+  `gate_word_is_literal` admits a word only when every character outside a quoted
+  span is on `GATE_INERT_CHARS`, a CLOSED list of characters that trigger no
+  shell processing, each carrying its reason. A shape nobody has thought of lands
+  on BLOCK because every shell construct is SPELLED, so one outside the list
+  necessarily carries a character the list does not hold — `{fd}>/dev/null` is
+  caught by `>` and `{` without either being named as a redirection form. One
+  exemption is proved rather than assumed: a word beginning with the literal
+  `@{-` cannot vanish (no expansion produces or removes those characters), and
+  its verdict is a BLOCK that only more positionals relax.
+
+  **Three claims retired here too.** The `parse_certain` arm was documented as
+  firing "only on commands git itself refuses"; against git 2.53.0 it also fired
+  on `--end-of-options main`, `--end-of-options -- <path>` and
+  `--git-completion-helper`, all rc=0. Those, plus `--git-completion-helper-all`
+  and `--help-all`, are `parse-options` built-ins absent from `-h` and are in the
+  tables now at arity 0 — `--end-of-options` ending the OPTIONS without giving
+  the next token checkout's pathspec meaning, since
+  `git checkout --end-of-options <branch>` really switches. The unbalanced-quote
+  refusal was justified as "the text is a shell syntax error in the first place";
+  `bash -n "git checkout main # don't switch lanes"` reports VALID syntax, and the
+  gate blocked a command git answers with "Already on 'main'" — the comment is now
+  cut BEFORE the split. And `--help` used to return ahead of the fence, the one
+  relaxing verdict that skipped it; it no longer does.
+
+  Two claims are retired rather than carried. This hook said "the same probes run
+  against the sibling gates score them identically wrong"; that stopped being
+  true when the siblings landed their own parse, and they now score those rows
+  correctly — the siblings have since been converged onto THIS repo's
+  `remote_dwim_names`, which was ahead of theirs. And `remote_dwim_names` claimed
+  its list held only names "exactly one remote carries": there is no uniqueness
+  check, and with one name on two remotes git refuses while the gate blocks — the
+  conservative direction, so the behaviour stays and only the sentence goes.
+
+  Exercised by `.claude/hooks/main-tree-branch-gate.test.sh` (172 cases) under an
+  explicitly pinned interpreter, `/bin/bash` by default — see the fence note
+  above.
+
 - **All changes go through a pull request — never commit directly to `main`.**
   Branch (or worktree branch) → run the gates + set markers → commit → push →
   `gh pr create`. The reviewer re-reviews the PR diff before merge. cdkd's

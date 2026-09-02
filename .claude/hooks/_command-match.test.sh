@@ -369,7 +369,264 @@ want_local_slug a/b "ssh:// remote"          'ssh://git@github.com/a/b.git'
 want_local_slug a/b "uppercase remote"       'https://github.com/A/B.git'
 want_local_slug a/b "trailing slash after .git" 'https://github.com/a/b.git/'
 
+# --- gate_verb_args_dir (main-tree-branch-gate) --------------------------------
+#
+# The per-segment walk: one "<dir><TAB><args-after-the-verb>" line per matching
+# segment. What it must NOT be is `gate_target_dir` + a separate argument walk:
+# that function BREAKS at the first matching segment, so segment 1's tree decides
+# every segment. Measured HERE, driving main-tree-branch-gate against THIS repo's
+# real main checkout and its real linked worktree with a payload cwd of the MAIN
+# checkout, once with the tree resolved outside the walk and once per segment:
+#
+#   git -C <wt> switch -c a && git switch -c b       rc=0, want 2  BYPASS
+#   git switch main && git -C <wt> switch -c a       rc=2, want 0  FALSE BLOCK
+SW="$GATE_RE_GIT_SWITCH"
 
+# want_lines <expected-with-\n> <label> <command> <fallback> <regex>
+want_lines() {
+  local want="$1" label="$2" cmd="$3" fallback="$4" re="$5" got
+  got=$(gate_verb_args_dir "$cmd" "$fallback" "$re" | tr '\t' '|')
+  if [ "$got" = "$want" ]; then
+    pass=$((pass + 1)); printf 'OK   %s\n' "$label"
+  else
+    fail=$((fail + 1)); printf 'FAIL %s\n  want: [%s]\n  got:  [%s]\n' "$label" "$want" "$got"
+  fi
+}
+
+want_lines '/w/t|-c feat' "one segment, fallback dir" \
+  'git switch -c feat' '/w/t' "$SW"
+want_lines '/other|-c feat' "the segment's own -C wins over the fallback" \
+  'git -C /other switch -c feat' '/w/t' "$SW"
+want_lines '/other|-c feat' "glued -C<path> is read too (gate_target_dir cannot)" \
+  'git -C/other switch -c feat' '/w/t' "$SW"
+want_lines '/other|-c feat' "-C=<path> is read too" \
+  'git -C=/other switch -c feat' '/w/t' "$SW"
+want_lines '/a b|-c feat' "a quoted -C path containing a space survives" \
+  'git -C "/a b" switch -c feat' '/w/t' "$SW"
+want_lines '/wt|-c a
+/wt|-c b' "a cd PERSISTS into every later segment" \
+  'cd /wt && git switch -c a && git switch -c b' '/w/t' "$SW"
+want_lines '/wt|-c a
+/w/t|-c b' "a -C binds ONLY its own segment, and does not leak forward" \
+  'git -C /wt switch -c a && git switch -c b' '/w/t' "$SW"
+want_lines '/w/t|main
+/wt|-c a' "EVERY matching segment is emitted, each with its OWN tree" \
+  'git switch main && git -C /wt switch -c a' '/w/t' "$SW"
+want_lines '' "a quoted mention emits nothing" \
+  'echo "do not run: git switch -c feat"' '/w/t' "$SW"
+# A RELATIVE `cd` resolves against the running target, and nothing pinned it: the
+# `[[ "$cd_target" != /* ]] && cd_target="$target/$cd_target"` line could be
+# deleted with this suite at 177/0 and the gate suite at 54/0. The parity block
+# below covers a relative `-C`, which is the OTHER branch of the same rule.
+want_lines '/w/t/sub|-c feat' "a RELATIVE cd resolves against the running target" \
+  'cd sub && git switch -c feat' '/w/t' "$SW"
+want_lines '/w/t/sub/deeper|-c feat' "relative cds COMPOSE across segments" \
+  'cd sub && cd deeper && git switch -c feat' '/w/t' "$SW"
+# ...and its control: an ABSOLUTE cd replaces the target rather than extending it,
+# so the two cases above are not satisfied by "always concatenate".
+want_lines '/elsewhere|-c feat' "an ABSOLUTE cd replaces the running target" \
+  'cd sub && cd /elsewhere && git switch -c feat' '/w/t' "$SW"
+
+# PARITY PIN. The cd / -C reading here is a deliberate COPY of gate_target_dir's,
+# because that function breaks at the verb and has other callers riding on it. A
+# copy that nothing compares is a copy that drifts, so the two are pinned against
+# each other on the SINGLE-segment shape, where they must agree by construction.
+want_parity() {
+  local label="$1" cmd="$2" fallback="$3" re="$4" a b
+  a=$(gate_target_dir "$cmd" "$fallback" "$re")
+  b=$(gate_verb_args_dir "$cmd" "$fallback" "$re" | head -1)
+  b="${b%%	*}"
+  if [ "$a" = "$b" ]; then
+    pass=$((pass + 1)); printf 'OK   parity %s\n' "$label"
+  else
+    fail=$((fail + 1)); printf 'FAIL parity %s (gate_target_dir=%s gate_verb_args_dir=%s)\n' "$label" "$a" "$b"
+  fi
+}
+want_parity "bare verb"            'git switch -c feat' '/w/t' "$SW"
+want_parity "leading cd"           'cd /wt && git switch -c feat' '/w/t' "$SW"
+want_parity "spaced -C"            'git -C /other switch -c feat' '/w/t' "$SW"
+want_parity "quoted -C with space" 'git -C "/a b" switch -c feat' '/w/t' "$SW"
+want_parity "relative -C"          'git -C sub switch -c feat' '/w/t' "$SW"
+want_parity "unexpanded cd \$VAR"  'cd "$WT" && git switch -c feat' '/w/t' "$SW"
+want_parity "unexpanded -C \$VAR"  'git -C "$WT" switch -c feat' '/w/t' "$SW"
+want_parity "relative cd"          'cd sub && git switch -c feat' '/w/t' "$SW"
+
+
+# --- gate_argv ------------------------------------------------------------------
+#
+# `gate_tokens` splits SHELL WORDS; this splits git's ARGV, which is what an
+# option parse actually reads. The difference is not cosmetic: a redirection, its
+# spaced target, a trailing `&` and a `#` comment are all WORDS and none of them
+# is an ARGUMENT, and counting them as arguments is what made
+# `git checkout <branch> 2>/dev/null` read as a two-positional file restore and
+# PASS through main-tree-branch-gate (measured rc=0, want 2, on a command that
+# really moves HEAD).
+argv_case() { # name, text, expected newline-joined argv, expected rc
+  local name="$1" text="$2" want="$3" wantrc="${4:-0}" got gotrc
+  got=$(gate_argv "$text"); gotrc=$?
+  if [ "$got" = "$want" ] && [ "$gotrc" = "$wantrc" ]; then
+    pass=$((pass + 1)); printf 'OK   gate_argv: %s\n' "$name"
+  else
+    fail=$((fail + 1))
+    printf 'FAIL gate_argv: %s\n  text: [%s]\n  want: [%s] rc=%s\n  got : [%s] rc=%s\n' \
+      "$name" "$text" "$want" "$wantrc" "$got" "$gotrc"
+  fi
+}
+argv_case "plain words are argv unchanged" " -b feat" "$(printf -- '-b\nfeat')"
+argv_case "a glued redirection is dropped" " feat 2>/dev/null" "feat"
+argv_case "two glued redirections are dropped" " feat >/dev/null 2>&1" "feat"
+argv_case "an append redirection is dropped" " feat 2>>log" "feat"
+argv_case "a SPACED redirection drops its target too" " feat > /dev/null" "feat"
+argv_case "a numbered spaced redirection drops its target" " feat 2> log" "feat"
+argv_case "an input redirection is dropped" " feat < in" "feat"
+argv_case "a trailing & is dropped" " feat &" "feat"
+argv_case "a comment ends the argv" " feat # switch lane" "feat"
+argv_case "a comment ends it even mid-list" " a # b -- c" "a"
+# The COMMENT rule keys on an UNQUOTED leading `#`. A quoted one is an argument
+# the shell passes through, and the token still carries its quotes here.
+argv_case "a QUOTED # is an argument, not a comment" " '#branch'" "'#branch'"
+argv_case "a # inside a word is not a comment" " feat#1" "feat#1"
+# CONTROLS: the things that look like the above and are NOT shell syntax.
+argv_case "a bare -- survives" " feat -- README.md" "$(printf -- 'feat\n--\nREADME.md')"
+argv_case "a digit-only word is not a redirection" " --unified 3 feat" "$(printf -- '--unified\n3\nfeat')"
+argv_case "a quoted span survives whole" ' -c "wt feat new"' "$(printf -- '-c\n"wt feat new"')"
+# An UNBALANCED quote cannot be split at all. Reporting it is the whole point:
+# `gate_tokens` used to return the prefix it managed and rc=0, so `-b
+# agent's-branch` yielded the single token `-b` and the gate read a bare
+# `git checkout`.
+argv_case "an unbalanced quote returns 1 and nothing" " -b agent's-branch" "" 1
+argv_case "an unbalanced quote at the start returns 1" " a'unbalanced" "" 1
+argv_case "empty text is not a truncation" "" "" 0
+# CONTROL, not a fence: `gate_argv` feeds its loop from a HEREDOC, and a heredoc
+# delimiter is matched in the SCRIPT text rather than in an expansion -- so a
+# token that happens to spell the delimiter cannot end the body early. Nothing
+# reddens this today; it is here so a rewrite that re-scans the value (an `eval`,
+# a here-string built from it) has a case to fail.
+argv_case "a token spelling the heredoc delimiter survives" " EOF -- x" "$(printf -- 'EOF\n--\nx')"
+
+
+# A FLOOR on the case total, for the same reason the gate suite carries one:
+# deleting a case removes its assertions SILENTLY while the tally still reads
+# `fail: 0`, so without a floor the sixteen `gate_verb_args_dir` cases added for
+# main-tree-branch-gate could be dropped and this file would still report green.
+# Raise it when cases are added; never lower it to make a red run green.
+# --- gate_word_is_literal -------------------------------------------------------
+#
+# The INVERTED default. `gate_argv` above splits words; this answers whether a
+# word reaches the command as the text it carries, and it answers NO by default.
+# Three rounds of `main-tree-branch-gate` fixes each taught the stripper one more
+# shell form and each time the next round found the form still missing -- last
+# `$EMPTY` (an empty expansion VANISHES, so the gate counted a positional git
+# never receives) and `{fd}>/dev/null` (bash's fd-variable redirection, a word
+# git never receives at all). Both turned a real branch switch into a two-
+# positional file restore and PASSED.
+#
+# The cases below are therefore in two halves, and the SECOND half is what makes
+# the first mean anything: if the inert list quietly shrank, the refusals would
+# all still pass while every ordinary command started blocking.
+lit_case() { # name, word, want-rc
+  local name="$1" word="$2" wantrc="$3" gotrc
+  gate_word_is_literal "$word"; gotrc=$?
+  if [ "$gotrc" = "$wantrc" ]; then
+    pass=$((pass + 1)); printf 'OK   gate_word_is_literal: %s\n' "$name"
+  else
+    fail=$((fail + 1))
+    printf 'FAIL gate_word_is_literal: %s\n  word: [%s]\n  want rc=%s got rc=%s\n' \
+      "$name" "$word" "$wantrc" "$gotrc"
+  fi
+}
+# REFUSED -- every one of these is a word the shell may rewrite or remove.
+lit_case "an unquoted \$ expansion is refused" '$EMPTY' 1
+lit_case "a braced \$ expansion is refused" '${EMPTY}' 1
+lit_case "a \$ inside DOUBLE quotes is still refused" '"$f"' 1
+lit_case "a backtick substitution is refused" '`date`' 1
+lit_case "a backslash escape is refused" 'a\b' 1
+lit_case "the fd-variable redirection prefix is refused" '{fd}>/dev/null' 1
+lit_case "a brace word is refused" '{a,b}' 1
+lit_case "a glob star is refused" '*.ts' 1
+lit_case "a glob question mark is refused" 'a?b' 1
+lit_case "a bracket expression is refused" 'a[bc]' 1
+lit_case "a leading tilde is refused" '~/x' 1
+lit_case "a history bang is refused" 'a!b' 1
+lit_case "a metacharacter that reached here is refused" 'a;b' 1
+lit_case "a pipe is refused" 'a|b' 1
+lit_case "a redirection character is refused" '>x' 1
+lit_case "a subshell paren is refused" '(x)' 1
+lit_case "a leading # is refused (it opens a comment)" '#branch' 1
+lit_case "an unbalanced quote is refused" "'open" 1
+lit_case "the empty word is refused" '' 1
+# ADMITTED -- the other half. Each of these is an ordinary git argument, and the
+# gate's ALLOW arms are unreachable without them.
+lit_case "a plain name is literal" 'feat' 0
+lit_case "a slashed, dotted, dashed name is literal" 'feat/x-1.2' 0
+lit_case "a glued long-option value is literal" '--create=feat' 0
+lit_case "a caret revision is literal" 'HEAD^' 0
+lit_case "a # INSIDE a word is literal" 'has#hash' 0
+lit_case "a comma is literal without a brace" 'a,b' 0
+lit_case "a colon and an at-sign are literal" 'a:b@c' 0
+lit_case "a plus and a percent are literal" 'a+b%c' 0
+lit_case "a SINGLE-quoted \$ is literal" "'feat\$x'" 0
+lit_case "a single-quoted space is literal" "'my branch'" 0
+lit_case "a DOUBLE-quoted plain word is literal" '"main"' 0
+lit_case "an embedded quoted span is literal" 'core.pager="less"' 0
+
+# --- gate_strip_comment ---------------------------------------------------------
+#
+# The cut happens BEFORE the split, which is the whole fix: an apostrophe inside
+# a comment used to be weighed as a quote, so `git checkout main # don't switch
+# lanes` came back a truncation and the gate blocked a command bash calls valid
+# and git answers with "Already on 'main'".
+cut_case() { # name, text, want
+  local name="$1" text="$2" want="$3" got
+  got=$(gate_strip_comment "$text")
+  if [ "$got" = "$want" ]; then
+    pass=$((pass + 1)); printf 'OK   gate_strip_comment: %s\n' "$name"
+  else
+    fail=$((fail + 1))
+    printf 'FAIL gate_strip_comment: %s\n  text: [%s]\n  want: [%s]\n  got : [%s]\n' \
+      "$name" "$text" "$want" "$got"
+  fi
+}
+cut_case "a comment is cut at the word start" 'main # switch lane' 'main '
+cut_case "an APOSTROPHE inside the comment does not poison it" \
+  "main # don't switch lanes" 'main '
+cut_case "a # mid-word is not a comment" 'feat#1' 'feat#1'
+cut_case "a # inside a quoted span is not a comment" "main -- 'a#b'" "main -- 'a#b'"
+# The DISCRIMINATING half of that pair: with a SPACE before it, the `#` sits at
+# what would be a word start if the quotes were not tracked, so a cut here is
+# exactly what dropping the quote state produces. The case above cannot see
+# that -- its `#` is preceded by `a` either way.
+cut_case "a # at a word start INSIDE quotes is still not a comment" \
+  "main -- 'a #b' tail" "main -- 'a #b' tail"
+cut_case "an escaped # is not a comment" 'main \# x' 'main \# x'
+cut_case "text with no comment is unchanged" '-b feat' '-b feat'
+# The SECOND PASS, the `ignore_q` trick `gate_segments_raw` already uses: the
+# leading `'` never closes, so on the retry it is treated as literal and the
+# comment is found. The result is still unsplittable, and `gate_argv` still
+# refuses it -- correctly, since bash calls that text a syntax error.
+cut_case "an unclosed quote is retried with the quote literal" \
+  "'unbalanced # x" "'unbalanced "
+
+# --- gate_argv: round 4 ---------------------------------------------------------
+argv_case "a comment carrying an apostrophe no longer truncates" \
+  " main # don't switch lanes" "main"
+# SPACED redirection operators. Each of these drops BOTH words; dropping an
+# operator from GATE_REDIR_TOKEN makes the operator itself read as an argument,
+# which is the FAIL-OPEN direction (an extra positional relaxes the gate's
+# verdict to "file restore").
+argv_case "a spaced append redirection drops its target" " feat 2>> log" "feat"
+argv_case "a spaced clobber redirection drops its target" " feat >| out" "feat"
+argv_case "a spaced dup-out redirection drops its target" " feat >& out" "feat"
+argv_case "a spaced dup-in redirection drops its target" " feat <& 3" "feat"
+argv_case "a spaced &> redirection drops its target" " feat &> out" "feat"
+argv_case "a spaced &>> redirection drops its target" " feat &>> out" "feat"
+
+CASE_FLOOR=246
+ran=$((pass + fail))
+if [ "$ran" -lt "$CASE_FLOOR" ]; then
+  fail=$((fail + 1))
+  printf 'FAIL case floor: only %s cases ran, expected at least %s\n' "$ran" "$CASE_FLOOR"
+fi
 
 printf '\npass: %s  fail: %s\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
