@@ -582,7 +582,22 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   "create the local branch and switch", which is how a lane's branch usually
   first appears in a checkout. It is the CAUSE-side twin of `branch-gate`, which
   fires on the symptom (a commit or push
-  once the tree is already off `main`) — go-to-k/cdk-real-drift#1845. Ported from
+  once the tree is already off `main`) — go-to-k/cdk-real-drift#1845.
+  **`branch-gate` now recognises a DETACHED HEAD as "off `main`"**
+  (go-to-k/cdkd#2402): it read the state by branch NAME through
+  `symbolic-ref --short HEAD`, which is EMPTY while detached, so the
+  `main|master` case matched neither arm and the commit went through — and
+  the comment there claimed the empty string only ever meant "not inside a
+  git repo". The two gates composed into a hole neither had alone, since the
+  `git checkout <sha>` this gate passes as inspection is what detaches the
+  shared tree. Measured on a scratch opted-in repo, same `git commit`
+  payload: rc=2 on `main`, rc=0 once detached; rc=2 after the fix. A detached
+  LINKED worktree still passes, because that is the lane-clearing state
+  `stop-unmerged-lane-warn.sh` prescribes (`git switch --detach
+  origin/main`). THIS gate's verdicts are untouched — refusing the sha
+  spelling is a separate behaviour change with its own PR.
+
+  `main-tree-branch-gate` was ported from
   cdkd / cdk-local in the FIXED per-segment shape: the target tree is resolved
   from the SAME segment that carries the arguments, so a command spanning two
   trees is judged per segment. Resolving it once per command was live in both
