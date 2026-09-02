@@ -300,8 +300,8 @@ directory, so the hazard is identical here.
 fixes, then probe.** The reason is DESTRUCTIVE, not merely tidy: a probe's
 restore puts the subject back to the bytes it held when the snapshot was TAKEN,
 so it reverts anything committed NOWHERE. A lane lost 133 lines of newly written
-tests exactly that way — its harness restored a snapshot predating those tests,
-and no commit, stash or reflog held them. Committing first is what makes the
+tests exactly that way (go-to-k/cdkd#2457) — its harness restored a snapshot
+predating those tests, and no commit, stash or reflog held them. Committing first is what makes the
 restore lossless. `references/implement.md`'s byte-exact `shasum`-verified
 restore is the OTHER half and does not cover this one: it guarantees the subject
 comes back unmangled, which is a promise about the snapshot's bytes, not about
@@ -374,9 +374,11 @@ the shell and the tooling, not anything cdkd-specific, so they apply here
 unchanged. Item 4 was added on 2026-09-03 and did NOT come from that session.
 
 **When you add a shape here, move EVERY count in this section, not just the
-closer.** This edit had to move four numbers — the "N other things" opener, the
-"all N" closer, that session-attribution, and the "all four shapes" port note —
-and only the closer is anywhere near the list. `references/launch-mode.md`
+closer.** This edit had to move four places: three counts — the "N other things"
+opener, the "all N" closer, the "all four shapes" port note — plus the
+session-attribution line, which is a SCOPE rather than a numeral and is
+therefore the one a sweep for digits does not return. Only the closer is
+anywhere near the list. `references/launch-mode.md`
 records the same failure on its IN-PLACE table ("Four things" left standing
 after the rows grew), which is the second instance of it in this skill: a count
 written beside a list is maintained, a count written a paragraph away is not.

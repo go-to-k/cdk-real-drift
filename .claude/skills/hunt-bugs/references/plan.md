@@ -48,9 +48,10 @@ the file that holds the ONLY copy of it — `/work-issues` SKILL.md points there
 rather than carrying it.
 IN-PLACE means create nothing and hunt on the branch already checked out here
 (deps and `dist/` are usually already built), and §8 then removes nothing. The
-probe reports a mode and two paths and carries no lane limit of its own; the
-one-lane rule is `/work-issues` prose, and a hunt takes one fix at a time
-anyway, so it costs this skill nothing.
+probe reports a mode, two paths and a branch, and carries no lane limit of its
+own; the serialization rule is `/work-issues` prose — it bounds CONCURRENT lanes
+rather than the issue count — and a hunt takes one fix at a time anyway, so it
+costs this skill nothing.
 
 ### 2. Scaffold fixtures + ARM the cleanup gate
 

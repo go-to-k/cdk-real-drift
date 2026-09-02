@@ -371,7 +371,8 @@ into a check.
 **Note WHICH work the copy protects: the bytes the subject held when the
 snapshot was TAKEN.** Content written or extended AFTER that point is reverted
 by the restore, not preserved by it — a lane lost 133 lines of newly written
-tests to precisely that, its harness restoring a snapshot that predated them.
+tests to precisely that (go-to-k/cdkd#2457), its harness restoring a snapshot
+that predated them.
 The restore is doing its job there; the loss is that nothing else held the work.
 That is the destructive half of `references/verify.md`'s pre-probe commit rule,
 and the two are complementary: commit first so the restore cannot cost anything,

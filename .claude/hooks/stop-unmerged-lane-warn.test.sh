@@ -917,6 +917,65 @@ check "...so the SAME subject nudges the model again" "ctx" "$(channel_of "$out"
 git -C "$CLR_REPO" worktree remove --force "$CLR_REPO/wt-clr"
 
 
+# --- The `pushed` arm has TWO texts, and which one is right is a PREDICATE
+# rather than a constant. `verify-pr-gate.sh` EXEMPTS a diff touching no
+# `src/**`, so only a src lane can be held PR-less by it; a docs-only lane told
+# "verify-pr-gate is holding gh pr create" is handed an excuse in exactly the
+# case this hook exists to catch. An earlier revision appended the qualifier
+# UNCONDITIONALLY and this suite stayed green at 121/121, because the only
+# pushed-arm assertion greps a phrase BOTH texts carry -- so both directions are
+# pinned here, and the docs-only one is the direction that bites.
+#
+# A SEPARATE sandbox repo again: the fixtures above are cadence-ordered, and an
+# extra hook invocation against them would shift every subject comparison after
+# it.
+SRC_REPO="$SANDBOX/src-lane-repo"
+mkdir -p "$SRC_REPO/.claude/hooks"
+cp "$HOOK" "$SRC_REPO/.claude/hooks/"
+SRC_RUN="$SRC_REPO/.claude/hooks/$(basename "$HOOK")"
+git -C "$SRC_REPO" init -q .
+git -C "$SRC_REPO" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
+git -C "$SRC_REPO" update-ref refs/remotes/origin/main HEAD
+git -C "$SRC_REPO" config remote.origin.url "$SRC_REPO"
+git -C "$SRC_REPO" config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
+
+# `push_state` must be `pushed` for either text to be reached at all, so each
+# lane gets a real upstream -- the same refspec-and-config dance the cadence
+# fixtures above needed, and for the same reason: without it `@{u}` fails, the
+# hook reads the lane as unpushed, and both cases below would pass on the
+# unpushed arm while asserting nothing about the one under test.
+make_pushed_lane() {  # <worktree> <branch> <path-to-create>
+  local wt="$1" br="$2" path="$3"
+  git -C "$SRC_REPO" worktree add -q "$wt" -b "$br" HEAD
+  mkdir -p "$(dirname "$wt/$path")"
+  printf 'x\n' > "$wt/$path"
+  git -C "$wt" add -A
+  git -C "$wt" -c user.email=t@t -c user.name=t commit -q -m "work on $br"
+  git -C "$SRC_REPO" update-ref "refs/remotes/origin/$br" "$(git -C "$SRC_REPO" rev-parse "$br")"
+  git -C "$SRC_REPO" config "branch.$br.remote" origin
+  git -C "$SRC_REPO" config "branch.$br.merge" "refs/heads/$br"
+}
+
+make_pushed_lane "$SRC_REPO/wt-docs" feat/docs docs/note.md
+check "the docs lane fixture really is fully pushed" "0" \
+  "$(git -C "$SRC_REPO/wt-docs" rev-list --count '@{u}..' 2>/dev/null || echo MISSING)"
+out=$(run_hook_keep "$SRC_REPO" "$SRC_RUN" "{\"cwd\": \"$SRC_REPO/wt-docs\", \"session_id\": \"sess-docs\"}")
+check "a docs-only lane still gets the pushed-arm warning" "yes" \
+  "$(has "$out" -F 'pushed branch with NO PR')"
+check "...and is NOT told a gate is holding gh pr create" "no" \
+  "$(has "$out" -F 'verify-pr-gate')"
+
+make_pushed_lane "$SRC_REPO/wt-src" feat/src src/thing.ts
+out=$(run_hook_keep "$SRC_REPO" "$SRC_RUN" "{\"cwd\": \"$SRC_REPO/wt-src\", \"session_id\": \"sess-src\"}")
+check "a src lane IS told verify-pr-gate may be holding the PR open" "yes" \
+  "$(has "$out" -F 'verify-pr-gate')"
+check "...and the predicate read THIS lane's own diff to decide" "yes" \
+  "$(has "$out" -F 'touches src/**')"
+
+git -C "$SRC_REPO" worktree remove --force "$SRC_REPO/wt-docs"
+git -C "$SRC_REPO" worktree remove --force "$SRC_REPO/wt-src"
+
+
 # The fence itself, aimed at the HELPER rather than at the hook: point it at a
 # probe that reports the byte count of the stdin it was handed. `$#` keeps an
 # explicit empty payload empty (0 bytes) and still defaults an OMITTED one to
@@ -945,10 +1004,10 @@ clear_nudge_records
 # reads `fail: 0`. No suite in this repo had one, so the only thing standing
 # between a gutted loop and a green run was somebody noticing the number move.
 # Raise it when cases are added; never lower it to make a red run green.
-CASE_FLOOR=121
+CASE_FLOOR=126
 if [ "$((pass + fail))" -lt "$CASE_FLOOR" ]; then
   fail=$((fail + 1))
-  fail_log+="FAIL case floor: only $((pass + fail)) cases ran, expected at least 121\n"
+  fail_log+="FAIL case floor: only $((pass + fail)) cases ran, expected at least 126\n"
   printf 'FAIL case floor: only %s cases ran, expected at least %s\n' "$((pass + fail))" "$CASE_FLOOR"
 fi
 printf '\nPass: %d  Fail: %d\n' "$pass" "$fail"

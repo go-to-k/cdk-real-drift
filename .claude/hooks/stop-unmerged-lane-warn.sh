@@ -315,28 +315,36 @@ if [ -n "$self_branch" ]; then
     push_note="It has ${unpushed} commit(s) not yet pushed, so nothing carrying them has been submitted."
   else
     push_state="pushed"
-    # This arm is QUALIFIED on purpose. Unqualified, it told the agent to open a
-    # PR in a state this repo's own flow walks every src/** lane through:
-    # references/gates-and-pr.md orders "commit, push, and open the PR", and
-    # verify-pr-gate.sh then refuses `gh pr create` until the verify-pr marker is
-    # fresh -- so the branch sits on the remote, PR-less, for the whole of a
-    # /verify-pr run. Telling the agent to retry a command a gate is deliberately
-    # holding is advice that cannot be followed, and a warning that cannot be
-    # acted on is how a real one stops being read.
+    # WHICH of the two texts is right depends on whether verify-pr-gate can
+    # actually be holding `gh pr create` for THIS lane, so the predicate is
+    # COMPUTED rather than assumed. An earlier revision appended the qualifier
+    # unconditionally while the comment beside it argued the case was narrow --
+    # a comment describing a conditional the code did not implement, which is
+    # the same defect class the /work-issues text this shipped alongside was
+    # correcting. It also handed the self-assessed escape hatch ("the expected
+    # state, not the failure") to precisely the docs-only lane the hook exists
+    # to catch.
     #
-    # The qualifier is NARROW, and three measured bounds are why it names WHICH
-    # lane it covers rather than dropping the warning outright:
-    #   - verify-pr-gate.sh EXEMPTS a diff touching no src/** (its own
-    #     "docs/tooling-only" arm), so a docs / skills / hooks-only lane never
-    #     enters the state and the plain warning is exactly right for it;
-    #   - nothing heavier than the skill sits behind the marker HERE: the integ
-    #     gate is INERT in this repo (no companion skill, no hook, see
-    #     .markgate.yml), so the wait is one /verify-pr run and not a fixture run;
-    #   - ci-green-gate.sh gates ONLY `gh pr merge` ("create/edit pass -- CI has
-    #     not run yet at create time"), so CI does not force the push either.
-    # The push comes from the FLOW, not from any gate.
-    push_line="It is fully pushed, so a PR may already be in flight -- but a pushed branch with NO PR is exactly the failure this catches. Check, and open one if there is none -- unless this lane touches src/** and /verify-pr has not finished, where verify-pr-gate is still holding gh pr create and the missing PR is the expected state, not the failure."
-    push_note="It is fully pushed, so a PR may already be in flight -- but a pushed branch with NO PR is exactly the failure this catches, unless this is a src/** lane still mid-/verify-pr, where verify-pr-gate holds gh pr create until the marker is fresh."
+    # The bound comes from verify-pr-gate.sh itself, which EXEMPTS a diff
+    # touching no `src/**` (its own "docs/tooling-only" arm), so only a src
+    # lane can be held. Two more bounds keep the qualifier from growing: the
+    # integ gate is INERT in this repo (no companion skill, no hook, see
+    # .markgate.yml), so the wait is one /verify-pr run and not a fixture run;
+    # and ci-green-gate.sh gates ONLY `gh pr merge` ("create/edit pass -- CI
+    # has not run yet at create time"), so CI does not force the push either.
+    # The push comes from the FLOW -- references/gates-and-pr.md has the lane
+    # commit, push, then open the PR -- not from any gate.
+    #
+    # Errs toward the PLAIN text: an unresolvable `origin/main` (a fresh clone,
+    # a sandbox fixture) makes the diff empty and the grep fail, and an
+    # indeterminate state must not buy an excuse for not opening a PR.
+    if git -C "$session_root" diff --name-only origin/main...HEAD 2>/dev/null | grep -qE '^src/'; then
+      push_line="It is fully pushed, so a PR may already be in flight -- but a pushed branch with NO PR is exactly the failure this catches. This lane touches src/**, so if /verify-pr has not finished yet, verify-pr-gate is still holding gh pr create and the missing PR is the expected state rather than the failure. Otherwise, open one."
+      push_note="It is fully pushed, so a PR may already be in flight -- but a pushed branch with NO PR is exactly the failure this catches. This lane touches src/**, so verify-pr-gate may still be holding gh pr create until the verify-pr marker is fresh."
+    else
+      push_line="It is fully pushed, so a PR may already be in flight -- but a pushed branch with NO PR is exactly the failure this catches. Check, and open one if there is none."
+      push_note="It is fully pushed, so a PR may already be in flight -- but a pushed branch with NO PR is exactly the failure this catches."
+    fi
   fi
   # TWO texts for the self-lane case, not one routed twice. The model text is
   # written AT the agent ("you are not done", "rebase, run the gates"), and every
@@ -369,7 +377,7 @@ another PR.
 Every unmerged lane in this checkout:"
   model_msg="WARNING: YOUR OWN lane is unmerged -- a NOT-CLOSEABLE verdict is a TO-DO LIST, not a stopping point.
 This session's worktree is on '$self_branch', which is committed but not on origin/main, so you are not
-done: rebase, run the gates, open the PR, merge. $push_line
+done: rebase, run the gates, then open the PR and merge. $push_line
 If you are ending the turn with nothing that will re-invoke you, the honest label is STOPPED, not WAITING.
 One false positive is expected and is cheap to clear: this repo SQUASH-merges, so a merged branch never
 becomes an ancestor of origin/main and keeps reading as ahead. If '$self_branch' is already merged, the

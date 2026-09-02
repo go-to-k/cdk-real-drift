@@ -50,9 +50,14 @@ const MAX_ORCHESTRATOR_BYTES = 12_000; // orchestrators were 7,952 B / 6,932 B a
 // widest cells were shortened -- which, since `vp fmt` pads markdown table columns
 // to the widest cell, reclaimed the padding on all fourteen rows at once.
 // Re-measure whenever an orchestrator is edited -- a cap with an unmeasured margin
-// is one nobody can plan against. work-issues/SKILL.md is UNCHANGED at 11,812 B
-// by the follow-up round (go-to-k/cdk-real-drift#1856), which landed entirely in
-// stage files. The LAUNCH_BRANCH round before it spent 118 B of the 306 B that
+// is one nobody can plan against. work-issues/SKILL.md is 11,812 B again after the
+// mirror round below, having briefly been 11,801 B mid-round: that round corrected
+// "the markgate store is SHARED across worktrees" to "PER-WORKTREE" (-11 B) and
+// then spent the same 11 B making `SKILL.md:47` say "concurrent lane count", so
+// the net is zero and the margin is unchanged at 188 B. Recorded because a figure
+// that returns to its old value is exactly the one a reader assumes was never
+// re-measured. It was UNCHANGED at 11,812 B by the round before
+// (go-to-k/cdk-real-drift#1856), which landed entirely in stage files. The LAUNCH_BRANCH round before it spent 118 B of the 306 B that
 // were left: the fourth probe value has to be NAMED in the
 // always-loaded file (a lane cannot pass on a value it was never told to record),
 // while its reading, its restore recipe and the IN-PLACE consequence rows all
@@ -89,7 +94,24 @@ const MAX_REFERENCE_FILE_BYTES = 64_000; // largest stage file measured 55,137 B
 // now ASSERTED at the bottom of this file as well as described here, because
 // three consecutive rounds re-derived it BY HAND and one of them found it
 // lapsed.
-// Re-derived 2026-09-02 (go-to-k/cdk-real-drift#1856) at the final tree.
+// Re-derived 2026-09-03 at the final tree of the mirror round. work-issues: 9
+// stage files, corpus 148,057 B, largest implement.md 28,148 B, so the BINDING
+// requirement is 148,057 - 28,148 = 119,909 -- which the 120,000 set the round
+// before cleared by only 91 B. That is the number to watch: the previous round
+// left 7,708 B of margin there and one ordinary round of prose ate 99% of it,
+// without touching this file, because the floor moves with the corpus while the
+// largest file does not. The FLIP case had already gone red: the next candidates
+// to become largest are verify.md at 26,027 B and triage.md at 24,327 B, and the
+// worst of those requires 151,879 - 28,149 = 123,730, which 120,000 sits BELOW --
+// so a later verify.md edit of 2,122 B would have reddened an assertion whose
+// comment told its author the opposite. Raised to 128,000: clears the binding
+// number by 8,091 B and the flip by 4,270 B, and leaves 148,057 - 128,000 =
+// 20,057 B of compression room below the floor, the same shape the 2026-09-02
+// derivation aimed for. The growth this round is the mutation-harness item and
+// the destructive-restore reason in verify.md (+2,723 B) plus the serialization
+// correction in triage.md (+1,188 B).
+//
+// SUPERSEDED, kept because the reasoning is the same and only the numbers moved:
 // work-issues: 9 stage files, corpus 139,801 B, largest implement.md 27,509 B, so
 // the binding requirement is 139,801 - 27,509 = 112,292, which the 116,000 set
 // hours earlier still clears -- the assertion below did NOT fire, and this raise
@@ -115,7 +137,7 @@ const SPLIT_SKILLS: Record<string, { minFiles: number; minCorpusBytes: number }>
   // post-compression. 9 files as of 2026-09-01, when the launch-mode probe and its
   // reading moved out of triage.md into references/launch-mode.md, which the PARENT
   // reads before stage 0.
-  'work-issues': { minFiles: 9, minCorpusBytes: 120_000 },
+  'work-issues': { minFiles: 9, minCorpusBytes: 128_000 },
   // 7 files / 108,940 B measured at the split (2026-08-28); largest 55,137 B; 87,180 B post-compression
   'hunt-bugs': { minFiles: 7, minCorpusBytes: 60_000 },
 };

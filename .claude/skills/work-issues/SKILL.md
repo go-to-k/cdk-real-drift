@@ -44,7 +44,7 @@ worktree": MAIN-CHECKOUT records the MAIN checkout under it, and the
 `git -C "<LANE_TREE>"` recipes consuming it in §4, §5, §7 and §10 are
 IN-PLACE-only arms (every MAIN-CHECKOUT arm beside them uses no `-C`).
 
-`IN-PLACE` changes a great deal more than the lane count: §1's pull, the
+`IN-PLACE` changes a great deal more than the concurrent lane count: §1's pull, the
 collision scan's paths, the claim, the branch recipe, §7's rebase, the worktree
 and branch cleanup, where the retro branch is created, and the `LAUNCH_BRANCH`
 restore that ends the run.
