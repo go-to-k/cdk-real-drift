@@ -141,7 +141,8 @@ Enforced by `.claude/hooks/issue-dup-check-gate.sh`, which refuses
 Never edit in the main checkout — `.claude/hooks/worktree-guard.sh` blocks an
 Edit/Write to the main checkout's `src/**` or `tests/**` while any worktree
 exists, and always allows a path under `.worktrees/`. Per lane, in
-MAIN-CHECKOUT mode:
+MAIN-CHECKOUT mode (`references/launch-mode.md` holds the probe that decides
+which mode this is — the ONLY copy of it):
 
 ```bash
 git worktree add .worktrees/<name> -b wt-<name> origin/main
@@ -169,12 +170,12 @@ ancestor, which is what turns the gate ON for these lanes. The change gains
 coverage rather than risking it.
 
 **IN-PLACE mode (SKILL.md "Launch mode") skips that block entirely**: this run
-was launched inside a linked worktree, so it keeps that tree and the branch
-already checked out there, and creates NOTHING — a nested worktree dies with
-the outer workspace, taking its uncommitted work and leaving a registration
-that needs `git worktree prune` (go-to-k/cdk-real-drift#1842). Deps and `dist/`
-are usually already there; run `pnpm install` / `vp run build` only if they are
-not.
+was launched inside a linked worktree, so it keeps that tree and creates NO
+WORKTREE — a nested one dies with the outer workspace, taking its uncommitted
+work and leaving a registration that needs `git worktree prune`
+(go-to-k/cdk-real-drift#1842). It does still take a BRANCH, in place, by the
+recipe below. Deps and `dist/` are usually already there; run `pnpm install` /
+`vp run build` only if they are not.
 
 **Confirm the tree is YOURS before adopting it.** A stray `cd` into a peer's
 live lane looks exactly like a workspace handed to you. This repo ships no
@@ -216,9 +217,14 @@ previous revision had the two the other way round: a run following the file in
 order took a peer's live lane off its branch and only then checked whose tree it
 was. The order is the guard.
 
-**Only once the tree is confirmed yours**: if it is DETACHED, or its branch has
-already merged (reusing it would push an orphan ref), take a fresh branch
-WITHOUT leaving the tree.
+**Only once the tree is confirmed yours**: take a fresh branch here, ALWAYS,
+without leaving the tree. This used to be conditional — a DETACHED tree, or one
+whose branch had already merged (reusing it would push an orphan ref) — and the
+condition is WITHDRAWN. The branch the tree arrived on is `LAUNCH_BRANCH`
+(`references/launch-mode.md`): the OUTER TOOL's, not this run's, and §9 puts it
+back untouched at the very end, so committing onto it would leave the run
+nothing to restore and hand `gh pr merge --delete-branch` the outer tool's own
+remote branch to delete (go-to-k/cdkd#2417).
 
 ```bash
 # `-C <LANE_TREE>` is load-bearing, and the REASON changed on 2026-09-01.
@@ -345,6 +351,22 @@ so `vp test run` never saw them (`vp run test:hooks` now runs them, in CI too).
 The general shape: **a fence is not evidence until you have watched it go red on
 something you had not already counted.** Calibration says it is not noisy; only
 the spelling and deletion probes say it is load-bearing.
+
+**Restore from a BYTE-EXACT copy of the subject, never by inverting the edit.**
+A probe deliberately breaks a file, so the restore is the half that has to be
+right, and an inverse string replace is not one: measured 2026-09-02 on this
+skill's own fences, a probe that deleted a line reverted with
+`text.replace('', deleted_line)` — Python inserts between EVERY character —
+turned an 11 KB stage file into 838 KB, and the three probes queued behind it
+ran against the corrupted subject and returned verdicts about nothing. Copy the
+file aside first and copy it back (`cp` / `shutil.copyfile`), then re-run the
+suite and confirm GREEN before the next probe. `git checkout -- <file>` is not
+the alternative: at probe time the fix itself is usually uncommitted, so that
+discards the work along with the wreckage (the pre-probe commit rule in
+`references/verify.md` narrows this, and a `git stash` cycle around an unrelated
+peer's changes has its own trap). Verify the restore by HASH, not by eye — a
+`shasum -a 256` recorded before the first probe turns "I think I put it back"
+into a check.
 
 **Both probes above vary the INPUT. The second axis is the STATE the subject is
 in when the input arrives, and that one gets enumerated by ACCIDENT** — every

@@ -147,6 +147,26 @@ at once, not trickled.
     failed once and the identical re-run went 343/343 rc=0. Tell them apart by
     the COUNT — 13 failures means no `dist/`, fewer means the flake — and
     never let a single red run stand as the verdict.
+  - **The COUNT stops discriminating once the host is loaded; re-run at
+    `--maxWorkers=4` instead.** Every suite that SPAWNS the built CLI or `vp`
+    itself is racing the machine's other agents for cores, and a 5,000 ms
+    default timeout is what gives way first — so the reds land in whichever
+    subprocess suites the run happened to schedule during the crunch, at a
+    count that says nothing about `dist/`. Measured 2026-09-02
+    (go-to-k/cdk-real-drift#1854): `json-empty-on-error` plus
+    `markdown-fmt-corruption-1771` failed 10, then 13, then 14 tests across
+    three full runs with `dist/` freshly packed; both files passed run in
+    ISOLATION, and one `vp test run --maxWorkers=4` over the whole suite was
+    352 files / 6,665 tests green. The sibling go-to-k/cdkd reproduced the same
+    class within the hour — a 5,000 ms test failing twice under load, then 3/3
+    once the parallel lanes finished. So the discriminator is the RE-RUN SHAPE,
+    not the count: isolation, reduced parallelism, and simply waiting for the
+    host to quiesce turn a load artifact green while leaving a real failure red.
+    Measure the host before believing any of them — the same day, at
+    `load average 137` with 40 `vitest` processes from peer lanes, `--maxWorkers=4`
+    was no longer enough and one test still timed out running its file ALONE.
+    `uptime` costs nothing and tells you whether the machine, not the diff, is
+    the subject.
   - **Repeating a `vp run <task>` DOES re-execute here** — `check` (5/5) and
     `test` (3/3) reported `not cached because it modified its input`. Do not
     import the sibling's cache-hit warning; the local cache trap (PR
@@ -241,6 +261,18 @@ on the same class, its flow-style `exclude:` staying green through the first
 fix for it. So the depth is your own read of the whole diff plus a round you
 dispatch yourself, and a lane's clean round is evidence about the lane's
 assumptions, not about the diff.
+
+**Reviewer subagents spawned BY A LANE report to the MAIN session, not to the
+lane that spawned them.** Completion notifications go to the top-level session,
+so a lane that dispatches reviewers and then waits on their reports waits for
+something that cannot arrive, while the parent collects verdicts it did not ask
+for and may not connect to a lane. Measured 2026-09-02 (go-to-k/cdkd#2417): a
+lane's two reviewers both delivered upward, the lane blocked, and the parent
+relayed both verdicts by hand. Pick one shape and say which in the dispatch: the
+lane runs its reviewers **synchronously** (so it holds its own turn until they
+return), or the **parent owns the review dispatch** and relays each verdict down
+— the latter under §9's queued-versus-`Resuming` rule, because a lane waiting on
+a review is stopped at exactly the moment the relay is sent.
 
 **A reviewer's scratch COPY of a worktree is not detached from git, so its
 `git add -A` writes to the LIVE tree.** A linked worktree's `.git` is a FILE
