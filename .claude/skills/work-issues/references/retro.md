@@ -241,8 +241,15 @@ Every run appending one more bullet is how a long skill becomes an unread one.
   leaving the copies corrected and the original still asserting the falsehood —
   which is the drift shape §10-b fences, re-created by the very run sent to end
   it. So for every claim, grep for the OTHER sites before fixing the named one,
-  and count what a list-shaped instruction says it contains (2026-09-03,
-  go-to-k/cdk-real-drift#1861).
+  and count what a list-shaped instruction says it contains.
+  **The worked instance is this rule's own commit.** Correcting the probe-value
+  undercount, that run fixed `hunt-bugs/references/plan.md` and left the
+  identical sentence in `references/triage.md` saying "a mode and two paths" —
+  one claim, two copies, one corrected, shipped in the very commit that adds the
+  paragraph you are reading. A reviewer found it, not the author, which is the
+  point: the author had just written the rule and still could not see the
+  instance, because the second copy was in a file the finding did not name
+  (2026-09-03, go-to-k/cdk-real-drift#1861).
   **Verify the cited EVIDENCE too — open the issue or PR the sentence names and
   confirm it says what the sentence claims.** Wrong evidence is wrong where
   WRITTEN and travels intact past every per-repo noun check: this file claimed
