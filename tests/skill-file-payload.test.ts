@@ -95,9 +95,10 @@ const MAX_REFERENCE_FILE_BYTES = 64_000; // largest stage file measured 55,137 B
 // three consecutive rounds re-derived it BY HAND and one of them found it
 // lapsed.
 // Re-derived 2026-09-03 at the final tree of the mirror round. work-issues: 9
-// stage files, corpus 148,057 B, largest implement.md 28,148 B, so the BINDING
-// requirement is 148,057 - 28,148 = 119,909 -- which the 120,000 set the round
-// before cleared by only 91 B. That is the number to watch: the previous round
+// stage files, corpus 149,286 B, largest implement.md 28,148 B, so the BINDING
+// requirement is 149,286 - 28,148 = 121,138 -- and at the 120,000 the round
+// before set, the corpus had cleared it by only 91 B before this round's last
+// edit and would NOT have cleared it after. That is the number to watch: the previous round
 // left 7,708 B of margin there and one ordinary round of prose ate 99% of it,
 // without touching this file, because the floor moves with the corpus while the
 // largest file does not. The FLIP case had already gone red: the next candidates
@@ -105,11 +106,14 @@ const MAX_REFERENCE_FILE_BYTES = 64_000; // largest stage file measured 55,137 B
 // worst of those requires 151,879 - 28,149 = 123,730, which 120,000 sits BELOW --
 // so a later verify.md edit of 2,122 B would have reddened an assertion whose
 // comment told its author the opposite. Raised to 128,000: clears the binding
-// number by 8,091 B and the flip by 4,270 B, and leaves 148,057 - 128,000 =
-// 20,057 B of compression room below the floor, the same shape the 2026-09-02
-// derivation aimed for. The growth this round is the mutation-harness item and
-// the destructive-restore reason in verify.md (+2,723 B) plus the serialization
-// correction in triage.md (+1,188 B).
+// number by 6,862 B and the worst flip (triage.md, 124,959) by 3,041 B, and
+// leaves 149,286 - 128,000 = 21,286 B of compression room below the floor, the
+// same shape the 2026-09-02 derivation aimed for. Probed rather than reasoned,
+// as that derivation demands: grown to the verify.md flip, the OLD 120,000
+// fails with "would leave 122,030 B and still pass" and 128,000 passes. The
+// growth this round is the mutation-harness item and the destructive-restore
+// reason in verify.md (+2,723 B), the serialization correction in triage.md
+// (+1,188 B) and the recon-scope lesson in retro.md (+1,229 B).
 //
 // SUPERSEDED, kept because the reasoning is the same and only the numbers moved:
 // work-issues: 9 stage files, corpus 139,801 B, largest implement.md 27,509 B, so

@@ -223,6 +223,22 @@ Every run appending one more bullet is how a long skill becomes an unread one.
   mirror that only ever asks "does this apply here" launders it intact into
   every repo that DOES have the machinery. Reading the source hook cost two
   commands.
+  **A recon or handoff report is a CLAIM SET, not a work list — re-derive its
+  SCOPE, not only its citations.** The mirror that produced this section was
+  handed a read-only recon that had checked every claim against this repo's
+  files, and it was still stale in ten places and wrong about scope twice — both
+  times UNDER-reporting. The false markgate-store claim sat at FIVE sites, not
+  the three it named, and the two it missed were the `/check` and `/check-docs`
+  skills that are the ORIGIN of the measurement the other three cite; adding one
+  item to `verify.md`'s §8-z required moving FOUR counts, not the one it flagged.
+  The two error kinds are not equally dangerous. A drifted line number announces
+  itself the moment you open the file, but an under-reported scope is SILENT: a
+  lane that treats the list as complete lands a partial fix and reports it done,
+  leaving the copies corrected and the original still asserting the falsehood —
+  which is the drift shape §10-b fences, re-created by the very run sent to end
+  it. So for every claim, grep for the OTHER sites before fixing the named one,
+  and count what a list-shaped instruction says it contains (2026-09-03,
+  go-to-k/cdk-real-drift#1861).
   **Verify the cited EVIDENCE too — open the issue or PR the sentence names and
   confirm it says what the sentence claims.** Wrong evidence is wrong where
   WRITTEN and travels intact past every per-repo noun check: this file claimed
