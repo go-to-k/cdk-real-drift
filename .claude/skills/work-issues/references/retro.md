@@ -335,9 +335,15 @@ git -C "<LANE_TREE>" fetch origin \
 - **Merge it before the wrap report, then remove the worktree**
   (`git worktree remove .worktrees/<name> && git worktree prune`) — §9 ends
   with every worktree gone and §10 must not undo that. An IN-PLACE run added
-  none: it merges and stops there, leaving the tree on the retro branch for
-  whoever owns the workspace (the appendix has what the Stop hook will say
-  about that). This is `Session-fit: now` on the leaves-main-self-inconsistent
+  none, so instead this is where it runs §9's IN-PLACE cleanup arm — **the LAST
+  step of the whole run**: `git switch <LAUNCH_BRANCH>` as-is (no pull, no
+  rebase, no fast-forward) and `git branch -D` every branch this run created,
+  the retro branch included. §9 deliberately does NOT do it per-lane, because
+  THIS section branches in the same tree and would undo it. Leaving the tree on
+  the retro branch — the previous instruction here — makes the unmerged-lane
+  Stop hook warn every turn (the appendix has the wording), and detaching
+  instead is visible-surprising in the outer tool's UI; restoring what the tool
+  created is quiet on both counts. This is `Session-fit: now` on the leaves-main-self-inconsistent
   criterion (the skill would keep telling the next run to do what this run just
   proved wrong); its evidence dies with this session, and an open PR is NOT
   CLOSEABLE besides.
