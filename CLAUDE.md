@@ -597,6 +597,19 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   origin/main`). THIS gate's verdicts are untouched — refusing the sha
   spelling is a separate behaviour change with its own PR.
 
+  **The remedy it prints follows the operation in progress**: a conflicted
+  rebase is one of the ways the shared checkout detaches, and there
+  `git switch main` is refused with `fatal: cannot switch branch while
+  rebasing`, so a correct block ended in an impossible instruction. The gate
+  reads the TARGET's RESOLVED git dir (not `<dir>/.git`, wrong from a
+  subdirectory) for `rebase-merge` / `rebase-apply` / `CHERRY_PICK_HEAD` /
+  `REVERT_HEAD` / `MERGE_HEAD` / `BISECT_LOG` and prints `<op> --continue` /
+  `<op> --abort`, or `bisect reset` for the one case where `switch main` is
+  accepted but leaves the bisect running; the `applying` sentinel inside
+  `rebase-apply` separates `git am` from `git rebase --apply`. Every printed
+  remedy was executed against the fixture and exited 0, and because both arms
+  exit 2, `branch-gate.test.sh` asserts the MESSAGE TEXT rather than the code.
+
   `main-tree-branch-gate` was ported from
   cdkd / cdk-local in the FIXED per-segment shape: the target tree is resolved
   from the SAME segment that carries the arguments, so a command spanning two
