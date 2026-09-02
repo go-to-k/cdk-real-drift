@@ -50,8 +50,10 @@ const MAX_ORCHESTRATOR_BYTES = 12_000; // orchestrators were 7,952 B / 6,932 B a
 // widest cells were shortened -- which, since `vp fmt` pads markdown table columns
 // to the widest cell, reclaimed the padding on all fourteen rows at once.
 // Re-measure whenever an orchestrator is edited -- a cap with an unmeasured margin
-// is one nobody can plan against. The 2026-09-02 LAUNCH_BRANCH round spent 118 B
-// of the 306 B that were left: the fourth probe value has to be NAMED in the
+// is one nobody can plan against. work-issues/SKILL.md is UNCHANGED at 11,812 B
+// by the follow-up round (go-to-k/cdk-real-drift#1856), which landed entirely in
+// stage files. The LAUNCH_BRANCH round before it spent 118 B of the 306 B that
+// were left: the fourth probe value has to be NAMED in the
 // always-loaded file (a lane cannot pass on a value it was never told to record),
 // while its reading, its restore recipe and the IN-PLACE consequence rows all
 // went to references/launch-mode.md and references/ship.md.
@@ -87,18 +89,23 @@ const MAX_REFERENCE_FILE_BYTES = 64_000; // largest stage file measured 55,137 B
 // now ASSERTED at the bottom of this file as well as described here, because
 // three consecutive rounds re-derived it BY HAND and one of them found it
 // lapsed.
-// Re-derived 2026-09-02 (go-to-k/cdk-real-drift#1854) at the final tree.
-// work-issues: 9 stage files, corpus 134,827 B, largest implement.md 26,041 B, so
-// the floor must exceed 134,827 - 26,041 = 108,786 -- the 108,000 set one round
-// earlier no longer does, and the assertion at the bottom of this file is what
-// said so rather than a human re-deriving it. The binding number is again not
-// the worst case: triage.md is 22,342 B, 3,699 B behind implement.md, so a flip
-// would put the requirement at 134,827 - 22,342 = 112,485. Sizing against the
-// FLIP, 116,000 clears the binding number by 7,214 B and the flip case by
-// 3,515 B, and leaves ~18 KB (134,827 - 116,000 = 18,827 B) of compression room
-// below the floor. The growth is the LAUNCH_BRANCH restore contract landing
-// across launch-mode.md (+1,541 B), ship.md (+3,471 B), retro.md (+471 B) and
-// claim.md (+152 B).
+// Re-derived 2026-09-02 (go-to-k/cdk-real-drift#1856) at the final tree.
+// work-issues: 9 stage files, corpus 139,801 B, largest implement.md 27,509 B, so
+// the binding requirement is 139,801 - 27,509 = 112,292, which the 116,000 set
+// hours earlier still clears -- the assertion below did NOT fire, and this raise
+// is preventive rather than a repair. What no longer clears is the FLIP case the
+// comment has been sized against since go-to-k/cdk-real-drift#1854: the next
+// candidates to become largest are verify.md at 23,304 B and triage.md at
+// 23,139 B, and the worst of those requires 139,801 - 23,139 = 116,662, which
+// 116,000 sits BELOW. Probed rather than reasoned (2026-09-02): with triage.md
+// grown past implement.md, the assertion reports "would leave 116,293 B and
+// still pass" at 116,000 and passes at 120,000. So 120,000 -- clearing the
+// binding number by 7,708 B and the flip by 3,338 B, and leaving ~19 KB
+// (139,801 - 120,000 = 19,801 B) of compression room below the floor. The growth
+// this round is the IN-PLACE branch rule and the byte-exact probe-restore rule
+// in implement.md (+1,628 B) plus the reviewer-reporting and host-load lessons
+// in verify.md (+2,316 B); the round before it was the LAUNCH_BRANCH restore
+// contract across launch-mode.md, ship.md, retro.md and claim.md.
 // hunt-bugs stays at 60,000: re-measured the same day, corpus 88,598 B and
 // largest gotchas.md 41,922 B, so 88,598 - 41,922 = 46,676 < 60,000 and its
 // property still holds. Re-measure both numbers for each skill whenever a stage
@@ -108,7 +115,7 @@ const SPLIT_SKILLS: Record<string, { minFiles: number; minCorpusBytes: number }>
   // post-compression. 9 files as of 2026-09-01, when the launch-mode probe and its
   // reading moved out of triage.md into references/launch-mode.md, which the PARENT
   // reads before stage 0.
-  'work-issues': { minFiles: 9, minCorpusBytes: 116_000 },
+  'work-issues': { minFiles: 9, minCorpusBytes: 120_000 },
   // 7 files / 108,940 B measured at the split (2026-08-28); largest 55,137 B; 87,180 B post-compression
   'hunt-bugs': { minFiles: 7, minCorpusBytes: 60_000 },
 };

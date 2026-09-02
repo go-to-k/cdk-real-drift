@@ -87,8 +87,9 @@ const ARM_BEARING: Record<string, string[]> = {
 /**
  * Files carrying an arm of the LAUNCH_BRANCH contract
  * (go-to-k/cdk-real-drift#1854): the probe records the branch the outer tool
- * handed the tree over on, section 5 refuses to commit onto it, and section 9
- * puts it back AS-IS at the very end. Separate from ARM_BEARING because the mode
+ * handed the tree over on, section 5 refuses to commit onto it -- taking a fresh
+ * branch in place, ALWAYS, which is why implement.md carries an arm too -- and
+ * section 9 puts it back AS-IS at the very end. Separate from ARM_BEARING because the mode
  * words survive deleting the restore -- a file can still say IN-PLACE everywhere
  * while the one step that makes the mode leave no trace is gone, which is what
  * the byte floors also cannot see.
@@ -97,6 +98,7 @@ const LAUNCH_BRANCH_BEARING = [
   'SKILL.md',
   LAUNCH_MODE_DOC,
   join('references', 'claim.md'),
+  join('references', 'implement.md'),
   join('references', 'ship.md'),
   join('references', 'retro.md'),
 ];
