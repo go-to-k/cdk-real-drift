@@ -204,6 +204,52 @@ Every run appending one more bullet is how a long skill becomes an unread one.
   against that repo's files — caught four such false claims in the first mirror
   of this section (2026-08-18). This rule lives here, not in memory: memory is
   per-project-path and per-machine, so it would not load in the target repos.
+  **Verify the MECHANISM at the SOURCE, not only the applicability at the
+  TARGET.** The two feel like one check and are not. Applicability asks "does
+  this repo have that gate / hook / file", which the target-repo reviewer above
+  answers well. The mechanism asks "was the claim ever true where it was
+  WRITTEN", and once a lesson is in transit nobody is positioned to ask it: the
+  originating repo is no longer being read, and the target repo cannot see a
+  defect in machinery it does not have. Measured 2026-09-03 on the mirror that
+  produced this section's own edits: a lesson arrived describing a leaked
+  `.markgate-pr-review-sha` as a FALSE PASS that would merge a PR on the
+  strength of an already-merged one's review. The recon correctly ruled it
+  INAPPLICABLE here — `pr-review` is inert in this repo and the sentinel file
+  does not exist — and the framing was still wrong at the source: the siblings'
+  `pr-review-gate.sh` passes only on `recorded_sha = head_sha`, so a leaked
+  sentinel MISMATCHES and blocks, printing `bound to <sha> (mismatch)`. Fail
+  CLOSED, not fail open; the real sibling cost is a confusing block naming an
+  unrelated PR's sha. A correctly-REJECTED claim can still be false, and a
+  mirror that only ever asks "does this apply here" launders it intact into
+  every repo that DOES have the machinery. Reading the source hook cost two
+  commands.
+  **A recon or handoff report is a CLAIM SET, not a work list — re-derive its
+  SCOPE, not only its citations.** The mirror that produced this section was
+  handed a read-only recon that had checked every claim against this repo's
+  files, and it was still stale in ten places and wrong about scope twice — both
+  times UNDER-reporting. The false markgate-store claim sat at FIVE sites, not
+  the three it named, and the two it missed were the `/check` and `/check-docs`
+  skills — and `/check` is the ORIGIN the others point back at, so correcting only
+  the three named would have left the source still asserting it. Adding one item
+  to `verify.md`'s §8-z touched FOUR places rather than the one it flagged, and
+  only TWO of those carried a digit that changed; the other two kept their
+  numeral and moved their scope, so even a careful grep for numerals finds half
+  the work and looks finished.
+  The two error kinds are not equally dangerous. A drifted line number announces
+  itself the moment you open the file, but an under-reported scope is SILENT: a
+  lane that treats the list as complete lands a partial fix and reports it done,
+  leaving the copies corrected and the original still asserting the falsehood —
+  which is the drift shape §10-b fences, re-created by the very run sent to end
+  it. So for every claim, grep for the OTHER sites before fixing the named one,
+  and count what a list-shaped instruction says it contains.
+  **The worked instance is this rule's own commit.** Correcting the probe-value
+  undercount, that run fixed `hunt-bugs/references/plan.md` and left the
+  identical sentence in `references/triage.md` saying "a mode and two paths" —
+  one claim, two copies, one corrected, shipped in the very commit that adds the
+  paragraph you are reading. A reviewer found it, not the author, which is the
+  point: the author had just written the rule and still could not see the
+  instance, because the second copy was in a file the finding did not name
+  (2026-09-03, go-to-k/cdk-real-drift#1861).
   **Verify the cited EVIDENCE too — open the issue or PR the sentence names and
   confirm it says what the sentence claims.** Wrong evidence is wrong where
   WRITTEN and travels intact past every per-repo noun check: this file claimed

@@ -315,8 +315,41 @@ if [ -n "$self_branch" ]; then
     push_note="It has ${unpushed} commit(s) not yet pushed, so nothing carrying them has been submitted."
   else
     push_state="pushed"
-    push_line="It is fully pushed, so a PR may already be in flight -- but a pushed branch with NO PR is exactly the failure this catches. Check, and open one if there is none."
-    push_note="It is fully pushed, so a PR may already be in flight -- but a pushed branch with NO PR is exactly the failure this catches."
+    # WHICH of the two texts is right depends on whether verify-pr-gate can
+    # actually be holding `gh pr create` for THIS lane, so the predicate is
+    # COMPUTED rather than assumed. An earlier revision appended the qualifier
+    # unconditionally while the comment beside it argued the case was narrow --
+    # a comment describing a conditional the code did not implement, which is
+    # the same defect class the /work-issues text this shipped alongside was
+    # correcting. It also handed the self-assessed escape hatch ("the expected
+    # state, not the failure") to precisely the docs-only lane the hook exists
+    # to catch.
+    #
+    # The bound comes from verify-pr-gate.sh itself, which EXEMPTS a diff
+    # touching no `src/**` (its own "docs/tooling-only" arm), so only a src
+    # lane can be held. Two more bounds keep the qualifier from growing: the
+    # integ gate is INERT in this repo (no companion skill, no hook, see
+    # .markgate.yml), so the wait is one /verify-pr run and not a fixture run;
+    # and ci-green-gate.sh gates ONLY `gh pr merge` ("create/edit pass -- CI
+    # has not run yet at create time"), so CI does not force the push either.
+    # The push comes from the FLOW -- references/gates-and-pr.md has the lane
+    # commit, push, then open the PR -- not from any gate.
+    #
+    # The `^src/` test is byte-identical to the gate's, but the BASE is not:
+    # verify-pr-gate.sh tries origin/main, origin/master, main, master in turn,
+    # while this reads origin/main alone. Both diverge in the SAFE direction --
+    # the gate fails closed on a diff it cannot compute and keeps gating, this
+    # falls to the PLAIN text -- so neither invents an exemption. Same reason on
+    # an unresolvable `origin/main` (a fresh clone, a sandbox fixture): the diff
+    # is empty, the grep fails, and an indeterminate state must not buy an
+    # excuse for not opening a PR.
+    if git -C "$session_root" diff --name-only origin/main...HEAD 2>/dev/null | grep -qE '^src/'; then
+      push_line="It is fully pushed, so a PR may already be in flight -- but a pushed branch with NO PR is exactly the failure this catches. This lane touches src/**, so if /verify-pr has not finished yet, verify-pr-gate is still holding gh pr create and the missing PR is the expected state rather than the failure. Otherwise, open one."
+      push_note="It is fully pushed, so a PR may already be in flight -- but a pushed branch with NO PR is exactly the failure this catches. This lane touches src/**, so verify-pr-gate may still be holding gh pr create until the verify-pr marker is fresh."
+    else
+      push_line="It is fully pushed, so a PR may already be in flight -- but a pushed branch with NO PR is exactly the failure this catches. Check, and open one if there is none."
+      push_note="It is fully pushed, so a PR may already be in flight -- but a pushed branch with NO PR is exactly the failure this catches."
+    fi
   fi
   # TWO texts for the self-lane case, not one routed twice. The model text is
   # written AT the agent ("you are not done", "rebase, run the gates"), and every
@@ -349,7 +382,7 @@ another PR.
 Every unmerged lane in this checkout:"
   model_msg="WARNING: YOUR OWN lane is unmerged -- a NOT-CLOSEABLE verdict is a TO-DO LIST, not a stopping point.
 This session's worktree is on '$self_branch', which is committed but not on origin/main, so you are not
-done: rebase, run the gates, open the PR, merge. $push_line
+done: rebase, run the gates, then open the PR and merge. $push_line
 If you are ending the turn with nothing that will re-invoke you, the honest label is STOPPED, not WAITING.
 One false positive is expected and is cheap to clear: this repo SQUASH-merges, so a merged branch never
 becomes an ancestor of origin/main and keeps reading as ahead. If '$self_branch' is already merged, the

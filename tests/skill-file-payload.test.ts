@@ -50,9 +50,14 @@ const MAX_ORCHESTRATOR_BYTES = 12_000; // orchestrators were 7,952 B / 6,932 B a
 // widest cells were shortened -- which, since `vp fmt` pads markdown table columns
 // to the widest cell, reclaimed the padding on all fourteen rows at once.
 // Re-measure whenever an orchestrator is edited -- a cap with an unmeasured margin
-// is one nobody can plan against. work-issues/SKILL.md is UNCHANGED at 11,812 B
-// by the follow-up round (go-to-k/cdk-real-drift#1856), which landed entirely in
-// stage files. The LAUNCH_BRANCH round before it spent 118 B of the 306 B that
+// is one nobody can plan against. work-issues/SKILL.md is 11,812 B again after the
+// mirror round below, having briefly been 11,801 B mid-round: that round corrected
+// "the markgate store is SHARED across worktrees" to "PER-WORKTREE" (-11 B) and
+// then spent the same 11 B making `SKILL.md:47` say "concurrent lane count", so
+// the net is zero and the margin is unchanged at 188 B. Recorded because a figure
+// that returns to its old value is exactly the one a reader assumes was never
+// re-measured. It was UNCHANGED at 11,812 B by the round before
+// (go-to-k/cdk-real-drift#1856), which landed entirely in stage files. The LAUNCH_BRANCH round before it spent 118 B of the 306 B that
 // were left: the fourth probe value has to be NAMED in the
 // always-loaded file (a lane cannot pass on a value it was never told to record),
 // while its reading, its restore recipe and the IN-PLACE consequence rows all
@@ -89,7 +94,57 @@ const MAX_REFERENCE_FILE_BYTES = 64_000; // largest stage file measured 55,137 B
 // now ASSERTED at the bottom of this file as well as described here, because
 // three consecutive rounds re-derived it BY HAND and one of them found it
 // lapsed.
-// Re-derived 2026-09-02 (go-to-k/cdk-real-drift#1856) at the final tree.
+// Re-derived 2026-09-03 at the FINAL tree of the mirror round, every figure at
+// that ONE tree. Re-derive this block LAST, after the stage files are final:
+// earlier revisions of it went stale three times while being written, because
+// editing a stage file to fix prose moves the very corpus the comment is about.
+// Nothing else in this file shares that hazard.
+//
+// work-issues: 9 stage files, corpus 150,395 B, largest implement.md 28,148 B,
+// so the BINDING requirement is 150,395 - 28,148 = 122,247. The 120,000 the
+// previous round set is BELOW that, so this raise is a REPAIR and not a
+// precaution: the assertion was already red at HEAD on the binding case alone,
+// no flip needed. Probed rather than reasoned, as this derivation demands -- at
+// 120,000 the suite fails with "deleting that one file would leave 122247 B and
+// still pass", and 130,000 passes. How the margin went across the round:
+// +7,708 B at the base, then +225, +91, -1,138. One round of PROSE consumed it
+// while touching this file only to raise it, because the floor moves with the
+// corpus and the largest file does not.
+//
+// THE FLIP CASE, stated correctly, because two rounds of reviewers and the
+// author all got it wrong here first. When a file grows past implement.md and
+// becomes the largest, the residual is `total - v`, where v is that file's size
+// BEFORE the growth -- the growth cancels, landing in the corpus and in the new
+// largest alike. So the residual is worst for the SMALLEST stage file, not the
+// nearest: claim.md, the SMALLEST at 5,429 B, would leave 144,966. Covering
+// every candidate would need a floor above that, leaving 5,429 B of compression
+// room, which is not this floor's design. It is sized against the NEAR candidates -- triage.md
+// needs +3,811 and leaves 126,057, retro.md +3,471 leaves 125,717, verify.md
+// +1,837 leaves 124,083 -- and note the ranking is not by file size: rank by
+// `total - v`, or the nearest-looking candidate is not the binding one. For
+// everything past those the ASSERTION is the backstop BY DESIGN: it fires at the
+// commit that causes the flip and its message names the number to raise to.
+//
+// Chosen 130,000, not the 128,000 an earlier revision of this round set. At
+// 128,000 the binding margin was 5,753 B and the worst near flip cleared by only
+// 1,943 B -- less than one ordinary edit -- so it would have red on the next
+// routine round and taught the next author nothing except to raise it again.
+// 130,000 clears binding by 7,753 B (restoring the round base's 7,708 B) and the
+// worst near flip by 3,943 B, leaving 150,395 - 130,000 = 20,395 B of
+// compression room (13.6%, against 14.2% at the 2026-09-02 derivation).
+//
+// HONEST LIMIT: 7,753 B is roughly what the previous round consumed in one pass,
+// so this still buys about ONE round. A cap with an unmeasured margin is one
+// nobody can plan against; so is one whose margin is measured and left unstated.
+//
+// The growth this round is +10,594 B across all 8 changed stage files, listed in
+// FULL because a partial list is the same silent under-reporting
+// references/retro.md now carries a rule against: retro.md +3,437,
+// verify.md +3,008, gates-and-pr.md +1,237, triage.md +1,199, claim.md +898,
+// implement.md +639, launch-mode.md +96, ship.md +80. Base corpus 139,801 +
+// 10,594 = 150,395, which is the arithmetic that makes the list checkable.
+//
+// SUPERSEDED, kept because the reasoning is the same and only the numbers moved:
 // work-issues: 9 stage files, corpus 139,801 B, largest implement.md 27,509 B, so
 // the binding requirement is 139,801 - 27,509 = 112,292, which the 116,000 set
 // hours earlier still clears -- the assertion below did NOT fire, and this raise
@@ -106,8 +161,9 @@ const MAX_REFERENCE_FILE_BYTES = 64_000; // largest stage file measured 55,137 B
 // in implement.md (+1,628 B) plus the reviewer-reporting and host-load lessons
 // in verify.md (+2,316 B); the round before it was the LAUNCH_BRANCH restore
 // contract across launch-mode.md, ship.md, retro.md and claim.md.
-// hunt-bugs stays at 60,000: re-measured the same day, corpus 88,598 B and
-// largest gotchas.md 41,922 B, so 88,598 - 41,922 = 46,676 < 60,000 and its
+// hunt-bugs stays at 60,000: corpus 88,683 B at this round's final tree (+78 of
+// it from this round's hunt-bugs/references/plan.md edit) and
+// largest gotchas.md 41,922 B, so 88,683 - 41,922 = 46,761 < 60,000 and its
 // property still holds. Re-measure both numbers for each skill whenever a stage
 // file changes size materially -- the property is silent when it lapses.
 const SPLIT_SKILLS: Record<string, { minFiles: number; minCorpusBytes: number }> = {
@@ -115,7 +171,7 @@ const SPLIT_SKILLS: Record<string, { minFiles: number; minCorpusBytes: number }>
   // post-compression. 9 files as of 2026-09-01, when the launch-mode probe and its
   // reading moved out of triage.md into references/launch-mode.md, which the PARENT
   // reads before stage 0.
-  'work-issues': { minFiles: 9, minCorpusBytes: 120_000 },
+  'work-issues': { minFiles: 9, minCorpusBytes: 130_000 },
   // 7 files / 108,940 B measured at the split (2026-08-28); largest 55,137 B; 87,180 B post-compression
   'hunt-bugs': { minFiles: 7, minCorpusBytes: 60_000 },
 };

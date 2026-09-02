@@ -368,6 +368,16 @@ peer's changes has its own trap). Verify the restore by HASH, not by eye — a
 `shasum -a 256` recorded before the first probe turns "I think I put it back"
 into a check.
 
+**Note WHICH work the copy protects: the bytes the subject held when the
+snapshot was TAKEN.** Content written or extended AFTER that point is reverted
+by the restore, not preserved by it — a lane lost 133 lines of newly written
+tests to precisely that (go-to-k/cdkd#2457), its harness restoring a snapshot
+that predated them.
+The restore is doing its job there; the loss is that nothing else held the work.
+That is the destructive half of `references/verify.md`'s pre-probe commit rule,
+and the two are complementary: commit first so the restore cannot cost anything,
+snapshot byte-exactly so the restore itself is not the corruption.
+
 **Both probes above vary the INPUT. The second axis is the STATE the subject is
 in when the input arrives, and that one gets enumerated by ACCIDENT** — every
 case reuses the first case's fixture setup, so the suite covers one row of a

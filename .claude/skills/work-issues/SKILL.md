@@ -44,7 +44,7 @@ worktree": MAIN-CHECKOUT records the MAIN checkout under it, and the
 `git -C "<LANE_TREE>"` recipes consuming it in §4, §5, §7 and §10 are
 IN-PLACE-only arms (every MAIN-CHECKOUT arm beside them uses no `-C`).
 
-`IN-PLACE` changes a great deal more than the lane count: §1's pull, the
+`IN-PLACE` changes a great deal more than the concurrent lane count: §1's pull, the
 collision scan's paths, the claim, the branch recipe, §7's rebase, the worktree
 and branch cleanup, where the retro branch is created, and the `LAUNCH_BRANCH`
 restore that ends the run.
@@ -139,8 +139,8 @@ wants to watch); the stage files apply unchanged either way.
 - **Real-AWS live tests and merges are SERIALIZED across lanes** — the parent
   grants the turn, one lane at a time; a lane subagent never starts either on
   its own. Everything else runs concurrently, subject to two repo-local caveats
-  §9 states in full (the markgate store is SHARED across worktrees, the
-  deploy-autoarm sentinel is per-SESSION). (§9)
+  §9 states in full (the markgate store is PER-WORKTREE, the deploy-autoarm
+  sentinel is per-SESSION). (§9)
 - **English only in every published artifact** — issue bodies/comments, PR
   titles/bodies, commits, code. (CLAUDE.md)
 - **The run ends with the retro (stage 10) and the standard wrap report**

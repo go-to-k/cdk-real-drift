@@ -297,18 +297,32 @@ directory, so the hazard is identical here.
 ### 8-z. When a mutation probe reports NO discrimination
 
 **First, a rule that applies BEFORE any probe runs: COMMIT the round's real
-fixes, then probe.** A probe deliberately breaks the tree, so an interruption
-mid-probe (a session limit, a crash) leaves deliberate breakage and unfinished
-fixes in ONE undifferentiated dirty tree. Measured 2026-09-02 on the
+fixes, then probe.** The reason is DESTRUCTIVE, not merely tidy: a probe's
+restore puts the subject back to the bytes it held when the snapshot was TAKEN,
+so it reverts anything committed NOWHERE. A lane lost 133 lines of newly written
+tests exactly that way (go-to-k/cdkd#2457) — its harness restored a snapshot
+predating those tests, and no commit, stash or reflog held them. Committing first is what makes the
+restore lossless. `references/implement.md`'s byte-exact `shasum`-verified
+restore is the OTHER half and does not cover this one: it guarantees the subject
+comes back unmangled, which is a promise about the snapshot's bytes, not about
+work the snapshot never contained.
+
+The milder consequence is attribution, and it is why the rule is worth stating
+even when nothing is lost: a probe deliberately breaks the tree, so an
+interruption mid-probe (a session limit, a crash) leaves deliberate breakage and
+unfinished fixes in ONE undifferentiated dirty tree. Measured 2026-09-02 on the
 go-to-k/cdk-real-drift#1841 lane: the subagent died at the 5-hour session limit
 mid-probe with 9 dirty files, and the resuming session had to read the full
 diff to establish that none of it was probe wreckage before it could commit.
 With a pre-probe commit the separator is just `git diff` — anything unstaged
 after a probe is the probe's.
 
-**A probe that reports NO discrimination is a claim about the FENCE, and three
+**A probe that reports NO discrimination is a claim about the FENCE, and four
 other things produce the identical output.** Ask them in order before touching
-the fence — each nearly cost a working assertion in one session (2026-08-25):
+the fence. The first three and the fixture shape below each nearly cost a
+working assertion in one session (2026-08-25); item 4 was added later, from a
+different run, which is why the attribution names a session rather than the
+whole list:
 
 1. **Did the edit land?** `sed`/`perl` one-liners fail silently as "no match":
    a `perl -0pi -e "s|^\|...|...|m"` delimited by the same `|` it escapes
@@ -329,16 +343,45 @@ the fence — each nearly cost a working assertion in one session (2026-08-25):
    else" print identically. Use ABSOLUTE paths and confirm by a property the
    wrong tree cannot fake (`ls -la` mtime).
 
+4. **Did the suite RUN, or did it only print a summary?** A mutation is an
+   EDIT, so it can break the FILE rather than the assertion: delete a single
+   `if` line and the resulting parse error makes `vp test run` print
+   `Tests  no tests` — a summary line that EXISTS but carries no digits. A parse that reads
+   a number out of it sees zero failures and reports the fence UNFENCED, which
+   is the same verdict a genuinely weak fence produces, so the probe's headline
+   finding is indistinguishable from its own breakage. Three conditions, all
+   cheap, and this repo's own §8 note that an exit code lies in BOTH directions
+   is why none of them can be replaced by reading `$?`: the summary must contain
+   DIGITS; the TOTAL must equal a BASELINE recorded before the first probe; and
+   no file may report a file-level FAIL while its case failures are zero. The
+   population check is the one that earns its keep — a whole file silently not
+   loading leaves every OTHER file's count intact, so digits alone still read as
+   green.
+
 And one shape inside the fixture itself: **an expected value must be an
 INDEPENDENT variable from the one under test.** A stub keyed its content on a
 sha whose default was the same literal on the producing and the consuming side,
 so breaking the producing call still served the content and the case could not
 fail.
 
-Only after all four does "the fence is weak" remain as the explanation.
+Only after all five does "the fence is weak" remain as the explanation.
 Deleting an assertion on the strength of an unexamined green is how a working
 guard gets removed.
 
-Ported from cdkd (all four shapes measured in one session: go-to-k/cdkd#2197 /
-go-to-k/cdkd#2200 / go-to-k/cdkd#2198); the mechanism is the shell and the
-tooling, not anything cdkd-specific, so it applies here unchanged.
+The original four shapes were ported from cdkd, all measured in one session
+(go-to-k/cdkd#2197 / go-to-k/cdkd#2200 / go-to-k/cdkd#2198); the mechanism is
+the shell and the tooling, not anything cdkd-specific, so they apply here
+unchanged. Item 4 was added on 2026-09-03 and did NOT come from that session.
+
+**When you add a shape here, fix every place that COUNTS it — and only half of
+them contain a digit that moves.** Adding item 4 touched four places, of which
+exactly TWO carried a changed numeral: the "N other things" opener (three ->
+four) and the "all N" closer (four -> five). The other two kept their numeral
+and moved their SCOPE — the port note still reads "four shapes", now narrowed to
+the ORIGINAL four, and the session-attribution still names one session, now
+narrowed to the first three plus the fixture shape. So a sweep for changed
+digits returns half of the work and looks complete, which is worse than
+returning none; and only the closer sits anywhere near the list. `references/launch-mode.md`
+records the same failure on its IN-PLACE table ("Four things" left standing
+after the rows grew), which is the second instance of it in this skill: a count
+written beside a list is maintained, a count written a paragraph away is not.
