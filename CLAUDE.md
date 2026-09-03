@@ -631,7 +631,7 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   "NEITHER ending re-attaches HEAD" plus the `switch main` still needed
   afterwards. One sentence covers both endings because the outcome is a
   property of the SESSION rather than of which ending is picked — a
-  completed `--continue` splits the same way, measured. Eight rows now RUN
+  completed `--continue` splits the same way, measured. Eleven rows now RUN
   the printed remedy and assert the resulting HEAD beside that claim.
 
   **The bisect arm carried the same defect, one arm over** (round 4). It
@@ -658,22 +658,26 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   evidence about that mutation only.
 
   **The suite no longer inherits the developer's git config** (round 4),
-  which until now decided which arm half its rows exercised. Measured by
-  breaking the hook's `rebase-merge` detection and running the suite: 61
-  pass / 4 fail by default, and 65 pass / 0 fail with a global
-  `rebase.backend = apply` — fully green over a broken hook, because every
-  plain `git rebase` then goes down `rebase-apply/` instead. On the
-  UNMUTATED hook, a global `commit.gpgsign = true` and a global
-  `init.templateDir` pointing at a failing hook each scored 48 pass / 21
-  fail. The author's machine has `init.templateDir` set (git-secrets), so
-  the suite was green only because those hooks happen to exit 0. The fixture
-  now exports `GIT_CONFIG_GLOBAL=/dev/null` and
-  `GIT_CONFIG_SYSTEM=/dev/null` and names each rebase row's backend
-  (`--merge` / `--apply`) instead of inheriting a default. Proven rather
-  than asserted: with the neutraliser in place, setting each of those three
-  global options leaves the tally unmoved at 72/0, and the
-  broken-`rebase-merge` mutant reddens the same 4 rows with or without
-  `rebase.backend = apply`.
+  which until now decided which arm half its rows exercised. The exhibit
+  that motivated it was a global `rebase.backend = apply` sending every
+  plain `git rebase` down `rebase-apply/`, so a broken `rebase-merge` arm
+  was never reached and the suite went fully green over it. That exhibit
+  NO LONGER REPRODUCES (round 5) and the code comment now says so: naming
+  each rebase row's backend explicitly (`--merge` / `--apply`) was the
+  other half of the same fix, and an explicit backend outranks the config
+  key, so the broken-arm mutant scores 76 pass / 5 fail with and without
+  `rebase.backend = apply`. What still bites, and what keeps the two
+  exports load-bearing, is anything that breaks the fixture COMMITS: on
+  the UNMUTATED hook a global `commit.gpgsign = true`, and a global
+  `init.templateDir` pointing at a FAILING hook, each score 56 pass / 25
+  fail plus 18 fixture failures. The author's machine has
+  `init.templateDir` set (git-secrets), whose hooks exit 0, which is why
+  the suite looked green. The fixture exports
+  `GIT_CONFIG_GLOBAL=/dev/null` and `GIT_CONFIG_SYSTEM=/dev/null`, and
+  round 5 added a POSITIVE probe that those variables are actually
+  honoured (git 2.32+) rather than exported and ignored. Proven rather
+  than asserted: with the neutraliser in place, setting each of those
+  three global options leaves the tally unmoved at 81/0.
 
   **Four assertable-but-unasserted arms picked up rows** (round 4): `master`
   — dropping it from the `main|master` arm left the whole suite green; the
@@ -685,7 +689,49 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   tracked, so the hook left at the opt-in check; the fixture now commits
   that file and detaches the worktree, and the row dies alongside the other
   linked rows under a mutation that blocks every detached tree. The suite is
-  72 cases, up from 65.
+  went 65 -> 72 in that round, and 72 -> 81 in round 5.
+
+  **Round 5 closed a live fail-open and four assertions that passed for the
+  wrong reason.** The gate's fail-CLOSED guard checked ONE library function,
+  `gate_matches`, while the hook goes on to call `gate_target_dir` as well —
+  and the two are 239 and 962 lines into a 1094-line library. A copy
+  truncated between them defined the first, passed the guard, then died on
+  the second inside a command substitution whose 127 the hook read as "no
+  target dir" and exited 0. Measured against the real hook,
+  `git commit -m oops` in an opted-in repo on `main`, cutting the library at
+  every 25th line: 30 of 44 offsets scored rc=0, NOT BLOCKED, the whole run
+  [251..976]. cdkd's twin had checked every function it calls since
+  go-to-k/cdkd#2130 and blocked at all 104 of its offsets, so this was
+  unported drift rather than an adaptation. The guard now names every
+  function the hook calls: 0 of 44 after. Four assertions in the round-4
+  work itself held nothing down, each proven by a mutation that left the
+  suite fully green before this round and reddens exactly its own row now:
+  the detached arm's four-line DIAGNOSIS block (resolved target dir / main
+  checkout / HEAD / in progress) had no reader, so gutting it kept `exit 2`
+  and stayed green — four rows, plus a fifth for the `in progress` field's
+  non-empty polarity; the `show-ref --verify` lookup could be swapped for
+  the 40-hex PATTERN its own comment rejects, so two rows now build the
+  states that separate them, a branch literally NAMED 40 hex characters and
+  a start branch deleted under the bisect with `update-ref -d`; the two
+  fail-CLOSED rows both needled the library PATH, which both refusals print,
+  so deleting one arm left the other's message satisfying both — each now
+  needles its own tail; and `run_case_head`'s `${line% #*}` remedy strip had
+  no fixture under a path containing `#`, so reverting it to `%%#*` was
+  green — one fixture now lives under `ha#sh/` and reverting the strip
+  reddens 11 of 11 `run_case_head` rows. Three smaller corrections: the
+  bisect negative arm named a CAUSE the code never established ("this bisect
+  started from a tree that was ALREADY detached") where `reattach_to=""`
+  covers five states, and now uses the neutral wording its sibling rebase
+  arm already had; `run_case_head` extracts the remedy by the indent every
+  printed remedy starts with (two spaces, then the word git) rather than
+  by print order, since the prose
+  around a remedy contains the same fragment (re-ordering the message plus
+  the old extraction EVALs an English sentence — measured, 3 rows exit 127);
+  and a FIXTURE failure no longer increments the row counter, so
+  `Pass + Fail` again equals the case count. The config neutraliser also
+  gained a positive probe that git actually HONOURS `GIT_CONFIG_GLOBAL` /
+  `GIT_CONFIG_SYSTEM` (2.32+) rather than exporting them into a git that
+  ignores them silently.
 
   **The `applying` sentinel is load-bearing in the direction that fails
   SILENTLY.** `git am --abort` inside a `git rebase --apply` session exits 0
