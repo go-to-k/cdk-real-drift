@@ -593,14 +593,15 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   shared tree. Measured on a scratch opted-in repo, same `git commit`
   payload: rc=2 on `main`, rc=0 once detached; rc=2 after the fix. A detached
   LINKED worktree still passes, because that is the lane-clearing state
-  `stop-unmerged-lane-warn.sh` prescribes (`git switch --detach
-  origin/main`). THIS gate's verdicts are untouched — refusing the sha
-  spelling is a separate behaviour change with its own PR.
+  `stop-unmerged-lane-warn.sh` prescribes with
+  `git switch --detach origin/main`. THIS gate's verdicts are untouched —
+  refusing the sha spelling is a separate behaviour change with its own PR.
 
   **The remedy it prints follows the operation in progress**: a conflicted
-  rebase is one of the ways the shared checkout detaches, and there
-  `git switch main` is refused with `fatal: cannot switch branch while
-  rebasing`, so a correct block ended in an impossible instruction. The gate
+  rebase is one of the ways the shared checkout detaches, and there git
+  refuses `git switch main` outright with
+  `fatal: cannot switch branch while rebasing`, so a correct block ended in
+  an impossible instruction. The gate
   reads the TARGET's RESOLVED git dir (not `<dir>/.git`, wrong from a
   subdirectory) for `rebase-merge` / `rebase-apply` / `CHERRY_PICK_HEAD` /
   `REVERT_HEAD` / `MERGE_HEAD` / `BISECT_LOG` and prints `<op> --continue` /
