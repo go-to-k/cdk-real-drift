@@ -214,7 +214,7 @@ importers:
         version: 9.1.0
       jsonata:
         specifier: ^1.8.7
-        version: 1.8.7
+        version: 1.8.9
       picocolors:
         specifier: ^1.1.1
         version: 1.1.1
@@ -2876,8 +2876,8 @@ packages:
   json-with-bigint@3.5.8:
     resolution: {integrity: sha512-eq/4KP6K34kwa7TcFdtvnftvHCD9KvHOGGICWwMFc4dOOKF5t4iYqnfLK8otCRCRv06FXOzGGyqE8h8ElMvvdw==}
 
-  jsonata@1.8.7:
-    resolution: {integrity: sha512-tOW2/hZ+nR2bcQZs+0T62LVe5CHaNa3laFFWb/262r39utN6whJGBF7IR2Wq1QXrDbhftolk5gggW8uUJYlBTQ==}
+  jsonata@1.8.9:
+    resolution: {integrity: sha512-Vk6QF2zjeprCS6FXCK/3yTaTbB3wxh6C4Adp4Gt4FJ3e53kGKRLwfTLDWVWfwAHEsVYegsQRgBDUl8TdFSt7Qg==}
     engines: {node: '>= 8'}
 
   jsonfile@6.2.1:
@@ -7127,7 +7127,7 @@ snapshots:
 
   json-with-bigint@3.5.8: {}
 
-  jsonata@1.8.7: {}
+  jsonata@1.8.9: {}
 
   jsonfile@6.2.1:
     dependencies:
