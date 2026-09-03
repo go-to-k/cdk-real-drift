@@ -1,13 +1,13 @@
 ---
 name: work-issues
-description: Work through already-filed GitHub issues (typically the bug-hunt's output) end to end — triage safely, pick a few FILE-DISJOINT issues to fix in parallel, claim each on the issue before starting (collision-safe with other agents), verify, then carry each through merge → pull → release → global install → worktree cleanup. Use when asked to "handle/address filed issues", not to hunt for new bugs (that is /hunt-bugs).
+description: Work through already-filed GitHub issues (typically the bug-hunt's output) end to end — triage safely, pick a few FILE-DISJOINT issues to fix in parallel, claim each on the issue before starting (collision-safe with other agents), verify, then carry each through merge → pull → worktree cleanup. Use when asked to "handle/address filed issues", not to hunt for new bugs (that is /hunt-bugs).
 argument-hint: "[optional focus, e.g. 'revert issues' | '#651 #650' | 'noise FPs']"
 ---
 
 # Work Filed Issues
 
 Take OPEN issues (usually filed by `/hunt-bugs` — false positives, missed
-detection, revert gaps) and drive a few of them to merged, released, installed
+detection, revert gaps) and drive a few of them to merged
 fixes. The differentiator of this skill over just "fix issue #N" is **safe,
 collision-free PARALLELISM**: when there is a backlog and other agents/sessions
 are running, pick issues that cannot step on each other, announce which ones you
@@ -120,7 +120,7 @@ wants to watch); the stage files apply unchanged either way.
 | 6. Gates + PR                | `references/gates-and-pr.md` | `/check`, `/check-docs`, marker freshness per worktree, PR create                                                                  |
 | 7. Main advanced             | `references/gates-and-pr.md` | Rebase over parallel merges, stale-base phantom diffs, re-grep what LANDED                                                         |
 | 8. Verify before merge       | `references/verify.md`       | `/verify-pr`, live-test tiers, mutation probes (§8-z when a probe reports no discrimination)                                       |
-| 9. Ship                      | `references/ship.md`         | Merge → pull → release → global install → worktree cleanup                                                                         |
+| 9. Ship                      | `references/ship.md`         | Merge → pull → worktree cleanup                                                                                                    |
 | 10. Retro                    | `references/retro.md`        | Net backlog effect (§10-0), promotion check on `next` filings, where a lesson lands (§10-b/c), ship the retro PR (§10-d)           |
 | Appendix                     | `references/gotchas.md`      | Gotchas learned the hard way + the existing rules this skill leans on                                                              |
 

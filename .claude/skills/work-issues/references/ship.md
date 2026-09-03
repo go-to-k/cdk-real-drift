@@ -1,6 +1,6 @@
 <!-- Part of the /work-issues skill. Stage files: triage.md (§0–§3), claim.md (§4), implement.md (§5), gates-and-pr.md (§6–§7), verify.md (§8), ship.md (§9), retro.md (§10), gotchas.md (appendix). A bare §N points into the file that holds that section. READ THIS FILE IN FULL when your run enters this stage. -->
 
-## 9. Ship: merge → pull → release → global install → cleanup
+## 9. Ship: merge → pull → cleanup
 
 With subagent lanes, this stage is the PARENT's serialization point: grant one
 merge-ready lane at a time its turn — resume that lane agent (SendMessage) to
@@ -19,7 +19,7 @@ turn: the deploy-autoarm sentinel is per-SESSION, and a lane subagent's calls
 carry this same session, so one lane's deploy arms the token that blocks EVERY
 lane's commit / PR create / merge until `/sweep-resources` clears it. Never
 two lanes' live tests or merges concurrently; everything after the merge in
-this section (pull → release → install → cleanup) stays with the parent.
+this section (pull → cleanup) stays with the parent.
 
 **A `SendMessage` that answers "queued" has NOT been delivered — read the reply
 every time.** The tool returns one of two things: `Resuming agent ...`, meaning
@@ -92,16 +92,20 @@ That second form is not IN-PLACE-only trivia: it is the same
 that a MAIN-CHECKOUT run has a tree it may return to and an IN-PLACE run does
 not.
 
-**Release** is automated (`.github/workflows/release.yml`) — merging a `feat:` /
-`fix:` / `perf:` / `revert:` commit to `main` produces a `chore(release): <ver>
-[skip ci]` bump commit on `main` a minute or two later. Poll for it before
-installing:
+**Release** is BATCHED (release-please via `.github/workflows/release.yml`) —
+merging a `fix:` / `feat:` commit to `main` publishes NOTHING by itself: it
+only creates/updates the standing `chore(release): <ver>` release PR. The npm
+release happens when the maintainer merges that release PR, so do NOT poll for
+a version bump after an ordinary merge, and never merge the release PR unless
+the user asked for a release. Confirm the release PR picked up the merge
+instead:
 
 ```bash
-git fetch origin && git log origin/main --oneline -3   # look for chore(release)
+gh pr list --state open --search "chore(release) in:title"   # the standing release PR
 ```
 
-Once released, **global install by NAME** (published npm package):
+Only after a release PR merge does the published npm package move; the
+**global install by NAME** then refreshes it:
 
 ```bash
 vp i -g cdk-real-drift
@@ -109,16 +113,14 @@ vp i -g cdk-real-drift
 
 That install is BY NAME from npm, so it is mode-independent: it resolves the
 published package and never reads any tree's build output. (The sibling cdkd
-links its global CLI at the MAIN checkout's `dist/`, which forces a post-release
+links its global CLI at the MAIN checkout's `dist/`, which forces a post-merge
 rebuild there; nothing in this repo's ship stage does, so an IN-PLACE run has no
-main-checkout rebuild to perform. Do not add one.)
-
-**A run whose lanes are all `chore:` / `docs:` releases NOTHING** (CLAUDE.md → State
-of the Repo): skip both steps above rather than polling — the bump is never
-coming and the installed binary is already current; say so in the wrap. This is
-the ordinary case for a §10 retro lane and a tooling-only backlog (2026-08-19,
-go-to-k/cdk-real-drift#1767 merged as `chore:` and this text still sent the run
-polling for a bump).
+main-checkout rebuild to perform. Do not add one.) After an ORDINARY merge the
+installed binary is already the latest published version — skip the install
+rather than polling for a bump that is never coming; say so in the wrap. A run
+whose lanes are all `chore:` / `docs:` does not even move the release PR
+(2026-08-19, go-to-k/cdk-real-drift#1767 merged as `chore:` and this text still
+sent the run polling for a bump).
 
 **Remove every worktree you created** (a left-behind worktree is the silent
 residue of this flow).

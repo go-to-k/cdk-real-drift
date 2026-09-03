@@ -319,7 +319,7 @@ git -C "<LANE_TREE>" fetch origin \
 ```
 
 - `chore:` prefix — agent tooling, not `src/**`; a `fix:` / `feat:` prefix
-  makes semantic-release describe a cdk-real-drift change that never happened.
+  makes release-please describe a cdk-real-drift change that never happened.
 - English only in every committed line (`non-english-text-gate` enforces at PR
   time).
 - **`vp fmt` REWRITES this file's indentation, and that can change what a

@@ -106,10 +106,17 @@ node dist/cli.js revert [<stack>...] [--all]   # write the desired value back to
 - **Pre-release / experimental** (pre-1.0), but public and shipping: the repo is
   public at <https://github.com/go-to-k/cdk-real-drift> (developed solo, PR-based)
   and ships to npm as
-  [`cdk-real-drift`](https://www.npmjs.com/package/cdk-real-drift) — semantic-release
-  cuts a version on every `feat` / `fix` / `perf` / `revert` merge to `main`
-  (`docs` / `chore` merges do not release). Changes reach real users, so weigh
-  breaking ones accordingly.
+  [`cdk-real-drift`](https://www.npmjs.com/package/cdk-real-drift) — releases are
+  BATCHED via release-please (config in `release-please-config.json` +
+  `.release-please-manifest.json`): pushes to `main` create/update a single
+  standing `chore(release): <ver>` PR, and merging THAT PR creates the tag +
+  GitHub release and publishes to npm. An ordinary `feat:` / `fix:` merge no
+  longer publishes anything by itself, so do not wait for a version bump after
+  a merge, and never merge the release PR without the maintainer asking for a
+  release. The repo deliberately stays at major version 0:
+  `bump-minor-pre-major: true` maps breaking changes to MINOR bumps, and the
+  publish job in `.github/workflows/release.yml` hard-fails on any tag whose
+  major is not 0. Changes reach real users, so weigh breaking ones accordingly.
 - Baseline files live at `.cdkrd/baselines/<stack>.<accountId>.<region>.json` — git-committed.
   A PR that changes a baseline is a visible, reviewable change to "what real state
   we record".

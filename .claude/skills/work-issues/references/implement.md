@@ -341,8 +341,10 @@ with two more probes against the real tree; every fence here got them on
   more that day: a TTY fence listing only 4 of 14 `src/commands/` files; a
   COUNT assertion over `.claude/hooks/*.test.sh` (measures harnesses that exist
   — cannot report `check-gate.sh`, which has none); a one-plugin-by-name lookup
-  missing `@semantic-release/release-notes-generator`'s absent `parserOpts`,
-  why all 13 `type!:` merges released with no CHANGELOG entry.
+  missing `@semantic-release/release-notes-generator`'s absent `parserOpts`
+  (under semantic-release, the release automation of the time — since replaced
+  by release-please), why all 13 `type!:` merges released with no CHANGELOG
+  entry.
 
 And ask the dumbest question last: **is anything RUNNING it?** The
 `.claude/hooks/*.test.sh` harnesses had no `vp run` task and no CI step — shell,

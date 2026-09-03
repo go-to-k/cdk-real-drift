@@ -251,7 +251,8 @@ describe('check-gate scope covers every literal checker input (go-to-k/cdk-real-
       '.claude/hooks', // skill-doc-paths.test.ts's harness block
       '.github/workflows/pr-inherit-issue-labels.yml', // pr-inherit-issue-labels.test.ts
       'scripts/check-pr-title.mjs', // check-pr-title.test.ts
-      '.releaserc.json', // releaserc-header-pattern.test.ts
+      'release-please-config.json', // release-please-v0.test.ts
+      '.release-please-manifest.json', // release-please-v0.test.ts
     ]) {
       expect([...targets.keys()], `extraction finds ${known}`).toContain(known);
     }
@@ -268,8 +269,10 @@ describe('check-gate scope covers every literal checker input (go-to-k/cdk-real-
     // over every file scores 3 join + 3 url from this file ALONE — enough to
     // satisfy any floor at or below those numbers with every real reader in
     // the repo deleted. A floor a fence can satisfy by quoting itself is not a
-    // floor. Counted over the other suites: join 5, url 6 (measured on this
-    // branch), and the floors sit AT those numbers with ZERO headroom, not just
+    // floor. Counted over the other suites: join 6, url 11 (re-measured when
+    // release-please-v0.test.ts replaced releaserc-header-pattern.test.ts;
+    // the replacement reads its four subjects through the url idiom), and the
+    // floors sit AT those numbers with ZERO headroom, not just
     // under. That is deliberate: the failure being fenced is an idiom going
     // dead, and a floor of 1 would not notice four of five readers vanishing.
     // The accepted cost is that legitimately deleting one reader reds this and
@@ -281,8 +284,8 @@ describe('check-gate scope covers every literal checker input (go-to-k/cdk-real-
       .map((f) => readFileSync(f, 'utf8'));
     const joinHits = src.reduce((n, t) => n + [...t.matchAll(JOIN_RE)].length, 0);
     const urlHits = src.reduce((n, t) => n + [...t.matchAll(URL_RE)].length, 0);
-    expect(joinHits, 'join/resolve extraction is live').toBeGreaterThanOrEqual(5);
-    expect(urlHits, 'new URL extraction is live').toBeGreaterThanOrEqual(6);
+    expect(joinHits, 'join/resolve extraction is live').toBeGreaterThanOrEqual(6);
+    expect(urlHits, 'new URL extraction is live').toBeGreaterThanOrEqual(11);
   });
 
   it('no suite hides in a tests/ subdirectory the extractor cannot see', () => {

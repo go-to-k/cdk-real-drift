@@ -4,13 +4,13 @@
 # PreToolUse hook. Blocks `gh pr merge` unless the target PR's CI checks are
 # ALL green. Motivated by a real incident: an agent merged a PR whose
 # `check-build-test` job was red (a formatting violation), landing broken state
-# on main. `main` has NO branch protection — and adding GitHub required status
-# checks is not an option here, because semantic-release pushes the
-# `chore(release): x.y.z [skip ci]` commit DIRECTLY to main (not via PR); a
-# required-status-check rule would permanently block that release push (the
-# [skip ci] commit never gets a green check). So the merge gate lives here, in a
-# local hook that only touches `gh pr merge` and leaves the release push
-# untouched.
+# on main. `main` has NO branch protection — the constraint dates from
+# semantic-release (the release automation of the time), which pushed the
+# `chore(release): x.y.z [skip ci]` commit DIRECTLY to main (not via PR), so a
+# required-status-check rule would have permanently blocked that release push.
+# release-please now lands release commits via its release PR instead, but main
+# still has no branch protection, so the merge gate stays here, in a local hook
+# that only touches `gh pr merge`.
 #
 # Behavior:
 #   - Only `gh pr merge` is gated (create/edit pass — CI has not run yet at

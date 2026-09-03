@@ -39,7 +39,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SKILLS_DIR = path.join(ROOT, '.claude', 'skills');
 
 const MAX_SKILL_MD_BYTES = 36_000; // largest non-split skill re-measured 12,571 B (verify-pr, 2026-09-01, unchanged in round 6) -- the 12,175 B this line used to quote was stale
-const MAX_ORCHESTRATOR_BYTES = 12_000; // orchestrators were 7,952 B / 6,932 B at the 2026-08-28 split; re-measured 2026-09-02 (go-to-k/cdk-real-drift#1854): work-issues 11,812 B (188 B of margin), hunt-bugs 6,932 B
+const MAX_ORCHESTRATOR_BYTES = 12_000; // orchestrators were 7,952 B / 6,932 B at the 2026-08-28 split; re-measured at the release-please switch (batched releases): work-issues 11,756 B (244 B of margin — the switch removed "release → global install" from the ship-stage flow text), hunt-bugs 6,932 B
 // The re-measurement is the point, not trivia: work-issues has repeatedly grown to
 // within a few hundred bytes of its cap while this comment still quoted the
 // at-split figure, so nobody adding a paragraph could see how little room was
@@ -100,6 +100,10 @@ const MAX_REFERENCE_FILE_BYTES = 64_000; // largest stage file measured 55,137 B
 // editing a stage file to fix prose moves the very corpus the comment is about.
 // Nothing else in this file shares that hazard.
 //
+// Re-measured at the release-please switch: corpus 150,695 B, largest
+// implement.md 28,250 B, binding 150,695 - 28,250 = 122,445 — 130,000 still
+// clears it, so the figures below (from the round that set the floor) stand as
+// the derivation record.
 // work-issues: 9 stage files, corpus 150,395 B, largest implement.md 28,148 B,
 // so the BINDING requirement is 150,395 - 28,148 = 122,247. The 120,000 the
 // previous round set is BELOW that, so this raise is a REPAIR and not a

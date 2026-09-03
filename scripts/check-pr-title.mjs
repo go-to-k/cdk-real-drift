@@ -4,10 +4,11 @@
 //
 // The `amannn/action-semantic-pull-request` gate only checks that the LEADING type is allowed;
 // it accepts a COMPOUND title like `fix(read)+fix(revert): …`. But a compound title:
-//   1. failed to RELEASE entirely — semantic-release's `.releaserc.json` headerPattern scope
-//      class `[^)]+` cannot span the `)` that sits mid-header, so the commit parsed as no type
-//      and semantic-release logged "no release" (PR #1431/#1446 shipped to main unpublished);
-//      #1448 made the parser tolerant, but…
+//   1. failed to RELEASE entirely under semantic-release (the release automation before
+//      release-please): its `.releaserc.json` headerPattern scope class `[^)]+` could not span
+//      the `)` that sits mid-header, so the commit parsed as no type and semantic-release
+//      logged "no release" (PR #1431/#1446 shipped to main unpublished); #1448 made the
+//      parser tolerant, but…
 //   2. still renders an UGLY CHANGELOG scope (`read)+fix(revert`).
 // So reject compound / malformed titles at the PR gate: pick ONE type and put the rest in the
 // scope / subject. Keep the type list in sync with `.github/workflows/pr-title-check.yml`.
