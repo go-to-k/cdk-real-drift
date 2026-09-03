@@ -271,16 +271,15 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
     (no `src/**` in the diff), which the gate lets through on `check` + `docs`.
     Run the relevant skill before committing or opening the PR.
   - **Hash modes**: `check` / `docs` hash file CONTENT (`hash: files`) — the
-    stricter mode, kept because re-running them is cheap. The inert `integ` gate is
-    the ONE gate on `hash: diff` (markgate 0.4+, #1756): it digests this branch's
-    delta against `merge-base(origin/main, HEAD)` restricted to its include set, so
-    a merge from `main` touching an UNRELATED in-scope file no longer forces a
-    re-run of an expensive real-AWS verification, while a same-file change and any
-    local in-scope edit still stale it. A diff gate ERRORS (exit 2) when run from a
-    clean base branch. The invalidations it removes are provably uninformative; the
-    risk it accepts — undetected cross-FILE interaction, which by definition sits in
-    the zero-overlap cases — is bounded but NOT quantified. Full rationale in
-    `.markgate.yml`.
+    stricter mode, kept because re-running them is cheap. The inert `integ`
+    gate is the ONE gate on `hash: diff` (markgate 0.4+, #1756): it digests
+    this branch's delta against `merge-base(origin/main, HEAD)` restricted to
+    its include set, so an unrelated in-scope merge from `main` no longer
+    stales an expensive real-AWS verification, while a same-file change and any
+    local in-scope edit still do; it ERRORS (exit 2) from a clean base branch.
+    The invalidations removed are provably uninformative; the accepted risk —
+    undetected cross-FILE interaction — is bounded but NOT quantified. Full
+    rationale in `.markgate.yml`.
   - `/hunt-bugs` is the (non-marker) skill that drives a periodic real-AWS bug-hunt:
     deploy UNCOVERED, high-frequency resource types / configs / CFn notations, then
     catch false positives (clean `record`→`check` must be CLEAN) and missed
@@ -300,240 +299,173 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
     go-to-k/cdk-real-drift#1844. Run **`/sweep-resources`** to do the
     cleanup + release the gate.
 - **`issue-dup-check-gate` — the one PreToolUse gate that is not a markgate gate.**
-  It blocks `gh issue create`, and the REST mint `gh api repos/<o>/<r>/issues`,
-  unless the body carries a `Dup-check:` line recording that the OPEN issue list was
-  searched for an issue already naming this root cause (`/work-issues` §5 has the
-  search + fold-into-a-checklist-row recipe). `gh issue edit` / `gh issue comment` are
-  deliberately NOT gated: folding a finding into the issue that already covers its
-  root cause is the outcome the gate steers toward, so taxing it would penalise the
-  cheap path and leave the costly one free. It never asks you to drop a finding — §10-0
-  is explicit that an unfiled finding is strictly worse than a filed one; it changes
-  only WHERE the finding is written. Scoped by repo opt-in (`.markgate.yml` at the
-  resolved cwd's repo root), so filing into an unrelated personal repo is not refused.
-  **The local case for it is prophylactic and weaker than either sibling's** — this
-  repo had ZERO open issues on 2026-08-25 and no verified duplicate filing, unlike
-  cdkd (a non-converging count) and cdk-local (two duplicates nine minutes apart,
-  go-to-k/cdk-local#528 / go-to-k/cdk-local#531) —
-  and the gate's own header says so rather than borrowing their numbers.
-  `gh -R <owner/repo> issue create` — the cross-repo mirror flow's own spelling, and
-  therefore this gate's primary shape — IS matched: the shared `GATE_GH_C` absorbs
-  the repo flags in every spelling `gh` accepts (space, `=`, and glued `-Ro/r`).
+  It blocks `gh issue create` (and the REST mint `gh api repos/<o>/<r>/issues`)
+  unless the body carries a `Dup-check:` line recording that the OPEN issue list
+  was searched for an issue already naming this root cause (`/work-issues` §5 has
+  the search + fold-into-a-checklist-row recipe). `gh issue edit` /
+  `gh issue comment` are deliberately NOT gated: folding a finding into the
+  issue that already covers its root cause is the outcome the gate steers
+  toward, so taxing it would penalise the cheap path. It never asks you to drop
+  a finding — §10-0 is explicit that an unfiled finding is strictly worse than a
+  filed one; it changes only WHERE the finding is written. Scoped by repo opt-in
+  (`.markgate.yml` at the resolved cwd's repo root), so filing into an unrelated
+  personal repo is not refused. The local case is prophylactic and weaker than
+  either sibling's — zero open issues here on 2026-08-25 and no verified
+  duplicate, versus cdk-local's two duplicates nine minutes apart
+  (go-to-k/cdk-local#528 / go-to-k/cdk-local#531) — and the gate's own header
+  says so rather than borrowing their numbers.
+  `gh -R <owner/repo> issue create` — the cross-repo mirror flow's own spelling,
+  and therefore this gate's primary shape — IS matched: the shared `GATE_GH_C`
+  absorbs the repo flags in every spelling `gh` accepts (space, `=`, and glued
+  `-Ro/r`).
 - **Naming the repo must never change a gate's verdict, and twice it did.** On
   2026-08-25, `gh -R <owner/repo> pr merge 1 --squash` matched NOTHING in
-  `verify-pr-gate`, `ci-green-gate` and `bughunt-clean-gate` — each measured at
-  exit 2 for the plain form and exit 0 for the `-R` form, i.e. a live bypass of
-  `/verify-pr`, of red CI, and of the un-deleted-AWS-resources check. Two causes,
-  both worth remembering: the shared `GATE_GH_C` absorbed only `-C <path>`, AND
-  those three gates each HAND-ROLLED their own copy of the verb regex, so they
-  would not have inherited a fix to the shared one anyway. Both are closed —
-  `GATE_GH_C` is now `GATE_FLAGS`-style tokenisation (covering space, `=`, and the
-  glued `-Ro/r` that a hand-written flag list misses), and every gate derives its
-  trigger from the shared constants via `gate_re_any` — `branch-gate` was a FOURTH
-  hand-rolled copy, frozen at the pre-`GATE_FLAGS` token, so
-  `git -C "<path with a space>" commit` committed straight to main (rc=0 quoted
-  vs rc=2 unquoted). Two follow-on rules the same audit produced: **matching a
-  flag is not the same as honouring it** — `-R` was absorbed and then discarded,
-  so `gh -R foreign/repo pr merge 5` had each gate inspect THIS repo and permit a
-  merge in one it never looked at, and the three gates that audit repo-specific
+  `verify-pr-gate`, `ci-green-gate` and `bughunt-clean-gate` — measured exit 2
+  plain, exit 0 flagged: a live bypass of `/verify-pr`, of red CI, and of the
+  cleanup check. Two causes, both closed: the shared `GATE_GH_C` absorbed only
+  `-C <path>`, AND those three gates each HAND-ROLLED their own verb regex, so
+  a shared fix would not have propagated. `GATE_GH_C` is now `GATE_FLAGS`-style
+  tokenisation (space, `=`, and the glued `-Ro/r` a hand-written list misses),
+  and every gate derives its trigger from the shared constants via
+  `gate_re_any` — `branch-gate` was a FOURTH hand-rolled copy, frozen at the
+  pre-`GATE_FLAGS` token, so `git -C "<path with a space>" commit` committed
+  straight to main. Follow-on rules from the same audit: **matching a flag is
+  not the same as honouring it** — `-R` was absorbed and then discarded, so
+  `gh -R foreign/repo pr merge 5` had each gate inspect THIS repo and permit a
+  merge in one it never looked at; the three gates that audit repo-specific
   state now REFUSE a foreign `-R` by name (issue-dup-check is exempt: for the
-  cross-repo mirror flow the cwd decides policy and `-R` only decides where the
-  issue lands). And **the selector must come from the matched verb in the matched
-  segment**: `gh` accepts `gh pr merge --squash 1` as readily as
-  `gh pr merge 1 --squash`, and a quoted `gh pr merge 9` inside a `--body` must
-  not donate its number to a later bare merge — both are `gate_pr_selector`'s job
-  now, along with consuming flag VALUES (`gh pr merge -t msg 2195` resolved `msg`,
-  and `--body-file 7 2195` audited PR 7). Two rules came out of that one, both
-  reusable: **enumerate the VALUELESS flags, never the value-takers** — the list
-  goes stale either way, and the safe direction is an unlisted flag eating the
-  number (empty selector, caller falls back) rather than leaving its value in
-  place (wrong PR); and **put a type guard at the end**, so a non-number can never
-  be handed on whatever the flag list does. Fenced by
-  `.claude/hooks/gh-repo-flag-parity.test.sh`, which asserts across every gate that
-  the flagged spellings return the SAME exit code as the plain one **and** that the
-  plain one actually blocks — parity alone is satisfied by a gate inert in both
-  directions, which is the state `non-english-text-gate` was in (it invoked
-  `gh -C`, a flag `gh` does not have, so it failed open on every command). The
-  foreign-`-R` half asserts the refusal MESSAGE, not just the exit code: every
-  gate in that fixture already blocks for its own reasons, so an exit-code-only
-  check stayed green with the refusal deleted.
-- **The two `Stop` hooks: which CHANNEL reaches which audience, and the nudge
-  cadence.** `stop-cleanup-warn.sh` and `stop-unmerged-lane-warn.sh` fire at
-  turn-end rather than on a tool call, and until go-to-k/cdk-real-drift#1844 both
-  picked an output channel their text's audience never reads. Read from the
-  installed Claude Code (2.1.251) rather than the published docs, a Stop hook has
-  exactly three ways out:
-  - `hookSpecificOutput.additionalContext` — reaches the MODEL, and the turn
-    CONTINUES so it can act on what it was told.
-  - `systemMessage` — reaches the USER only (rendered as `<hookName> says: ...`),
-    and the turn ends normally.
-  - stdout / stderr at exit 0 — reaches NOBODY. Hook stderr is surfaced only on a
-    NON-zero exit, and stdout at exit 0 is parsed as JSON and dropped when it is
-    not one.
+  mirror flow the cwd decides policy and `-R` only decides where the issue
+  lands). And **the selector must come from the matched verb in the matched
+  segment**: `gh pr merge --squash 1` parses like `gh pr merge 1 --squash`, a
+  quoted `gh pr merge 9` inside a `--body` donates nothing to a later bare
+  merge, and flag VALUES are consumed (`-t msg 2195` must not resolve `msg`) —
+  all `gate_pr_selector`'s job, with two reusable rules: **enumerate the
+  VALUELESS flags, never the value-takers** (either list goes stale, and the
+  safe stale direction is an unlisted flag eating the number — empty selector,
+  caller falls back — rather than auditing the wrong PR), and **put a type
+  guard at the end** so a non-number is never handed on. Fenced by
+  `.claude/hooks/gh-repo-flag-parity.test.sh`, which asserts across every gate
+  that the flagged spellings return the SAME exit code as the plain one **and**
+  that the plain one actually blocks — parity alone is satisfied by a gate
+  inert in both directions, the state `non-english-text-gate` was in (it
+  invoked `gh -C`, a flag `gh` does not have, so it failed open on every
+  command). The foreign-`-R` half asserts the refusal MESSAGE, not just the
+  exit code — every gate in that fixture already blocks for its own reasons.
+- **The two `Stop` hooks (`stop-cleanup-warn.sh` / `stop-unmerged-lane-warn.sh`):
+  channels, cadence, and the record.** Until go-to-k/cdk-real-drift#1844 each
+  picked an output channel its text's audience never reads. The rules, each
+  measured and fenced by the hooks' own suites:
 
-  There is no fourth option that reaches the model WITHOUT continuing the turn,
-  which is why each hook has to CHOOSE rather than simply emit. The two JSON
-  fields are independent branches in the harness, so one payload may carry both.
-  `stop-cleanup-warn` was in the third state — `echo ... >&2` then `exit 0` — so a
-  BILLING guardrail delivered its warning into a hole for months; the lane hook
-  emitted `systemMessage` only, while every word of it is addressed to the agent.
-
-- **A Stop continuation is not free, and it is not merely slow.** A Stop hook's
-  `additionalContext` travels in the SAME return value as a `decision: "block"`,
-  so both spend one budget — `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`, default 8
-  consecutive blocks — after which the harness overrides the hook and ends the turn
-  itself. A hook that nudges at every turn-end therefore spends a budget shared
-  with every other Stop hook, and the one that spends it is not necessarily the one
-  with something urgent to say. Hence the **cadence rule**, which both hooks
-  follow: `stop_hook_active` (a required boolean on the Stop payload) marks a turn
-  the harness has ALREADY resumed on a hook's account, so it drops the MODEL half —
-  and that is all it does. It is deliberately NOT a full stand-down in either hook:
-  both used to `exit 0` on it, on the reasoning that the human had seen the message
-  on the earlier pass of the same turn, and that reasoning is false whenever the
-  condition first becomes TRUE during the continuation (the continuation exists to
-  push the model back to work, and deploying a stack or committing the lane is
-  exactly that work). A bare `systemMessage` does not continue a turn, so the user
-  half costs nothing; a resumed pass writes no cadence record either, so the nudge
-  it did not spend is still available to the next ordinary turn-end.
-
-  Across turns the condition persists, so an unconditional `additionalContext`
-  fires at every turn-end for as long as it holds. Each hook therefore nudges the
-  model at most once per distinct SUBJECT, and a repeat falls back to
-  `systemMessage`: the user still sees it, the turn ends. The subject is chosen so
-  ORDINARY WORK does not change it, or the rule bounds nothing — the lane hook keys
-  on `<own branch>:<pushed|unpushed>` and NOT on the commit count, which changes
-  every time the model commits, while the cleanup hook keys on the sorted set of
-  armed sentinel tokens.
-
-  **The lane hook's predicate is DIRECTED, and a plain inequality is not a
-  simplification of it.** `pushed -> unpushed` is what an ordinary COMMIT looks
-  like, so `prev_subject != subject` re-armed on every commit and again on every
-  push — measured as `commit ctx, repeat sys, push ctx, repeat sys, ...`, two
-  forced continuations per commit/push cycle, which is exactly the per-commit
-  cadence the subject was chosen to avoid. It arms on a new session, a lane never
-  seen, a DIFFERENT branch, a record it cannot parse, or `unpushed -> pushed` only,
-  since that is the one transition opening an action the model did not have before.
-
-  The record is ONE file in the PER-WORKTREE git dir (`stop-nudge-lane` /
-  `stop-nudge-cleanup`) holding `<session id>TAB<subject>TAB<epoch>`, written
-  tmp-then-`mv`; the cleanup hook appends a fourth `armed since` field, which each
-  nudge must not reset. One file rather than one per session, so nothing
-  accumulates in the git dir with nobody to clean it up, and a concurrent session
-  in the same worktree costs an EXTRA nudge rather than a missed one — the safe
-  direction. Three properties of the record are load-bearing and each was a live
-  bug first: it is written on BOTH arms of the lane hook's decision, because it
-  holds the last OBSERVED subject rather than the last NUDGED one (recording only
-  on the arm freezes the push half and silences the next genuine
-  `unpushed -> pushed`); every field is NORMALISED — folded free of tabs and
-  newlines and defaulted when empty — **once, after every source of it has been
-  consulted**, since a tab or an empty leading field in a tab-separated line read
-  back with `IFS=<TAB> read` shifts every later field and the comparison then never
-  matches, an unbounded nudge. The "after every source" half is the part that gets
-  lost: BOTH hooks read the session id from the payload AND from
-  `CLAUDE_CODE_SESSION_ID`, and normalising inside the payload parse leaves the
-  environment path raw. Measured on the lane hook in exactly that state: a
-  well-formed id gave `ctx, sys, sys` while `<TAB>abc`, `a<TAB>b` and `a<NL>b` each
-  gave `ctx, ctx, ctx`. And a record that cannot be PERSISTED (an unresolvable or
-  unwritable git dir) costs the MODEL channel rather than the warning, because a
-  nudge that cannot be recorded cannot be bounded.
-
-  Three corrections landed 2026-09-01, each mutation-proved. **`mv -f` is not
-  proof of a write**: `mv -f <tmp> <dir>` returns 0 and moves the tmp INSIDE the
-  directory, so a record path that is a DIRECTORY set `wrote`/`persisted`, the
-  readback found nothing, and every turn re-armed — unbounded
-  `additionalContext` against `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`, arriving
-  through the success check, plus one orphan tmp per turn. Both hooks now
-  confirm the destination is a regular FILE and sweep the stray tmp. **The
-  record's THIRD field is now READ**: the lane hook consults a record only when
-  it is well-formed (exactly three tab-separated fields, numeric epoch), which
-  both makes that field load-bearing and closes the `IFS=<TAB>` fold — a record
-  with an EMPTY subject field shifted the next field into `prev_subject`, and
-  when that field parsed as `<branch>:<state>` the lane went QUIET. **The lane
-  hook DELETES the record when no worktree is ahead**, so the next lane starts
-  armed; without it the stored subject outlived the condition and the same
-  subject returning was downgraded — a missed nudge, reachable through the
-  `git switch --detach origin/main` remedy the hook itself prints. The cleanup
-  hook deliberately does NOT delete, and says why in the file: its subject is
-  the armed-token SET, its `systemMessage` fires every turn regardless, and
-  `REARM_SECONDS` re-arms the model channel within 20 minutes, so the worst case
-  is bounded where the lane hook's was not.
-
-  **A downgrade to `systemMessage` must change VOICE, not only audience.** Both
-  hooks now keep a `user_msg` / `model_msg` pair. The model text is written at the
-  agent ("YOUR OWN lane", "rebase, run the gates", "the honest label is STOPPED"),
-  so routing it down the user channel hands a human instructions addressed to
-  somebody else — go-to-k/cdkd#2389 in miniature, the defect these hooks were
-  rewritten to fix. The lane hook has THREE paths that downgrade a self-lane
-  warning (a cadence repeat, an unpersistable record, a resumed pass) and one
-  shared emitter, which is precisely the shape where fixing one path leaves the
-  others; each is fenced by its own case.
-
-  The same one-emitter-three-paths shape also reproduces in the TEXT rather than
-  in the code, and it needs its own assertion. The user text once said "the agent
-  has already been nudged about this lane once, so this repeat is for you" —
-  true of the cadence repeat and false of the other two: a resumed pass spends no
-  nudge at all, and an unpersistable record drops the model half precisely
-  BECAUSE the record cannot be kept, so the agent is never told and the claim
-  would repeat every turn. Removing the clause is invisible to the voice checks —
-  the sentence names no agent-voice phrase and does name the lane — so the
-  resumed and unpersistable cases assert the ABSENCE of an "already been nudged"
-  claim as well. Measured: restoring the sentence leaves every other case green
-  and reddens exactly those two.
-
-  **The `stop_hook_active` fold follows PYTHON's truthiness in both hooks, and
-  neither obvious spelling gets there.** The cleanup hook parses the field with
-  `jq` and the lane hook with `python3`, so a malformed payload must not mean two
-  different things. Measured: plain jq truthiness makes `0`, `[]` and `{}`
-  continuations while Python says they are not, and `$f == true` makes `1`, `[1]`
-  and `{"a":1}` ordinary turns while Python says they ARE continuations — opposite
-  errors, and the second is the dangerous one for the money hook, which then reads
-  a resumed pass as fresh and spins the turn. The rule both follow is Python's:
-  null, `false`, `0` and an empty container are falsy, every other value is truthy,
-  with the textual spellings of `false` folded down first.
-
-  One shape still diverges, and it is recorded with BOTH sides because "the two
-  hooks must not disagree" is the whole reason the ladder exists. `1e-999` reads
-  truthy in jq (jq 1.8 preserves the literal, so `$f == 0` is false) and falsy in
-  Python, which underflows it to `0.0`. Measured on jq-1.8.1 / CPython 3. On that
-  one payload the cleanup hook reads RESUMED and goes quiet to the model, while
-  the lane hook reads NOT resumed and spends its model nudge — so it is a
-  disagreement, not merely one hook being conservative. Left as is because both
-  halves are bounded: the quiet costs a nudge a later ordinary turn emits anyway,
-  and the lane hook's nudge is held to one by its per-subject cadence record, so
-  neither side spins. And no producer emits it — the harness sends a JSON
-  boolean — so special-casing it would mean teaching jq to underflow, a rule with
-  no other use, to reconcile a value neither hook will see.
-
-- **The two Stop hooks then DIVERGE deliberately, and the difference is the
-  point.** `stop-unmerged-lane-warn` picks ONE channel by OWNERSHIP: the session's
-  own lane (resolved from `cwd` in the payload, falling back to the hook copy's own
-  checkout) goes to the model, another session's lane goes to the user, because the
-  model cannot act on a worktree that is not its own. It has NO wall-clock re-arm —
-  an unmerged lane costs nothing while it sits, so a second telling buys only
-  annoyance, and the same wall of text every turn was the original complaint. Push
-  state is deliberately not its channel discriminator: that would go quiet on a
-  branch pushed with NO PR, one of the two failures the hook exists to catch, so it
-  lives in the cadence subject and in the message TEXT instead.
-  `stop-cleanup-warn` makes the opposite trade on both axes, because its subject is
-  real AWS resources: it emits `systemMessage` on EVERY fire and ADDS
-  `additionalContext` when the cadence arms, since a billing guardrail must never
-  go silent to the human; and it DOES re-arm on a 20-minute wall clock even when
-  the token set is unchanged, because money accrues on the clock rather than per
-  turn, with the escalated message naming how long the tokens have been armed. Both
-  hooks are exercised by `.claude/hooks/stop-cleanup-warn.test.sh` and
-  `.claude/hooks/stop-unmerged-lane-warn.test.sh` (74 and 121 cases), run by
-  `vp run test:hooks`.
-
-  **Both suites run the HOOK under an explicitly chosen interpreter, and that is
-  not cosmetic.** They invoke it as `bash "$HOOK"` and its shebang is
-  `#!/usr/bin/env bash`, so both resolve through PATH — which means launching the
-  SUITE with `/bin/bash` proved nothing at all about the hook, and the bash 3.2
-  cleanliness these files need on macOS was only ever accidental. Each suite now
-  puts a one-symlink shim directory first on PATH so every child `bash` is the
-  fenced interpreter: `/bin/bash` by default, `HOOK_BASH=<path>` to take the other
-  tally. The suites print which one they used on their first line, and an explicitly
-  set `HOOK_BASH` that is not executable is FATAL rather than a silent fall back to
-  PATH bash — falling back would hide a typo in the one setting the fence exists to
-  pin, and report a tally under an interpreter nobody asked for.
+  - A Stop hook has exactly three ways out (read from the installed Claude Code
+    2.1.251, not the published docs): `hookSpecificOutput.additionalContext`
+    reaches the MODEL and the turn CONTINUES; `systemMessage` reaches the USER
+    only (rendered as `<hookName> says: ...`); stdout / stderr at exit 0
+    reaches NOBODY (hook stderr surfaces only on a NON-zero exit, and stdout at
+    exit 0 is parsed as JSON and dropped when it is not one). There is no
+    fourth option reaching the model WITHOUT continuing, so each hook must
+    CHOOSE; the two JSON fields are independent branches, so one payload may
+    carry both. `stop-cleanup-warn` — a BILLING guardrail — spent months in the
+    third state (`echo ... >&2` then `exit 0`); the lane hook emitted
+    `systemMessage` only while every word was addressed to the agent.
+  - **A continuation is not free**: `additionalContext` travels in the SAME
+    return value as a `decision: "block"`, so both spend one budget —
+    `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`, default 8 consecutive blocks, SHARED
+    across every Stop hook. Cadence rule, followed by both:
+    `stop_hook_active` (a required boolean marking a turn the harness ALREADY
+    resumed) drops the MODEL half — and ONLY that. A full `exit 0` stand-down
+    is wrong whenever the condition first becomes TRUE during the continuation
+    (deploying a stack or committing the lane is exactly the work the
+    continuation exists to push). A bare `systemMessage` does not continue a
+    turn, so the user half costs nothing; a resumed pass writes no cadence
+    record, so the unspent nudge survives for the next ordinary turn-end.
+  - Each hook nudges the model at most once per distinct SUBJECT; a repeat
+    falls back to `systemMessage`. The subject is chosen so ORDINARY WORK does
+    not change it: the lane hook keys on `<own branch>:<pushed|unpushed>` —
+    NOT the commit count — and the cleanup hook on the sorted armed-token set.
+    **The lane predicate is DIRECTED, and a plain inequality is not a
+    simplification of it**: `pushed -> unpushed` is what an ordinary COMMIT
+    looks like, so `prev != subject` re-armed on every commit and again on
+    every push (measured: two forced continuations per cycle). It arms on a
+    new session, an unseen lane, a DIFFERENT branch, an unparsable record, or
+    `unpushed -> pushed` only — the one transition opening an action the model
+    did not have.
+  - The record is ONE file in the PER-WORKTREE git dir (`stop-nudge-lane` /
+    `stop-nudge-cleanup`) holding `<session id>TAB<subject>TAB<epoch>`,
+    written tmp-then-`mv`; the cleanup hook appends a fourth `armed since`
+    field each nudge must not reset. One file rather than one per session, so
+    nothing accumulates, and a concurrent session in the same worktree costs an
+    EXTRA nudge rather than a missed one — the safe direction. Load-bearing
+    properties, each a live bug first: it is written on BOTH arms (it holds the
+    last OBSERVED subject, not the last NUDGED one — recording only on the arm
+    freezes the push half); every field is NORMALISED — folded free of tabs and
+    newlines, defaulted when empty — **once, after EVERY source of it has been
+    consulted** (both hooks read the session id from the payload AND from
+    `CLAUDE_CODE_SESSION_ID`; normalising inside the payload parse left the
+    environment path raw — measured: a `<TAB>`- or newline-bearing id gave
+    `ctx, ctx, ctx`, an unbounded nudge); and a record that cannot be PERSISTED
+    costs the MODEL channel rather than the warning, because a nudge that
+    cannot be recorded cannot be bounded. Three corrections landed 2026-09-01,
+    each mutation-proved: **`mv -f` is not proof of a write** — a record path
+    that is a DIRECTORY returns 0 and moves the tmp INSIDE it (unbounded
+    re-arm arriving through the success check), so both hooks confirm the
+    destination is a regular FILE and sweep the stray tmp; **the record's
+    THIRD field is READ** — a record is consulted only when well-formed
+    (exactly three tab-separated fields, numeric epoch), closing the
+    `IFS=<TAB>` fold where an EMPTY subject shifted fields and went QUIET;
+    **the lane hook DELETES the record when no worktree is ahead** — else the
+    stored subject outlives the condition and the same subject returning is
+    downgraded, a missed nudge reachable through the hook's own
+    `git switch --detach origin/main` remedy. The cleanup hook deliberately
+    does NOT delete, and says why in the file: its `systemMessage` fires every
+    turn regardless and `REARM_SECONDS` re-arms the model channel within 20
+    minutes, so its worst case is bounded where the lane hook's was not.
+  - **A downgrade to `systemMessage` must change VOICE, not only audience.**
+    Both hooks keep a `user_msg` / `model_msg` pair; the model text is written
+    at the agent ("YOUR OWN lane", "rebase, run the gates"), and routing it
+    down the user channel hands a human instructions addressed to somebody
+    else — go-to-k/cdkd#2389 in miniature. The lane hook has THREE downgrade
+    paths (a cadence repeat, an unpersistable record, a resumed pass) and one
+    shared emitter — exactly the shape where fixing one path leaves the
+    others — so each is fenced by its own case, and the resumed and
+    unpersistable cases also assert the ABSENCE of the "the agent has already
+    been nudged" claim, which is true only of the cadence repeat (measured:
+    restoring the sentence reddens exactly those two).
+  - **The `stop_hook_active` fold follows PYTHON's truthiness in both hooks**
+    (one parses with `jq`, the other with `python3`, and a malformed payload
+    must not mean two different things): null, `false`, `0` and an empty
+    container are falsy, every other value truthy, textual spellings of
+    `false` folded first. Plain jq truthiness and `$f == true` are each wrong
+    in OPPOSITE directions (measured), and the second is the dangerous one —
+    a resumed pass read as fresh spins the turn. One recorded divergence:
+    `1e-999` reads truthy in jq 1.8 and falsy in Python (underflow to `0.0`) —
+    left as is, because both halves are bounded and no producer emits it (the
+    harness sends a JSON boolean).
+  - **The two hooks then DIVERGE deliberately, and the difference is the
+    point.** `stop-unmerged-lane-warn` picks ONE channel by OWNERSHIP — the
+    session's own lane (resolved from the payload's `cwd`, falling back to the
+    hook copy's own checkout) goes to the model, another session's lane to the
+    user, because the model cannot act on a worktree that is not its own — and
+    has NO wall-clock re-arm (an unmerged lane costs nothing while it sits).
+    Push state is deliberately NOT its channel discriminator: that would go
+    quiet on a branch pushed with NO PR, one of the two failures the hook
+    exists to catch, so it lives in the cadence subject and the message TEXT.
+    `stop-cleanup-warn` makes the opposite trade on both axes, because its
+    subject is real AWS resources: `systemMessage` on EVERY fire (a billing
+    guardrail must never go silent to the human) PLUS `additionalContext` when
+    the cadence arms, and a 20-minute wall-clock re-arm even on an unchanged
+    token set — money accrues on the clock, not per turn — with the escalated
+    message naming how long the tokens have been armed. Exercised by
+    `.claude/hooks/stop-cleanup-warn.test.sh` and
+    `.claude/hooks/stop-unmerged-lane-warn.test.sh` (74 and 121 cases), run by
+    `vp run test:hooks`.
+  - **Both suites run the HOOK under an explicitly chosen interpreter, and
+    that is not cosmetic.** The hooks' `#!/usr/bin/env bash` resolves through
+    PATH, so launching the SUITE with `/bin/bash` proved nothing about the
+    hook. Each suite now puts a one-symlink shim directory first on PATH so
+    every child `bash` is the fenced interpreter — `/bin/bash` by default,
+    `HOOK_BASH=<path>` for the other tally — prints which one it used on its
+    first line, and treats an explicitly set but non-executable `HOOK_BASH` as
+    FATAL rather than a silent fallback to PATH bash.
 
 - **Registration is not execution — prove the gates are ALIVE before the first
   commit of a session**: run `git commit --dry-run -m "gate liveness probe"` from
@@ -546,341 +478,177 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   an `if` holding `A or B` matches nothing), which `/hooks` cannot show because it
   lists registration, not firing.
 - **ALWAYS develop in a git worktree — never edit or branch in the main
-  checkout, even for a single "sequential" session.** Sessions that believed
-  they were alone have collided twice: a README clobber, and a branch created in
-  the shared checkout that captured another session's staged R44 commit. Every
-  line of work gets its OWN worktree with DISJOINT files:
+  checkout, even for a single "sequential" session** (sessions that believed
+  they were alone have collided twice: a README clobber, and a branch that
+  captured another session's staged commit). Every line of work gets its OWN
+  worktree with DISJOINT files:
   `git worktree add .worktrees/<name> -b wt-<name> origin/main` →
   `mise trust .worktrees/<name>/.mise.toml` → `pnpm install` (worktrees have no
   `node_modules`) → work → run gates + set markers → commit on the branch.
-  **`origin/main`, not local `main`**, and this is not cosmetic: local `main`
-  only advances on an explicit pull in the main checkout, so a lane cut from it
-  starts wherever the last pull left off — and `stale-base-gate.sh` opens with
-  `git merge-base --is-ancestor "$base" HEAD || exit 0`, so it is INERT for
-  exactly that lane. Basing on `origin/main` is what turns that gate ON. The
-  `/work-issues` copy of this recipe was corrected in
-  go-to-k/cdk-real-drift#1847; every copy in this repo now agrees. The
-  orchestrator integrates by `git checkout <branch> -- <files>` (NEVER `git merge` —
-  the leaked cdkd session hooks block it), then `git worktree remove`. The main
-  checkout is reserved for integration: `main` checkouts, pulls, and PR plumbing
-  only. **That recipe is the MAIN-CHECKOUT case and is wrong from anywhere
-  else** (go-to-k/cdk-real-drift#1842): when the session is ALREADY inside a
-  linked worktree — an Orca/ADE workspace, or a stray `cd` into an existing
-  lane — `git worktree add` NESTS one worktree inside another, and deleting the
-  outer workspace takes the inner directory, its uncommitted work and its git
+  **`origin/main`, not local `main`**: local `main` only advances on an
+  explicit pull, and `stale-base-gate.sh` opens with
+  `git merge-base --is-ancestor "$base" HEAD || exit 0`, so a lane cut from a
+  stale local `main` leaves that gate INERT — basing on `origin/main` is what
+  turns it ON (the `/work-issues` copy was corrected in
+  go-to-k/cdk-real-drift#1847; every copy now agrees). The orchestrator
+  integrates by `git checkout <branch> -- <files>` (NEVER `git merge`), then
+  `git worktree remove`; the main checkout is reserved for integration —
+  `main` checkouts, pulls, and PR plumbing only. **That recipe is the
+  MAIN-CHECKOUT case and is wrong from anywhere else**
+  (go-to-k/cdk-real-drift#1842): when the session is ALREADY inside a linked
+  worktree (an Orca/ADE workspace, a stray `cd` into an existing lane),
+  `git worktree add` NESTS one worktree inside another, and deleting the outer
+  workspace takes the inner directory, its uncommitted work and its git
   registration with it. There, create nothing and remove nothing: work on the
-  branch already checked out, take ONE line of work rather than several, and
-  leave the tree for whoever made it. `/work-issues` computes which case applies
-  before its first stage and `/hunt-bugs` points at that probe; do not
-  re-implement it here.
+  branch already checked out, one lane at a time, and leave the tree for
+  whoever made it. `/work-issues` computes which case applies before its first
+  stage and `/hunt-bugs` points at that probe; do not re-implement it here.
 - **A branch switch in the main checkout is now GATED, not merely discouraged.**
   `.claude/hooks/main-tree-branch-gate.sh` refuses `git switch` / `git checkout`
   onto a feature branch (and `git switch --detach`, and `git switch -` /
-  `git checkout -`) when the TARGET working tree is the main checkout, while
-  passing `main` / `master`, a `git checkout [<tree-ish>] -- <pathspec>` file
-  restore, the restore FLAGS `-p` / `--ours` / `--theirs`, a detached
-  `git checkout <sha>`, `git worktree add`, and every switch made INSIDE a
-  `.worktrees/` lane. **The orchestrator's own `git checkout <branch> -- <files>`
-  integration step passes** — it restores files and leaves HEAD on `main`
-  (measured). The argument tail is PARSED the way git's own parse-options parses
-  it, rather than matched against a list of spellings, and each behaviour was
-  settled against real git first: a leading flag is never mistaken for the branch
-  name (`git checkout -f <branch>` is refused, not waved through); a glued value
-  is read (`-bfeat`, `-fbfeat`, `--orphan=feat`, `--track=direct` all name the
-  branch they really create); a value-taking flag's argument is consumed rather
-  than counted as a pathspec (`git checkout --conflict merge <branch>` really
-  switches); `-` and `@{-1}` are the previous branch under BOTH verbs; and
-  `git checkout <name>` / `git checkout -t origin/<name>` for a branch that
-  exists only on a CONFIGURED remote are refused too — git DWIMs both into
-  "create the local branch and switch", which is how a lane's branch usually
-  first appears in a checkout. It is the CAUSE-side twin of `branch-gate`, which
-  fires on the symptom (a commit or push
-  once the tree is already off `main`) — go-to-k/cdk-real-drift#1845.
-  **`branch-gate` now recognises a DETACHED HEAD as "off `main`"**
-  (go-to-k/cdkd#2402): it read the state by branch NAME through
-  `symbolic-ref --short HEAD`, which is EMPTY while detached, so the
-  `main|master` case matched neither arm and the commit went through — and
-  the comment there claimed the empty string only ever meant "not inside a
-  git repo". The two gates composed into a hole neither had alone, since the
-  `git checkout <sha>` this gate passes as inspection is what detaches the
-  shared tree. Measured on a scratch opted-in repo, same `git commit`
-  payload: rc=2 on `main`, rc=0 once detached; rc=2 after the fix. A detached
-  LINKED worktree still passes, because that is the lane-clearing state
-  `stop-unmerged-lane-warn.sh` prescribes with
-  `git switch --detach origin/main`. THIS gate's verdicts are untouched —
-  refusing the sha spelling is a separate behaviour change with its own PR.
+  `git checkout -` / `@{-1}`) when the TARGET working tree is the main
+  checkout, while passing `main` / `master`, a
+  `git checkout [<tree-ish>] -- <pathspec>` file restore, the restore FLAGS
+  `-p` / `--ours` / `--theirs`, a detached `git checkout <sha>`,
+  `git worktree add`, every switch made INSIDE a `.worktrees/` lane, and the
+  orchestrator's own `git checkout <branch> -- <files>` integration step
+  (measured — it restores files and leaves HEAD on `main`). It is the
+  CAUSE-side twin of `branch-gate`, which fires on the symptom
+  (go-to-k/cdk-real-drift#1845). Key behaviours, each settled against real git
+  first and exercised by `.claude/hooks/main-tree-branch-gate.test.sh`
+  (172 cases, under the pinned-interpreter fence above):
 
-  **The remedy it prints follows the operation in progress**: a conflicted
-  rebase is one of the ways the shared checkout detaches, and there git
-  refuses `git switch main` outright with
-  `fatal: cannot switch branch while rebasing`, so a correct block ended in
-  an impossible instruction. The gate
-  reads the TARGET's RESOLVED git dir (not `<dir>/.git`, wrong from a
-  subdirectory) for `rebase-merge` / `rebase-apply` / `CHERRY_PICK_HEAD` /
-  `REVERT_HEAD` / `MERGE_HEAD` / `BISECT_LOG` and prints `<op> --continue` /
-  `<op> --abort`, or `bisect reset` for the one case where `switch main` is
-  accepted but leaves the bisect running; the `applying` sentinel inside
-  `rebase-apply` separates `git am` from `git rebase --apply`. Because both
-  arms exit 2, `branch-gate.test.sh` asserts the MESSAGE TEXT rather than the
-  code.
-
-  **What the remedy does to HEAD is stated conditionally, because it IS
-  conditional** (round 3). The round above verified that all nine printed
-  commands EXIT 0 — they do — and then promised `--abort` would "abandon it
-  and re-attach", which is false in four of the six. Exit status was the
-  wrong observable. Measured on git 2.53 by running each printed remedy
-  verbatim and reading HEAD afterwards: `am --abort`, `cherry-pick --abort`,
-  `revert --abort` and `merge --abort` all leave HEAD DETACHED, and so does
-  `rebase --abort` when the rebase was started while ALREADY detached; only
-  a rebase started FROM a branch re-attaches — and `bisect reset` only when
-  the bisect started from a branch too, which is what the round below had to
-  establish. Those four never detach HEAD themselves, so this arm is
-  reachable for them only from an already-detached tree and `--abort`
-  restores exactly that pre-op state — the user reads exit 0 as success and
-  the next gated command blocks again with `in progress : nothing`. The
-  discriminator is git's own `head-name`, which both rebase backends write
-  as `refs/heads/<branch>` or as the literal `detached HEAD`; the gate reads
-  it and prints either "Either ending re-attaches HEAD to '<branch>'" or
-  "NEITHER ending re-attaches HEAD" plus the `switch main` still needed
-  afterwards. One sentence covers both endings because the outcome is a
-  property of the SESSION rather than of which ending is picked — a
-  completed `--continue` splits the same way, measured. Eleven rows now RUN
-  the printed remedy and assert the resulting HEAD beside that claim.
-
-  **The bisect arm carried the same defect, one arm over** (round 4). It
-  said a `git bisect` "is what detached HEAD here" and that `bisect reset`
-  "restores the branch you started from". Both are false when the bisect
-  began in a tree that was ALREADY detached — one allowed command away,
-  since `main-tree-branch-gate.sh` passes `git checkout <sha>` in the main
-  checkout. Measured on git 2.53, one fixture both ways: started FROM a
-  branch, `.git/BISECT_START` holds `main` and `bisect reset` lands on
-  branch `main`; started DETACHED, it holds a raw SHA and `bisect reset`
-  exits 0 with HEAD STILL DETACHED, so the user reads success and the next
-  gated command blocks again with `in progress : nothing`. `BISECT_START` is
-  to bisect what `head-name` is to rebase, and the gate now reads it. It
-  asks with `show-ref --verify refs/heads/<x>` rather than a 40-hex pattern,
-  because that is the question `git bisect reset` itself ends in: a branch
-  whose NAME is 40 hex characters is then answered the way `git checkout`
-  would answer it, an empty or missing `BISECT_START` is answered "no
-  branch", and a start branch deleted by a low-level `update-ref -d` is too
-  — where `bisect reset` fails loudly with `fatal: invalid reference`. Both
-  polarities now carry a row that RUNS the printed `bisect reset` and reads
-  HEAD. The previous round recorded that the single bisect row "SURVIVES"
-  the blanket-wording mutation; it did, and that was read as evidence the
-  arm was sound. It was not: a row surviving a mutation aimed elsewhere is
-  evidence about that mutation only.
-
-  **The suite no longer inherits the developer's git config** (round 4),
-  which until now decided which arm half its rows exercised. The exhibit
-  that motivated it was a global `rebase.backend = apply` sending every
-  plain `git rebase` down `rebase-apply/`, so a broken `rebase-merge` arm
-  was never reached and the suite went fully green over it. That exhibit
-  NO LONGER REPRODUCES (round 5) and the code comment now says so: naming
-  each rebase row's backend explicitly (`--merge` / `--apply`) was the
-  other half of the same fix, and an explicit backend outranks the config
-  key, so the broken-arm mutant scores 76 pass / 5 fail with and without
-  `rebase.backend = apply`. What still bites, and what keeps the two
-  exports load-bearing, is anything that breaks the fixture COMMITS: on
-  the UNMUTATED hook a global `commit.gpgsign = true`, and a global
-  `init.templateDir` pointing at a FAILING hook, each score 56 pass / 25
-  fail plus 18 fixture failures. The author's machine has
-  `init.templateDir` set (git-secrets), whose hooks exit 0, which is why
-  the suite looked green. The fixture exports
-  `GIT_CONFIG_GLOBAL=/dev/null` and `GIT_CONFIG_SYSTEM=/dev/null`, and
-  round 5 added a POSITIVE probe that those variables are actually
-  honoured (git 2.32+) rather than exported and ignored. Proven rather
-  than asserted: with the neutraliser in place, setting each of those
-  three global options leaves the tally unmoved at 81/0.
-
-  **Four assertable-but-unasserted arms picked up rows** (round 4): `master`
-  — dropping it from the `main|master` arm left the whole suite green; the
-  two fail-CLOSED refusals, for a MISSING and for a TRUNCATED shared matcher
-  library, each of which could be flipped to `exit 0` unnoticed; and the
-  branch-NAME message BODY, which could be gutted while keeping `exit 2`. A
-  row labelled a polarity control for the SPACED linked worktree controlled
-  nothing — the tree was on a branch and its `.markgate.yml` was never
-  tracked, so the hook left at the opt-in check; the fixture now commits
-  that file and detaches the worktree, and the row dies alongside the other
-  linked rows under a mutation that blocks every detached tree. The suite is
-  went 65 -> 72 in that round, and 72 -> 81 in round 5.
-
-  **Round 5 closed a live fail-open and four assertions that passed for the
-  wrong reason.** The gate's fail-CLOSED guard checked ONE library function,
-  `gate_matches`, while the hook goes on to call `gate_target_dir` as well —
-  and the two are 239 and 962 lines into a 1094-line library. A copy
-  truncated between them defined the first, passed the guard, then died on
-  the second inside a command substitution whose 127 the hook read as "no
-  target dir" and exited 0. Measured against the real hook,
-  `git commit -m oops` in an opted-in repo on `main`, cutting the library at
-  every 25th line: 30 of 44 offsets scored rc=0, NOT BLOCKED, the whole run
-  [251..976]. cdkd's twin had checked every function it calls since
-  go-to-k/cdkd#2130 and blocked at all 104 of its offsets, so this was
-  unported drift rather than an adaptation. The guard now names every
-  function the hook calls: 0 of 44 after. Four assertions in the round-4
-  work itself held nothing down, each proven by a mutation that left the
-  suite fully green before this round and reddens exactly its own row now:
-  the detached arm's four-line DIAGNOSIS block (resolved target dir / main
-  checkout / HEAD / in progress) had no reader, so gutting it kept `exit 2`
-  and stayed green — four rows, plus a fifth for the `in progress` field's
-  non-empty polarity; the `show-ref --verify` lookup could be swapped for
-  the 40-hex PATTERN its own comment rejects, so two rows now build the
-  states that separate them, a branch literally NAMED 40 hex characters and
-  a start branch deleted under the bisect with `update-ref -d`; the two
-  fail-CLOSED rows both needled the library PATH, which both refusals print,
-  so deleting one arm left the other's message satisfying both — each now
-  needles its own tail; and `run_case_head`'s `${line% #*}` remedy strip had
-  no fixture under a path containing `#`, so reverting it to `%%#*` was
-  green — one fixture now lives under `ha#sh/` and reverting the strip
-  reddens 11 of 11 `run_case_head` rows. Three smaller corrections: the
-  bisect negative arm named a CAUSE the code never established ("this bisect
-  started from a tree that was ALREADY detached") where `reattach_to=""`
-  covers five states, and now uses the neutral wording its sibling rebase
-  arm already had; `run_case_head` extracts the remedy by the indent every
-  printed remedy starts with (two spaces, then the word git) rather than
-  by print order, since the prose
-  around a remedy contains the same fragment (re-ordering the message plus
-  the old extraction EVALs an English sentence — measured, 3 rows exit 127);
-  and a FIXTURE failure no longer increments the row counter, so
-  `Pass + Fail` again equals the case count. The config neutraliser also
-  gained a positive probe that git actually HONOURS `GIT_CONFIG_GLOBAL` /
-  `GIT_CONFIG_SYSTEM` (2.32+) rather than exporting them into a git that
-  ignores them silently.
-
-  **The `applying` sentinel is load-bearing in the direction that fails
-  SILENTLY.** `git am --abort` inside a `git rebase --apply` session exits 0
-  with no output and leaves HEAD DETACHED, where `git rebase --abort` from
-  that same state lands on `main`; the reverse crossing is loud (rc=128,
-  `fatal: It looks like 'git am' is in progress. Cannot rebase.`). The string
-  `fatal: no rebase in progress` is what git says when NOTHING is in progress,
-  a different condition. That `rebase --apply` branch had no row until round
-  3; mutating it to `am` left all three suites fully green.
-
-  **Two stated bounds.** A path containing a NEWLINE still fails open, because
-  awk's records ARE lines, so an embedded newline ends the record early
-  whatever field expression reads it — measured, a detached MAIN checkout at
-  `<tmp>/nl<LF>repo` scores rc=0, and rc=2 with the newline removed.
-  `worktree list --porcelain -z` DOES read it and is deliberately not taken:
-  `-z` is a later addition than `--porcelain`, an unsupported flag makes
-  `worktree list` print NOTHING (failing OPEN, the same bug class this arm
-  exists to close), and once `-z` ran first the awk would stop executing on
-  every git new enough to have it, retiring the spaced-path fence over a shape
-  this repo HAS produced in exchange for one over a shape nobody has. Second,
-  a `rebase-apply/` directory holding neither `applying` nor `head-name` reads
-  as a rebase here, so the printed `rebase --abort` exits 1 with
-  `warning: could not read '.git/rebase-apply/head-name'` — but `git status`
-  calls that same state "You are currently rebasing.", so the hook agrees with
-  git, and no git command produces it (both rebase backends write `head-name`
-  at start and `git am` writes `applying`), which makes it a bound rather than
-  a bug.
-
-  `main-tree-branch-gate` was ported from
-  cdkd / cdk-local in the FIXED per-segment shape: the target tree is resolved
-  from the SAME segment that carries the arguments, so a command spanning two
-  trees is judged per segment. Resolving it once per command was live in both
-  siblings and wrong in both directions — measured here, payload cwd = the main
-  checkout, before the fix and after:
-
-  ```text
-                                                    before  after  want
-    git -C <wt> switch -c a && git switch -c b          0      2     2
-    git -C <wt> checkout -b a && git checkout -b b      0      2     2
-    git switch main && git -C <wt> switch -c a          2      0     0
-  ```
-
-  The first two let a branch be created in the SHARED checkout unjudged; the
-  third refused the worktree branch creation the convention mandates.
-
-  **A second round, 2026-09-02, closed six more — one of them a REGRESSION the
-  parse itself introduced.** The token walk read SHELL words, and a redirection,
-  its spaced target, a trailing `&` and a `#` comment are the shell's, not git's:
-  counting them as arguments turned a real switch into a "file restore" and
-  passed it. Measured, with `OLD` being cdkd's `origin/main` copy of the gate so
-  the regressions read as regressions:
-
-  ```text
-    command                                     OLD  NEW  now  want
-    git checkout <branch> 2>/dev/null             2    0    2     2
-    git checkout <branch> # switch lane           2    0    2     2
-    git checkout <branch> --                      2    0    2     2
-    git checkout --orph <b> / --trac origin/<b>   0    0    2     2
-    git switch -- main                            2    2    0     0
-    git checkout --no-guess <remote-only>         0    2    0     0
-    control: git checkout <branch>                2    2    2     2
-  ```
-
-  Four causes, each fixed at the cause: the parse now reads git's ARGV through a
-  new shared `gate_argv` rather than raw shell words; an INCOMPLETE parse may no
-  longer ALLOW (an unresolvable or ambiguous option blocks, naming it), which is
-  the general form of the two defects a positional COUNT produced; each verb
-  carries its COMPLETE long-option table with per-name arity, because git accepts
-  any unambiguous PREFIX of a long name and `-h` does not show that; and `--` is
-  checkout's pathspec separator but only switch's end-of-options, so
-  `git checkout <b> --` switches while `git switch -- main` stays put (both
-  measured). An unbalanced quote is now REFUSED rather than silently truncated —
-  `-b agent's-branch` used to yield the single token `-b` and pass.
-
-  **A fifth cause, found inside the fourth's own fix.** "An incomplete parse may
-  not ALLOW" was implemented for unknown GIT OPTIONS only; `gate_argv` did the
-  OPPOSITE for SHELL WORDS, enumerating the forms it recognised (a redirection, a
-  trailing `&`, a `#` comment) and passing everything else through as a git
-  argument. So a word the shell removes but the stripper does not model became a
-  phantom second positional and the verdict relaxed to "file restore". Measured
-  against the parse above, `OLD` being `origin/main` (which has no copy of this
-  gate at all, so it scores 0 on every row INCLUDING the control), `NEW` the
-  round-3 parse, `now` this one:
-
-  ```text
-    command                                     OLD  NEW  now  want
-    git checkout <branch> $EMPTY                  0    0    2     2
-    git checkout <branch> ${EMPTY}                0    0    2     2
-    git checkout <branch> {fd}>/dev/null          0    0    2     2
-    git checkout <branch> {fd}<f.txt              0    0    2     2
-    git checkout main # don't switch lanes        0    2    0     0
-    git checkout main -- f.txt # agent's file     0    2    0     0
-    git checkout --end-of-options main            0    2    0     0
-    git checkout --end-of-options -- f.txt        0    2    0     0
-    git checkout --git-completion-helper          0    2    0     0
-    control: git checkout <branch>                0    2    2     2
-  ```
-
-  The answer is the same fence applied to the other grammar rather than a fourth
-  enumeration: a word `gate_argv` cannot fully account for sets `parse_certain=0`.
-  `gate_word_is_literal` admits a word only when every character outside a quoted
-  span is on `GATE_INERT_CHARS`, a CLOSED list of characters that trigger no
-  shell processing, each carrying its reason. A shape nobody has thought of lands
-  on BLOCK because every shell construct is SPELLED, so one outside the list
-  necessarily carries a character the list does not hold — `{fd}>/dev/null` is
-  caught by `>` and `{` without either being named as a redirection form. One
-  exemption is proved rather than assumed: a word beginning with the literal
-  `@{-` cannot vanish (no expansion produces or removes those characters), and
-  its verdict is a BLOCK that only more positionals relax.
-
-  **Three claims retired here too.** The `parse_certain` arm was documented as
-  firing "only on commands git itself refuses"; against git 2.53.0 it also fired
-  on `--end-of-options main`, `--end-of-options -- <path>` and
-  `--git-completion-helper`, all rc=0. Those, plus `--git-completion-helper-all`
-  and `--help-all`, are `parse-options` built-ins absent from `-h` and are in the
-  tables now at arity 0 — `--end-of-options` ending the OPTIONS without giving
-  the next token checkout's pathspec meaning, since
-  `git checkout --end-of-options <branch>` really switches. The unbalanced-quote
-  refusal was justified as "the text is a shell syntax error in the first place";
-  `bash -n "git checkout main # don't switch lanes"` reports VALID syntax, and the
-  gate blocked a command git answers with "Already on 'main'" — the comment is now
-  cut BEFORE the split. And `--help` used to return ahead of the fence, the one
-  relaxing verdict that skipped it; it no longer does.
-
-  Two claims are retired rather than carried. This hook said "the same probes run
-  against the sibling gates score them identically wrong"; that stopped being
-  true when the siblings landed their own parse, and they now score those rows
-  correctly — the siblings have since been converged onto THIS repo's
-  `remote_dwim_names`, which was ahead of theirs. And `remote_dwim_names` claimed
-  its list held only names "exactly one remote carries": there is no uniqueness
-  check, and with one name on two remotes git refuses while the gate blocks — the
-  conservative direction, so the behaviour stays and only the sentence goes.
-
-  Exercised by `.claude/hooks/main-tree-branch-gate.test.sh` (172 cases) under an
-  explicitly pinned interpreter, `/bin/bash` by default — see the fence note
-  above.
+  - **The argument tail is PARSED the way git's own parse-options parses it**,
+    never matched against a list of spellings: a leading flag is not mistaken
+    for the branch (`git checkout -f <branch>` is refused); glued values are
+    read (`-bfeat`, `-fbfeat`, `--orphan=feat`, `--track=direct`); a
+    value-taking flag's argument is consumed rather than counted as a pathspec
+    (`git checkout --conflict merge <branch>` really switches); and a branch
+    that exists only on a CONFIGURED remote is refused, `-t origin/<b>`
+    included — git DWIMs both into "create the local branch and switch", which
+    is how a lane's branch usually first appears in a checkout. The parse
+    reads git's ARGV through the shared `gate_argv`, never raw shell words: a
+    redirection, its spaced target, a trailing `&` and a `#` comment are the
+    shell's, not git's, and counting them as arguments once relaxed a real
+    switch to "file restore" (measured; the round-2 rc tables live in this
+    file's git history). Each verb carries its COMPLETE long-option table with per-name
+    arity, because git accepts any unambiguous PREFIX of a long name
+    (`--orph <b>` is the branch creation it abbreviates) and the `parse-options`
+    built-ins absent from `-h` (`--end-of-options`,
+    `--git-completion-helper`, `--help-all`, ...) are in the tables at arity 0
+    — `--end-of-options` ends the OPTIONS without giving the next token
+    checkout's pathspec meaning. `--` is checkout's pathspec separator but
+    only switch's end-of-options (`git checkout <b> --` switches while
+    `git switch -- main` stays put; both measured), and `--help` no longer
+    returns ahead of the fence.
+  - **An INCOMPLETE parse may not ALLOW.** An unresolvable or ambiguous
+    option BLOCKS, naming it; an unbalanced quote is REFUSED rather than
+    silently truncated (`-b agent's-branch` used to yield the single token
+    `-b` and pass). The same fence applies to the shell grammar rather than a
+    fourth enumeration: a word `gate_argv` cannot fully account for sets
+    `parse_certain=0`, and `gate_word_is_literal` admits a word only when
+    every character outside a quoted span is on `GATE_INERT_CHARS`, a CLOSED
+    list of characters that trigger no shell processing — a shape nobody has
+    thought of lands on BLOCK because every shell construct is SPELLED with a
+    character the list does not hold (`{fd}>/dev/null` is caught by `>` and
+    `{` without either being named as a redirection form). One exemption is
+    proved rather than assumed: a word beginning with the literal `@{-`
+    cannot vanish. This closed a regression the parse itself introduced —
+    `gate_argv` had ENUMERATED the shell forms it recognised and passed
+    everything else through, so `$EMPTY` and `{fd}>/dev/null` became phantom
+    positionals relaxing the verdict. One retired sentence kept as behaviour:
+    `remote_dwim_names` has no uniqueness check, so a name on two remotes has
+    git refuse while the gate blocks — the conservative direction.
+  - **The target tree is resolved PER SEGMENT, from the SAME segment that
+    carries the arguments** — a command spanning two trees is judged per
+    segment. Resolving it once per command was live in both siblings and
+    wrong in both directions (measured:
+    `git -C <wt> switch -c a && git switch -c b` scored 0 where 2 was wanted,
+    and `git switch main && git -C <wt> switch -c a` refused the worktree
+    branch creation the convention mandates).
+  - **`branch-gate` recognises a DETACHED HEAD in the main checkout as "off
+    `main`"** (go-to-k/cdkd#2402): it read the state by branch NAME through
+    `symbolic-ref --short HEAD`, which is EMPTY while detached, so the
+    `main|master` case matched neither arm and the commit went through — and
+    the `git checkout <sha>` THIS gate passes as inspection is what detaches
+    the shared tree, so the two gates composed into a hole neither had alone
+    (measured on a scratch opted-in repo: rc=0 once detached, rc=2 after the
+    fix). A detached LINKED worktree still passes — that is the lane-clearing
+    state `stop-unmerged-lane-warn.sh` prescribes.
+  - **The refusal's printed remedy follows the operation in progress**: a
+    conflicted rebase is one of the ways the shared checkout detaches, and
+    there git refuses `git switch main` outright — so the gate reads the
+    TARGET's RESOLVED git dir (not `<dir>/.git`, wrong from a subdirectory)
+    for `rebase-merge` / `rebase-apply` / `CHERRY_PICK_HEAD` / `REVERT_HEAD` /
+    `MERGE_HEAD` / `BISECT_LOG` and prints `<op> --continue` / `<op> --abort`,
+    or `bisect reset`. The `applying` sentinel inside `rebase-apply`
+    separates `git am` from `git rebase --apply`, and it is load-bearing in
+    the direction that fails SILENTLY: `git am --abort` inside a
+    `git rebase --apply` session exits 0 with no output and leaves HEAD
+    DETACHED, while the reverse crossing is loud (rc=128). Both arms exit 2,
+    so the suite asserts the MESSAGE TEXT.
+  - **What the remedy does to HEAD is stated CONDITIONALLY, because it IS
+    conditional** — exit status was the wrong observable (all nine printed
+    remedies exit 0). Measured on git 2.53 by RUNNING each printed remedy and
+    reading HEAD afterwards: `am --abort`, `cherry-pick --abort`,
+    `revert --abort` and `merge --abort` all leave HEAD DETACHED (those four
+    never detach HEAD themselves, so this arm is reachable for them only from
+    an already-detached tree, and `--abort` restores exactly that pre-op
+    state); a rebase re-attaches only when started FROM a branch. The
+    discriminator is git's own `head-name`, which both rebase backends write;
+    the gate reads it and prints either "Either ending re-attaches HEAD to
+    '<branch>'" or "NEITHER ending re-attaches HEAD" plus the `switch main`
+    still needed afterwards — one sentence for both endings, because the
+    outcome is a property of the SESSION, not of which ending is picked. The
+    bisect arm carried the same defect one arm over: `bisect reset` restores
+    a branch only when `BISECT_START` holds one (started DETACHED it holds a
+    raw SHA, and `bisect reset` exits 0 with HEAD STILL DETACHED). The gate
+    reads `BISECT_START` and asks with `show-ref --verify refs/heads/<x>`
+    rather than a 40-hex pattern — the question `git bisect reset` itself
+    ends in — so a branch literally NAMED 40 hex characters, an empty
+    `BISECT_START`, and a start branch deleted by `update-ref -d` are each
+    answered the way git answers them. Rows RUN the printed remedies and
+    assert the resulting HEAD, both polarities.
+  - **The suite does not inherit the developer's git config.** It exports
+    `GIT_CONFIG_GLOBAL=/dev/null` / `GIT_CONFIG_SYSTEM=/dev/null`, carries a
+    POSITIVE probe that git actually HONOURS those variables (2.32+) rather
+    than exporting them into a git that ignores them, and names each rebase
+    row's backend explicitly (`--merge` / `--apply`), which outranks a global
+    `rebase.backend`. What still breaks FIXTURES — why the exports are
+    load-bearing — is anything that breaks the fixture COMMITS: a global
+    `commit.gpgsign = true`, or a global `init.templateDir` pointing at a
+    FAILING hook, each scored 56 pass / 25 fail plus 18 fixture failures on
+    the unmutated hook; with the neutraliser, setting all three leaves the
+    tally unmoved (the author's machine HAS `init.templateDir` set, whose
+    hooks exit 0 — why the suite looked green).
+  - **The fail-CLOSED guard names EVERY library function the hook calls.** It
+    used to check ONE (`gate_matches`) while the hook also calls
+    `gate_target_dir` — 239 and 962 lines into a 1094-line library — so a
+    copy truncated between them defined the first, passed the guard, then
+    died inside a command substitution whose 127 the hook read as "no target
+    dir" and exited 0. Measured by cutting the library at every 25th line: 30
+    of 44 offsets NOT BLOCKED before, 0 of 44 after (cdkd's twin had named
+    every called function since go-to-k/cdkd#2130 — this was unported drift).
+    The same rounds gave rows to every assertable-but-unasserted arm:
+    `master` in the `main|master` pattern; both fail-CLOSED refusals, each
+    needling its OWN message tail (deleting one arm no longer satisfies
+    both); the refusal's diagnosis block and branch-name message body; the
+    `show-ref --verify` lookup vs the 40-hex pattern its own comment rejects
+    (two fixtures build the states that separate them); and the harness's
+    `${line% #*}` remedy strip (one fixture now lives under a `#`-bearing
+    path, and the harness extracts the remedy by its two-space-then-git
+    indent, not print order — re-ordering the message plus the old extraction
+    EVALed an English sentence). A fixture failure no longer increments the
+    row counter, so `Pass + Fail` again equals the case count.
+  - **Two stated bounds**, recorded as bounds rather than bugs: a path
+    containing a NEWLINE still fails open — awk's records ARE lines, and
+    `worktree list --porcelain -z` is deliberately not taken (an unsupported
+    flag makes `worktree list` print NOTHING, failing OPEN on every older
+    git: that would retire the spaced-path fence over a shape this repo HAS
+    produced in exchange for one over a shape nobody has). And a
+    `rebase-apply/` directory holding neither `applying` nor `head-name`
+    reads as a rebase here — `git status` calls that same state "rebasing",
+    and no git command produces it.
 
 - **All changes go through a pull request — never commit directly to `main`.**
   Branch (or worktree branch) → run the gates + set markers → commit → push →
@@ -896,19 +664,18 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   pr-review is multi-agent (cdkrd is solo); integ-\* depends on cdkd's
   providers/state/destroy paths cdkrd lacks (see `.markgate.yml`).
 - **Every session-wrap / task-complete report MUST end with a "Remaining work"
-  section AND a "Session close" verdict — unprompted** (mirrors go-to-k/cdkd#1257;
-  the user should never have to ask "any follow-up tasks?" or "can I close this
-  session?"). **Scope: only work THIS session created or touched.** The section
-  reports residuals of the task just finished: gaps in what was shipped, polish
-  deferred while doing it, and issues filed BECAUSE of this work. It is NOT a
+  section AND a "Session close" verdict — unprompted** (mirrors
+  go-to-k/cdkd#1257; the user should never have to ask "any follow-up tasks?"
+  or "can I close this session?"). **Scope: only work THIS session created or
+  touched** — residuals of the task just finished (gaps in what was shipped,
+  polish deferred while doing it, issues filed BECAUSE of this work), never a
   backlog dump. Do not list pre-existing open issues that merely happen to be
   unresolved, and once the session moves on to an unrelated task, stop carrying
-  forward items from the earlier unrelated work. If the current work leaves
-  nothing behind, the answer is "Nothing remaining" even when the repo has open
-  issues elsewhere. **Remaining work** — exactly one of: **TODO (issue #N)**
-  (work that still needs doing later; the ONLY bucket meaning follow-ups
-  exist — every entry MUST have a GitHub issue number, filed BEFORE
-  reporting, AND the four classification fields described below);
+  forward items from the earlier work. If the current work leaves nothing
+  behind, the answer is "Nothing remaining" even when the repo has open issues
+  elsewhere. **Remaining work** — exactly one of: **TODO (issue #N)** (the ONLY
+  bucket meaning follow-ups exist — every entry MUST have a GitHub issue
+  number, filed BEFORE reporting, AND the four classification fields below);
   **Won't-do (decided + recorded)** (things consciously decided AGAINST doing,
   with a one-line reason and where the decision is recorded — PR body, in-code
   comment, issue comment; no action needed); **Nothing remaining** (an explicit
@@ -919,14 +686,13 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   hunts / subagents; no AWS resources pending cleanup (bughunt sentinel clear);
   every TODO filed as an issue.
 
-  **The four TODO fields — decide them WHEN THE ITEM ARISES, not at wrap time.**
-  By wrap time the evidence for the call (which files were open, which
+  **The four TODO fields — decide them WHEN THE ITEM ARISES, not at wrap
+  time.** By wrap time the evidence for the call (which files were open, which
   verification cycle was already being paid for) is gone, and a retrospective
   guess is worth little. Record them **in the issue body** so they outlive the
   session. The issue body and the report use the SAME four lines, one field per
-  line (an issue also carries a `Dup-check:` line — see `/work-issues` §5 — but that
-  is a filing-time record of the open-issue search, not a fifth classification
-  field):
+  line (an issue also carries a filing-time `Dup-check:` line — see
+  `/work-issues` §5 — which is not a fifth classification field):
 
   ```text
   Session-fit: now (do it in this session) | next (not this session) — <reason>
@@ -936,20 +702,18 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   ```
 
   A report adds a fifth line, **`Notes`**, for session-specific context (`none`
-  when there is nothing); the issue body stays at four CLASSIFICATION lines, because
-  what belongs there is only the part that outlives the session. (`Dup-check:` sits
-  alongside them in the body and is not one of the four: it records that the open
-  issue list was searched at filing time, and nothing in the report re-states it.)
+  when there is nothing); the issue body stays at the four CLASSIFICATION
+  lines — what belongs there is only the part that outlives the session.
 
   **The four answer four DIFFERENT questions and none derives from another**:
   `Session-fit` is the decision, `Severity` the cost of leaving it undone,
   `Effort` which verification cycle the fix drags, `Estimate` the hours. In
   particular do not collapse `Severity` into `Session-fit` — a `Severity: high`
-  item can still be `next` (a new fixture has to be written for it) and a `low` one
-  can be `now` (it lands in a file this session already has open). The moment
-  the two track each other, `Severity` is a second spelling of the decision and
-  the field is wasted. Likewise `Effort` is not `Estimate`: "one live run" is a
-  kind of cost, and how many hours it takes depends on which fixture.
+  item can still be `next` (a new fixture has to be written for it) and a `low`
+  one can be `now` (it lands in a file this session already has open); the
+  moment the two track each other, one field is wasted. Likewise `Effort` is
+  not `Estimate`: "one live run" is a kind of cost, and how many hours it takes
+  depends on which fixture.
 
   **The keys are spelled identically everywhere** — issue body, English report,
   Japanese report; never translated or renamed per context. **No bare tokens**,
@@ -957,121 +721,107 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   `Session-fit: next (not this session)` and never a lone `next`;
   `Effort: large (L)` and never a lone `L`; `Severity` as a word and **never as
   an initial** (the initials collide with `Effort`'s both ways — `M` is
-  `medium` on either scale, and `L` would be _low_, the least urgent thing there
-  is, against _large_, the biggest); and always BOTH `Effort` and `Estimate` —
-  dropping the duration and keeping the letter is exactly the failure this split
-  exists to end.
+  `medium` on either scale, and `L` would be _low_, the least urgent thing
+  there is, against _large_, the biggest); and always BOTH `Effort` and
+  `Estimate` — dropping the duration and keeping the letter is exactly the
+  failure this split exists to end.
 
-  **`Severity` and `Effort` are ALSO LABELS on a filed issue.** The two lines
-  stay exactly as written — nothing about the report or the body changes — and
-  the same two values are mirrored onto the issue as `severity:high` /
-  `severity:medium` / `severity:low` and `effort:small` / `effort:medium` /
-  `effort:large`. Prose is invisible to every query the backlog is actually
-  triaged with, so ranking by `Severity` costs one `gh issue view` per candidate
-  while `gh issue list --label severity:high` is one call. Set them at filing
-  time (`gh issue create ... --label severity:high --label effort:large`) and
-  again when a claim rewrites an old packed body into the four-line shape
-  (`gh issue edit <n> --add-label ...`), which is where `Severity` first exists
-  for most of the backlog. **Only these two get labels**: `Session-fit` is
-  re-decided at claim time and a label silently disagreeing with the body is
-  worse than none, and `Estimate` is a free-form duration whose informative
-  half — what actually eats the time — is exactly what a label cannot hold. The
-  prefixed full words are the "no bare tokens" rule applied to a label: the two
-  scales share the token `medium`, and their initials collide in the dangerous
-  direction. Enforced by `.claude/hooks/issue-classification-label-gate.sh`,
+  **`Severity` and `Effort` are ALSO LABELS on a filed issue** — the two lines
+  stay exactly as written, mirrored as `severity:high` / `severity:medium` /
+  `severity:low` and `effort:small` / `effort:medium` / `effort:large` —
+  because prose is invisible to every query the backlog is actually triaged
+  with (ranking by `Severity` costs one `gh issue view` per candidate;
+  `gh issue list --label severity:high` is one call). Set them at filing time
+  (`gh issue create ... --label severity:high --label effort:large`) and again
+  when a claim rewrites an old packed body into the four-line shape — where
+  `Severity` first exists for most of the backlog. **Only these two get
+  labels**: `Session-fit` is re-decided at claim time and a label silently
+  disagreeing with the body is worse than none; `Estimate` is a free-form
+  duration whose informative half is exactly what a label cannot hold. The
+  prefixed full words are the no-bare-tokens rule applied to a label (the two
+  scales share `medium`, and their initials collide in the dangerous
+  direction). Enforced by `.claude/hooks/issue-classification-label-gate.sh`,
   which refuses a `gh issue create` / `gh issue edit` whose body states a value
-  the issue's labels do not carry (`gh issue comment` is not gated; on `edit` it
-  asks gh what the issue already carries, and fails OPEN when gh cannot answer).
-  **The PR inherits them automatically** —
+  the issue's labels do not carry (`gh issue comment` is not gated; on `edit`
+  it asks gh what the issue already carries, and fails OPEN when gh cannot
+  answer). **The PR inherits them automatically** —
   `.github/workflows/pr-inherit-issue-labels.yml` copies every label of the
-  issues a PR closes onto the PR itself (add-only, minus the release-management
-  family), so never hand-add them to a PR. The copy runs when the PR is opened,
-  reopened, or its body edited, reading the labels the issue carries AT THAT
-  MOMENT — which is why the label belongs on the issue at CLAIM time, before the
-  lane's PR exists.
+  issues a PR closes onto the PR (add-only, minus the release-management
+  family) when the PR is opened, reopened, or its body edited, reading the
+  labels the issue carries AT THAT MOMENT — so label the ISSUE at CLAIM time,
+  before the lane's PR exists, and never hand-add them to a PR.
 
   **Scales.** `Severity`: `high` = a wrong result, data loss, a security
-  surface, or something a user hits in normal operation; `medium` = a capability
-  is missing but there is a workaround, or it only shows up under a specific
-  condition; `low` = internal tidiness, invisible to users. **Rate what a user
-  experiences, never why this session should do it** — "leaving main
-  self-inconsistent" is a `Session-fit: now` trigger, not a Severity level, and
-  copying it here makes that flavour of `high` permanently un-`next`-able.
-  `Effort` measures the verification tail rather
-  than the edit: `small` = edit plus unit tests, riding verification this
-  session already pays for; `medium` = one re-review round, or a live run this
-  session was not otherwise going to make; `large` = a NEW fixture has to be
-  WRITTEN, or a behavior change needing its own PR plus review.
+  surface, or something a user hits in normal operation; `medium` = a
+  capability is missing but there is a workaround, or it only shows up under a
+  specific condition; `low` = internal tidiness, invisible to users. **Rate
+  what a user experiences, never why this session should do it** — "leaving
+  main self-inconsistent" is a `Session-fit: now` trigger, not a Severity
+  level, and copying it here makes that flavour of `high` permanently
+  un-`next`-able. `Effort` measures the verification tail rather than the
+  edit: `small` = edit plus unit tests, riding verification this session
+  already pays for; `medium` = one re-review round, or a live run this session
+  was not otherwise going to make; `large` = a NEW fixture has to be WRITTEN,
+  or a behavior change needing its own PR plus review. Calibration: RUNNING an
+  existing verification is not a reason to defer (measured over the 268 rows
+  of cdkd's integ ledger, 2026-08-20: median run 85 s, mean 4.6 min, p90 8.8
+  min — a passing run costs a few hundred tokens, and one riding the session's
+  current lane costs zero). What is genuinely expensive is WRITING a new
+  fixture, a run that FAILS, and above all review of a larger diff, which
+  grows superlinearly. Defer on those.
 
-  **Calibration: RUNNING an existing integ is not a reason to defer.** Measured
-  over the 268 rows of cdkd's `docs/_generated/integ-last-run.tsv` on 2026-08-20:
-  median run 85 s, mean 4.6 min, p90 8.8 min. A passing run costs a few hundred
-  tokens. If the session is running one for its current lane anyway, a fix riding
-  the same fixture costs zero — the same run refreshes the same gate. What is
-  genuinely expensive is WRITING a new fixture, an integ that FAILS, and above
-  all review of a larger diff, which grows superlinearly because a reviewer reads
-  the whole thing and cross-file interactions multiply. Defer on those.
+  **Before writing `Session-fit: next`, NAME the command that verifies the
+  fix** — concretely (not "run the tests": the test file; not "check it live":
+  the stack and the region) — and say a fresh session will be able to run it.
+  A deferral is a PREDICTION, and an unstated prediction is never checked, so
+  the field decays into naming the KIND of work — classifying by MEANS rather
+  than by PURPOSE, which no list of `now` triggers can catch. If naming it is
+  HARD, that difficulty IS the finding; it is one of four things: the verifier
+  is bound to THIS run's live AWS state (a stack this run must delete before
+  it can ship, a hand-injected drift, a clean window on the shared-name suite)
+  or to credentials a fresh session may not hold; it is bound to THIS host
+  (CPU architecture, an installed toolchain, a pulled container image); it
+  does NOT EXIST yet and writing it is most of the work — the one case where
+  `next` is unambiguously right, and right BECAUSE you could name what is
+  missing; or you cannot name it at all, which is an unbounded deferral.
+  Measured 2026-08-26: go-to-k/cdk-local#560 was deferred on "a fixture /
+  base-image change on a different axis" — a statement about the work's
+  CATEGORY. Its defect was a Go RIE segfault under `linux/amd64` emulation on
+  an arm64 host and the filing machine WAS arm64, so the real verification was
+  "run those fixtures on an arm64 host", which nothing guaranteed a fresh
+  session has; the maintainer caught it, not the flow. The converse is the
+  honest `next`: when you CAN name the check and any machine can run it, say
+  so in one line beside `Session-fit`. `/work-issues` §3-b applies this to a
+  deferral that becomes a filed ISSUE, with the repo-specific shapes here.
 
-  **Before writing `Session-fit: next`, NAME the command that verifies the fix.**
-  A deferral is a PREDICTION — that a later session can finish this — and an
-  unstated prediction is never checked, so the field decays into naming the KIND
-  of work ("a fixture change", "a different subsystem"). That is classifying by
-  MEANS rather than by PURPOSE, and no list of `now` triggers can catch it,
-  because the next miss arrives in a shape the list does not contain. So you may
-  not write `next` until you can name, concretely, the command the NEXT session
-  will run to see the fix work — and can say a fresh session will be able to run
-  it. Not "run the tests": the test file. Not "check it live": the stack and the
-  region. The check is GENERATIVE rather than a lookup, which is the whole point,
-  and if naming it is HARD that difficulty IS the finding. It is one of four
-  things: the verifier is bound to THIS run's live AWS state (a stack this run
-  must delete before it can ship, a drift injected by hand, a clean window on the
-  shared-name suite) or to credentials a fresh session may not hold; it is
-  bound to THIS host (CPU architecture, an installed toolchain, a container image
-  already pulled); it does NOT EXIST yet and writing it is most of the work — the
-  one case where `next` is unambiguously right, and right BECAUSE you could name
-  what is missing; or you cannot name it at all, which is not a deferral but an
-  unbounded one. Measured 2026-08-26: go-to-k/cdk-local#560 was deferred on "a
-  fixture / base-image change on a different axis", a statement about the work's
-  CATEGORY. Its defect is a Go RIE segfault under `linux/amd64` emulation on an
-  arm64 host and the filing machine was arm64, so the real verification was "run
-  those fixtures on an arm64 host" — which nothing guarantees a fresh session
-  has. The maintainer caught the misclassification, not the flow. The converse is
-  the honest `next`: when you CAN name the check and any machine can run it, say
-  so in one line beside `Session-fit`, so the next session starts from the check
-  instead of re-deriving it. `/work-issues` §3-b applies this to a deferral that
-  becomes a filed ISSUE, with the repo-specific shapes the answer takes here.
-
-  **`Session-fit: next` is NOT available for work discovered inside a scope the
-  user framed as "do this across the repos in one session".** Three tells that
+  **`Session-fit: next` is NOT available for work discovered inside a scope
+  the user framed as "do this across the repos in one session".** Three tells
   force `now`: (a) you are about to file the SAME issue body in more than one
-  repo — that is the split the framing exists to end, not triage; (b) the fix is
-  mechanical and its evidence is live right now (the repro is built, the files are
-  open, a gate cycle is already running); (c) the user already said "finish it
-  here" for the surrounding task, and a discovery inside that task inherits the
-  instruction rather than getting its own budget. The four fields exist to make a
-  deferral HONEST, not to make one available — a defensible-looking `Effort` /
-  `Estimate` written for work the session is already positioned to do is the tell
-  that the classification is being used as an excuse. On 2026-08-20 a session
-  asked to consolidate one `/work-issues` lesson across cdkd, cdk-local and this
-  repo discovered that every PreToolUse gate here was inert, fixed the matchers in
-  all three, and then filed the remaining script-level gap as three separate
-  issues — reproducing exactly the per-repo split the request existed to end. It
-  took the user objecting to get the fix done in the same SESSION, as a follow-up
-  PR per repo. "Same session" is the bar; "same PR" is only the bar when the work
-  is small enough to review together.
+  repo — that is the split the framing exists to end, not triage; (b) the fix
+  is mechanical and its evidence is live right now (the repro is built, the
+  files are open, a gate cycle is already running); (c) the user already said
+  "finish it here" for the surrounding task, and a discovery inside it
+  inherits the instruction. The four fields exist to make a deferral HONEST,
+  not to make one available — a defensible-looking `Effort` / `Estimate` for
+  work the session is already positioned to do is the tell (2026-08-20: a
+  session consolidating one lesson across cdkd, cdk-local and this repo fixed
+  the inert gates in all three, then filed the remaining script-level gap as
+  three separate issues — it took the user objecting to get it done in the
+  same SESSION, as a follow-up PR per repo). "Same session" is the bar; "same
+  PR" only when the work is small enough to review together.
 
   **A newly DISCOVERED bug is not a residual.** A residual (deferred polish, a
   nit, a parity gap) is fully describable, so writing it down loses nothing. A
   discovery's expensive part is the EVIDENCE behind it — the repro you built,
-  what you watched actually happen, the number you measured — and that is exactly
-  what an issue body cannot carry cheaply. When a bug surfaces mid-session, ask
-  which it is: if the evidence is session-only, finish it now unless a genuine
-  defer criterion fires, and if you must defer it anyway, put the EVIDENCE in the
-  issue body, not just the diagnosis.
+  what you watched actually happen, the number you measured — and that is
+  exactly what an issue body cannot carry cheaply. When a bug surfaces
+  mid-session, ask which it is: if the evidence is session-only, finish it now
+  unless a genuine defer criterion fires, and if you must defer it anyway, put
+  the EVIDENCE in the issue body, not just the diagnosis.
 
-  **One field per line — never pack two onto one**, and keep the field names and
-  their order identical every time. A field with nothing to say gets an explicit
-  `none`, never omission:
+  **One field per line — never pack two onto one**, and keep the field names
+  and their order identical every time. A field with nothing to say gets an
+  explicit `none`, never omission:
 
   ```text
   ## Remaining work
