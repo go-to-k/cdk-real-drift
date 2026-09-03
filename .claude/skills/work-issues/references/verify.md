@@ -59,7 +59,9 @@ round to the delta and take its findings all at once, not trickled.
   call; if you add one, dry-run against stubs first.
 - **When a fix round produces the NEXT round's blocker twice, stop reviewing
   the patch and question its SHAPE** (`/verify-pr` step 5 re-reads the whole
-  diff each run). After round two, name what the rounds have in COMMON —
+  diff each run). Blockers in a cascade are found by executing a probe or
+  tracing a window, never by re-reading the diff. After round two, name what
+  the rounds have in COMMON —
   usually one structural absence — then take the NARROW fix, file the
   structural one, and reference it from the narrow fix; new code at round five
   is how round six happens.

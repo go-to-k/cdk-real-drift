@@ -50,7 +50,9 @@ area are already filed. Only the first `M > N` reason is healthy:
 **`filed <= closed` (M <= N) is NOT a target, and must never become one.** The
 goal is a correct codebase, not a short list: an unfiled finding is strictly
 worse than a filed one — it removes the defect from the record while leaving it
-in the product. If weighing whether to file, file.
+in the product. Never let the count justify not filing, softening a finding,
+or merging independent defects into one vague issue. If weighing whether to
+file, file.
 
 **Then run the PROMOTION check on every `next` this run filed — a deferral is
 judged against the run that HAPPENED, not the one predicted when it was

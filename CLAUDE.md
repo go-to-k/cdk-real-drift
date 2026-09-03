@@ -532,8 +532,8 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
     shell's, not git's, and counting them as arguments once relaxed a real
     switch to "file restore" (measured; the round-2 rc tables live in this
     file's git history). Each verb carries its COMPLETE long-option table with per-name
-    arity, because git accepts any unambiguous PREFIX of a long name (`--orph
-<b>` is the branch creation it abbreviates) and the `parse-options`
+    arity, because git accepts any unambiguous PREFIX of a long name
+    (`--orph <b>` is the branch creation it abbreviates) and the `parse-options`
     built-ins absent from `-h` (`--end-of-options`,
     `--git-completion-helper`, `--help-all`, ...) are in the tables at arity 0
     — `--end-of-options` ends the OPTIONS without giving the next token

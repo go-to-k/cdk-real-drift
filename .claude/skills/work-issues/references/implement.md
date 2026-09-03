@@ -334,7 +334,9 @@ ran against the corrupted subject and returned verdicts about nothing. Copy the
 file aside first and copy it back (`cp` / `shutil.copyfile`), then re-run the
 suite and confirm GREEN before the next probe. `git checkout -- <file>` is not
 the alternative: at probe time the fix itself is usually uncommitted, so that
-discards the work along with the wreckage. Verify the restore by HASH, not by
+discards the work along with the wreckage (the pre-probe commit rule in
+`references/verify.md` narrows this, and a `git stash` cycle around an
+unrelated peer's changes has its own trap). Verify the restore by HASH, not by
 eye — a `shasum -a 256` recorded before the first probe turns "I think I put it
 back" into a check.
 
