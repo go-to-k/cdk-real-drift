@@ -1,7 +1,7 @@
 // The `pr-title-check` workflow enforces that a PR title carries a SINGLE conventional-commit
 // type with an optional single scope. A COMPOUND title like `fix(read)+fix(revert): …` passes
 // the lenient `amannn/action-semantic-pull-request` gate but (1) historically failed to release
-// at all — semantic-release's headerPattern scope class `[^)]+` cannot span the mid-header `)`
+// at all — the pre-release-please semantic-release headerPattern scope class `[^)]+` could not span the mid-header `)`
 // (#1431/#1446 shipped unpublished; fixed in #1448) — and (2) renders an ugly CHANGELOG scope
 // (`read)+fix(revert`). This drives the SHIPPED validator exactly as the workflow does — the CLI
 // `node scripts/check-pr-title.mjs "<title>"` (exit 0 = accepted, 1 = rejected) — so the test

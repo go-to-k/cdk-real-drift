@@ -97,7 +97,8 @@ go-to-k/cdk-real-drift#1782):
 
 ## 7. If main advanced while you worked (parallel merges)
 
-A peer's merges move `main` (+ a `chore(release)` bump); `git diff main..<branch>`
+A peer's merges move `main` (and, when the release PR merges, a
+`chore(release)` commit); `git diff main..<branch>`
 then shows **phantom removals** of the peer's added lines — a stale-base
 artifact, NOT real deletions. Confirm the TRUE diff and rebase:
 

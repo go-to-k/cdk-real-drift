@@ -1336,7 +1336,7 @@ live state from AWS — the app only decides which stacks are in scope.
 (`drift-calculator`, `cc-api-strip`, CC-gap deny-list, a few SDK-override readers)
 and adds what cdkd lacks (schema-strip, policy canonicalizer, desired-adapter,
 baseline I/O, report, the fail-closed resolver). Same toolchain as cdk-local
-(Vite+ `vp`, pnpm, tsc, oxc, semantic-release).
+(Vite+ `vp`, pnpm, tsc, oxc, release-please).
 
 The shared `drift-calculator` lineage means bugs can be bi-directional: the
 tag-order + id-array-order false positives found here were **back-ported to cdkd**
@@ -1421,7 +1421,7 @@ check` green). The earlier `TS2591 'process'` errors came from oxc's type-aware
 6. **YAML templates**: parsed (`yaml-cfn.ts`), but the dogfooding was JSON (CDK
    output). Worth a YAML-template pass.
 7. **Governance / repo hygiene (in place)**: CI (`.github/workflows/ci.yml` =
-   `vp run check` + test + build; `release.yml` semantic-release; `pr-title-check.yml`),
+   `vp run check` + test + build; `release.yml` release-please batched releases; `pr-title-check.yml`),
    `.markgate.yml` (check/docs/verify-pr), `.claude/skills/{check,check-docs,verify-pr}`,
    the `.claude/hooks/` suite (+ `.claude/settings.json`) — `check-gate`,
    `branch-gate` (blocks `git commit` / `git push` when the target tree is on
@@ -1460,9 +1460,10 @@ declared-only `--pre-deploy`, and selective `record`.
 Repo hygiene (CLAUDE.md, CONTRIBUTING.md, check-gate hook, CI) is in place too.
 
 DONE since this section was written: the public GitHub repo exists and is pushed,
-and publishing is automated — semantic-release runs `npm publish` on every
-release-triggering merge to `main` (`cdk-real-drift` has been on npm since
-`0.0.1`, 2026-07-06).
+and publishing is automated — release-please batches merges to `main` into a
+standing `chore(release)` PR whose merge tags the release and runs
+`npm publish` (`cdk-real-drift` has been on npm since `0.0.1`, 2026-07-06,
+released per-merge by semantic-release until the batched-release switch).
 
 REMAINING, neither of which is a code-correctness blocker:
 
