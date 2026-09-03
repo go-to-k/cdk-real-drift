@@ -3,16 +3,16 @@
 ## 10. Fold what the run taught you back into this skill
 
 Trigger: after the last lane in §9 is merged and every worktree THIS run added
-is removed — an IN-PLACE run added none, so for it the trigger is the last merge
-— BEFORE the wrap report; the evidence dies with this session's context. Distinct from
-`/verify-pr` step 8's per-LANE retrospective: the subject is **the flow
-itself** (the orchestrator `SKILL.md`, its `references/` stage files, the
-skills it drives — not the lane's code), the scope is the WHOLE run (cross-lane
-patterns are invisible from inside one lane), and it **applies** the fix —
-editing this repo's own agent tooling is a routine call. Escalate through
-`AskUserQuestion` only when the edit changes what the flow PROMISES (dropping a
-gate, lowering a verification tier, loosening §0) — never for wording,
-ordering, or a newly-learned trap.
+is removed — an IN-PLACE run added none, so for it the trigger is the last
+merge — BEFORE the wrap report; the evidence dies with this session's context.
+Distinct from `/verify-pr` step 8's per-LANE retrospective: the subject is
+**the flow itself** (the orchestrator `SKILL.md`, its `references/` stage
+files, the skills it drives — not the lane's code), the scope is the WHOLE run
+(cross-lane patterns are invisible from inside one lane), and it **applies**
+the fix — editing this repo's own agent tooling is a routine call. Escalate
+through `AskUserQuestion` only when the edit changes what the flow PROMISES
+(dropping a gate, lowering a verification tier, loosening §0) — never for
+wording, ordering, or a newly-learned trap.
 
 ### 10-0. Measure the run's net effect on the backlog
 
@@ -50,9 +50,7 @@ area are already filed. Only the first `M > N` reason is healthy:
 **`filed <= closed` (M <= N) is NOT a target, and must never become one.** The
 goal is a correct codebase, not a short list: an unfiled finding is strictly
 worse than a filed one — it removes the defect from the record while leaving it
-in the product. Never let the count justify not filing, softening a finding, or
-merging independent defects into one vague issue. If weighing whether to file,
-file.
+in the product. If weighing whether to file, file.
 
 **Then run the PROMOTION check on every `next` this run filed — a deferral is
 judged against the run that HAPPENED, not the one predicted when it was
@@ -78,10 +76,9 @@ for n in <the numbers this run filed that are still open>; do
     | grep -oE '[A-Za-z0-9_][A-Za-z0-9_./-]*\.[a-z]+' | sort -u \
     | while read -r f; do
         # Suffix match, not equality: an issue body names a file by BASENAME far
-        # more often than by full path (the bare file name, not the full
-        # repo-relative one), and an exact whole-line compare misses
-        # every one of those. Measured: the exact form fired on 1 of this run's 2
-        # deferrals and missed the one whose body used the basename.
+        # more often than by full path, and an exact whole-line compare misses
+        # every one of those. Measured: the exact form fired on 1 of this run's
+        # 2 deferrals and missed the one whose body used the basename.
         grep -E "(^|/)$(printf '%s' "$f" | sed 's/[.[\*^$]/\\&/g')\$" \
           /tmp/run-touched.$$ | while read -r hit; do
             echo "PROMOTE #$n -- this run touched $hit"
@@ -96,31 +93,30 @@ reading as two findings.
 
 **A hit is a prompt for judgement, not a verdict** — it cannot tell a citation
 from a target (measured: one deferral hit its one target file; the other hit
-four, three cited only as precedent). Do not skim a hit: do the item now while
-the context is loaded, or re-classify it in the issue body with the reason it
-still does not belong here.
+four, three cited only as precedent). Do the item now while the context is
+loaded, or re-classify it in the issue body with the reason it still does not
+belong here.
 
 **Re-read the REASON too — it can name a state that has since resolved.**
 Classifying once at creation is right, but a reason phrased in the run's own
-transient state ("the PR carrying it is still open", "a fifth review round")
-goes FALSE when that state resolves (2026-08-26, go-to-k/cdkd#2259: deferred
-while go-to-k/cdkd#2247 was in review; the reason survived unchanged into the
-wrap after that PR merged). Re-reading an expired premise is not re-litigation;
-keeping a `next` alive on a reason that stopped being true is.
+transient state ("the PR carrying it is still open") goes FALSE when that state
+resolves (go-to-k/cdkd#2259: deferred while go-to-k/cdkd#2247 was in review;
+the reason survived unchanged into the wrap after that PR merged). Re-reading
+an expired premise is not re-litigation; keeping a `next` alive on a reason
+that stopped being true is.
 
 ### 10-a. Evidence: only what this run actually produced
 
 Collect, with the concrete instance attached to each:
 
 1. **Corrections the user made** — two on one theme across lanes is a defect in
-   this text; the second occurrence is the signal, one alone may be a one-off.
+   this text; the second occurrence is the signal.
 2. **Text that was WRONG as written** — a failed command, a probe reporting a
    clear field while a lane was live, a flag / path / gate name that no longer
    exists.
 3. **Steps you had to invent** because the skill is silent — the next run would
    re-invent them.
-4. **Right instruction, wrong place** — done, but a step too late (claim posted
-   after triage, rebase discovered after the phantom diff).
+4. **Right instruction, wrong place** — done, but a step too late.
 5. **Followed it and still paid** — the text was obeyed and a retry happened
    anyway.
 
@@ -152,15 +148,13 @@ Collect, with the concrete instance attached to each:
 the repos in one session" ask, a discovery cannot be `Session-fit: next` —
 three tells, any one forcing `now`: filing the SAME issue body in more than one
 repo (the split the request exists to end); a mechanical fix whose evidence is
-live now (repro built, files open, gate cycle running); or the user already
-said "finish it here" for the surrounding task, which the discovery inherits. A
-tidy `Effort` / `Estimate` for work the session is already positioned to do is
-the tell the fields are an excuse, not a measurement (2026-08-20: a run fixing
-inert sibling PreToolUse gates across cdkd, cdk-local and
-go-to-k/cdk-real-drift filed the remaining script-level gap as three separate
-issues until the user objected; then done in the same SESSION as a follow-up PR
-per repo). "Same session" is the bar; "same PR" only when small enough to
-review together.
+live now; or the user already said "finish it here" for the surrounding task,
+which the discovery inherits. A tidy `Effort` / `Estimate` for work the session
+is already positioned to do is the tell the fields are an excuse (2026-08-20: a
+run fixing inert sibling PreToolUse gates across cdkd, cdk-local and
+go-to-k/cdk-real-drift filed the remaining gap as three separate issues until
+the user objected; then done in the same SESSION as a follow-up PR per repo).
+"Same session" is the bar; "same PR" only when small enough to review together.
 
 ### 10-c. How to edit: amend, do not append
 
@@ -170,10 +164,19 @@ Every run appending one more bullet is how a long skill becomes an unread one.
   Gotchas is for traps that span steps, not a run log.
 - **Amend the sentence that was wrong** rather than adding a sibling — two
   near-duplicate bullets blunt each other.
-- **Carry the evidence inline** (date, issue / PR number, what happened) — a
-  rule with no incident cannot be re-judged or retired later.
+- **Carry the evidence inline** (date, issue / PR number, what happened) — but
+  as ONE line: the rule plus a citation, not the narrative. A rule with no
+  incident cannot be re-judged or retired; a rule buried in its own incident
+  report is not read.
 - **Pay for what you add**: cut a line this run proved stale, subsumed, or
-  wrong. Net growth is fine for a new lesson; unbounded growth is not.
+  wrong. **A retro NEVER buys room by raising a byte cap or a corpus floor** —
+  the caps and floors in `tests/skill-file-payload.test.ts` are the mechanical
+  stop on this skill's growth loop, and a retro that raises one converts the
+  stop into a ratchet (this repo's corpus floor climbed 116,000 → 120,000 →
+  130,000 across two days of retro rounds tracking growth before the 2026-09-04
+  compression pass re-derived every bound DOWNWARD). If a lesson genuinely
+  cannot be paid for by compression in its stage file, split the stage; the
+  floor moves DOWN with compression passes, never up to accommodate growth.
 - Do not restate a rule living in `CLAUDE.md` or another step — point at it.
 - A FLOW lesson (not a cdk-real-drift one) lands in all three repos in ONE
   session — this skill plus the same-named `work-issues` skill in the siblings,
@@ -183,93 +186,72 @@ Every run appending one more bullet is how a long skill becomes an unread one.
   PRs, three gate cycles (cdkd blocks tracked-file edits in its main worktree).
   All three is the DEFAULT: a one-repo-at-a-time hop is a duplicate GENERATOR —
   each landing session's own §10 retro files again into the other two
-  (2026-08-19: go-to-k/cdkd#2011 / go-to-k/cdkd#2016, filed twenty minutes
-  apart by two hops, were the SAME three cdk-local lessons).
-  **Filing instead is a WHOLE-REMAINDER exception.** If the session cannot pay
-  the remaining gate cycles, file into EVERY repo not yet landed, in ONE turn,
-  each issue naming the other filings plus the repo already landed — partial
-  filing produced the pair above. Carry §4's `Session-fit` line in each, in
-  English.
-  **A lane WORKING a mirror issue does not mirror onward** — the originating
-  session owns all three landings; re-filing only adds copies. What IS new is
-  what the ADAPTATION teaches (a differing gate name, a probe reading
-  differently), itself subject to this bullet.
-  **Batch a run's lessons into ONE PR per repo**, not one per lesson — the gate
-  cycle is the per-PR cost (go-to-k/cdk-real-drift#1791 and
-  go-to-k/cdk-real-drift#1792 landed in one lane, one PR).
-  **Verify the copy against the TARGET repo, claim by claim, before shipping** —
-  a sentence true here reads as authoritative there while false, and nothing
-  lints instruction prose. A read-only reviewer per target repo — checking each
-  gate name, hook behavior, skill name, path convention and cross-reference
-  against that repo's files — caught four such false claims in the first mirror
-  of this section (2026-08-18). This rule lives here, not in memory: memory is
-  per-project-path and per-machine, so it would not load in the target repos.
-  **Verify the MECHANISM at the SOURCE, not only the applicability at the
-  TARGET.** The two feel like one check and are not. Applicability asks "does
-  this repo have that gate / hook / file", which the target-repo reviewer above
-  answers well. The mechanism asks "was the claim ever true where it was
-  WRITTEN", and once a lesson is in transit nobody is positioned to ask it: the
-  originating repo is no longer being read, and the target repo cannot see a
-  defect in machinery it does not have. Measured 2026-09-03 on the mirror that
-  produced this section's own edits: a lesson arrived describing a leaked
-  `.markgate-pr-review-sha` as a FALSE PASS that would merge a PR on the
-  strength of an already-merged one's review. The recon correctly ruled it
-  INAPPLICABLE here — `pr-review` is inert in this repo and the sentinel file
-  does not exist — and the framing was still wrong at the source: the siblings'
-  `pr-review-gate.sh` passes only on `recorded_sha = head_sha`, so a leaked
-  sentinel MISMATCHES and blocks, printing `bound to <sha> (mismatch)`. Fail
-  CLOSED, not fail open; the real sibling cost is a confusing block naming an
-  unrelated PR's sha. A correctly-REJECTED claim can still be false, and a
-  mirror that only ever asks "does this apply here" launders it intact into
-  every repo that DOES have the machinery. Reading the source hook cost two
-  commands.
-  **A recon or handoff report is a CLAIM SET, not a work list — re-derive its
-  SCOPE, not only its citations.** The mirror that produced this section was
-  handed a read-only recon that had checked every claim against this repo's
-  files, and it was still stale in ten places and wrong about scope twice — both
-  times UNDER-reporting. The false markgate-store claim sat at FIVE sites, not
-  the three it named, and the two it missed were the `/check` and `/check-docs`
-  skills — and `/check` is the ORIGIN the others point back at, so correcting only
-  the three named would have left the source still asserting it. Adding one item
-  to `verify.md`'s §8-z touched FOUR places rather than the one it flagged, and
-  only TWO of those carried a digit that changed; the other two kept their
-  numeral and moved their scope, so even a careful grep for numerals finds half
-  the work and looks finished.
-  The two error kinds are not equally dangerous. A drifted line number announces
-  itself the moment you open the file, but an under-reported scope is SILENT: a
-  lane that treats the list as complete lands a partial fix and reports it done,
-  leaving the copies corrected and the original still asserting the falsehood —
-  which is the drift shape §10-b fences, re-created by the very run sent to end
-  it. So for every claim, grep for the OTHER sites before fixing the named one,
-  and count what a list-shaped instruction says it contains.
-  **The worked instance is this rule's own commit.** Correcting the probe-value
-  undercount, that run fixed `hunt-bugs/references/plan.md` and left the
-  identical sentence in `references/triage.md` saying "a mode and two paths" —
-  one claim, two copies, one corrected, shipped in the very commit that adds the
-  paragraph you are reading. A reviewer found it, not the author, which is the
-  point: the author had just written the rule and still could not see the
-  instance, because the second copy was in a file the finding did not name
-  (2026-09-03, go-to-k/cdk-real-drift#1861).
-  **Verify the cited EVIDENCE too — open the issue or PR the sentence names and
-  confirm it says what the sentence claims.** Wrong evidence is wrong where
-  WRITTEN and travels intact past every per-repo noun check: this file claimed
-  go-to-k/cdk-real-drift#1761 was a flaky rc=0/rc=1 tsgolint artifact; the
-  record is a DETERMINISTIC exit 134 (Vite+ stdout `EAGAIN` panic, 3/3 per
-  go-to-k/cdk-real-drift#1765, no tsgolint), and it reached go-to-k/cdk-local#504
-  verbatim before a reviewer caught it (go-to-k/cdk-real-drift#1768). Checking
-  cost one command per record.
-  **Write every issue / PR reference FULLY QUALIFIED — `owner/repo#N`, never a
-  bare `#N` or half-qualified `cdkd#N` — in every skill doc, this section's own
-  refs included.** A bare `#N` renders against whichever repo is READING it, so
-  mirroring silently rewrites a correct citation: an unqualified `#1761` here
-  lands on go-to-k/cdkd#1761 (real but unrelated), an unqualified `#1765` on
-  go-to-k/cdk-local#1765 (nonexistent). Mechanically detectable, so per §10-b
-  it is a TEST rather than a sentence: `tests/skill-doc-paths.test.ts` fails on
-  any unqualified reference in ANY `.md` under `.claude/skills/**` —
-  orchestrator `SKILL.md` files and `references/` stage files alike
-  (go-to-k/cdk-real-drift#1796 landed the same change here and in cdk-local).
-  It reads plain prose only, so this paragraph's counter-examples can stay
-  written as code spans.
+  (go-to-k/cdkd#2011 / go-to-k/cdkd#2016, filed twenty minutes apart by two
+  hops, were the SAME three cdk-local lessons).
+  - **Filing instead is a WHOLE-REMAINDER exception.** If the session cannot
+    pay the remaining gate cycles, file into EVERY repo not yet landed, in ONE
+    turn, each issue naming the other filings plus the repo already landed —
+    partial filing produced the pair above. Carry §4's `Session-fit` line in
+    each, in English.
+  - **A lane WORKING a mirror issue does not mirror onward** — the originating
+    session owns all three landings; re-filing only adds copies. What IS new is
+    what the ADAPTATION teaches, itself subject to this bullet.
+  - **Batch a run's lessons into ONE PR per repo**, not one per lesson — the
+    gate cycle is the per-PR cost (go-to-k/cdk-real-drift#1791 and
+    go-to-k/cdk-real-drift#1792 landed in one lane, one PR).
+  - **Verify the copy against the TARGET repo, claim by claim, before
+    shipping** — a sentence true here reads as authoritative there while false,
+    and nothing lints instruction prose. A read-only reviewer per target repo —
+    checking each gate name, hook behavior, skill name, path convention and
+    cross-reference against that repo's files — caught four such false claims
+    in the first mirror of this section (2026-08-18). This rule lives here, not
+    in memory: memory is per-project-path and would not load in the targets.
+  - **Verify the MECHANISM at the SOURCE, not only the applicability at the
+    TARGET.** Applicability asks "does this repo have that gate / hook /
+    file"; the mechanism asks "was the claim ever true where it was WRITTEN",
+    and once a lesson is in transit nobody is positioned to ask it. Measured
+    2026-09-03: a lesson arrived describing a leaked `.markgate-pr-review-sha`
+    as a FALSE PASS; the recon correctly ruled it inapplicable here
+    (`pr-review` is inert, no sentinel on disk) — and the framing was still
+    wrong at the SOURCE, whose gate passes only on `recorded_sha = head_sha`,
+    so a leaked sentinel MISMATCHES and blocks (fail CLOSED). A
+    correctly-REJECTED claim can still be false, and a mirror that only asks
+    "does this apply here" launders it intact into every repo that DOES have
+    the machinery. Reading the source hook cost two commands.
+  - **A recon or handoff report is a CLAIM SET, not a work list — re-derive its
+    SCOPE, not only its citations.** The mirror that produced this section was
+    handed a recon checked claim-by-claim against this repo's files, and it was
+    still stale in ten places and wrong about scope twice — both times
+    UNDER-reporting: the false markgate-store claim sat at FIVE sites, not the
+    three it named (the two missed were `/check` and `/check-docs`, and
+    `/check` is the ORIGIN the others point back at); a §8-z addition touched
+    FOUR places of which only TWO carried a digit that changed, so a grep for
+    numerals finds half the work and looks finished. An under-reported scope is
+    SILENT — a lane treating the list as complete lands a partial fix, leaving
+    the copies corrected and the original still asserting the falsehood. For
+    every claim, grep for the OTHER sites before fixing the named one, and
+    count what a list-shaped instruction says it contains. (The worked instance
+    is this rule's own commit: it fixed `hunt-bugs/references/plan.md` and left
+    the identical "a mode and two paths" sentence in `references/triage.md` —
+    one claim, two copies, one corrected; a reviewer found it, not the author —
+    2026-09-03, go-to-k/cdk-real-drift#1861.)
+  - **Verify the cited EVIDENCE too — open the issue or PR the sentence names
+    and confirm it says what the sentence claims.** Wrong evidence is wrong
+    where WRITTEN and travels intact past every per-repo noun check: this file
+    claimed go-to-k/cdk-real-drift#1761 was a flaky rc=0/rc=1 tsgolint
+    artifact; the record is a DETERMINISTIC exit 134 (3/3 per
+    go-to-k/cdk-real-drift#1765), and it reached go-to-k/cdk-local#504 verbatim
+    before a reviewer caught it (go-to-k/cdk-real-drift#1768). One command per
+    record.
+  - **Write every issue / PR reference FULLY QUALIFIED — `owner/repo#N`, never
+    a bare `#N` or half-qualified `cdkd#N` — in every skill doc, this section's
+    own refs included.** A bare `#N` renders against whichever repo is READING
+    it, so mirroring silently rewrites a correct citation (an unqualified
+    `#1761` here lands on go-to-k/cdkd#1761, real but unrelated). Per §10-b it
+    is a TEST: `tests/skill-doc-paths.test.ts` fails on any unqualified
+    reference in ANY `.md` under `.claude/skills/**`
+    (go-to-k/cdk-real-drift#1796). It reads plain prose only, so
+    counter-examples can stay written as code spans.
 
 ### 10-d. Ship it like any other change
 
@@ -293,24 +275,22 @@ pnpm install                  # worktrees have no node_modules
 
 IN-PLACE — run THIS block INSTEAD of the one above, never both: there is no
 worktree to add, and `git worktree add` from inside this tree NESTS the very
-worktree this mode exists to prevent. You are also not on `main`; the lane's own
-tree is still here with its deps installed, so take the retro branch IN IT, and
-the merged lane branch cannot be reused. `B` is re-assigned because a separate
-fenced block is a separate shell (section 9's `MAIN` trap), and the switch is
-addressed with `-C` for the reason §5 gives: a bare one after a cwd reset would
-target the MAIN checkout rather than this lane. Since
-go-to-k/cdk-real-drift#1845 `main-tree-branch-gate` REFUSES that instead of
-letting it through, so the failure is loud — but a refusal is not a redirect,
-and only the `-C` puts the branch in the tree you mean. Substitute the absolute
-path the launch-mode probe printed as `LANE_TREE` and the opening report
-recorded — captured while the cwd was
-provably right — and do NOT re-derive it here from `$(git rev-parse
---show-toplevel)` or `pwd`, which resolve against the reset cwd and hand the
-guard the very tree it is guarding against. Keep the `&&`: unchained, a failed
-`fetch` still branches, off a stale `origin/main`. **Every command after this
-one takes the same `-C "<LANE_TREE>"`** — the edits, `git add`, the commit, the
-push, `gh pr create` — for the identical reason: this block never `cd`s, so a
-later bare command runs in whatever tree the shell is standing in.
+worktree this mode exists to prevent. You are also not on `main`; the lane's
+own tree is still here with its deps installed, so take the retro branch IN IT,
+and the merged lane branch cannot be reused. `B` is re-assigned because a
+separate fenced block is a separate shell (section 9's `MAIN` trap), and the
+switch is addressed with `-C` for the reason §5 gives: a bare one after a cwd
+reset would target the MAIN checkout — since go-to-k/cdk-real-drift#1845
+`main-tree-branch-gate` REFUSES that instead of letting it through, but a
+refusal is not a redirect, and only the `-C` puts the branch in the tree you
+mean. Substitute the absolute path the launch-mode probe printed as
+`LANE_TREE` — captured while the cwd was provably right — and do NOT re-derive
+it here from `$(git rev-parse --show-toplevel)` or `pwd`, which resolve against
+the reset cwd. Keep the `&&`: unchained, a failed `fetch` still branches, off a
+stale `origin/main`. **Every command after this one takes the same
+`-C "<LANE_TREE>"`** — the edits, `git add`, the commit, the push,
+`gh pr create` — for the identical reason: this block never `cd`s, so a later
+bare command runs in whatever tree the shell is standing in.
 
 ```bash
 B=chore/work-issues-retro-$(date +%Y%m%d)
@@ -324,10 +304,8 @@ git -C "<LANE_TREE>" fetch origin \
   time).
 - **`vp fmt` REWRITES this file's indentation, and that can change what a
   paragraph belongs to.** This repo's formatter covers markdown (the siblings'
-  does not — measured 2026-08-19: the same probe file is rewritten here,
-  "excluded by ignore rules" in cdkd and cdk-local), and it re-indents a
-  paragraph following a nested list item from 2 spaces to 4, re-parenting it
-  under that sub-bullet:
+  does not — measured 2026-08-19), and it re-indents a paragraph following a
+  nested list item from 2 spaces to 4, re-parenting it under that sub-bullet:
 
   ```text
   before                                    after `vp fmt`
@@ -337,30 +315,28 @@ git -C "<LANE_TREE>" fetch origin \
   ```
 
   Nothing fails — the file still renders, just saying something else (bit the
-  go-to-k/cdk-real-drift#1793 lane: three verification paragraphs in section
-  10-c absorbed into the clause above them). The shape that survives is a
-  **bold lead paragraph at the parent bullet's own indent**, never prose
-  trailing a sub-bullet; run `vp fmt` TWICE, confirm the second run is a no-op,
-  and read the reformatted diff before committing — the damage is invisible in
-  the source you typed.
+  go-to-k/cdk-real-drift#1793 lane: three verification paragraphs absorbed
+  into the clause above them). The shape that survives is a **bold lead
+  paragraph at the parent bullet's own indent**, never prose trailing a
+  sub-bullet; run `vp fmt` TWICE, confirm the second run is a no-op, and read
+  the reformatted diff before committing — the damage is invisible in the
+  source you typed.
 
 - **A skill doc cannot cite a repo path in order to say it is ABSENT.**
   `tests/skill-doc-paths.test.ts` resolves every path-shaped code span in every
   `.md` under `.claude/skills/**`, with no negation exemption on purpose — a
-  stale path would otherwise hide behind "no longer exists" phrasing, the class
-  the fence exists to catch. Do not add an exemption; reword: the absence in
-  PROSE ("this repo ships no multi-agent reviewer set and no `/review-pr`
-  skill") passes, the same claim as a code span goes red (2026-08-28,
-  go-to-k/cdk-real-drift#1829). Bites MIRROR lanes hardest — adapting a
-  sibling's lesson often means stating its mechanism is missing here. Two fence
-  details: a span is only checked when its FIRST segment is an existing
-  top-level directory (an invented root is never checked; anything under the
-  real `.claude` tree is), and `PATH_LIKE` needs a leading word character, so a
-  skill name like `/review-pr` is never a path. A gate that DOES exist — the
-  INERT `pr-review` entry in `.markgate.yml` — can still be cited by name. Run
-  `vp test run tests/skill-doc-paths.test.ts` before the commit. It is not the
-  only fence a prose-only diff can red, and treating it as such is how the other
-  two get skipped: `tests/markdown-fmt-corruption-1771.test.ts` scans every
+  stale path would otherwise hide behind "no longer exists" phrasing. Do not
+  add an exemption; reword: the absence in PROSE ("this repo ships no
+  multi-agent reviewer set and no `/review-pr` skill") passes, the same claim
+  as a code span goes red (go-to-k/cdk-real-drift#1829). Bites MIRROR lanes
+  hardest — adapting a sibling's lesson often means stating its mechanism is
+  missing here. Two fence details: a span is only checked when its FIRST
+  segment is an existing top-level directory, and `PATH_LIKE` needs a leading
+  word character, so a skill name like `/review-pr` is never a path. A gate
+  that DOES exist — the INERT `pr-review` entry in `.markgate.yml` — can still
+  be cited by name. Run `vp test run tests/skill-doc-paths.test.ts` before the
+  commit — and not alone, which is how the other two fences a prose-only diff
+  can red get skipped: `tests/markdown-fmt-corruption-1771.test.ts` scans every
   tracked `*.md` for the `vp fmt` corruption signature, and
   `tests/check-scope-checker-inputs-1837.test.ts` reds when `/check`'s SKILL.md
   stops matching the `check` gate's real scope. On a prose-only diff, run all
@@ -368,10 +344,10 @@ git -C "<LANE_TREE>" fetch origin \
 
 - A `work-issues`-only edit is INSIDE the `check` gate's scope
   (`tests/skill-file-payload.test.ts` and `tests/skill-doc-paths.test.ts` read
-  `.claude/skills/**`) and outside `docs`; `check-gate` verifies both markers on every
-  commit and a fresh worktree starts with NONE — run `/check` + `/check-docs`
-  there before the commit. `verify-pr-gate` exempts a diff with no `src/**`
-  path, so `/verify-pr` is not required; CI must still be green for
+  `.claude/skills/**`) and outside `docs`; `check-gate` verifies both markers
+  on every commit and a fresh worktree starts with NONE — run `/check` +
+  `/check-docs` there before the commit. `verify-pr-gate` exempts a diff with
+  no `src/**` path, so `/verify-pr` is not required; CI must still be green for
   `ci-green-gate`. No `src/**` change also means no deploy: nothing for
   `/sweep-resources` to tear down, no `deploy-autoarm-gate` token to release.
 - Do not let the small diff set the review depth. This repo has no reviewer
@@ -389,10 +365,10 @@ git -C "<LANE_TREE>" fetch origin \
   the retro branch — the previous instruction here — makes the unmerged-lane
   Stop hook warn every turn (the appendix has the wording), and detaching
   instead is visible-surprising in the outer tool's UI; restoring what the tool
-  created is quiet on both counts. This is `Session-fit: now` on the leaves-main-self-inconsistent
-  criterion (the skill would keep telling the next run to do what this run just
-  proved wrong); its evidence dies with this session, and an open PR is NOT
-  CLOSEABLE besides.
+  created is quiet on both counts. This is `Session-fit: now` on the
+  leaves-main-self-inconsistent criterion (the skill would keep telling the
+  next run to do what this run just proved wrong); its evidence dies with this
+  session, and an open PR is NOT CLOSEABLE besides.
 
 Then report the outcome in one wrap line: what changed, in which step, and the
 run evidence behind it — or "no skill change" plus what held.
