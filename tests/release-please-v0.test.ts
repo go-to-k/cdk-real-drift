@@ -125,7 +125,11 @@ describe('release-please v0 fence', () => {
     // Static pins say the arms LOOK right; this runs the extracted block the
     // way the runner would, against a stub package.json.
     const { guard } = publishJob();
-    const runGuard = (opts: { tag: string; major: string; pkgVersion: string }): number => {
+    const runGuard = (opts: {
+      tag: string;
+      major: string;
+      pkgVersion: string;
+    }): { status: number; output: string } => {
       const dir = mkdtempSync(join(tmpdir(), 'rp-v0-guard-'));
       try {
         writeFileSync(
@@ -138,21 +142,35 @@ describe('release-please v0 fence', () => {
             env: { ...process.env, TAG_NAME: opts.tag, MAJOR: opts.major },
             stdio: 'pipe',
           });
-          return 0;
+          return { status: 0, output: '' };
         } catch (e) {
-          return (e as { status?: number }).status ?? 1;
+          const err = e as { status?: number; stdout?: Buffer | string; stderr?: Buffer | string };
+          return {
+            status: err.status ?? 1,
+            output: `${String(err.stdout ?? '')}${String(err.stderr ?? '')}`,
+          };
         }
       } finally {
         rmSync(dir, { recursive: true, force: true });
       }
     };
 
+    // Each refusal must exit non-zero AND emit the ::error:: workflow command —
+    // that distinguishes the guard REFUSING from the block merely crashing
+    // non-zero (e.g. a missing command under set -eu). The command is captured
+    // from stdout+stderr combined: `echo "::error::…"` writes to STDOUT (GitHub
+    // reads workflow commands there), while an incidental crash — bash's own
+    // "command not found" — lands on stderr with no ::error:: anywhere.
     // A v1.0.0 release with everything else consistent MUST be refused.
-    expect(runGuard({ tag: 'v1.0.0', major: '1', pkgVersion: '1.0.0' })).not.toBe(0);
+    const v1 = runGuard({ tag: 'v1.0.0', major: '1', pkgVersion: '1.0.0' });
+    expect(v1.status).not.toBe(0);
+    expect(v1.output).toContain('::error::');
     // A package.json that disagrees with the tag MUST be refused even at 0.x.
-    expect(runGuard({ tag: 'v0.28.0', major: '0', pkgVersion: '0.27.0' })).not.toBe(0);
+    const mismatch = runGuard({ tag: 'v0.28.0', major: '0', pkgVersion: '0.27.0' });
+    expect(mismatch.status).not.toBe(0);
+    expect(mismatch.output).toContain('::error::');
     // The legitimate case — matching 0.x tag/package, major 0 — passes.
-    expect(runGuard({ tag: 'v0.28.0', major: '0', pkgVersion: '0.28.0' })).toBe(0);
+    expect(runGuard({ tag: 'v0.28.0', major: '0', pkgVersion: '0.28.0' }).status).toBe(0);
   });
 
   it('the release-please action is pinned to a full commit sha', () => {

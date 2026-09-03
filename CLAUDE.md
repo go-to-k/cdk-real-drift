@@ -118,10 +118,11 @@ node dist/cli.js revert [<stack>...] [--all]   # write the desired value back to
   publish job in `.github/workflows/release.yml` hard-fails on any tag whose
   major is not 0. Known behavior: the release PR is GITHUB_TOKEN-created, so it
   triggers no pull_request workflows and carries no CI checks — and this repo's
-  ci-green-gate blocks an agent-side `gh pr merge` of a PR with no checks
-  reported, so the maintainer merges the release PR via the web UI (a PAT on
-  the release-please step would restore CI on it). Changes reach real users, so
-  weigh breaking ones accordingly.
+  ci-green-gate FAILS OPEN on "no checks reported", so an agent-side
+  `gh pr merge` of the release PR is NOT mechanically blocked here. Merging it
+  via the web UI, and never without the maintainer asking for a release, is
+  convention, not enforcement (a PAT on the release-please step would restore
+  CI on it). Changes reach real users, so weigh breaking ones accordingly.
 - Baseline files live at `.cdkrd/baselines/<stack>.<accountId>.<region>.json` — git-committed.
   A PR that changes a baseline is a visible, reviewable change to "what real state
   we record".
