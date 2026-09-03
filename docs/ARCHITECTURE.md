@@ -1424,7 +1424,11 @@ check` green). The earlier `TS2591 'process'` errors came from oxc's type-aware
    `vp run check` + test + build; `release.yml` semantic-release; `pr-title-check.yml`),
    `.markgate.yml` (check/docs/verify-pr), `.claude/skills/{check,check-docs,verify-pr}`,
    the `.claude/hooks/` suite (+ `.claude/settings.json`) — `check-gate`,
-   `branch-gate`, `main-tree-branch-gate` (refuses a `git switch` / `git checkout`
+   `branch-gate` (blocks `git commit` / `git push` when the target tree is on
+   `main` / `master`, and — since go-to-k/cdkd#2402 — when the MAIN checkout is
+   on a DETACHED HEAD, which the branch-NAME read could not see; a detached
+   LINKED worktree still passes, being the lane-clearing state the Stop hook
+   prescribes), `main-tree-branch-gate` (refuses a `git switch` / `git checkout`
    onto a feature branch when the target tree is the MAIN checkout — the
    cause-side twin of `branch-gate`, go-to-k/cdk-real-drift#1845),
    `verify-pr-gate`, `ci-green-gate`, `stale-base-gate`,
