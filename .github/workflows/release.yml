@@ -15,6 +15,13 @@ name: Release
 # npm auth is OIDC trusted publishing (id-token: write + registry-url), bound
 # to THIS workflow filename on npmjs.com — do not rename release.yml without
 # updating the trusted publisher config.
+#
+# Known behavior: the release PR is created with GITHUB_TOKEN, and GitHub
+# suppresses workflow triggers for GITHUB_TOKEN-created events — so the release
+# PR triggers no pull_request workflows and carries no CI checks. This repo's
+# ci-green-gate blocks an agent-side `gh pr merge` when a PR reports no checks,
+# so the maintainer merges the release PR via the web UI. Giving the
+# release-please step a PAT instead of GITHUB_TOKEN would restore CI on it.
 
 on:
   push:
@@ -24,9 +31,11 @@ on:
 # Serialize Release workflow runs so a back-to-back merge (#204 + #205 landed
 # within ~30s under semantic-release and the earlier run's tag push raced the
 # later commit's fast-forward). release-please updates a single standing PR, so
-# concurrent runs would only churn that PR — queue them anyway;
-# `cancel-in-progress: false` keeps every push's run so none of the batched
-# commits is skipped.
+# concurrent runs would only churn that PR — queue them instead. Note GitHub's
+# pending queue holds only ONE run per group: with `cancel-in-progress: false`
+# the in-progress run finishes, and a newer pending run SUPERSEDES an older
+# pending one. That is fine here — release-please recomputes from the full
+# commit history on every run, so the newest run sees all batched commits.
 concurrency:
   group: release
   cancel-in-progress: false

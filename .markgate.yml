@@ -127,13 +127,17 @@ gates:
       #     citation walk below reaches scripts/measure-schema-defaults.mjs. The
       #     glob rather than those two files: a precise pair would be a list of
       #     the citations that happen to exist today.
-      #   - .releaserc.json — tests/releaserc-header-pattern.test.ts parses its
-      #     plugin list and pins each commit-parsing plugin's headerPattern.
-      #   - .github/workflows/** — tests/pr-inherit-issue-labels.test.ts extracts
+      #   - release-please-config.json / .release-please-manifest.json —
+      #     tests/release-please-v0.test.ts reads both: the config's
+      #     bump-minor-pre-major and the manifest's 0.x version, two of the
+      #     layers that keep an accidental v1.0.0 unshippable.
+      #   - .github/workflows/** — two files are read directly:
+      #     tests/pr-inherit-issue-labels.test.ts extracts
       #     pr-inherit-issue-labels.yml's `run:` block and executes it against a
-      #     stub `gh`; the citation walk below additionally reaches ci.yml and
-      #     release.yml (3 of the 4 workflow files), so the glob is the honest
-      #     shape here even though only one file is read directly.
+      #     stub `gh`, and tests/release-please-v0.test.ts parses release.yml's
+      #     publish-job v0 guard (and executes its run block under bash); the
+      #     citation walk below additionally reaches ci.yml, so the glob is the
+      #     honest shape here.
       #   - README.md, DESIGN.md, CLAUDE.md, CONTRIBUTING.md, docs/**,
       #     demo/README.md — see the markdown-scanner note below. These also sit
       #     in the `docs` gate; the overlap is deliberate and mirrors the one

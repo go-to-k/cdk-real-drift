@@ -116,7 +116,12 @@ node dist/cli.js revert [<stack>...] [--all]   # write the desired value back to
   release. The repo deliberately stays at major version 0:
   `bump-minor-pre-major: true` maps breaking changes to MINOR bumps, and the
   publish job in `.github/workflows/release.yml` hard-fails on any tag whose
-  major is not 0. Changes reach real users, so weigh breaking ones accordingly.
+  major is not 0. Known behavior: the release PR is GITHUB_TOKEN-created, so it
+  triggers no pull_request workflows and carries no CI checks — and this repo's
+  ci-green-gate blocks an agent-side `gh pr merge` of a PR with no checks
+  reported, so the maintainer merges the release PR via the web UI (a PAT on
+  the release-please step would restore CI on it). Changes reach real users, so
+  weigh breaking ones accordingly.
 - Baseline files live at `.cdkrd/baselines/<stack>.<accountId>.<region>.json` — git-committed.
   A PR that changes a baseline is a visible, reviewable change to "what real state
   we record".
