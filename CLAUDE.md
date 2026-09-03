@@ -607,9 +607,58 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   `REVERT_HEAD` / `MERGE_HEAD` / `BISECT_LOG` and prints `<op> --continue` /
   `<op> --abort`, or `bisect reset` for the one case where `switch main` is
   accepted but leaves the bisect running; the `applying` sentinel inside
-  `rebase-apply` separates `git am` from `git rebase --apply`. Every printed
-  remedy was executed against the fixture and exited 0, and because both arms
-  exit 2, `branch-gate.test.sh` asserts the MESSAGE TEXT rather than the code.
+  `rebase-apply` separates `git am` from `git rebase --apply`. Because both
+  arms exit 2, `branch-gate.test.sh` asserts the MESSAGE TEXT rather than the
+  code.
+
+  **What the remedy does to HEAD is stated conditionally, because it IS
+  conditional** (round 3). The round above verified that all nine printed
+  commands EXIT 0 — they do — and then promised `--abort` would "abandon it
+  and re-attach", which is false in four of the six. Exit status was the wrong
+  observable. Measured on git 2.53 by running each printed remedy verbatim and
+  reading HEAD afterwards: `am --abort`, `cherry-pick --abort`,
+  `revert --abort` and `merge --abort` all leave HEAD DETACHED, and so does
+  `rebase --abort` when the rebase was started while ALREADY detached; only a
+  rebase started FROM a branch, plus `bisect reset`, re-attaches. Those four
+  never detach HEAD themselves, so this arm is reachable for them only from an
+  already-detached tree and `--abort` restores exactly that pre-op state — the
+  user reads exit 0 as success and the next gated command blocks again with
+  `in progress : nothing`. The discriminator is git's own `head-name`, which
+  both rebase backends write as `refs/heads/<branch>` or as the literal
+  `detached HEAD`; the gate reads it and prints either
+  "Either ending re-attaches HEAD to '<branch>'" or
+  "NEITHER ending re-attaches HEAD" plus the `switch main` still needed
+  afterwards. One sentence covers both endings because the outcome is a
+  property of the SESSION rather than of which ending is picked — a completed
+  `--continue` splits the same way, measured. Eight rows now RUN the printed
+  remedy and assert the resulting HEAD beside that claim.
+
+  **The `applying` sentinel is load-bearing in the direction that fails
+  SILENTLY.** `git am --abort` inside a `git rebase --apply` session exits 0
+  with no output and leaves HEAD DETACHED, where `git rebase --abort` from
+  that same state lands on `main`; the reverse crossing is loud (rc=128,
+  `fatal: It looks like 'git am' is in progress. Cannot rebase.`). The string
+  `fatal: no rebase in progress` is what git says when NOTHING is in progress,
+  a different condition. That `rebase --apply` branch had no row until round
+  3; mutating it to `am` left all three suites fully green.
+
+  **Two stated bounds.** A path containing a NEWLINE still fails open, because
+  awk's records ARE lines, so an embedded newline ends the record early
+  whatever field expression reads it — measured, a detached MAIN checkout at
+  `<tmp>/nl<LF>repo` scores rc=0, and rc=2 with the newline removed.
+  `worktree list --porcelain -z` DOES read it and is deliberately not taken:
+  `-z` is a later addition than `--porcelain`, an unsupported flag makes
+  `worktree list` print NOTHING (failing OPEN, the same bug class this arm
+  exists to close), and once `-z` ran first the awk would stop executing on
+  every git new enough to have it, retiring the spaced-path fence over a shape
+  this repo HAS produced in exchange for one over a shape nobody has. Second,
+  a `rebase-apply/` directory holding neither `applying` nor `head-name` reads
+  as a rebase here, so the printed `rebase --abort` exits 1 with
+  `warning: could not read '.git/rebase-apply/head-name'` — but `git status`
+  calls that same state "You are currently rebasing.", so the hook agrees with
+  git, and no git command produces it (both rebase backends write `head-name`
+  at start and `git am` writes `applying`), which makes it a bound rather than
+  a bug.
 
   `main-tree-branch-gate` was ported from
   cdkd / cdk-local in the FIXED per-segment shape: the target tree is resolved
