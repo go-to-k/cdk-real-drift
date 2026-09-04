@@ -180,4 +180,83 @@ describe('release-please v0 fence', () => {
     expect(action).toBeDefined();
     expect(action?.uses).toMatch(/@[0-9a-f]{40}( |$)/);
   });
+
+  /**
+   * CHANGELOG.md must stay in the shape release-please's own Changelog updater
+   * can splice into. MEASURED on go-to-k/cdkd#2503, the first real release PR
+   * after the switch: the released entries came out ordered 0.285.13, 0.285.14,
+   * 0.285.12 — every release filed one section too low, compounding because the
+   * updater lands on the same wrong spot every time.
+   *
+   * MECHANISM: release-please's updaters/changelog.js finds its insertion point
+   * with `content.search(/\n###? v?[0-9[]/s)` and splices the new entry IN
+   * FRONT of the match. The leading `\n` is load-bearing — a file that BEGINS
+   * with a version header never matches its own top entry, so the search lands
+   * on the SECOND one. This repo carried a compounding second cause: the regex
+   * only accepts `##` / `###`, and the top entry here was an H1
+   * (`# [0.27.0]` — semantic-release used H1 for minor/major bumps, 27 of
+   * them), which the regex cannot see at all.
+   *
+   * Both are fixed by NORMALIZING THE FILE, not by patching a tool: a
+   * `# Changelog` title block (release-please's own `header()`) puts a newline
+   * ahead of the first version header, and every version header is the H2 form
+   * release-please emits. The two cases below fence the OUTCOME and the SHAPE
+   * respectively — the outcome case would also catch a third, unknown cause.
+   */
+  it('release-please splices the next entry at the TOP of CHANGELOG.md', () => {
+    const changelog = readFileSync(url('../CHANGELOG.md'), 'utf8');
+    // Exactly the expressions the updater uses, so this test cannot drift from
+    // the behavior it fences. PROVENANCE: the splice pattern is a literal copy
+    // of release-please's DEFAULT_VERSION_HEADER_REGEX
+    // (src/updaters/changelog.ts:22 at v17.3.0:
+    // `const DEFAULT_VERSION_HEADER_REGEX = '\n###? v?[0-9[]';`), and the
+    // version was read from the ACTION TAG'S OWN LOCKFILE — at
+    // googleapis/release-please-action@5c625bf (v4.4.1), the sha this repo
+    // pins in .github/workflows/release.yml, package.json declares
+    // `release-please: ^17.3.0` and package-lock.json resolves
+    // node_modules/release-please to 17.3.0. NOT from a locally installed
+    // copy: `npx release-please@17` today installs 17.11.x, which carries the
+    // SAME constant and so looks like confirmation while pinning the wrong
+    // version. The pin assertion below fences THAT the action is pinned, not
+    // to WHICH sha, so an action bump could move the regex under this literal
+    // with nothing going red: RE-CHECK this pattern against the new tag's
+    // lockfile whenever that sha is bumped.
+    const spliceAt = changelog.search(/\n###? v?[0-9[]/s);
+    const firstHeaderAt = changelog.search(/^#{1,3} v?[0-9[]/m);
+    expect(spliceAt, 'the updater finds no version header to splice in front of').toBeGreaterThan(
+      -1
+    );
+    expect(firstHeaderAt, 'CHANGELOG.md carries no version header at all').toBeGreaterThan(-1);
+    // The match INCLUDES the preceding newline, hence the +1: the splice must
+    // land on the newest entry, not one section below it.
+    expect(
+      spliceAt + 1,
+      'release-please would splice the next release BELOW the newest entry — restore the title ' +
+        'block above the first version header (go-to-k/cdkd#2503)'
+    ).toBe(firstHeaderAt);
+  });
+
+  it('every version header is the H2 form release-please emits', () => {
+    const changelog = readFileSync(url('../CHANGELOG.md'), 'utf8');
+    const h1Versions = changelog.match(/^# v?[0-9[].*$/gm) ?? [];
+    expect(
+      h1Versions,
+      "H1 version header(s) in CHANGELOG.md — the updater's `/\\n###? v?[0-9[]/` cannot see " +
+        'them, so an entry above one is skipped. Convert to `## [`'
+    ).toEqual([]);
+    // Floor so the case cannot pass vacuously on an empty or truncated file.
+    // MEASURED 381 H2 version headers at the normalization (354 already H2 +
+    // 27 converted from H1), and the floor sits AT that measurement rather
+    // than far under it: a floor far under its subject fences only total
+    // disappearance, which is the weakness go-to-k/cdkd#2504's review found in
+    // the sibling copy (100 against a measured 878 — an 88% collapse passed).
+    // At-measurement is safe here BECAUSE the count only ever grows: every
+    // release appends one header, so this can only red when entries are
+    // REMOVED, which is a deliberate act that must re-measure this number in
+    // the same commit. It is a FLOOR, never an equality pin
+    // (`toBeGreaterThanOrEqual(381)` is the same bound as
+    // `toBeGreaterThan(380)`); an equality would red on the next release.
+    const h2Versions = changelog.match(/^## v?[0-9[].*$/gm) ?? [];
+    expect(h2Versions.length, 'CHANGELOG.md version headers were read').toBeGreaterThanOrEqual(381);
+  });
 });

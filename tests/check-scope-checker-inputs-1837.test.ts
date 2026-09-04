@@ -269,7 +269,9 @@ describe('check-gate scope covers every literal checker input (go-to-k/cdk-real-
     // over every file scores 3 join + 3 url from this file ALONE — enough to
     // satisfy any floor at or below those numbers with every real reader in
     // the repo deleted. A floor a fence can satisfy by quoting itself is not a
-    // floor. Counted over the other suites: join 6, url 11 (re-measured when
+    // floor. Counted over the other suites: join 6, url 13 (re-measured when
+    // the CHANGELOG splice-format cases were added to release-please-v0.test.ts,
+    // +2 url reads; previously join 6, url 11 when
     // release-please-v0.test.ts replaced releaserc-header-pattern.test.ts;
     // the replacement reads its four subjects through the url idiom), and the
     // floors sit AT those numbers with ZERO headroom, not just
@@ -285,7 +287,7 @@ describe('check-gate scope covers every literal checker input (go-to-k/cdk-real-
     const joinHits = src.reduce((n, t) => n + [...t.matchAll(JOIN_RE)].length, 0);
     const urlHits = src.reduce((n, t) => n + [...t.matchAll(URL_RE)].length, 0);
     expect(joinHits, 'join/resolve extraction is live').toBeGreaterThanOrEqual(6);
-    expect(urlHits, 'new URL extraction is live').toBeGreaterThanOrEqual(11);
+    expect(urlHits, 'new URL extraction is live').toBeGreaterThanOrEqual(13);
   });
 
   it('no suite hides in a tests/ subdirectory the extractor cannot see', () => {
