@@ -207,13 +207,20 @@ describe('release-please v0 fence', () => {
     const changelog = readFileSync(url('../CHANGELOG.md'), 'utf8');
     // Exactly the expressions the updater uses, so this test cannot drift from
     // the behavior it fences. PROVENANCE: the splice pattern is a literal copy
-    // of release-please's DEFAULT_VERSION_HEADER_REGEX, verified against
-    // release-please 17.11.x as bundled by
-    // googleapis/release-please-action@5c625bf (v4.4.1) — the sha this repo
-    // pins in .github/workflows/release.yml. The pin assertion below fences
-    // THAT the action is pinned, not to WHICH sha, so an action bump could
-    // move the regex under this literal with nothing going red: RE-CHECK this
-    // pattern whenever that sha is bumped.
+    // of release-please's DEFAULT_VERSION_HEADER_REGEX
+    // (src/updaters/changelog.ts:22 at v17.3.0:
+    // `const DEFAULT_VERSION_HEADER_REGEX = '\n###? v?[0-9[]';`), and the
+    // version was read from the ACTION TAG'S OWN LOCKFILE — at
+    // googleapis/release-please-action@5c625bf (v4.4.1), the sha this repo
+    // pins in .github/workflows/release.yml, package.json declares
+    // `release-please: ^17.3.0` and package-lock.json resolves
+    // node_modules/release-please to 17.3.0. NOT from a locally installed
+    // copy: `npx release-please@17` today installs 17.11.x, which carries the
+    // SAME constant and so looks like confirmation while pinning the wrong
+    // version. The pin assertion below fences THAT the action is pinned, not
+    // to WHICH sha, so an action bump could move the regex under this literal
+    // with nothing going red: RE-CHECK this pattern against the new tag's
+    // lockfile whenever that sha is bumped.
     const spliceAt = changelog.search(/\n###? v?[0-9[]/s);
     const firstHeaderAt = changelog.search(/^#{1,3} v?[0-9[]/m);
     expect(spliceAt, 'the updater finds no version header to splice in front of').toBeGreaterThan(
