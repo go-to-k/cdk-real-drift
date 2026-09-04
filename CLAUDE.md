@@ -364,9 +364,9 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   branch already checked out, one lane at a time, and leave the tree for
   whoever made it. `/work-issues` computes which case applies before its first
   stage and `/hunt-bugs` points at that probe; do not re-implement it here.
-- **A branch switch in the main checkout is GATED** — mechanics and the rc
-  tables in [.claude/rules/hooks.md](.claude/rules/hooks.md) (see the summary
-  bullet above).
+- **A branch switch in the main checkout is GATED** — mechanics in
+  [.claude/rules/hooks.md](.claude/rules/hooks.md) (see the summary bullet
+  above).
 - **All changes go through a pull request — never commit directly to `main`.**
   Branch (or worktree branch) → run the gates + set markers → commit → push →
   `gh pr create`. The reviewer re-reviews the PR diff before merge. cdkd's
@@ -381,15 +381,15 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   pr-review is multi-agent (cdkrd is solo); integ-\* depends on cdkd's
   providers/state/destroy paths cdkrd lacks (see `.markgate.yml`).
 - **Every session-wrap / task-complete report MUST end with a "Remaining
-  work" section, a "State" line, AND a "Session close" verdict —
-  unprompted.** The full field reference — The four TODO fields
-  (`Session-fit` / `Severity` / `Effort` / `Estimate`, one field per line, no
-  bare tokens, both `Effort` AND `Estimate` always), the scales, the
-  WAITING/STOPPED rules, the CLOSEABLE conditions (zero open `Session-fit:
-now`), the not-this-session line, and the fixed report templates — lives in
+  work" section AND a "Session close" verdict — unprompted.** The full field
+  reference — The four TODO fields (`Session-fit` / `Severity` / `Effort` /
+  `Estimate`, one field per line, no bare tokens, both `Effort` AND
+  `Estimate` always), their scales, the CLOSEABLE conditions, and the
+  Remaining-work template — lives in
   [.claude/rules/session-report.md](.claude/rules/session-report.md); read it
   when writing the report or filing a deferral. Classify a deferral the
-  moment it arises, in the issue body; a `now` left open means NOT CLOSEABLE.
+  moment it arises, in the issue body — not at wrap time, when the evidence
+  is gone.
 - **Claim a filed issue before working it — post a `gh issue comment` the moment
   you START (or commit to start) work, so parallel agents and sessions don't
   collide.** Multiple agents pick up open issues concurrently; two of them fixing

@@ -684,7 +684,7 @@ EOF
 # PR. What #2402 removed is the CONSEQUENCE of allowing it, not the allowance --
 # so the pass below is now a pass with nothing composing off it, rather than a
 # pass with a measured cost. Recorded here and in
-# CLAUDE.md (this repo has no .claude/rules/).
+# .claude/rules/hooks.md (moved out of CLAUDE.md by the #1878 split).
 #
 # What IS fixed here is the WORDING:
 # `git checkout -d <branch>` / `--detach <branch>` really detaches (measured,

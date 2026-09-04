@@ -110,7 +110,7 @@ if [ -z "$lanes" ]; then
   # commit again in the SAME session -> `sys`, never `ctx`. The subject is
   # `<branch>:<push state>`, so returning to the same branch in the same push
   # state reproduces the stored subject exactly and the nudge is SWALLOWED --
-  # a MISSED nudge, which this file and `CLAUDE.md` both call the
+  # a MISSED nudge, which this file and `.claude/rules/hooks.md` both call the
   # unsafe direction. `stop-warn.sh` in the sibling repo has always dropped its
   # record on the clean-tree exit for exactly this reason.
   #

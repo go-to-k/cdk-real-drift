@@ -182,8 +182,9 @@ verdict surprises you.
     reads git's ARGV through the shared `gate_argv`, never raw shell words: a
     redirection, its spaced target, a trailing `&` and a `#` comment are the
     shell's, not git's, and counting them as arguments once relaxed a real
-    switch to "file restore" (measured; the round-2 rc tables live in this
-    file's git history). Each verb carries its COMPLETE long-option table with per-name
+    switch to "file restore" (measured; the round-2 rc tables live in
+    CLAUDE.md's git history — this text lived there until the #1878 split).
+    Each verb carries its COMPLETE long-option table with per-name
     arity, because git accepts any unambiguous PREFIX of a long name
     (`--orph <b>` is the branch creation it abbreviates) and the `parse-options`
     built-ins absent from `-h` (`--end-of-options`,
