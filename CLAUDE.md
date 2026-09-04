@@ -123,6 +123,23 @@ node dist/cli.js revert [<stack>...] [--all]   # write the desired value back to
   via the web UI, and never without the maintainer asking for a release, is
   convention, not enforcement (a PAT on the release-please step would restore
   CI on it). Changes reach real users, so weigh breaking ones accordingly.
+- **A standing release PR goes STALE and stays MERGEABLE.** release-please does
+  not rebuild a release PR whose computed release is unchanged — it logs
+  `PR #N remained the same` and leaves the branch on the base it was cut from.
+  Anything that lands on `main` afterwards in a file release-please OWNS
+  (`CHANGELOG.md`, `package.json`'s version, `.release-please-manifest.json`)
+  is therefore MISSING from that branch, with no conflict to warn you: GitHub
+  reports the PR mergeable, and merging it takes the branch's stale copy and
+  REVERTS what landed. Measured in the sibling repo (go-to-k/cdkd#2503): the
+  release PR was cut before the CHANGELOG normalization merged, and merging it
+  would have undone 285 header conversions. The remedy is to close the release
+  PR, delete its branch, and re-run the Release workflow (`workflow_dispatch`
+  exists for this) — release-please recomputes the identical release from
+  current `main`, and is idempotent, so a run that finds nothing new changes
+  nothing. **Rule: after any PR that edits `CHANGELOG.md`, the version in
+  `package.json`, or `.release-please-manifest.json`, check whether a release
+  PR is open (`gh pr list --state open --search "chore(release) in:title"`)
+  and recreate it if so.**
 - Baseline files live at `.cdkrd/baselines/<stack>.<accountId>.<region>.json` — git-committed.
   A PR that changes a baseline is a visible, reviewable change to "what real state
   we record".
