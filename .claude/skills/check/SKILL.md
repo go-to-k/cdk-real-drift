@@ -78,7 +78,8 @@ outside `src`/`tests` — `.claude/skills/**`, `.claude/settings.json`,
 `.claude/hooks/**`, `scripts/**`, `release-please-config.json`,
 `.release-please-manifest.json`, `.github/workflows/**`,
 plus the hand-written markdown OUTSIDE those trees (`README.md`, `DESIGN.md`,
-`CLAUDE.md`, `CONTRIBUTING.md`, `docs/**`, `demo/README.md`), which
+`CLAUDE.md`, `CONTRIBUTING.md`, `docs/**`, `demo/README.md`,
+`.claude/rules/**` — the token-diet satellites split out of CLAUDE.md), which
 `tests/markdown-fmt-corruption-1771.test.ts` reads.
 
 **A markdown edit therefore stales `check` — with exactly one exception.** Three

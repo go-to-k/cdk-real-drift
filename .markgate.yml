@@ -228,6 +228,11 @@ gates:
       - 'DESIGN.md'
       - 'CLAUDE.md'
       - 'CONTRIBUTING.md'
+      # .claude/rules/** — the token-diet split moved CLAUDE.md's hook history
+      # and session-report reference here; tracked *.md, so the markdown
+      # scanner reads them (a `check`-only input like CLAUDE.md itself — the
+      # docs gate does not cover this tree).
+      - '.claude/rules/**'
       - 'docs/**'
       # NARROW ON PURPOSE — do not "helpfully" widen this to `demo/**`. The rest
       # of demo/ (from `git ls-files demo`: app.ts, cdk.json, cdkrd.tape,

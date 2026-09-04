@@ -1433,8 +1433,9 @@ check` green). The earlier `TS2591 'process'` errors came from oxc's type-aware
    cause-side twin of `branch-gate`, go-to-k/cdk-real-drift#1845),
    `verify-pr-gate`, `ci-green-gate`, `stale-base-gate`,
    `non-english-text-gate`, `worktree-guard`, and the bug-hunt cleanup gates —
-   plus `CLAUDE.md` and `CONTRIBUTING.md`. Still deliberately absent:
-   `.claude/rules` / `.claude/agents` (and with them the pr-review gate) —
+   plus `CLAUDE.md` and `CONTRIBUTING.md`, and since the #1878 split a small
+   `.claude/rules/` (two on-demand satellites moved out of CLAUDE.md). Still
+   deliberately absent: `.claude/agents` (and with it the pr-review gate) —
    cdkd's heavy 50-hook / 10-rule suite is disproportionate for a repo this size.
    _Open question: which of those become worth adding once there are external
    contributors?_
