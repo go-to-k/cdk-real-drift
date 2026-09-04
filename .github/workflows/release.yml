@@ -24,11 +24,43 @@ name: Release
 # here — merging it via the web UI, and never without the maintainer asking
 # for a release, is convention, not enforcement. Giving the release-please
 # step a PAT instead of GITHUB_TOKEN would restore CI on it.
+#
+# STALE STANDING RELEASE PR — the trap workflow_dispatch below exists for.
+# release-please does NOT rebuild a standing release PR when the release it
+# computes is unchanged: it logs `PR #N remained the same` and leaves the
+# branch on the base it was cut from. So anything that later lands on main in a
+# file release-please OWNS — CHANGELOG.md, package.json's version,
+# .release-please-manifest.json — is simply MISSING from that branch, and
+# GitHub still reports the PR MERGEABLE. Merging it then takes the branch's
+# stale copy of those files and REVERTS whatever landed. There is no conflict
+# to warn you: the symptom is a green, mergeable PR that quietly undoes work.
+# MEASURED in the sibling repo: release PR go-to-k/cdkd#2503 was cut before the
+# CHANGELOG normalization merged, its branch still carried the pre-
+# normalization file, and merging it would have undone 285 header conversions.
+#
+# REMEDY: close the release PR, delete its branch, and re-run this workflow —
+# release-please recomputes the identical release from current main, this time
+# on top of the new commits (verified in the sibling: the recreated PR inserts
+# the entry at the top). It is safe to run at any time because release-please
+# is idempotent: a run that finds nothing new leaves the standing PR alone and
+# publishes nothing.
+#
+# `workflow_dispatch` is what makes that remedy runnable. Without it the only
+# trigger is `push: main`, so re-running the release means re-running an old
+# push run from the Actions UI — which is how the sibling had to do it.
+# Note the `concurrency` group below is a literal, not a trigger-dependent
+# expression, so a dispatched run shares the group with push runs: with
+# `cancel-in-progress: false` it QUEUES behind an in-progress push run rather
+# than cancelling it (and, per the one-pending-run rule noted there,
+# supersedes an older still-pending run). Nothing is lost either way, since
+# every run recomputes from full history.
 
 on:
   push:
     branches:
       - main
+  # Manual re-run, for recreating a stale standing release PR (see above).
+  workflow_dispatch:
 
 # Serialize Release workflow runs so a back-to-back merge (#204 + #205 landed
 # within ~30s under semantic-release and the earlier run's tag push raced the
