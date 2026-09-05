@@ -53,6 +53,24 @@ the peer's new test (2026-08-19, go-to-k/cdk-local#524 failed CI on a line
 go-to-k/cdk-local#520 had merged in parallel). Same cause as §7's
 repo-wide-check collision; the same rebase answers both.
 
+**Before you watch CI, poll until checks EXIST.** `gh pr checks <n> --watch`
+does NOT cover that wait: with none reported it returns AT ONCE rather than
+blocking for them to appear, so an `until` loop wrapping it hot-spins through a
+whole tool timeout. Nor does the JSON form answer with an empty array —
+`--json name,state` prints ZERO bytes and exits 1 with `no checks reported` on
+stderr (measured, gh 2.89.0), so a poll reading a length reads nothing. Poll for
+a ROW, from a backgrounded loop, then `--watch` once one exists:
+
+```bash
+until gh pr checks <n> -R <owner>/<repo> --json name,state 2>/dev/null \
+  | grep -q '"name"'; do sleep 20; done
+```
+
+And the wait is YOURS to keep: `ci-green-gate` FAILS OPEN on that state
+(`CLAUDE.md` → "State of the Repo" records it; cdkd's blocks, and cdk-local
+carries no such gate at all), so nothing stops a merge issued before CI has
+registered.
+
 MAIN-CHECKOUT (SKILL.md "Launch mode") — run THIS block, and not the next one:
 
 ```bash
@@ -77,13 +95,10 @@ the command; an empty variable is not:
 git -C "<MAIN_CHECKOUT>" pull origin main
 ```
 
-**Release** is BATCHED (release-please via `.github/workflows/release.yml`) —
-merging a `fix:` / `feat:` commit to `main` publishes NOTHING by itself: it
-only creates/updates the standing `chore(release): <ver>` release PR. The npm
-release happens when the maintainer merges that release PR, so do NOT poll for
-a version bump after an ordinary merge, and never merge the release PR unless
-the user asked for a release. Confirm the release PR picked up the merge
-instead:
+**Release** is BATCHED (`CLAUDE.md` → "State of the Repo" owns the rules: an
+ordinary merge publishes nothing by itself, and the standing release PR is
+never yours to merge). This stage owes only the confirmation that it picked
+your merge up:
 
 ```bash
 gh pr list --state open --search "chore(release) in:title"   # the standing release PR

@@ -118,6 +118,29 @@ const MAX_REFERENCE_FILE_BYTES = 48_000; // RE-DERIVED DOWNWARD 64_000 -> 48_000
 // 150,695); the full round-by-round derivation record lives in this file's
 // git history at origin/main.
 //
+// RE-MEASURED 2026-09-05 by the sibling-lesson mirror round (go-to-k/cdkd#2564
+// / go-to-k/cdkd#2586 / go-to-k/cdkd#2596 / go-to-k/cdkd#2622 folded into this
+// repo's own wording). The floor is UNCHANGED at 118,000 -- references/retro.md
+// section 10-c forbids buying room by raising it. work-issues is now 142,876 B
+// over the same 9 files with implement.md still largest at 25,647 B, so the
+// BINDING requirement is 117,229 and the margin is 771 B. The round added rules
+// to triage.md, verify.md, launch-mode.md, ship.md and retro.md, and paid part
+// of them back by compressing retro.md's stale-deferral-reason bullet into a
+// pointer at triage.md section 3-b, by deleting ship.md's verbatim restatement
+// of CLAUDE.md's release rules, and by cutting two clauses that restated their
+// own paragraph.
+//
+// What it SPENT is the NEAR-FLIP margin the paragraph above sizes, and saying
+// so is the point -- a reader who trusted that derivation would now be wrong.
+// Residuals if each near candidate grew past implement.md: retro.md (23,404 B)
+// 119,472, triage.md (24,261 B) 118,615, verify.md (24,311 B) 118,565. ALL
+// THREE now sit ABOVE the floor, where the paragraph above cleared the worst by
+// 2,465 B. So the flip case is no longer covered by design margin at all: the
+// next stage file to overtake implement.md reds the ASSERTION below at the
+// commit that causes it, and its message names the number. That is the backstop
+// working as designed, and the answer there is compression, never a bigger
+// number.
+//
 // hunt-bugs stays at 60,000: corpus 88,683 B, largest gotchas.md 41,922 B, so
 // 88,683 - 41,922 = 46,761 < 60,000 and its property still holds (untouched by
 // the 2026-09-04 pass). Re-measure both numbers for each skill whenever a
