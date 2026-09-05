@@ -682,7 +682,7 @@ done < <(gate_segments "$cmd")
   echo "    session may not hold\" -- e.g. the shared-name core suite, which needs"
   echo "    a global clean window in us-east-1"
   echo "  - \"bound to THIS host (CPU architecture, an installed toolchain, a"
-  echo "    container image already pulled)\""
+  echo "    pulled container image)\""
   echo "  - \"you cannot name it at all, which is an unbounded deferral\" -- that"
   echo "    one is NOT a \`next\`; do it now, or say why the fix would be"
   echo "    unverifiable"
