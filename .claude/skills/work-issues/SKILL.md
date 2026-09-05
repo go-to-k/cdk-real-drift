@@ -1,14 +1,14 @@
 ---
 name: work-issues
-description: Work through already-filed GitHub issues (typically the bug-hunt's output) end to end — triage safely, pick a few FILE-DISJOINT issues to fix in parallel, claim each on the issue before starting (collision-safe with other agents), verify, then carry each through merge → pull → worktree cleanup. Use when asked to "handle/address filed issues", not to hunt for new bugs (that is /hunt-bugs).
+description: Work through already-filed GitHub issues (typically the bug-hunt's output) end to end — triage safely, pick as many FILE-DISJOINT issues as the run can carry, claim each on the issue before starting (collision-safe with other agents), verify, then carry each through merge → pull → worktree cleanup. Use when asked to "handle/address filed issues", not to hunt for new bugs (that is /hunt-bugs).
 argument-hint: "[optional focus, e.g. 'revert issues' | '#651 #650' | 'noise FPs']"
 ---
 
 # Work Filed Issues
 
 Take OPEN issues (usually filed by `/hunt-bugs` — false positives, missed
-detection, revert gaps) and drive a few of them to merged
-fixes. The differentiator of this skill over just "fix issue #N" is **safe,
+detection, revert gaps) and drive as many of them as the run can carry to
+merged fixes. The differentiator of this skill over just "fix issue #N" is **safe,
 collision-free PARALLELISM**: when there is a backlog and other agents/sessions
 are running, pick issues that cannot step on each other, announce which ones you
 took, and only then start.
@@ -44,16 +44,14 @@ worktree": MAIN-CHECKOUT records the MAIN checkout under it, and the
 `git -C "<LANE_TREE>"` recipes consuming it in §4, §5, §7 and §10 are
 IN-PLACE-only arms (every MAIN-CHECKOUT arm beside them uses no `-C`).
 
-`IN-PLACE` changes a great deal more than the concurrent lane count: §1's pull, the
-collision scan's paths, the claim, the branch recipe, §7's rebase, the worktree
-and branch cleanup, where the retro branch is created, and the `LAUNCH_BRANCH`
-restore that ends the run.
+`IN-PLACE` changes a great deal more than the concurrent lane count, and
 `references/launch-mode.md` carries the COMPLETE list as a table mapping each
-consequence to the stage that fires it — read it there, and do NOT re-summarise
-it here. The previous revision of this paragraph said "changes four things" and
-named four; an undercount in the always-loaded orchestrator wins over the
-reference file it points at, which is the one direction this file must never be
-wrong in.
+consequence to the stage that fires it. Read it there; do NOT re-summarise it
+here, in either direction — one revision of this paragraph said "changes four
+things" and named four, and its successor named nine while still forbidding
+the summary. An undercount in the always-loaded orchestrator wins over the
+reference file it points at, which is the one direction this file must never
+be wrong in.
 
 ## How this skill is packaged (read this before stage 0)
 
@@ -114,7 +112,7 @@ wants to watch); the stage files apply unchanged either way.
 | 0. Safety screen             | `references/triage.md`       | Untrusted issues/comments: `author_association` via REST, never run third-party content, defer engage/block to the maintainer      |
 | 1. List backlog              | `references/triage.md`       | REST listing (PR filter, `per_page=100`, `created_at`), volume assessment                                                          |
 | 2. Collision landscape       | `references/triage.md`       | Worktree/branch/PR/claim probes (absolute, via `<MAIN_CHECKOUT>`) and their blind spots; the central contested files               |
-| 3. Pick file-disjoint issues | `references/triage.md`       | Lane count from the launch mode, disjointness gate, fresh-issue quarantine (§3-a), ranking (§3-b), premise checks vs `origin/main` |
+| 3. Pick file-disjoint issues | `references/triage.md`       | Lane count and batching default, disjointness gate, fresh-issue quarantine (§3-a), ranking (§3-b), premise checks vs `origin/main` |
 | 4. Claim                     | `references/claim.md`        | Claim comment BEFORE first edit, re-check for a competing claim/PR right before starting, claim what you FILE too                  |
 | 5. Implement                 | `references/implement.md`    | One tree per lane (`.worktrees/`, or in place), build before first test, sibling-site sweeps, dup-check window when filing         |
 | 6. Gates + PR                | `references/gates-and-pr.md` | `/check`, `/check-docs`, marker freshness per worktree, PR create                                                                  |
