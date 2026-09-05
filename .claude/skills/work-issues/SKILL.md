@@ -1,6 +1,6 @@
 ---
 name: work-issues
-description: Work through already-filed GitHub issues (typically the bug-hunt's output) end to end — triage safely, pick a few FILE-DISJOINT issues to fix in parallel, claim each on the issue before starting (collision-safe with other agents), verify, then carry each through merge → pull → worktree cleanup. Use when asked to "handle/address filed issues", not to hunt for new bugs (that is /hunt-bugs).
+description: Work through already-filed GitHub issues (typically the bug-hunt's output) end to end — triage safely, pick as many FILE-DISJOINT issues as the run can carry, claim each on the issue before starting (collision-safe with other agents), verify, then carry each through merge → pull → worktree cleanup. Use when asked to "handle/address filed issues", not to hunt for new bugs (that is /hunt-bugs).
 argument-hint: "[optional focus, e.g. 'revert issues' | '#651 #650' | 'noise FPs']"
 ---
 

@@ -148,10 +148,16 @@ const MAX_REFERENCE_FILE_BYTES = 48_000; // RE-DERIVED DOWNWARD 64_000 -> 48_000
 const SPLIT_SKILLS: Record<string, { minFiles: number; minCorpusBytes: number }> = {
   // 8 files / 125,139 B measured at the split (2026-08-28); 94,136 B
   // post-compression; regrown to 150,695 B by 2026-09-03's retro rounds;
-  // 138,496 B after the 2026-09-04 token-diet pass; 139,674 B after the
-  // 2026-09-05 batching pass (batching stated as the DEFAULT rather than a
-  // permission, with the amortization reason), largest implement.md 25,647 B,
-  // so `corpus - largest` is 114,027 and this floor clears it by 3,973 B. 9 files as of 2026-09-01,
+  // 138,496 B after the 2026-09-04 token-diet pass; 142,876 B on 2026-09-05
+  // before the batching pass, which measured 771 B of room and needed 875:
+  // the paragraph was paid for by turning section 0 into a pointer at
+  // CLAUDE.md's untrusted-content rule, which it had restated at length.
+  // 142,691 B now, largest implement.md 25,647 B, so `corpus - largest` is
+  // 117,044 and this floor clears it by 956 B. That the FIRST attempt went
+  // red in CI rather than locally is the note worth keeping: the worktree was
+  // cut before go-to-k/cdk-real-drift#1883 landed, so the local corpus was
+  // 4,014 B short of the merge ref's -- re-measure against `origin/main`,
+  // never against the tree the branch was cut from. 9 files as of 2026-09-01,
   // when the launch-mode probe moved out of triage.md into
   // references/launch-mode.md, which the PARENT reads before stage 0.
   'work-issues': { minFiles: 9, minCorpusBytes: 118_000 },
