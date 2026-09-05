@@ -133,7 +133,7 @@ const MAX_REFERENCE_FILE_BYTES = 48_000; // RE-DERIVED DOWNWARD 64_000 -> 48_000
 // What it SPENT is the NEAR-FLIP margin the paragraph above sizes, and saying
 // so is the point -- a reader who trusted that derivation would now be wrong.
 // Residuals if each near candidate grew past implement.md: retro.md (23,404 B)
-// 119,472, triage.md (24,261 B) 118,615, verify.md (24,311 B) 118,565. ALL
+// 120,024, triage.md (24,813 B) 118,615, verify.md (24,311 B) 119,117. ALL
 // THREE now sit ABOVE the floor, where the paragraph above cleared the worst by
 // 2,465 B. So the flip case is no longer covered by design margin at all: the
 // next stage file to overtake implement.md reds the ASSERTION below at the
@@ -152,8 +152,18 @@ const SPLIT_SKILLS: Record<string, { minFiles: number; minCorpusBytes: number }>
   // before the batching pass, which measured 771 B of room and needed 875:
   // the paragraph was paid for by turning section 0 into a pointer at
   // CLAUDE.md's untrusted-content rule, which it had restated at length.
-  // 142,691 B now, largest implement.md 25,647 B, so `corpus - largest` is
-  // 117,044 and this floor clears it by 956 B. That the FIRST attempt went
+  // 142,692 B on `origin/main`; 143,428 B after the 2026-09-06
+  // ranking-criteria port (+736 B, all of it triage.md: the two new ranking
+  // preferences plus a corrected label claim, less what they were paid inside
+  // the same section), largest implement.md 25,647 B, so `corpus - largest` is
+  // 117,781 and this floor clears it by 219 B -- and triage.md, at 24,813 B, is
+  // now 834 B from overtaking implement.md and flipping the leader, the case
+  // the paragraph above sizes. Re-derive every
+  // figure here at the sha you PUSH, and state the BASELINE beside a delta:
+  // two review rounds caught this paragraph quoting numbers measured one fix
+  // too early (5 B stale, the width of a `§3, ` inserted below), and a delta
+  // whose baseline is not written down cannot be checked at all. That the
+  // FIRST attempt went
   // red in CI rather than locally is the note worth keeping: the worktree was
   // cut before go-to-k/cdk-real-drift#1883 landed, so the local corpus was
   // 4,014 B short of the merge ref's -- re-measure against `origin/main`,

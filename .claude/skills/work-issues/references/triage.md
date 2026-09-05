@@ -174,18 +174,16 @@ a time, and if the run ends before reaching one, stand it down with a comment ca
 visibly claimable rather than silently locked (the shape go-to-k/cdkd#2417
 measured: three claimed, one merged, two left pickup-ready). Claiming only the
 top candidate is still fine; a QUEUED issue is spoken for rather than
-abandoned. (Until 2026-09-03 this paragraph said "take ONE issue and finish
-it"; that read a hazard about trees existing at the same time as a budget on
-work — the one thing it does not constrain. The same limit was corrected in
-`references/launch-mode.md` row 1 and `references/claim.md` together.)
+abandoned. (The tree hazard is not a budget on WORK — the one thing it does
+not constrain; corrected 2026-09-03 in `references/launch-mode.md` row 1 and
+`references/claim.md` together.)
 
 **The MAIN-CHECKOUT case is the DISJOINTNESS PARAGRAPH below and nothing
-wider.** An earlier revision said "everything below is the MAIN-CHECKOUT case",
-which told an IN-PLACE run to skip the security-first ranking, the `Severity`
-ranking, the premise checks and §3-a's freshness gate — all mode-independent,
-and the last a HARD gate. The rest of what IN-PLACE changes lives in
-`references/launch-mode.md`'s table, which maps ten consequences to §1, §2,
-§4, §5, §7, §9 and §10-d.
+wider** — the security-first ranking, the `Severity` ranking, the premise
+checks and §3-a's freshness gate are mode-independent, and the last is a HARD
+gate (an earlier revision told IN-PLACE runs to skip all four). The rest of
+what IN-PLACE changes lives in `references/launch-mode.md`'s table, which maps
+ten consequences to §1, §2, §3, §4, §5, §7, §9 and §10-d.
 
 **Two lanes must edit DISJOINT files** (same as the worktree rule): two issues
 both landing in `noise.ts` cannot be parallelized — bundle into ONE lane or
@@ -217,9 +215,21 @@ choosing. §3-a is a second HARD gate applied before any preference below.
   ```
 
   `severity:?` means UNLABELLED, which is **not** `low`. A label-only query
-  UNDER-counts (most of the backlog predates the labels); the label mirrors the
-  body line, never a second source — confirm a surprising one against the body.
+  UNDER-counts wherever an issue is unlabelled; the label mirrors the body
+  line, never a second source — confirm a surprising one against the body.
 
+- **Then the product surface first, AGENT-TOOLING last** (`.claude/**` — hooks
+  / skills / rules / agents — and `CLAUDE.md`): a wrong hook costs a future RUN
+  a detour and a user nothing, and that class is filed BY the runs that read
+  this list, so undemoted it crowds out the detection defect nobody reached. A
+  demotion among candidates otherwise tied, not an exclusion — the `Severity`
+  rule above still puts a `high` instruction defect over a `low` product one,
+  when that rival carries `Severity` too.
+- **Never rank by AGE; where all else ties, take the OLDER issue.** The listing
+  ARRIVES newest-first, so an absent tiebreaker is a recency bias nobody chose,
+  and what it produces is the old defect in the detection path — a wrong or
+  missing drift row a user acts on — that no run ever reaches. Rot does not
+  rank: the premise bullet below catches it at claim time anyway.
 - **An issue's premise may not be TRUE YET — resolve the body against the tree
   before writing anything that depends on it.** A body written from an unmerged
   branch describes THAT branch (go-to-k/cdkd#2246 asked for a doc note naming a
