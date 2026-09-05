@@ -170,6 +170,11 @@ parity non-english-text-gate.sh "gh pr create --title t"
 # The issue-mint gate is not a `pr` verb, but it reads the same flag absorber and
 # `-R` is the cross-repo mirror flow's own spelling — its primary shape.
 parity issue-dup-check-gate.sh  "gh issue create --title t --body 'no marker here'"
+# The deferral gate is the other issue-mint gate, and it reads the SAME flag
+# absorber. `-R` is the cross-repo mirror flow's own spelling here too, so a
+# spelling that slips past the absorber is a live bypass of the criteria check.
+parity issue-deferral-criteria-gate.sh \
+  "gh issue create --title t --body 'Session-fit: next (not this session) -- it needs its own PR'"
 
 # --- a FOREIGN `-R` must be REFUSED, not audited -----------------------------
 # The absorber matched `-R` and then discarded it: every probe runs against the
@@ -211,6 +216,16 @@ if [ "$(drive issue-dup-check-gate.sh "gh -R go-to-k/cdk-local issue create --bo
   PASS=$((PASS + 1))
 else
   echo "FAIL: issue-dup-check-gate no longer judges a foreign -R by its body"
+  FAIL=$((FAIL + 1))
+fi
+# Same control for the other issue-mint gate, and for the same reason: the cwd
+# decides whose deferral policy applies, `-R` only decides where the issue lands.
+if [ "$(drive issue-deferral-criteria-gate.sh "gh -R go-to-k/cdk-local issue create --body 'Session-fit: next (not this session) -- it needs its own PR'")" = "2" ] \
+   && [ "$(drive issue-deferral-criteria-gate.sh "gh -R go-to-k/cdk-local issue create --body 'Session-fit: next (not this session) -- a new fixture must be written'")" = "0" ]; then
+  echo "PASS: issue-deferral-criteria-gate still judges a foreign -R by its BODY (mirror flow)"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL: issue-deferral-criteria-gate no longer judges a foreign -R by its body"
   FAIL=$((FAIL + 1))
 fi
 

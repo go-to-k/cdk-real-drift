@@ -302,3 +302,112 @@ verdict surprises you.
     `rebase-apply/` directory holding neither `applying` nor `head-name`
     reads as a rebase here — `git status` calls that same state "rebasing",
     and no git command produces it.
+
+- **`issue-deferral-criteria-gate` — a `Session-fit: next` may not be PR-shaped.**
+  Blocks `gh issue create` and the REST mint `gh api repos/<o>/<r>/issues` when
+  the body's `Session-fit: next` line defers the work for a reason ABOUT THE
+  PULL REQUEST: `own PR` / `separate PR` / `share (a) PR` /
+  `independent review surface` / `unreviewable` / `own review`,
+  case-insensitively. `Session-fit` answers one question — do I finish this in
+  THIS session — and `.claude/rules/session-report.md`'s own test for it
+  ("NAME the command that verifies the fix") admits only answers about the
+  VERIFIER. Splitting work across several PRs is normal, needs no permission
+  and costs no session; the review cost of a bigger diff is real and belongs
+  under `Effort: large`, which is where `session-report.md` already puts it
+  ("a behavior change needing its own PR plus review").
+
+  **An ESCALATION, not a new rule** (`/work-issues` `references/retro.md` §10-b:
+  a rule already in the text and violated anyway proves the sentence is not
+  load-bearing — escalate rather than restate).
+  `references/triage.md` §3-b has said "'it needs its own PR' is NOT a `next`
+  reason" for months, and cites its own 2026-09-01 violation. On 2026-09-04 an
+  agent in cdkd deferred THREE findings in one session on exactly that
+  reasoning (go-to-k/cdkd#2587 / go-to-k/cdkd#2588 / go-to-k/cdkd#2590); all
+  three were re-classified `now` and finished the same day, so the deferrals
+  bought nothing.
+
+  **Measured coverage, so the claim is a number.** Re-run against those three
+  bodies as filed, the gate fires on ONE. That is not a defect to patch by
+  adding a fourth phrase: the two misses reason about a PR without making a
+  PR-shaped CLAIM any closed list can recognise. The gate makes the CHEAP,
+  REUSABLE spelling loud at the moment of filing; §3-b's prose is what
+  addresses the rest. Neither alone is the mechanism.
+
+  Same two verbs, same repo opt-in (`.markgate.yml` at the resolved cwd's repo
+  root) and the same "`-R` decides where it LANDS, the cwd decides whose policy
+  applies" stance as `issue-dup-check-gate` — both are fenced by
+  `gh-repo-flag-parity.test.sh`. `gh issue edit` / `gh issue comment` are NOT
+  gated: re-classifying a `next` into a `now` is the outcome this gate wants.
+  Body extraction closes the window `issue-classification-label-gate` still has:
+  in the one-call `heredoc -> file -> --body-file` shape this repo mandates the
+  file does not exist yet, so the HEREDOC BODY is scanned, and a stale-but-clean
+  file on disk no longer makes the gate inert (a truncating `>` supersedes the
+  file; an appending `>>` does not). **Known limit, measured and pinned both
+  ways:** an INLINE `--body` has no line structure even when it contains
+  newlines — `gate_segments` joins a quoted span's lines into spaces
+  (`gate_segments "gh issue create --body 'a<NL>b'"` prints `--body 'a b'`), so
+  the reason runs to the end of the whole body and a later field's text folds
+  in. Same text, `--body` rc=2 and `--body-file` rc=0. It over-approximates —
+  a loud, clearable block, never a silent pass — and the file-borne shape this
+  repo mandates does not have it. Fenced by
+  `.claude/hooks/issue-deferral-criteria-gate.test.sh` (69 cases, under the
+  pinned-interpreter fence above).
+
+  **Two contradictions in the repo's own text that this gate deliberately did
+  NOT edit**, both recorded in the hook's header: `references/implement.md`
+  blesses "a sweep that would make the PR unreviewable is a genuine `next`",
+  and `session-report.md`'s calibration paragraph ends "above all review of a
+  larger diff, which grows superlinearly. Defer on those." — the PR-shaped
+  criterion arriving through the back door four sentences after being placed
+  correctly under `Effort`. cdkd removed the equivalent sentence when it
+  shipped this gate; here it stands. Escape hatch for the case the gate cannot
+  see (a body quoting PR-shaped reasoning INLINE in order to argue against it):
+  `CDKRD_SKIP_DEFERRAL_CRITERIA_GATE=1 gh issue create ...`, honoured from the
+  process env AND from a leading assignment in the command text, in command
+  position only — a mention inside a quoted `--body` or a heredoc body disarms
+  nothing. A quote inside a ``` or `~~~` fence needs no bypass at all: fenced
+  blocks are stripped before the scan, because a body should not have to disarm
+  a gate to talk about the rule it enforces.
+
+- **`integ-base-behind-warn` — the one NON-BLOCKING PreToolUse hook.** Warns on
+  stderr, before a fixture's `verify*.sh` or a `cdk deploy` runs, that the
+  branch is behind `origin/main`, and names how many of the arriving files land
+  in the `integ` gate's scope (`src/**` + `tests/integration/**`, read off
+  `.markgate.yml`). An integ here is a real `npx cdk deploy` into us-east-1
+  plus a `delstack` teardown and a cleanup sentinel that blocks every commit
+  until the account sweeps clean; spending that on a tree `main` has already
+  moved past buys a result about the wrong tree, since `verify.sh` rebuilds the
+  CLI from THIS branch.
+
+  **NOT `stale-base-gate`, and the names are kept apart on purpose.** That one
+  BLOCKS `git push` when `origin/main` is already an ANCESTOR of HEAD yet the
+  branch's net diff REVERTS files main has moved on from — the soft-reset
+  clobber. This one fires on the OPPOSITE condition (HEAD is BEHIND), at run
+  time rather than push time, about the BASE rather than the CONTENT, and never
+  blocks. The two are mutually exclusive by construction: `stale-base-gate`
+  opens with `git merge-base --is-ancestor "$base" HEAD || exit 0`, and this
+  hook exits when `git rev-list --count HEAD..origin/main` is 0.
+
+  It is non-blocking because a deliberate run on an older base is legitimate (a
+  bisect, reproducing an issue against a released tree), and it fires at the
+  INVOCATION rather than next to a marker write because by the time a marker is
+  written the AWS run is already spent — the invocation is the last moment a
+  rebase is still free. No `git fetch`: a PreToolUse hook must stay fast and
+  side-effect-free, so it reads the last-fetched `origin/main` and under-reports
+  when that ref is itself stale, which is the safe direction for a nudge.
+
+  **The marker half is LATENT here and the message says so.** `.markgate.yml`
+  declares an `integ` gate (singular — cdkd's destroy / broad / local /
+  schema-migration split does not exist in a read-only repo) on `hash: diff`
+  with `base: origin/main`, so a rebase AFTER a run moves the merge base and can
+  stale it. But nothing calls `markgate set integ` and no hook reads it, so
+  today the cost is the AWS run alone; wiring the gate later adds the marker
+  cost with no change to this hook, because its scope regex is derived from that
+  gate's `include`. Noise control: read verbs (`cat` / `grep` / `git diff|log` /
+  `sed -n` / `ls`) exit in command position ANYWHERE in the command, and the
+  script needle `verify[A-Za-z0-9_-]*\.sh` allows NO dot in the stem — so it
+  matches all 53 documented fixture scripts and none of this repo's own
+  `*.test.sh` harnesses, which `vp run test:hooks` runs constantly. Fenced by
+  `.claude/hooks/integ-base-behind-warn.test.sh` (31 cases), which asserts the
+  STDERR TEXT in both directions — an exit-code-only suite would be green with
+  the whole hook deleted.
