@@ -25,16 +25,16 @@
 # THIS suite and every probe killed at least one case -- baseline 69/0, under
 # /bin/bash 3.2.57 (identical tally under 5.3.9):
 #
-#   stub: always exit 0                             33 red
-#   stub: always exit 2                             34 red
-#   case-insensitive matching removed               35 red
+#   stub: always exit 0                             36 red
+#   case-insensitive matching removed               36 red
+#   stub: always exit 2                             35 red
+#   reason boundaries (key / item / heading) gone    5 red
 #   next-only guard removed (`now` gated too)        4 red
-#   reason boundaries (key / item / heading) gone    4 red
 #   fenced-block strip removed                       3 red
+#   segment scoping removed (whole command)          2 red
 #   bypass command-position check removed            2 red
 #   repo opt-in guard removed                        1 red
 #   heredoc body arm removed (file-first only)       1 red
-#   segment scoping removed (whole command)          1 red
 #   `gh api` REST mint arm removed                   1 red
 #   one vocabulary term (`own review`) removed       1 red
 #
