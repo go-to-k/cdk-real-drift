@@ -98,6 +98,37 @@ printf 'stack-a\n' > "$FIX/.markgate-bughunt-pending-$(id -un)"
 # with a different message and the case passed for the wrong reason.
 GH_STUB="$FIX/bin/gh"
 mkdir -p "$FIX/bin"
+
+# The gates under test must be driven by the SAME interpreter the rest of the
+# hook suites use, or this fence attests only to the developer machine's bash.
+# `drive` and `foreign` below already prepend `$FIX/bin` to PATH for the `gh`
+# stub, and a bare `bash` there resolves through that same PATH -- so a `bash`
+# symlink in the stub directory redirects both call sites with no change to
+# either function. (Verified: a command-prefix `PATH=` assignment IS used for
+# the command's own lookup, so the symlink wins over /bin/bash.)
+#
+# Default /bin/bash; override with HOOK_BASH to take the other tally. An
+# explicitly set HOOK_BASH that is not executable is FATAL rather than a silent
+# fall back to PATH bash -- falling back hides a typo in the one setting this
+# fence exists to pin. Only the built-in DEFAULT may fall back, since a machine
+# without /bin/bash is a fact rather than a mistake. Same contract as
+# issue-deferral-criteria-gate.test.sh, deliberately worded identically.
+if [ -n "${HOOK_BASH:-}" ]; then
+  if [ ! -x "$HOOK_BASH" ]; then
+    printf 'FATAL - HOOK_BASH is not an executable: %s\n' "$HOOK_BASH" >&2
+    exit 2
+  fi
+else
+  HOOK_BASH=/bin/bash
+  [ -x "$HOOK_BASH" ] || HOOK_BASH="$(command -v bash)"
+  [ -n "$HOOK_BASH" ] && [ -x "$HOOK_BASH" ] || {
+    printf 'FATAL - no usable bash found for the hook interpreter\n' >&2
+    exit 2
+  }
+fi
+ln -sf "$HOOK_BASH" "$FIX/bin/bash"
+printf 'hook interpreter: %s (bash %s)\n' "$HOOK_BASH" \
+  "$("$HOOK_BASH" -c 'echo "$BASH_VERSION"')"
 cat > "$GH_STUB" <<'STUB'
 #!/usr/bin/env bash
 # Mirror the real binary: an unknown shorthand is rejected before anything runs.

@@ -67,10 +67,48 @@ TMPBASE="$(cd "$(mktemp -d)" && pwd -P)"
 # directory holding one symlink named `bash` goes FIRST on PATH, and every child
 # `bash` (the shebang included) is the fenced interpreter.
 #
-# THE FENCE ONLY CATCHES PARSE-TIME CONSTRUCTS. `${x^^}` and `mapfile` abort the
-# hook under 3.2 and are caught; a `declare -A` writes to stderr and KEEPS
-# GOING, so it is invisible here. A future "is it still 3.2-clean?" probe must
-# inject a parse-time construct.
+# WHAT THIS FENCE CATCHES, MEASURED (3.2.57 vs 5.3.9, 2026-09-05). The short
+# version: NONE of the bash-4 constructs aborts on its own, so naming one is not
+# enough to make a probe discriminate.
+#
+#   ${v^^}          -> `bad substitution` on stderr, execution CONTINUES, rc=0
+#   mapfile -t a    -> `command not found` on stderr, CONTINUES,          rc=0
+#   declare -A m    -> `-A: invalid option` on stderr, CONTINUES,         rc=0
+#
+# What turns any of them red is the hook then READING the result under `set -u`,
+# because the failed construct left the name unset:
+#
+#   ${v^^} ; then use $r        -> `r: unbound variable`      rc=1
+#   mapfile ; then use ${a[0]}  -> `arr[0]: unbound variable` rc=1
+#   declare -A m ; then m[k]=v  -> `k: unbound variable`      rc=2
+#
+# TWO WAYS TO WRITE THAT PROBE AND GET THE WRONG ANSWER:
+#
+#   1. A SOFT read defeats it -- `${a[0]:-EMPTY}` after a failed `mapfile` keeps
+#      going at rc=0. It is the HARD read, not the construct, that is load-bearing.
+#   2. Putting the construct and its read on ONE `;`-separated line defeats it
+#      too. bash 3.2 discards the rest of the list after the bad substitution, so
+#      the read never runs and nothing is unbound. Measured on THIS suite:
+#
+#        __p_v=x; __p_r="${__p_v^^}"; : "$__p_r"     (one line)   69 PASS / 0 FAIL
+#        __p_v=x                                                   <- three
+#        __p_r="${__p_v^^}"                                           separate
+#        : "$__p_r"                                  (three lines)  0 PASS / 69 FAIL
+#
+#      Same three commands, same interpreter. Only the second discriminates.
+#
+# So a valid "is it still 3.2-clean?" probe injects a construct whose result the
+# hook SUBSEQUENTLY READS, hard, on a LATER LINE.
+#
+# The 5.x arm needs `HOOK_BASH` set EXPLICITLY: this suite defaults the hook
+# interpreter to /bin/bash, so a bare `bash <this file>` already runs the hook
+# under 3.2 and both arms of a probe come back red, which reads as "the probe
+# broke everything" rather than "the fence works". The three-line probe above is
+# 0/69 under `HOOK_BASH=/bin/bash` and 69/0 under `HOOK_BASH=<homebrew bash>`.
+#
+# `main-tree-branch-gate.test.sh` records 53 red from a `${verb^^}` injected
+# INSIDE `verdict_for` and calls it an abort; that tally is real, and the reason
+# is this one -- the substitution failed and the verdict variable was then read.
 #
 # Default /bin/bash; override with HOOK_BASH to take the other tally. An
 # explicitly set HOOK_BASH that is not executable is FATAL rather than a silent
@@ -475,6 +513,71 @@ run "a heredoc-body mention of the bypass at line start does not disarm it" "$HD
 # --- INERT INPUTS -------------------------------------------------------------
 run "empty command passes" "" "$TMPROOT" 0
 run_nonbash "non-Bash tool passes" 0
+
+# --- the shared GATE_PERL_WORD value class, and its guard --------------------
+# Ported with the class from go-to-k/cdkd#2639. Three spellings were LIVE
+# fail-opens here before the port, each measured rc=0 where the plain path gave
+# 2: a quoted path containing a SPACE, a BACKSLASH-escaped one, and the GLUED
+# `-F<path>` gh accepts. They are cases rather than a note because a value
+# class that enumerates quote POSITIONS grows a new hole every time gh accepts
+# another spelling.
+GWDIR="$TMPROOT/gw dir"
+mkdir -p "$GWDIR"
+DEFER_BODY='Session-fit: next (not this session) -- it needs its own PR'
+printf '%s\n' "$DEFER_BODY" > "$GWDIR/defer.md"
+printf 'Session-fit: next (not this session) -- a new fixture must be written\n' > "$GWDIR/ok.md"
+run "spaced --body-file path, double-quoted, blocks" \
+  "gh issue create -t x --body-file \"$GWDIR/defer.md\"" "$TMPROOT" 2
+run "spaced --body-file path, backslash-escaped, blocks" \
+  "gh issue create -t x --body-file ${GWDIR// /\\ }/defer.md" "$TMPROOT" 2
+run "glued -F<spaced path> blocks" \
+  "gh issue create -t x -F\"$GWDIR/defer.md\"" "$TMPROOT" 2
+run "spaced --body-file path, compliant reason, passes" \
+  "gh issue create -t x --body-file \"$GWDIR/ok.md\"" "$TMPROOT" 0
+
+# The guard itself. `[ -n "$GATE_PERL_WORD" ]` cannot see a prelude that is
+# present but does not COMPILE, and every extraction runs perl with stderr
+# discarded -- so the gate would extract nothing and PASS. The payload below is
+# one this gate NORMALLY PASSES, so exit 2 can only come from the guard.
+GWBROKEN="$TMPROOT/brokenlib"
+mkdir -p "$GWBROKEN"
+cp "$HOOK" "$GWBROKEN/"
+sed "s|^  my \$GW = qr/.*|  my \$GW = qr/(((unclosed/;|" \
+  "$(dirname "$HOOK")/_command-match.sh" > "$GWBROKEN/_command-match.sh"
+if grep -q 'unclosed' "$GWBROKEN/_command-match.sh" \
+   && ! grep -q 'my \$GW = qr/(?:' "$GWBROKEN/_command-match.sh"; then
+  gw_rc=0
+  jq -n --arg c "gh issue create -t x --body-file $GWDIR/ok.md" --arg d "$TMPROOT" \
+    '{tool_name:"Bash", tool_input:{command:$c}, cwd:$d}' \
+    | "$GWBROKEN/$(basename "$HOOK")" >/dev/null 2>&1 || gw_rc=$?
+  if [ "$gw_rc" = "2" ]; then
+    echo "PASS: a non-compiling GATE_PERL_WORD fails CLOSED (exit 2)"
+    PASS=$((PASS + 1))
+  else
+    echo "FAIL: a non-compiling GATE_PERL_WORD returned $gw_rc, expected 2"
+    FAIL=$((FAIL + 1))
+  fi
+else
+  # A probe that silently does not run is the failure mode this file is about.
+  echo "FAIL: could not stage a broken GATE_PERL_WORD (sed anchor drifted)"
+  FAIL=$((FAIL + 1))
+fi
+# And it must not be switchable off from the ENVIRONMENT: the memo is an
+# ordinary shell variable, so without a reset at library load `__GATE_PW_OK=1`
+# made the probe report a working prelude it never ran.
+if [ -f "$GWBROKEN/_command-match.sh" ]; then
+  gw_env_rc=0
+  jq -n --arg c "gh issue create -t x --body-file $GWDIR/ok.md" --arg d "$TMPROOT" \
+    '{tool_name:"Bash", tool_input:{command:$c}, cwd:$d}' \
+    | __GATE_PW_OK=1 "$GWBROKEN/$(basename "$HOOK")" >/dev/null 2>&1 || gw_env_rc=$?
+  if [ "$gw_env_rc" = "2" ]; then
+    echo "PASS: __GATE_PW_OK=1 cannot disable the prelude guard (exit 2)"
+    PASS=$((PASS + 1))
+  else
+    echo "FAIL: __GATE_PW_OK=1 disabled the prelude guard (exit $gw_env_rc, expected 2)"
+    FAIL=$((FAIL + 1))
+  fi
+fi
 
 echo ""
 echo "Pass: $PASS  Fail: $FAIL"

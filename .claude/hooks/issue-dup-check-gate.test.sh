@@ -314,6 +314,70 @@ run "empty command passes" "" "$TMPROOT" 0
 
 run_nonbash "non-Bash tool passes" 0
 
+# --- the shared GATE_PERL_WORD value class, and its guard --------------------
+# Ported with the class from go-to-k/cdkd#2639. Three spellings were LIVE
+# fail-opens here before the port, each measured rc=0 where the plain path gave
+# 2: a quoted path containing a SPACE, a BACKSLASH-escaped one, and the GLUED
+# `-F<path>` gh accepts. They are cases rather than a note because a value
+# class that enumerates quote POSITIONS grows a new hole every time gh accepts
+# another spelling.
+GWDIR="$TMPROOT/gw dir"
+mkdir -p "$GWDIR"
+printf 'A body with no marker at all.\n' > "$GWDIR/nomark.md"
+printf 'Dup-check: searched open+closed, no match\nBody.\n' > "$GWDIR/ok.md"
+run "spaced --body-file path, no Dup-check, blocks" \
+  "gh issue create -t x --body-file \"$GWDIR/nomark.md\"" "$TMPROOT" 2
+# The FALSE BLOCK this gate carried: it fails CLOSED on an unreadable path, so a
+# compliant body at a spaced path was refused for a marker it DID have.
+run "spaced --body-file path, WITH Dup-check, passes" \
+  "gh issue create -t x --body-file \"$GWDIR/ok.md\"" "$TMPROOT" 0
+run "backslash-escaped path, WITH Dup-check, passes" \
+  "gh issue create -t x --body-file ${GWDIR// /\\ }/ok.md" "$TMPROOT" 0
+
+# The guard itself. `[ -n "$GATE_PERL_WORD" ]` cannot see a prelude that is
+# present but does not COMPILE, and every extraction runs perl with stderr
+# discarded -- so the gate would extract nothing and PASS. The payload below is
+# one this gate NORMALLY PASSES, so exit 2 can only come from the guard.
+GWBROKEN="$TMPROOT/brokenlib"
+mkdir -p "$GWBROKEN"
+cp "$HOOK" "$GWBROKEN/"
+sed "s|^  my \$GW = qr/.*|  my \$GW = qr/(((unclosed/;|" \
+  "$(dirname "$HOOK")/_command-match.sh" > "$GWBROKEN/_command-match.sh"
+if grep -q 'unclosed' "$GWBROKEN/_command-match.sh" \
+   && ! grep -q 'my \$GW = qr/(?:' "$GWBROKEN/_command-match.sh"; then
+  gw_rc=0
+  jq -n --arg c "gh issue create -t x --body-file $GWDIR/ok.md" --arg d "$TMPROOT" \
+    '{tool_name:"Bash", tool_input:{command:$c}, cwd:$d}' \
+    | "$GWBROKEN/$(basename "$HOOK")" >/dev/null 2>&1 || gw_rc=$?
+  if [ "$gw_rc" = "2" ]; then
+    echo "PASS: a non-compiling GATE_PERL_WORD fails CLOSED (exit 2)"
+    PASS=$((PASS + 1))
+  else
+    echo "FAIL: a non-compiling GATE_PERL_WORD returned $gw_rc, expected 2"
+    FAIL=$((FAIL + 1))
+  fi
+else
+  # A probe that silently does not run is the failure mode this file is about.
+  echo "FAIL: could not stage a broken GATE_PERL_WORD (sed anchor drifted)"
+  FAIL=$((FAIL + 1))
+fi
+# And it must not be switchable off from the ENVIRONMENT: the memo is an
+# ordinary shell variable, so without a reset at library load `__GATE_PW_OK=1`
+# made the probe report a working prelude it never ran.
+if [ -f "$GWBROKEN/_command-match.sh" ]; then
+  gw_env_rc=0
+  jq -n --arg c "gh issue create -t x --body-file $GWDIR/ok.md" --arg d "$TMPROOT" \
+    '{tool_name:"Bash", tool_input:{command:$c}, cwd:$d}' \
+    | __GATE_PW_OK=1 "$GWBROKEN/$(basename "$HOOK")" >/dev/null 2>&1 || gw_env_rc=$?
+  if [ "$gw_env_rc" = "2" ]; then
+    echo "PASS: __GATE_PW_OK=1 cannot disable the prelude guard (exit 2)"
+    PASS=$((PASS + 1))
+  else
+    echo "FAIL: __GATE_PW_OK=1 disabled the prelude guard (exit $gw_env_rc, expected 2)"
+    FAIL=$((FAIL + 1))
+  fi
+fi
+
 echo ""
 echo "Pass: $PASS  Fail: $FAIL"
 [ "$FAIL" -eq 0 ]
