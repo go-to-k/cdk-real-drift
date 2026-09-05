@@ -41,6 +41,12 @@
 # The 1-red probes are the ones to watch when adding cases: each is fenced by a
 # SINGLE case, so deleting that case silently unfences the arm.
 #
+# Re-measured 2026-09-05: every row above reproduced EXACTLY, under both
+# interpreters. The two stubs are pinned by CONSTRUCTION -- `exit 0` / `exit 2`
+# inserted directly after `set -u` -- because a stub probe's tally is a property
+# of the stub: the sibling warner harness measured 17 / 18 / 19 red for three
+# plausible readings of one "always warn" stub on an unmodified hook.
+#
 # Run in place, from `.claude/hooks/` -- the harness resolves its subject from
 # its own path (asserted by tests/skill-doc-paths.test.ts), so a copy parked
 # elsewhere fails every case on exit 127.

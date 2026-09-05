@@ -29,13 +29,29 @@
 # 5.3.9); every fence mutation-probed against THIS suite:
 #
 #   stub: always silent                             13 red
-#   stub: always warn (carrying every needle)       18 red
+#   stub: always warn (carrying every needle)       19 red
 #   read-verb exclusion removed                      7 red
 #   fixture / deploy arming regex removed            5 red
 #   behind-count guard removed                       2 red
 #   in-scope file count removed (always 0)           2 red
 #   `.test.sh` fence removed (dots allowed in stem)  1 red
 #   repo opt-in guard removed                        1 red
+#
+# A STUB PROBE'S TALLY IS A PROPERTY OF THE STUB, so the two stubs above are
+# pinned by CONSTRUCTION rather than by intent (re-measured 2026-09-05, and the
+# row above was corrected from 18 in the process):
+#
+#   always silent -- `exit 0` inserted directly after `set -u`.
+#   always warn   -- the hook's REAL message body, BOTH branches (in-scope and
+#                    not), echoed to stderr directly after `set -u`, then
+#                    `exit 0`.  19 red.
+#
+# Three plausible readings of "always warn" measured three tallies on the SAME
+# unmodified hook: 19 for the both-branches stub, 18 for the one recorded when
+# the hook shipped, and 17 for neutering every early-exit guard so the real
+# emitter runs with real values. None is wrong; a bare number without its
+# construction is what is wrong, because the next re-measurement reads a
+# 2-case gap as a regression in the hook.
 #
 # The opt-in probe was VACUOUS at first (31/0 with the guard deleted): the
 # no-opt-in clone was level with origin/main, so the behind-count guard exited
