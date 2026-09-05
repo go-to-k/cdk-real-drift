@@ -98,6 +98,64 @@ printf 'stack-a\n' > "$FIX/.markgate-bughunt-pending-$(id -un)"
 # with a different message and the case passed for the wrong reason.
 GH_STUB="$FIX/bin/gh"
 mkdir -p "$FIX/bin"
+
+# The gates under test must be driven by the SAME interpreter the rest of the
+# hook suites use, or this fence attests only to the developer machine's bash.
+# `drive` and `foreign` below already prepend `$FIX/bin` to PATH for the `gh`
+# stub, and a bare `bash` there resolves through that same PATH -- so a `bash`
+# symlink in the stub directory redirects both call sites with no change to
+# either function. (Verified: a command-prefix `PATH=` assignment IS used for
+# the command's own lookup, so the symlink wins over /bin/bash.)
+#
+# Default /bin/bash; override with HOOK_BASH to take the other tally. An
+# explicitly set HOOK_BASH that is not executable is FATAL rather than a silent
+# fall back to PATH bash -- falling back hides a typo in the one setting this
+# fence exists to pin. Only the built-in DEFAULT may fall back, since a machine
+# without /bin/bash is a fact rather than a mistake. Same contract as
+# issue-deferral-criteria-gate.test.sh, deliberately worded identically.
+if [ -n "${HOOK_BASH:-}" ]; then
+  if [ ! -x "$HOOK_BASH" ]; then
+    printf 'FATAL - HOOK_BASH is not an executable: %s\n' "$HOOK_BASH" >&2
+    exit 2
+  fi
+else
+  HOOK_BASH=/bin/bash
+  [ -x "$HOOK_BASH" ] || HOOK_BASH="$(command -v bash)"
+  [ -n "$HOOK_BASH" ] && [ -x "$HOOK_BASH" ] || {
+    printf 'FATAL - no usable bash found for the hook interpreter\n' >&2
+    exit 2
+  }
+fi
+ln -sf "$HOOK_BASH" "$FIX/bin/bash"
+printf 'hook interpreter: %s (bash %s)\n' "$HOOK_BASH" \
+  "$("$HOOK_BASH" -c 'echo "$BASH_VERSION"')"
+
+# ASSERTED, not merely printed. Deleting the `ln -sf` above left this suite
+# fully green while the line just printed still named the interpreter -- a FALSE
+# ATTESTATION, and the exact failure the shim exists to prevent (a fence that
+# says which bash it measured while measuring another one). Drive one gate
+# through the fixture PATH and make it report its own `$BASH_VERSION`.
+gw_seen=$(PATH="$FIX/bin:$PATH" bash -c 'echo "$BASH_VERSION"')
+gw_want=$("$HOOK_BASH" -c 'echo "$BASH_VERSION"')
+if [ "$gw_seen" = "$gw_want" ]; then
+  echo "PASS: the fixture PATH resolves bash to HOOK_BASH ($gw_want)"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL: the fixture PATH resolves bash to $gw_seen, not HOOK_BASH ($gw_want)"
+  FAIL=$((FAIL + 1))
+fi
+# And the FATAL arm: an explicitly set but non-executable HOOK_BASH must exit 2
+# rather than fall back to PATH bash, because falling back hides a typo in the
+# one setting this fence exists to pin.
+gw_fatal=0
+HOOK_BASH=/nonexistent/bash bash "${BASH_SOURCE[0]}" >/dev/null 2>&1 || gw_fatal=$?
+if [ "$gw_fatal" = "2" ] && [ -z "${GW_NO_RECURSE:-}" ]; then
+  echo "PASS: a non-executable HOOK_BASH is FATAL (exit 2)"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL: a non-executable HOOK_BASH gave exit $gw_fatal, expected 2"
+  FAIL=$((FAIL + 1))
+fi
 cat > "$GH_STUB" <<'STUB'
 #!/usr/bin/env bash
 # Mirror the real binary: an unknown shorthand is rejected before anything runs.
@@ -170,6 +228,11 @@ parity non-english-text-gate.sh "gh pr create --title t"
 # The issue-mint gate is not a `pr` verb, but it reads the same flag absorber and
 # `-R` is the cross-repo mirror flow's own spelling — its primary shape.
 parity issue-dup-check-gate.sh  "gh issue create --title t --body 'no marker here'"
+# The deferral gate is the other issue-mint gate, and it reads the SAME flag
+# absorber. `-R` is the cross-repo mirror flow's own spelling here too, so a
+# spelling that slips past the absorber is a live bypass of the criteria check.
+parity issue-deferral-criteria-gate.sh \
+  "gh issue create --title t --body 'Session-fit: next (not this session) -- it needs its own PR'"
 
 # --- a FOREIGN `-R` must be REFUSED, not audited -----------------------------
 # The absorber matched `-R` and then discarded it: every probe runs against the
@@ -211,6 +274,16 @@ if [ "$(drive issue-dup-check-gate.sh "gh -R go-to-k/cdk-local issue create --bo
   PASS=$((PASS + 1))
 else
   echo "FAIL: issue-dup-check-gate no longer judges a foreign -R by its body"
+  FAIL=$((FAIL + 1))
+fi
+# Same control for the other issue-mint gate, and for the same reason: the cwd
+# decides whose deferral policy applies, `-R` only decides where the issue lands.
+if [ "$(drive issue-deferral-criteria-gate.sh "gh -R go-to-k/cdk-local issue create --body 'Session-fit: next (not this session) -- it needs its own PR'")" = "2" ] \
+   && [ "$(drive issue-deferral-criteria-gate.sh "gh -R go-to-k/cdk-local issue create --body 'Session-fit: next (not this session) -- a new fixture must be written'")" = "0" ]; then
+  echo "PASS: issue-deferral-criteria-gate still judges a foreign -R by its BODY (mirror flow)"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL: issue-deferral-criteria-gate no longer judges a foreign -R by its body"
   FAIL=$((FAIL + 1))
 fi
 

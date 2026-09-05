@@ -54,6 +54,17 @@ const REQUIRED: Record<string, string[]> = {
   // the gate re-matches the command precisely with `GATE_RE_GH_ISSUE_CREATE` /
   // `GATE_RE_GH_API_ISSUE_CREATE` and re-derives its own target dir.
   'issue-dup-check-gate.sh': ['Bash(*gh*issue*create*)', 'Bash(*gh*api*issues*)'],
+  // Same two mints as issue-dup-check-gate, for the same reason: `gh issue create`
+  // and the REST mint are the two ways a deferral decision is first written down.
+  // `gh issue edit` is deliberately absent — re-classifying a `next` to a `now` is
+  // the outcome this gate wants, so taxing it would penalise the fix.
+  'issue-deferral-criteria-gate.sh': ['Bash(*gh*issue*create*)', 'Bash(*gh*api*issues*)'],
+  // The only NON-BLOCKING entry in this table. Two shapes an integ run arrives in:
+  // a fixture's `verify*.sh` and the `cdk deploy` those scripts (and an agent
+  // reproducing a step by hand) run. Both deliberately over-approximate — the hook
+  // re-matches precisely and, in particular, stays silent for this repo's own
+  // `*.test.sh` harnesses, which the `*verify*.sh*` glob also selects.
+  'integ-base-behind-warn.sh': ['Bash(*verify*.sh*)', 'Bash(*cdk*deploy*)'],
 };
 
 interface GateHook {

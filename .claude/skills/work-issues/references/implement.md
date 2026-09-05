@@ -7,15 +7,15 @@ orchestrator dispatched — one general-purpose agent per claimed issue, so the
 lane's diffs, test output and review round-trips never land in the parent
 context. Every rule below applies unchanged inside the lane: hooks fire on the
 lane's tool calls, and markgate markers land in the lane's own worktree. Two
-actions are reserved to the parent's serialization turn and are NOT the lane's
-to start: a real-AWS live test (deploy → mutate → revert) and the merge (§9). A
-lane stops at merge-ready and reports.
+actions are reserved to the parent's serialization turn: a real-AWS live test
+(deploy → mutate → revert) and the merge (§9). A lane stops at merge-ready and
+reports.
 
 **That placement is live-proven**: this repo's own skill-split PR
 (go-to-k/cdk-real-drift#1831), like its sibling go-to-k/cdk-local#621, was
 built END-TO-END by a lane subagent — worktree, implementation, gates, CI —
-with the parent doing only claims, serialized merges and cleanup, and every
-hook and markgate gate firing inside the lane's calls exactly as in the parent.
+the parent doing only claims, serialized merges and cleanup, every hook and
+markgate gate firing inside the lane's calls exactly as in the parent.
 
 **Before fixing, ask whether the defect has SIBLING SITES — and if it does,
 sweep them in THIS lane rather than filing them.** Most defects here are a
@@ -27,19 +27,25 @@ grep for a MISSING thing returns only sites that already HAVE it — absent site
 are invisible by construction. Ask: what makes a site ELIGIBLE, and which
 eligible sites lack the fix? (2026-08-27, cdk-local: a remedy grep saw 5 of 12
 eligible sites; eligibility-minus-remedy found six more, plus a seventh neither
-finds.) The same run then sized the residue from the ONE instance it hit ("one
+finds.) That run then sized the residue from the ONE instance it hit ("one
 site, ~30 min"; it was seven): **a count derived from the instance you happened
-to hit is not a count**, and `Effort` / `Estimate` are what a future session
-budgets from. The shape recurs wherever the fix is an ADDED guard: grepping for
-the guard finds the types that have it.
+to hit is not a count**, and `Effort` / `Estimate` are budgeted from it. The
+shape recurs wherever the fix is an ADDED guard: grepping for the guard finds
+only the types that have it.
 
 **N sites of one root cause is ONE issue and ONE PR, never N issues.** Split
-into N, each site pays the full fixed cost for the same edit, the reviewer
-never sees the class, and sites 2..N sit open while site 1's fix drifts. Two
+into N, each site pays the full fixed cost for the same edit, the reviewer never
+sees the class, and sites 2..N sit open while site 1's fix drifts. Two
 boundaries:
 
-- **A sweep that would make the PR unreviewable is a genuine `next`** — file an
-  explicit umbrella naming every site and which sites this lane DID close.
+- **A sweep whose residue carries its OWN verification is a genuine `next`** —
+  file an explicit umbrella naming every site and which sites this lane DID
+  close, so the residue is unambiguous. **Say WHY in the criteria's terms, not
+  the PR's.** This read "would make the PR unreviewable" until 2026-09-05, a
+  spelling `.claude/hooks/issue-deferral-criteria-gate.sh` refuses — the file
+  blessed what the gate blocks. Review size is the SIGNAL; under it is
+  verification the residue needs and this lane is not already paying. Else the
+  residue is `now`.
 - **Sweep the same ROOT CAUSE, not the same AREA.** Two unrelated bugs in one
   file are two issues; one wrong assumption at five call sites is one. Test: a
   single sentence describes the fix at every site.
@@ -105,10 +111,9 @@ the window was checked:
 Dup-check: searched open issues for <terms> -- none covers this root cause
 ```
 
-**This is not a filing threshold, and it must never be used as one.** §10-0:
-`filed <= closed` is not a target, and an unfiled finding is strictly worse
-than a filed one. This changes only WHERE a defect is written down, never
-WHETHER.
+**Not a filing threshold, ever.** §10-0: `filed <= closed` is not a target,
+and an unfiled finding is strictly worse than a filed one. This changes only
+WHERE a defect is written down, never WHETHER.
 
 Enforced by `.claude/hooks/issue-dup-check-gate.sh`, which refuses
 `gh issue create` without the `Dup-check:` line; the same refusal covers
@@ -143,14 +148,14 @@ mise trust .worktrees/<name>/.mise.toml
 ```
 
 `origin/main`, not local `main`, and both arms now agree. This one branched
-from local `main` until 2026-09-01 — drift rather than a considered difference
-(both siblings already spelled it `origin/main`). The reason recorded for
-leaving it — that changing the base changes what `stale-base-gate.sh` sees —
-had the direction backwards: that gate opens with
+from local `main` until 2026-09-01 — drift, not a considered difference (both
+siblings already spelled it `origin/main`). The reason recorded for leaving it
+— that changing the base changes what `stale-base-gate.sh` sees — had the
+direction backwards: that gate opens with
 `git merge-base --is-ancestor "$base" HEAD || exit 0`, so a lane cut from a
 stale local `main` made it exit 0 without looking — INERT for precisely this
-shape. Basing on `origin/main` is what turns the gate ON for these lanes; the
-change gains coverage rather than risking it.
+shape. `origin/main` turns the gate ON for these lanes; the change gains
+coverage rather than risking it.
 
 **IN-PLACE mode (SKILL.md "Launch mode") skips that block entirely**: this run
 was launched inside a linked worktree, so it keeps that tree and creates NO
@@ -186,19 +191,18 @@ else
 fi
 ```
 
-**Every one of them takes `-C "<LANE_TREE>"` for the same reason the switch
-below does, and omitting it costs more here than a wrong branch**: a bare probe
-run after a cwd reset describes the MAIN checkout while READING as a
-description of this lane — it answers "clean, no claim, no PR" about a tree
-nobody asked about, and the run then adopts a peer's live lane believing it
-checked. Read them under §9's rule that every ownership signal establishes LIFE
+**Every one takes `-C "<LANE_TREE>"` for the same reason the switch below
+does, and omitting it costs more here than a wrong branch**: a bare probe run
+after a cwd reset describes the MAIN checkout while READING as a description of
+this lane — it answers "clean, no claim, no PR" about a tree nobody asked
+about, and the run then adopts a peer's live lane believing it checked. Read them under §9's rule that every ownership signal establishes LIFE
 and never absence: any one of them saying "someone is here" means STOP and
 report — never nest a worktree inside a peer's lane to get out of it.
 
-This block comes BEFORE the branch recipe below because it GUARDS it, and a
-previous revision had the two the other way round: a run following the file in
-order took a peer's live lane off its branch and only then checked whose tree
-it was. The order is the guard.
+This block comes BEFORE the branch recipe because it GUARDS it; a previous
+revision had them the other way round, and a run following the file in order
+took a peer's live lane off its branch and only then checked whose tree it was.
+The order is the guard.
 
 **Only once the tree is confirmed yours**: take a fresh branch here, ALWAYS,
 without leaving the tree. This used to be conditional and the condition is
@@ -232,7 +236,7 @@ git -C "<LANE_TREE>" fetch origin \
 
 **Build BEFORE the first test run, and read a fresh worktree's failures with
 that in mind.** A worktree starts with no `dist/`; a test spawning the built
-CLI fails on the missing binary with an assertion about its SUBJECT, and the
+CLI fails on the missing binary with an assertion about its SUBJECT, while the
 main checkout (which HAS a `dist/`) passes, so every comparison points at main
 (2026-08-27: a docs-only lane had begun writing up 13 such failures as "a peer
 merge broke main"; `vp run build` made them green). **A fresh worktree failing
@@ -248,13 +252,12 @@ standalone `.claude/hooks/*.test.sh` suites run BY HAND
 (`bash .claude/hooks/<name>.test.sh` from the repo root): nothing in
 `vp test run` or CI invokes those, so a hook change resting on a green suite
 plus green CI is not verified at all. Run that harness FROM `.claude/hooks/`,
-never from a copy parked elsewhere: every suite resolves its subject from its
-OWN script path (`$(dirname "$0")` / `$(dirname "${BASH_SOURCE[0]}")`) with no
-env override (`BUGHUNT_TRACKER_OVERRIDE` overrides the TRACKER script, not the
-hook), so a copy in a scratch directory points at a sibling that is not
-there and EVERY case fails on exit 127, reading as a regression you did not
-cause (go-to-k/cdk-real-drift#1777: 13/13 pass in place, 13/13 fail copied
-out). When diffing the OLD suite against your NEW hook, do NOT redirect
+never a copy parked elsewhere: every suite resolves its subject from its OWN
+script path (`$(dirname "$0")` / `$(dirname "${BASH_SOURCE[0]}")`) with no env
+override (`BUGHUNT_TRACKER_OVERRIDE` overrides the TRACKER script, not the
+hook), so a copy in a scratch directory points at a sibling that is not there
+and EVERY case fails on exit 127, reading as a regression you did not cause
+(go-to-k/cdk-real-drift#1777: 13/13 pass in place, 13/13 fail copied out). When diffing the OLD suite against your NEW hook, do NOT redirect
 `git show origin/main:.claude/hooks/<name>.test.sh` into a temp file elsewhere
 — write the copy BESIDE the real one as `.claude/hooks/_old-<name>.test.sh` and
 delete it after. `tests/skill-doc-paths.test.ts` asserts this self-relative
@@ -317,8 +320,8 @@ with two more probes against the real tree; every fence here got them on
 
 And ask the dumbest question last: **is anything RUNNING it?** The
 `.claude/hooks/*.test.sh` harnesses had no `vp run` task and no CI step —
-shell, so `vp test run` never saw them (`vp run test:hooks` now runs them, in
-CI too).
+shell, so `vp test run` never saw them (`vp run test:hooks` now does, in CI
+too).
 
 The general shape: **a fence is not evidence until you have watched it go red
 on something you had not already counted.** Calibration says it is not noisy;
