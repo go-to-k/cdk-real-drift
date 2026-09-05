@@ -342,12 +342,13 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   is `unreviewable` / needs its `own review`. `Session-fit` answers only "do I
   finish this in THIS session", and splitting across several PRs costs no
   session — the review cost of a bigger diff belongs under `Effort: large`,
-  where [.claude/rules/session-report.md](.claude/rules/session-report.md)
-  already puts it. An escalation of `/work-issues` §3-b, which said so in prose
-  and was violated anyway. `gh issue edit` / `gh issue comment` are NOT gated:
-  re-classifying to `now` is the outcome wanted. Mechanics, measured coverage,
-  the bypass, and two contradictions in this repo's own text that the gate did
-  not silently edit: [.claude/rules/hooks.md](.claude/rules/hooks.md).
+  where [.claude/rules/session-report.md](.claude/rules/session-report.md) puts
+  it. An escalation of `/work-issues` §3-b, said in prose and violated anyway.
+  `gh issue edit` / `gh issue comment` are NOT gated: re-classifying to `now` is
+  the outcome wanted. Mechanics, measured coverage, the bypass, and the two
+  contradictions in this repo's own text it surfaced and the maintainer resolved
+  on 2026-09-05 (`references/implement.md` + that rule's calibration paragraph):
+  [.claude/rules/hooks.md](.claude/rules/hooks.md).
 - **`integ-base-behind-warn` — the one NON-BLOCKING PreToolUse hook.** Before a
   fixture's `verify*.sh` or a `cdk deploy` runs, it warns on stderr that the
   branch is behind `origin/main` and names how many arriving files land in the

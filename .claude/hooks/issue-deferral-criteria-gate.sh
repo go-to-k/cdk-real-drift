@@ -60,30 +60,33 @@
 # or -- the outcome it actually steers toward -- it makes you notice that the
 # item is a `now`.
 #
-# TWO KNOWN TENSIONS IN THIS REPO'S OWN TEXT, stated rather than silently
-# decided. Neither is this hook's to resolve, and neither was edited when the
-# hook landed -- a gate that quietly rewrites the rule it enforces is worse than
-# no gate.
+# TWO CONTRADICTIONS IN THIS REPO'S OWN TEXT, RESOLVED 2026-09-05. Both were
+# recorded here unedited when the hook landed -- a gate that quietly rewrites
+# the rule it enforces is worse than no gate -- and the maintainer then decided
+# them as cdkd did (go-to-k/cdkd#2597 / #2619). Each had blessed a spelling this
+# gate refuses: the rule-offers-two-answers defect the gate exists for.
 #
-#   1. `.claude/skills/work-issues/references/implement.md` blesses one
-#      PR-shaped `next` by name: "A sweep that would make the PR unreviewable is
-#      a genuine `next` -- file an explicit umbrella naming every site".
-#      `unreviewable` is in this gate's vocabulary, so a body citing that line
-#      verbatim is refused. triage.md section 3-b says the bar is the SESSION;
-#      implement.md says an unreviewable sweep may end it.
+#   1. `.claude/skills/work-issues/references/implement.md` read "A sweep that
+#      would make the PR unreviewable is a genuine `next`", and `unreviewable`
+#      is in this gate's vocabulary, so a body citing it verbatim was refused.
+#      It now reads "A sweep whose residue carries its OWN verification is a
+#      genuine `next`" -- same umbrella-and-closed-sites requirement, with
+#      review size named as the SIGNAL and the deferrable thing under it named
+#      as verification the residue needs.
 #   2. `.claude/rules/session-report.md` puts "a behavior change needing its own
-#      PR plus review" under `Effort: large`, which is CORRECT -- and then, four
-#      sentences later, its calibration paragraph reads "What is genuinely
-#      expensive is WRITING a new fixture, a run that FAILS, and above all
-#      review of a larger diff, which grows superlinearly. Defer on those." That
-#      last sentence is the PR-shaped criterion arriving through the back door,
-#      inside the very paragraph that had just placed it correctly. cdkd removed
-#      the equivalent sentence from its copy when it shipped this gate; this
-#      repo's copy still has it.
+#      PR plus review" under `Effort: large`, which is CORRECT -- then its
+#      calibration paragraph listed "above all review of a larger diff, which
+#      grows superlinearly" as a third thing to "defer on": the PR-shaped
+#      criterion arriving through the back door inside the paragraph that had
+#      just placed it correctly. That clause is now a following sentence -- the
+#      cost is real, it argues for SPLITTING the PR rather than ending the
+#      session, and it belongs under `Effort`. The defer list keeps WRITING a
+#      new fixture and a run that FAILS.
 #
 # The gate follows triage.md section 3-b and the `Effort: large` placement,
-# because those are the passages written to settle the question. The two cases
-# above have the bypass below until a maintainer reconciles the text.
+# the passages written to settle the question, and all three repos running this
+# skill now answer it identically. The bypass below stays for the case the gate
+# cannot see (a body quoting PR-shaped reasoning to argue AGAINST it).
 #
 # WHAT IT CATCHES, AND WHAT NO CLOSED LIST EVER WILL
 #
@@ -100,7 +103,21 @@
 # round` and `own blast radius`: a third spelling in a third round is the signal
 # to change INSTRUMENT rather than to chase one more phrase. The two misses
 # reason about a PR without ever making a PR-shaped CLAIM this vocabulary can
-# recognise, and no closed list ever will. The gate makes the CHEAP, REUSABLE
+# recognise, and no closed list ever will.
+#
+# And measured over THIS repo's whole corpus, 2026-09-05 -- a rate needs its
+# PREDICATE, because three plausible ones give three denominators:
+#
+#   corpus: `gh issue list -R go-to-k/cdk-real-drift --state all --limit 4000
+#            --json number,body`  ->  661 issues
+#   anchored `Session-fit:` FIELD line whose value is `next`   32 bodies
+#   bare `Session-fit: next` substring anywhere                32 bodies
+#   any prose mention of `Session-fit`                         34 bodies
+#   replayed through this hook via --body-file, of the 32:      5 blocked
+#                                        (#1803 #1825 #1845 #1858 #1863)
+#
+# 5/32 is the CHEAP-spelling share, not the gate's accuracy: the other 27
+# `next`s are legitimate deferrals the gate is supposed to pass. The gate makes the CHEAP, REUSABLE
 # spelling loud at the moment of filing; the prose in triage.md section 3-b is
 # what addresses reasoning that never says "PR". Neither alone is the mechanism.
 #
