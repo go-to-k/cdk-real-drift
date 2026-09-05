@@ -547,7 +547,7 @@ sed "s|^  my \$GW = qr/.*|  my \$GW = qr/(((unclosed/;|" \
 if grep -q 'unclosed' "$GWBROKEN/_command-match.sh" \
    && ! grep -q 'my \$GW = qr/(?:' "$GWBROKEN/_command-match.sh"; then
   gw_rc=0
-  jq -n --arg c "gh issue create -t x --body-file $GWDIR/ok.md" --arg d "$TMPROOT" \
+  jq -n --arg c "gh issue create -t x --body-file \"$GWDIR/ok.md\"" --arg d "$TMPROOT" \
     '{tool_name:"Bash", tool_input:{command:$c}, cwd:$d}' \
     | "$GWBROKEN/$(basename "$HOOK")" >/dev/null 2>&1 || gw_rc=$?
   if [ "$gw_rc" = "2" ]; then
@@ -567,7 +567,7 @@ fi
 # made the probe report a working prelude it never ran.
 if [ -f "$GWBROKEN/_command-match.sh" ]; then
   gw_env_rc=0
-  jq -n --arg c "gh issue create -t x --body-file $GWDIR/ok.md" --arg d "$TMPROOT" \
+  jq -n --arg c "gh issue create -t x --body-file \"$GWDIR/ok.md\"" --arg d "$TMPROOT" \
     '{tool_name:"Bash", tool_input:{command:$c}, cwd:$d}' \
     | __GATE_PW_OK=1 "$GWBROKEN/$(basename "$HOOK")" >/dev/null 2>&1 || gw_env_rc=$?
   if [ "$gw_env_rc" = "2" ]; then

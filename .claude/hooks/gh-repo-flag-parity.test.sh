@@ -129,6 +129,33 @@ fi
 ln -sf "$HOOK_BASH" "$FIX/bin/bash"
 printf 'hook interpreter: %s (bash %s)\n' "$HOOK_BASH" \
   "$("$HOOK_BASH" -c 'echo "$BASH_VERSION"')"
+
+# ASSERTED, not merely printed. Deleting the `ln -sf` above left this suite
+# fully green while the line just printed still named the interpreter -- a FALSE
+# ATTESTATION, and the exact failure the shim exists to prevent (a fence that
+# says which bash it measured while measuring another one). Drive one gate
+# through the fixture PATH and make it report its own `$BASH_VERSION`.
+gw_seen=$(PATH="$FIX/bin:$PATH" bash -c 'echo "$BASH_VERSION"')
+gw_want=$("$HOOK_BASH" -c 'echo "$BASH_VERSION"')
+if [ "$gw_seen" = "$gw_want" ]; then
+  echo "PASS: the fixture PATH resolves bash to HOOK_BASH ($gw_want)"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL: the fixture PATH resolves bash to $gw_seen, not HOOK_BASH ($gw_want)"
+  FAIL=$((FAIL + 1))
+fi
+# And the FATAL arm: an explicitly set but non-executable HOOK_BASH must exit 2
+# rather than fall back to PATH bash, because falling back hides a typo in the
+# one setting this fence exists to pin.
+gw_fatal=0
+HOOK_BASH=/nonexistent/bash bash "${BASH_SOURCE[0]}" >/dev/null 2>&1 || gw_fatal=$?
+if [ "$gw_fatal" = "2" ] && [ -z "${GW_NO_RECURSE:-}" ]; then
+  echo "PASS: a non-executable HOOK_BASH is FATAL (exit 2)"
+  PASS=$((PASS + 1))
+else
+  echo "FAIL: a non-executable HOOK_BASH gave exit $gw_fatal, expected 2"
+  FAIL=$((FAIL + 1))
+fi
 cat > "$GH_STUB" <<'STUB'
 #!/usr/bin/env bash
 # Mirror the real binary: an unknown shorthand is rejected before anything runs.

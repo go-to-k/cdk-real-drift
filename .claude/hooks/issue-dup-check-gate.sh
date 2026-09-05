@@ -393,9 +393,26 @@ seg_has_marker() {
     # after the segment scoping: for `gh issue create`, `-F` IS `--body-file`
     # (`gh issue create --help`: `-F, --body-file file`), so this is the short
     # spelling of a real body file. Deleting it would false-BLOCK
-    # `gh issue create -F body.md`. The `[^"\x27\s=]+` excludes `body=@x`, which
-    # the `--field` alternative above owns.
-    while (/(?:^|\s)-F[=\s]+(["\x27]?)([^"\x27\s=]+)\1(?=\s|$)/g) { print "$2\n"; }
+    # `gh issue create -F body.md`.
+    #
+    # It is on `$GW` like its two siblings above. Left on the retired class it
+    # was the ONE arm the conversion missed, and because this gate fails CLOSED
+    # on an unreadable path the miss showed up as a FALSE BLOCK on a COMPLIANT
+    # body -- measured here, with a body that DOES carry `Dup-check:`:
+    #
+    #     -F <plain path>            rc=0   correct
+    #     -F "<path with a space>"   rc=2   refused what it should pass
+    #     -F<path>   (glued)         rc=2
+    #
+    # cdk-local converted the same line; leaving it here would have shipped the
+    # divergence this whole change exists to end. `next if /^\w+=/` replaces the
+    # old `[^"\x27\s=]+` class, which excluded `body=@x` by refusing `=` inside
+    # the value -- a rule that also refused any legitimate path containing one.
+    while (/(?:^|\s)-F[=\s]*($GW)(?=[\s;&|)]|$)/g) {
+      my $v = gate_unq($1);
+      next if $v =~ /^\w+=/;
+      print "$v\n";
+    }
     ' 2>/dev/null)
   return 1
 }

@@ -334,49 +334,28 @@ run "spaced --body-file path, WITH Dup-check, passes" \
 run "backslash-escaped path, WITH Dup-check, passes" \
   "gh issue create -t x --body-file ${GWDIR// /\\ }/ok.md" "$TMPROOT" 0
 
-# The guard itself. `[ -n "$GATE_PERL_WORD" ]` cannot see a prelude that is
-# present but does not COMPILE, and every extraction runs perl with stderr
-# discarded -- so the gate would extract nothing and PASS. The payload below is
-# one this gate NORMALLY PASSES, so exit 2 can only come from the guard.
-GWBROKEN="$TMPROOT/brokenlib"
-mkdir -p "$GWBROKEN"
-cp "$HOOK" "$GWBROKEN/"
-sed "s|^  my \$GW = qr/.*|  my \$GW = qr/(((unclosed/;|" \
-  "$(dirname "$HOOK")/_command-match.sh" > "$GWBROKEN/_command-match.sh"
-if grep -q 'unclosed' "$GWBROKEN/_command-match.sh" \
-   && ! grep -q 'my \$GW = qr/(?:' "$GWBROKEN/_command-match.sh"; then
-  gw_rc=0
-  jq -n --arg c "gh issue create -t x --body-file $GWDIR/ok.md" --arg d "$TMPROOT" \
-    '{tool_name:"Bash", tool_input:{command:$c}, cwd:$d}' \
-    | "$GWBROKEN/$(basename "$HOOK")" >/dev/null 2>&1 || gw_rc=$?
-  if [ "$gw_rc" = "2" ]; then
-    echo "PASS: a non-compiling GATE_PERL_WORD fails CLOSED (exit 2)"
-    PASS=$((PASS + 1))
-  else
-    echo "FAIL: a non-compiling GATE_PERL_WORD returned $gw_rc, expected 2"
-    FAIL=$((FAIL + 1))
-  fi
-else
-  # A probe that silently does not run is the failure mode this file is about.
-  echo "FAIL: could not stage a broken GATE_PERL_WORD (sed anchor drifted)"
-  FAIL=$((FAIL + 1))
-fi
-# And it must not be switchable off from the ENVIRONMENT: the memo is an
-# ordinary shell variable, so without a reset at library load `__GATE_PW_OK=1`
-# made the probe report a working prelude it never ran.
-if [ -f "$GWBROKEN/_command-match.sh" ]; then
-  gw_env_rc=0
-  jq -n --arg c "gh issue create -t x --body-file $GWDIR/ok.md" --arg d "$TMPROOT" \
-    '{tool_name:"Bash", tool_input:{command:$c}, cwd:$d}' \
-    | __GATE_PW_OK=1 "$GWBROKEN/$(basename "$HOOK")" >/dev/null 2>&1 || gw_env_rc=$?
-  if [ "$gw_env_rc" = "2" ]; then
-    echo "PASS: __GATE_PW_OK=1 cannot disable the prelude guard (exit 2)"
-    PASS=$((PASS + 1))
-  else
-    echo "FAIL: __GATE_PW_OK=1 disabled the prelude guard (exit $gw_env_rc, expected 2)"
-    FAIL=$((FAIL + 1))
-  fi
-fi
+# --- the GATE_PERL_WORD guard is wired here, and CANNOT be fenced by a case ---
+#
+# The other two gates assert it: with a non-compiling prelude they exit 2 on a
+# payload they normally pass, and deleting `gate_perl_word_or_die` reddens those
+# cases. This gate cannot have that case, and the reason is worth stating rather
+# than leaving as an absence.
+#
+# It fails CLOSED on an unreadable body by design (see the header): with no path
+# extracted, `seg_has_marker` returns 1 and the gate BLOCKS. A broken prelude
+# extracts nothing, so it lands on that same refusal -- exit 2 with the guard
+# and exit 2 without it. Measured: removing `gate_perl_word_or_die` leaves this
+# suite fully green, both before and after the payload was corrected.
+#
+# The first version of these cases passed the body-file path UNQUOTED through a
+# directory whose name has a space, which made them doubly vacuous -- they were
+# testing the unreadable-path refusal, not the guard. Quoting fixed that half
+# and revealed the structural half underneath.
+#
+# The guard stays wired anyway. Relying on a coincidence of polarity is exactly
+# what made this file's original miss invisible, and a later edit to
+# `seg_has_marker` could reverse it without anyone noticing this gate had been
+# leaning on it.
 
 echo ""
 echo "Pass: $PASS  Fail: $FAIL"
