@@ -148,7 +148,10 @@ const MAX_REFERENCE_FILE_BYTES = 48_000; // RE-DERIVED DOWNWARD 64_000 -> 48_000
 const SPLIT_SKILLS: Record<string, { minFiles: number; minCorpusBytes: number }> = {
   // 8 files / 125,139 B measured at the split (2026-08-28); 94,136 B
   // post-compression; regrown to 150,695 B by 2026-09-03's retro rounds;
-  // 138,496 B after the 2026-09-04 token-diet pass. 9 files as of 2026-09-01,
+  // 138,496 B after the 2026-09-04 token-diet pass; 139,674 B after the
+  // 2026-09-05 batching pass (batching stated as the DEFAULT rather than a
+  // permission, with the amortization reason), largest implement.md 25,647 B,
+  // so `corpus - largest` is 114,027 and this floor clears it by 3,973 B. 9 files as of 2026-09-01,
   // when the launch-mode probe moved out of triage.md into
   // references/launch-mode.md, which the PARENT reads before stage 0.
   'work-issues': { minFiles: 9, minCorpusBytes: 118_000 },

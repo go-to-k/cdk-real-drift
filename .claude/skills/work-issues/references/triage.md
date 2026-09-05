@@ -183,10 +183,10 @@ of its own. Rank as usual.
 **It bounds CONCURRENT lanes, not the ISSUE COUNT.** Sequential work in one
 tree nests nothing: a cdk-local run took FOUR issues one after another, each on
 a branch cut from `origin/main`, deleting the previous branch after its merge,
-zero collisions. So several issues in one run is fine when they share this tree
-in SEQUENCE: claim them all UP FRONT (§4) with every lane after the first
-marked `QUEUED`, finish them one at a time, and if the run ends before reaching
-one, stand it down with a comment carrying the four classification fields —
+zero collisions. So several issues in one run is the DEFAULT (see the batching
+paragraph below) when they share this tree in SEQUENCE: claim them all UP
+FRONT (§4) with every lane after the first marked `QUEUED`, finish them one at
+a time, and if the run ends before reaching one, stand it down with a comment carrying the four classification fields —
 visibly claimable rather than silently locked (the shape go-to-k/cdkd#2417
 measured: three claimed, one merged, two left pickup-ready). Claiming only the
 top candidate is still fine; a QUEUED issue is spoken for rather than
@@ -256,9 +256,19 @@ choosing. §3-a is a second HARD gate applied before any preference below.
   test) for auto-merge; hold complex detection redesigns for a focused solo
   pass.
 
-Scale to the backlog and free central tables — 2–3 clean lanes is typical;
-never force a lane into a contested file to raise the count; report the
-deferred ones.
+**Batch: take the LARGEST safe set, not the smallest.** A run pays for its
+context load, its build, the `/check` cycle, the review dispatch and the
+real-AWS live test ONCE and amortizes them across every issue it carries;
+closing one issue and stopping makes the NEXT session re-pay all of it from
+zero. So batching is the DEFAULT, IN-PLACE included — there the batch runs in
+SEQUENCE through the one tree, which is why the four-issue run cited above is
+the shape to aim at rather than an allowance. Scale to the backlog and the
+free central tables: 2–3 clean lanes is a typical OBSERVATION, not a ceiling.
+What bounds the batch is what the run can still do WELL — never force a lane
+into a contested file to raise the count, and never shorten a verification to
+fit one more issue: the amortization argument buys issue COUNT, never rigor
+(CLAUDE.md → "Cost is not a tiebreaker"). Report or stand down the ones you do
+not reach.
 
 ### 3-a. A FRESH issue belongs to the lane that FILED it
 
