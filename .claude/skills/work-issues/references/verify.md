@@ -345,3 +345,21 @@ work and looks complete, which is worse than returning none.
 `references/launch-mode.md` records the same failure on its IN-PLACE table — a
 count written beside a list is maintained, a count written a paragraph away is
 not.
+
+**A probe that DID discriminate is void just as easily: one that changed TWO
+things at once attests to neither.** Measured on go-to-k/cdkd#2612: a comment claimed
+that reordering either consumer "reds four cases", and the probe behind it had
+also edited the rendered line's TEXT in the same pass — so the reds belonged to
+the text edit. Re-measured one mutation at a time, each alone was GREEN and
+only both together red a case: the two mechanisms are mutually redundant, the
+opposite of what the comment said. One mutation per probe, tree restored
+byte-exact between them (`references/implement.md`), and never report a
+mutation result you did not run.
+
+**A probe result written into a SOURCE COMMENT gets the same disposition as a
+number in published prose** — DELETE it (preferred), FENCE it with a test that
+reads the code, or ATTRIBUTE it as a dated measurement. Nothing downstream
+re-checks such a line: go-to-k/cdkd#2612's wrong claim sat in a branch comment
+in source, no test could see it, and only a review round stopped it becoming a
+fence a later editor would trust. What it should have stated is the invariant
+the two mechanisms jointly enforce — re-derivable, so it cannot go stale.

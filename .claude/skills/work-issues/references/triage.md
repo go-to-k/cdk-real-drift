@@ -381,6 +381,23 @@ the other two repos — probe, corrected shape and rc table all in hand;
 re-classified `now` on the maintainer's challenge, and the port then found four
 more defects a fresh session would not have known to look for).
 
+**And a reason about THIS SESSION's own state expires when the session does.**
+A different failure from the one just above: that is a claim about the PULL
+REQUEST, refused outright. This is a claim about the SESSION that filed the
+issue — "the PR carrying it is still open", "that file is held by another
+lane's diff", "this lane has no live run budgeted". A PR can be named on either
+side, so the mention is not the tell; ask which of the two the sentence is
+ABOUT. Such clauses are legal and merely go STALE, and classifying once does
+not protect them, because it freezes the DECISION, not the PREMISE. So prefer a
+reason the WORK owns; when a session-state clause is written anyway, NAME THE
+EVENT THAT ENDS IT on the same line, so a later reader can see it has expired
+without asking anyone. It bites hardest on a "no file overlap" reason, which is
+a claim about a MOVING target the lane keeps editing after writing it
+(go-to-k/cdkd#2440 is deferred on exactly that wording; go-to-k/cdkd#2259 on
+"that PR is still open", which survived unchanged into the wrap after
+go-to-k/cdkd#2247 merged). §10-0's end-of-run promotion check is the only thing
+that catches one.
+
 **And when the issue body offers more than one fix, say which one the four
 fields cost.** Cost the CHEAPEST one you would actually accept. A deferral
 justified by the expensive option is not a measurement, it is a choice of

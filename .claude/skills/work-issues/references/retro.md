@@ -99,13 +99,11 @@ four, three cited only as precedent). Do the item now while the context is
 loaded, or re-classify it in the issue body with the reason it still does not
 belong here.
 
-**Re-read the REASON too — it can name a state that has since resolved.**
-Classifying once at creation is right, but a reason phrased in the run's own
-transient state ("the PR carrying it is still open") goes FALSE when that state
-resolves (go-to-k/cdkd#2259: deferred while go-to-k/cdkd#2247 was in review;
-the reason survived unchanged into the wrap after that PR merged). Re-reading
-an expired premise is not re-litigation; keeping a `next` alive on a reason
-that stopped being true is.
+**Re-read the REASON too, and when a hit CONTRADICTS it, the BODY is the stale
+side.** A reason anchored to the filing session's own state goes false while
+the decision it justified still stands — §3-b carries the shape, its boundary
+against the PR-shaped reason that is refused outright, and the incidents.
+Correct the issue when this check catches one.
 
 ### 10-a. Evidence: only what this run actually produced
 
@@ -208,6 +206,13 @@ Every run appending one more bullet is how a long skill becomes an unread one.
     cross-reference against that repo's files — caught four such false claims
     in the first mirror of this section (2026-08-18). This rule lives here, not
     in memory: memory is per-project-path and would not load in the targets.
+  - **Check the TARGET's OPEN PRs before editing a file there.** A mirror lands
+    in `.claude/**`, which no §2 worktree probe covers, and §0-§3 are skipped
+    outright when the port is DIRECTED rather than triaged, so nothing else
+    asks. `gh pr list --state open --json number,files` is the whole check
+    (2026-09-05: this section's own mirror found
+    go-to-k/cdk-real-drift#1882 rewriting `.claude/rules/session-report.md` ten
+    minutes earlier).
   - **Verify the MECHANISM at the SOURCE, not only the applicability at the
     TARGET.** Applicability asks "does this repo have that gate / hook /
     file"; the mechanism asks "was the claim ever true where it was WRITTEN",

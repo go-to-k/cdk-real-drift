@@ -112,6 +112,16 @@ recorded copy. A later stage that re-derives `LANE_TREE` from
 `$(git rev-parse --show-toplevel)` or from `pwd` resolves against the reset cwd
 and answers "the main checkout" in precisely the case the `-C` exists to guard.
 
+**The same fault arrives through commands that never MENTION the values** — a
+`sed -n` / `grep` / `cat` on a RELATIVE path, or a bare
+`git branch --show-current` / `git diff`. Read every file this run owns under
+the recorded absolute `<LANE_TREE>`, and treat an answer CONTRADICTING those
+values as a cwd fault, not a finding: in a sibling run (go-to-k/cdkd#2514) a
+`main` from `git branch --show-current` plus an EMPTY
+`git diff --stat origin/main..HEAD` were read as "the branch was switched, the
+PR maybe merged", and two "unfixed prose" defects were reported that were the
+main checkout's copies of text the lane had already fixed.
+
 **`<LANE_TREE>` and `<MAIN_CHECKOUT>` in a later stage are SUBSTITUTION
 PLACEHOLDERS, not shell variables, and the difference is the whole guard.**
 Paste the absolute path from the opening report into the command text. Do NOT
