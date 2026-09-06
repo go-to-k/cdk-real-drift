@@ -22,21 +22,36 @@
 #     quoted body or a heredoc body must NOT disarm the gate
 #
 # MEASURED, not asserted. Every fence in the gate was mutation-probed against
-# THIS suite and every probe killed at least one case -- baseline 69/0, under
+# THIS suite and every probe killed at least one case -- baseline 96/0, under
 # /bin/bash 3.2.57 (identical tally under 5.3.9):
 #
-#   stub: always exit 0                             36 red
-#   case-insensitive matching removed               36 red
-#   stub: always exit 2                             35 red
-#   reason boundaries (key / item / heading) gone    5 red
-#   next-only guard removed (`now` gated too)        4 red
-#   fenced-block strip removed                       3 red
-#   segment scoping removed (whole command)          2 red
-#   bypass command-position check removed            2 red
-#   repo opt-in guard removed                        1 red
-#   heredoc body arm removed (file-first only)       1 red
-#   `gh api` REST mint arm removed                   1 red
-#   one vocabulary term (`own review`) removed       1 red
+#   stub: always exit 0                            50 red
+#   stub: always exit 2                            48 red
+#   `restore_inline_newlines` call removed          4 red
+#   restore slice -> the whole raw command          1 red
+#   restore `-b[=\s]*` -> `[=\s]+` (glued `-b`)     1 red
+#   fallback -> the segment only                    2 red
+#   `input_body_text` call removed                  4 red
+#   `--input` heredoc STATUS -> emptiness           1 red
+#   `--input` `$VAR` heredoc arm removed            1 red
+#   `--input` relative join dropped                 1 red
+#   `-b` extractor arm removed                      1 red
+#   `[*_]*next` -> `next` (bolded VALUE)            1 red
+#   `key_re` `:([^/]|/[^/]|$)` -> `:([^/]|$)`       1 red
+#   `key_re` `:([^/]|$)` -> `:`                     1 red
+#
+# NOT re-taken this round, and so NOT quoted above: the older per-fence probes
+# (case-insensitive matching, the reason boundary, the next-only guard, the
+# fence strip, the bypass check, the opt-in guard, the heredoc arm, the REST
+# mint arm, one vocabulary term). They were measured on the 69-case baseline
+# and every one of them predates this round`s cases, so their numbers moved by
+# an unknown amount. Re-take them wholesale before quoting any of them again --
+# three numbers carried forward one round were contradicted this round, which
+# is why none is carried forward here.
+#
+# TWO PROBES NEED BOTH SITES BROKEN AT ONCE: the fallback lives at two arms
+# (unresolvable-path and unreadable-file) and each case reaches only one, so a
+# one-arm mutation kills nothing and reads as unfenced.
 #
 # The 1-red probes are the ones to watch when adding cases: each is fenced by a
 # SINGLE case, so deleting that case silently unfences the arm.
@@ -470,12 +485,52 @@ run "gh api --input: a relative payload path resolves against the cwd" \
   "gh api repos/o/r/issues -f title=t --input rel-input.json" "$BODY_DIR" 2
 # RELATIVE and heredoc-written at once: the heredoc lookup is handed BOTH the
 # raw spelling and the resolved path, and only the raw one matches a command
-# that writes `hd-input.json`. Dropping either spelling makes this case red.
+# that writes `hd-input.json`. The RAW spelling is the load-bearing one --
+# dropping it makes this case red; passing the resolved path twice does not.
 run "gh api --input: a relative payload written by a heredoc in the same call" \
   "cat > hd-input.json <<'JSON'
 {\"title\":\"t\",\"body\":\"Session-fit: next (not this session) -- it needs its own PR\"}
 JSON
 gh api repos/o/r/issues -f title=t --input hd-input.json" "$BODY_DIR" 2
+
+# Round-3 review shapes, each measured before the fix and each killed by
+# mutating its own line.
+run "a GLUED -b multi-line body is restored too" \
+  "gh issue create --title t -b'Session-fit: next (not this session) -- blocked on an AWS quota increase
+Effort: large (L) -- a behavior change needing its own PR plus review'" "$TMPROOT" 0
+# The fallback must be the SEGMENT plus the WRITER segments, never the whole
+# command: with a writer AND a quoting sibling in one chain, a `$cmd` fallback
+# refuses a clean body.
+run "a writer and a quoting sibling in one chain do not collide" \
+  "git commit -m 'quote: Session-fit: next (not this session) -- it needs its own PR' && printf 'ok\\n' > $BODY_DIR/nodir/b.md && gh issue create --title t --body-file $BODY_DIR/nodir/b.md" \
+  "$TMPROOT" 0
+run "an unresolvable body-file whose writer is in the command is judged" \
+  "printf 'Session-fit: next (not this session) -- it needs its own PR\\n' > \"\$BODY\" && gh issue create --title t --body-file \"\$BODY\"" \
+  "$TMPROOT" 2
+# The restore lookup is scoped to this segment's raw slice: another segment's
+# body must not decide this one's verdict.
+run "a sibling comment body does not decide the create verdict" \
+  "gh issue comment 1 --body 'Session-fit: now -- fine.
+Session-fit: next (not this session) -- it needs its own PR' && gh issue create --title t --body 'Session-fit: now -- fine. Session-fit: next (not this session) -- it needs its own PR'" \
+  "$TMPROOT" 0
+# An EMPTY heredoc body is legal, so the STATUS reports whether a heredoc was
+# found -- reading emptiness as "none" falls through to the stale file on disk.
+printf '{"title":"t","body":"Session-fit: next (not this session) -- it needs its own PR"}\n' > "$BODY_DIR/stale-input.json"
+run "gh api --input: an empty heredoc rewrite supersedes the stale payload" \
+  "cat > $BODY_DIR/stale-input.json <<'JSON'
+JSON
+gh api repos/o/r/issues -f title=t --input $BODY_DIR/stale-input.json" "$TMPROOT" 0
+run "gh api --input: a \$VAR payload written by a heredoc is still read" \
+  "cat > \"\$P\" <<'JSON'
+{\"title\":\"t\",\"body\":\"Session-fit: next (not this session) -- it needs its own PR\"}
+JSON
+gh api repos/o/r/issues -f title=t --input \"\$P\"" "$TMPROOT" 2
+# The URL carve-out excepts a SCHEME, not any `Key:/value` -- a bare `:([^/]|$)`
+# folded a `Repro:/tmp/x` continuation into the reason and refused a legitimate
+# `next`.
+run "a Key:/value continuation still ends the reason" \
+  "gh issue create --title t --body 'Session-fit: next (not this session) -- blocked on an AWS quota increase
+Repro:/tmp/x it needs its own PR'" "$TMPROOT" 0
 
 # --- BODY CHANNELS ------------------------------------------------------------
 printf 'Session-fit: next (not this session) -- it needs its own PR\n' > "$BODY_DIR/bad.md"
