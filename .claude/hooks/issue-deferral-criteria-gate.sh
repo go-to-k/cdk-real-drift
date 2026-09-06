@@ -299,8 +299,13 @@ optin_top=$(git -C "$target_dir" rev-parse --show-toplevel 2>/dev/null || true)
 # `prs?` is bounded by `([^[:alnum:]]|$)` rather than `\b` -- `\b` is a GNU
 # extension that BSD regcomp does not carry, so on macOS it would match nothing
 # and the gate would be inert.
-PR_SHAPE_RE='(own|separate)[[:space:]]+prs?([^[:alnum:]]|$)'
-PR_SHAPE_RE="$PR_SHAPE_RE"'|shar(e|es|ing)[[:space:]]+((a|an|the|its|their)[[:space:]]+)?prs?([^[:alnum:]]|$)'
+# `PR` and `pull request` are the SAME term, and so is a hyphen in place of the
+# space -- these are SPELLINGS of one noun, not the "third spelling in a third
+# round" the note below refuses to chase (which is about reasoning that never
+# names a PR at all). Measured before this alternation: `its own pull request`
+# and `its own-PR` both filed at rc=0 while `its own PR` gave 2.
+PR_SHAPE_RE='(own|separate)[[:space:]-]+(prs?|pull[[:space:]-]+requests?)([^[:alnum:]]|$)'
+PR_SHAPE_RE="$PR_SHAPE_RE"'|shar(e|es|ing)[[:space:]]+((a|an|the|its|their)[[:space:]]+)?(prs?|pull[[:space:]-]+requests?)([^[:alnum:]]|$)'
 PR_SHAPE_RE="$PR_SHAPE_RE"'|independent[[:space:]]+review[[:space:]]+surface'
 PR_SHAPE_RE="$PR_SHAPE_RE"'|unreviewable'
 PR_SHAPE_RE="$PR_SHAPE_RE"'|own[[:space:]]+review([^[:alnum:]]|$)'
@@ -690,13 +695,26 @@ input_body_text() { # <segment>
 #
 # Restoration is not a safety direction, it is ACCURACY: the gate should judge
 # the body gh will send. A value the slice does not contain is left flat.
-restore_inline_newlines() { # <extracted values, one per line> <raw command> <segment>
+restore_inline_newlines() { # <values> <raw command> <segment> <1-based ordinal of this segment among identical ones>
   local values="$1" raw="$2" seg="$3" restored
-  restored=$(GATE_RAW="$raw" GATE_SEG="$seg" GATE_COLLAPSED="$values" perl -e "$GATE_PERL_WORD"'
+  restored=$(GATE_RAW="$raw" GATE_SEG="$seg" GATE_SEG_ORD="$4" GATE_COLLAPSED="$values" perl -e "$GATE_PERL_WORD"'
     my $raw = $ENV{GATE_RAW};
     my $seg = $ENV{GATE_SEG};
     (my $flat = $raw) =~ s/\n/ /g;
-    my $off = index($flat, $seg);
+    # The ORDINAL, not the first hit. `index` alone hands the SECOND of two
+    # segments that collapse to identical text the FIRST one`s raw slice, and a
+    # flat PR-shaped filing then passes on the newline placement of its twin
+    # (measured rc=0 for `gh issue create --body "<two lines>" && gh issue
+    # create --body "<the same text on one line>"`, where the second command
+    # ALONE gives 2). Segments arrive in order, so the caller`s count of how
+    # many identical ones it has already passed selects the right occurrence.
+    my $ord = ($ENV{GATE_SEG_ORD} || 1) + 0;
+    my ($off, $pos) = (-1, 0);
+    for (my $i = 0; $i < $ord; $i++) {
+      $off = index($flat, $seg, $pos);
+      last if $off < 0;
+      $pos = $off + 1;
+    }
     # No slice means the segment did not come from this command text (a caller
     # passing something else, or a segmenter that rewrote more than newlines).
     # Print the input unchanged rather than guess.
@@ -750,17 +768,34 @@ restore_inline_newlines() { # <extracted values, one per line> <raw command> <se
 # the writer", and the segmenter already answers it. `cmd_writes` reads the
 # global `$cmd`, so each segment is tested with that global rebound inside a
 # SUBSHELL -- rebinding it in place would corrupt every later scan.
+# `$all_segments` is the segment list computed ONCE by the caller, not a fresh
+# `gate_segments "$cmd"` here: this runs per unreadable path per gh segment, and
+# re-splitting the whole command each time is quadratic. Measured before the
+# hoist, on N chained `gh issue create --body-file missing$i.md`: 3.4 s at N=20
+# and 12.6 s at N=40, past the PreToolUse timeout -- which is a SILENT PASS, so
+# the cost is a correctness bug, not a slow gate.
 fallback_body_text() { # <raw spelling> <resolved path> <gh segment>
   local f_raw="$1" f="$2" seg="$3" s out
   out="$seg"
   while IFS= read -r s; do
     [ -n "$s" ] || continue
     [ "$s" = "$seg" ] && continue
+    # A writer is a redirect or a `tee`, so a segment with neither cannot be
+    # one -- and this test is a shell string match, while the probe below forks
+    # perl twice. Without it the walk forked 2N times per unreadable path per
+    # gh segment: 40 chained `--body-file missing$i.md` took 10-19 s across the
+    # three repos, past the PreToolUse timeout, which is a SILENT PASS.
+    case "$s" in
+      *'>'*|*tee*) ;;
+      *) continue ;;
+    esac
     if ( cmd="$s"; cmd_writes_either "$f_raw" "$f" ); then
       out="$out
 $s"
     fi
-  done < <(gate_segments "$cmd")
+  done <<EOF
+$all_segments
+EOF
   printf '%s' "$out"
 }
 
@@ -902,7 +937,23 @@ offending_seg=""
 # hook still returned 0).
 gate_perl_word_or_die issue-deferral-criteria-gate || exit 2
 
+# ONCE. `gate_segments` is an awk pass over the whole command, and the fallback
+# below needs the same list per unreadable path -- recomputing it there was
+# quadratic and crossed the PreToolUse timeout, which is a SILENT PASS.
+all_segments=$(gate_segments "$cmd")
+# How many segments IDENTICAL to the current one have already been seen. The
+# restore lookup selects the raw slice by this ordinal, because two segments
+# can collapse to the same text and `index` would hand the second the first
+# one`s slice. `grep -c` exits 1 on zero matches, so `|| true` and then a
+# default -- never `|| echo 0`, which prints a count AND appends a second one.
+seen_segments=""
+
 while IFS= read -r seg; do
+  seg_ord=$(printf '%s\n' "$seen_segments" | grep -Fxc -- "$seg" 2>/dev/null || true)
+  [ -n "$seg_ord" ] || seg_ord=0
+  seg_ord=$((seg_ord + 1))
+  seen_segments="$seen_segments
+$seg"
   if ! gate_matches "$seg" "$GATE_RE_GH_ISSUE_CREATE"; then
     if [ -z "$GATE_RE_API_MINT" ] || ! gate_matches "$seg" "$GATE_RE_API_MINT"; then
       continue
@@ -923,12 +974,14 @@ while IFS= read -r seg; do
     body_text=$(input_body_text "$seg")
   fi
   [ -n "$body_text" ] || continue
-  body_text=$(restore_inline_newlines "$body_text" "$cmd" "$seg")
+  body_text=$(restore_inline_newlines "$body_text" "$cmd" "$seg" "$seg_ord")
   if scan_text "$body_text"; then
     offending_seg="$seg"
     break
   fi
-done < <(gate_segments "$cmd")
+done <<EOF
+$all_segments
+EOF
 
 [ -n "$offending_seg" ] || exit 0
 

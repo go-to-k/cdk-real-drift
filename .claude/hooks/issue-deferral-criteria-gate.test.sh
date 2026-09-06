@@ -22,11 +22,11 @@
 #     quoted body or a heredoc body must NOT disarm the gate
 #
 # MEASURED, not asserted. Every fence in the gate was mutation-probed against
-# THIS suite and every probe killed at least one case -- baseline 96/0, under
+# THIS suite and every probe killed at least one case -- baseline 100/0, under
 # /bin/bash 3.2.57 (identical tally under 5.3.9):
 #
-#   stub: always exit 0                            50 red
-#   stub: always exit 2                            48 red
+#   stub: always exit 0                            53 red
+#   stub: always exit 2                            49 red
 #   `restore_inline_newlines` call removed          4 red
 #   restore slice -> the whole raw command          1 red
 #   restore `-b[=\s]*` -> `[=\s]+` (glued `-b`)     1 red
@@ -49,6 +49,17 @@
 # three numbers carried forward one round were contradicted this round, which
 # is why none is carried forward here.
 #
+#   segment ORDINAL -> plain `index`         fails  1   -- two segments that
+#                                                      collapse to identical text
+#                                                      sharing one raw slice
+#   `pull[[:space:]-]+requests?` dropped     fails  2   -- `own pull request`
+#                                                      and `own-PR`
+#
+# THE WRITER PRE-FILTER IS NOT FENCED BY A CASE, deliberately. It is a COST fix
+# -- without it 40 chained `--body-file missing$i.md` crossed the PreToolUse
+# timeout, which is a SILENT PASS -- and a wall-clock assertion in a unit suite
+# is a flake generator. Deleting it leaves the suite green; the measurement
+# lives in the comment beside it.
 # TWO PROBES NEED BOTH SITES BROKEN AT ONCE: the fallback lives at two arms
 # (unresolvable-path and unreadable-file) and each case reaches only one, so a
 # one-arm mutation kills nothing and reads as unfenced.
@@ -531,6 +542,26 @@ gh api repos/o/r/issues -f title=t --input \"\$P\"" "$TMPROOT" 2
 run "a Key:/value continuation still ends the reason" \
   "gh issue create --title t --body 'Session-fit: next (not this session) -- blocked on an AWS quota increase
 Repro:/tmp/x it needs its own PR'" "$TMPROOT" 0
+
+# Round-4 blockers, each measured before the fix.
+# `index` alone hands the SECOND of two segments that collapse to identical
+# text the FIRST one's raw slice, so a flat PR-shaped filing passed on its
+# twin's newline placement. The ordinal selects the right occurrence.
+run "twin segments do not share one raw slice" \
+  "gh issue create --title t --body 'Session-fit: next (not this session)
+Severity: high it needs its own PR' && gh issue create --title t --body 'Session-fit: next (not this session) Severity: high it needs its own PR'" \
+  "$TMPROOT" 2
+# `PR` / `pull request` / `own-PR` are SPELLINGS of one noun. A passing mention
+# of somebody else's pull request is not a PR-shaped REASON and must still pass.
+run "own pull request, spelled out" \
+  "gh issue create --title t --body 'Session-fit: next (not this session) -- it needs its own pull request'" \
+  "$TMPROOT" 2
+run "own-PR, hyphenated" \
+  "gh issue create --title t --body 'Session-fit: next (not this session) -- it needs its own-PR'" \
+  "$TMPROOT" 2
+run "a passing mention of an upstream pull request still passes" \
+  "gh issue create --title t --body 'Session-fit: next (not this session) -- blocked on upstream pull request aws/aws-cdk#123 landing'" \
+  "$TMPROOT" 0
 
 # --- BODY CHANNELS ------------------------------------------------------------
 printf 'Session-fit: next (not this session) -- it needs its own PR\n' > "$BODY_DIR/bad.md"
