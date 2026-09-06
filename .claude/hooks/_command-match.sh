@@ -1117,10 +1117,7 @@ gate_verb_args_dir() {
 # commit-prefix-scope). Derive it rather than trusting this sentence --
 # `grep -l GATE_PERL_WORD .claude/hooks/*-gate.sh` -- because an earlier
 # revision of this comment in cdkd said "three" while five files consumed it,
-# which is the same stale-sibling-note class the constant exists to end. Derive the list rather than trusting this
-# sentence -- `grep -l GATE_PERL_WORD .claude/hooks/*-gate.sh` -- because an earlier
-# revision of THIS comment said "three" while five files consumed it, which is
-# the same stale-sibling-note class the constant exists to end.
+# which is the same stale-sibling-note class the constant exists to end.
 # All of them spelled the value class `(["']?)([^"'\s]+)\1`, and that shape had
 # THREE MEASURED holes, all fail-OPEN (go-to-k/cdkd, 2026-09-05):
 #

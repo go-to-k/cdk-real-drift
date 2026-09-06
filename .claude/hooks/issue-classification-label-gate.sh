@@ -245,12 +245,16 @@ $cmd"
     return 0
   fi
 
-  out=$(printf '%s' "$seg" | perl -0777 -ne '
-    while (/(?:^|\s)--body[=\s]+("(?:[^"\\]|\\.)*"|\x27[^\x27]*\x27|\S+)/g) {
-      my $v = $1;
-      $v =~ s/^["\x27]//; $v =~ s/["\x27]$//;
-      print "$v\n";
-    }' 2>/dev/null)
+  # The INLINE body goes through the same `$GW` value class as the body-file
+  # arms above. It was left on the retired
+  # `("(?:[^"\\]|\\.)*"|\x27[^\x27]*\x27|\S+)` spelling when those moved, which
+  # is the half-conversion this whole change exists to end: measured, a body
+  # written as ANSI-C carrying `Severity: high` with NO labels gave rc=0, while
+  # the same body single-quoted gave 2. `-b` is the documented short spelling
+  # and is scoped to this segment, so it cannot take another commands flag.
+  out=$(printf '%s' "$seg" | perl -0777 -ne "$GATE_PERL_WORD"'
+    while (/(?:^|\s)--body[=\s]+($GW)/g) { print gate_unq($1), "\n"; }
+    while (/(?:^|\s)-b[=\s]*($GW)/g)     { print gate_unq($1), "\n"; }' 2>/dev/null)
   if [ -n "$out" ]; then
     printf '%s' "$out"
     return 0
