@@ -335,6 +335,29 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   and therefore this gate's primary shape — IS matched: the shared `GATE_GH_C`
   absorbs the repo flags in every spelling `gh` accepts (space, `=`, and glued
   `-Ro/r`).
+- **`issue-deferral-criteria-gate` — a `Session-fit: next` may not be
+  PR-shaped.** Same two mints and the same repo opt-in as `issue-dup-check-gate`,
+  refusing a body that defers the work because it wants its `own PR` /
+  a `separate PR` / cannot `share a PR` / is an `independent review surface` /
+  is `unreviewable` / needs its `own review`. `Session-fit` answers only "do I
+  finish this in THIS session", and splitting across several PRs costs no
+  session — the review cost of a bigger diff belongs under `Effort: large`,
+  where [.claude/rules/session-report.md](.claude/rules/session-report.md) puts
+  it. An escalation of `/work-issues` §3-b, said in prose and violated anyway.
+  `gh issue edit` / `gh issue comment` are NOT gated: re-classifying to `now` is
+  the outcome wanted. Mechanics, measured coverage, the bypass, and the two
+  contradictions in this repo's own text it surfaced and the maintainer resolved
+  on 2026-09-05 (`references/implement.md` + that rule's calibration paragraph):
+  [.claude/rules/hooks.md](.claude/rules/hooks.md).
+- **`integ-base-behind-warn` — the one NON-BLOCKING PreToolUse hook.** Before a
+  fixture's `verify*.sh` or a `cdk deploy` runs, it warns on stderr that the
+  branch is behind `origin/main` and names how many arriving files land in the
+  `integ` gate's scope. A real deploy + `delstack` teardown in us-east-1 spent
+  on a superseded tree buys a result about the wrong tree. **Not
+  `stale-base-gate`** — that one BLOCKS a push whose branch is AHEAD of
+  `origin/main` yet reverts main's work; this one fires on the opposite
+  condition and never blocks. Details in
+  [.claude/rules/hooks.md](.claude/rules/hooks.md).
 - **Hook / gate mechanics and their measured history live in
   [.claude/rules/hooks.md](.claude/rules/hooks.md)** — read it when working on
   `.claude/hooks/**` / `.claude/settings.json` or when a gate's verdict

@@ -215,10 +215,29 @@ $cmd"
   # exited 0 on a body stating `Severity: high` with no label. Sibling
   # issue-dup-check-gate.sh already carries the same three arms. `body=@` is
   # matched FIRST so an `-F body=@path` is not also read as a bare `-F path`.
-  done < <(printf '%s' "$seg" | perl -0777 -ne '
-      while (/(?:--field|--raw-field|-F)[=\s]+(["\x27]?)body=\@([^"\x27\s]+)\1/g) { print "$2\n"; }
-      while (/--body-file[=\s]+(["\x27]?)([^"\x27\s]+)\1/g) { print "$2\n"; }
-      while (/(?:^|\s)-F[=\s]+(["\x27]?)([^"\x27\s=]+)\1(?=\s|$)/g) { print "$2\n"; }
+  done < <(printf '%s' "$seg" | perl -0777 -ne "$GATE_PERL_WORD"'
+      # The value class is `$GW` from the SHARED `GATE_PERL_WORD` prelude in
+      # _command-match.sh, not a local `(["\x27]?)([^"\x27\s]+)\1`. That local
+      # shape ENUMERATES where a quote may sit instead of taking one shell WORD,
+      # and it could not span a QUOTED PATH CONTAINING A SPACE, a
+      # BACKSLASH-ESCAPED one, or the GLUED `-F<path>` gh accepts -- each
+      # measured here as a FAIL-OPEN before this change (rc=0 where the plain
+      # spelling gave 2). Ported from go-to-k/cdkd#2639; the full per-shape
+      # table lives in the header of that constant, in _command-match.sh.
+      # (No apostrophe anywhere in this comment: the whole perl program is a
+      # SHELL single-quoted string, so one would end it and hand the rest to
+      # bash as code.)
+      while (/(?:--field|--raw-field|-F)[=\s]*($GW)/g) {
+        my $v = gate_unq($1);
+        next unless $v =~ s/^body=\@//;
+        print "$v\n";
+      }
+      while (/--body-file[=\s]+($GW)/g) { print gate_unq($1), "\n"; }
+      while (/(?:^|\s)-F[=\s]*($GW)(?=[\s;&|)]|$)/g) {
+        my $v = gate_unq($1);
+        next if $v =~ /^\w+=/;
+        print "$v\n";
+      }
     ' 2>/dev/null)
 
   if [ -n "$out" ]; then
@@ -226,12 +245,16 @@ $cmd"
     return 0
   fi
 
-  out=$(printf '%s' "$seg" | perl -0777 -ne '
-    while (/(?:^|\s)--body[=\s]+("(?:[^"\\]|\\.)*"|\x27[^\x27]*\x27|\S+)/g) {
-      my $v = $1;
-      $v =~ s/^["\x27]//; $v =~ s/["\x27]$//;
-      print "$v\n";
-    }' 2>/dev/null)
+  # The INLINE body goes through the same `$GW` value class as the body-file
+  # arms above. It was left on the retired
+  # `("(?:[^"\\]|\\.)*"|\x27[^\x27]*\x27|\S+)` spelling when those moved, which
+  # is the half-conversion this whole change exists to end: measured, a body
+  # written as ANSI-C carrying `Severity: high` with NO labels gave rc=0, while
+  # the same body single-quoted gave 2. `-b` is the documented short spelling
+  # and is scoped to this segment, so it cannot take another commands flag.
+  out=$(printf '%s' "$seg" | perl -0777 -ne "$GATE_PERL_WORD"'
+    while (/(?:^|\s)--body[=\s]+($GW)/g) { print gate_unq($1), "\n"; }
+    while (/(?:^|\s)-b[=\s]*($GW)/g)     { print gate_unq($1), "\n"; }' 2>/dev/null)
   if [ -n "$out" ]; then
     printf '%s' "$out"
     return 0
@@ -280,6 +303,18 @@ has_label() {
 
 offending_seg=""
 missing=""
+# `GATE_PERL_WORD` is one shared literal that several BLOCKING gates
+# interpolate, and every extraction runs `perl ... 2>/dev/null`. A prelude
+# that is present but does NOT COMPILE therefore produces no output, no
+# stderr and no exit-code change -- the gate extracts nothing and PASSES
+# what it exists to refuse. Measured in cdkd: one broken literal disarmed
+# four gates at once. A non-empty test cannot see that, so probe it
+# FUNCTIONALLY, once, after arming, and at TOP LEVEL -- the extraction
+# helpers run inside `$( )`, where `exit 2` ends only the substitution
+# subshell (measured: an in-function guard PRINTED its refusal and the
+# hook still returned 0).
+gate_perl_word_or_die issue-classification-label-gate || exit 2
+
 while IFS= read -r seg; do
   is_edit=0
   if gate_matches "$seg" "$GATE_RE_GH_ISSUE_EDIT"; then
