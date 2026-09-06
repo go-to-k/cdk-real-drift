@@ -1432,7 +1432,13 @@ check` green). The earlier `TS2591 'process'` errors came from oxc's type-aware
    onto a feature branch when the target tree is the MAIN checkout — the
    cause-side twin of `branch-gate`, go-to-k/cdk-real-drift#1845),
    `verify-pr-gate`, `ci-green-gate`, `stale-base-gate`,
-   `non-english-text-gate`, `worktree-guard`, and the bug-hunt cleanup gates —
+   `non-english-text-gate`, `worktree-guard`, the two issue-mint gates
+   (`issue-dup-check-gate`, `issue-classification-label-gate`) plus
+   `issue-deferral-criteria-gate` (refuses a `Session-fit: next` deferred for a
+   PR-shaped reason), the one NON-blocking hook `integ-base-behind-warn` (warns
+   before a fixture run that the branch is behind `origin/main` — the opposite
+   condition to `stale-base-gate`, and not to be confused with it), and the
+   bug-hunt cleanup gates —
    plus `CLAUDE.md` and `CONTRIBUTING.md`, and since the #1878 split a small
    `.claude/rules/` (two on-demand satellites moved out of CLAUDE.md). Still
    deliberately absent: `.claude/agents` (and with it the pr-review gate) —
