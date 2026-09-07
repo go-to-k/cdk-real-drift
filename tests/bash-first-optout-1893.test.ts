@@ -51,6 +51,8 @@ const SETTINGS = path.join(ROOT, '.claude', 'settings.json');
 /** The prefix every hook command in this repo uses to reach the repo root. */
 const PROJECT_DIR_PREFIX = '${CLAUDE_PROJECT_DIR:-.}';
 const WORKTREE_GUARD_SCRIPT = '.claude/hooks/worktree-guard.sh';
+const LOCAL_SETTINGS = '.claude/settings.local.json';
+const HOOKS_RULE = path.join(ROOT, '.claude', 'rules', 'hooks.md');
 
 /**
  * The only value measured against a discriminating twin. Other spellings the
@@ -82,18 +84,38 @@ function minorOf(version: string): string {
 }
 
 /**
- * The installed Claude Code version, or `undefined` when no binary answers — CI
- * has none, and there the pin's behavior is unobservable rather than wrong.
- * `CDKRD_CLAUDE_BIN` is a test seam so the absent-binary arm can be probed.
+ * The installed Claude Code version, `undefined` when the binary is ABSENT, and
+ * a THROW when one answered but could not be read. Collapsing the three was the
+ * round-4 finding on the cdkd twin: a non-zero exit, a timeout and a wrapper
+ * printing an unrecognized version line all read as "no Claude Code here" and
+ * early-returned the case to green — disarming it on exactly the vendor change
+ * it exists to notice. `CDKRD_CLAUDE_BIN` is a test seam for both arms.
  */
 function installedClaudeVersion(): string | undefined {
   const bin = process.env['CDKRD_CLAUDE_BIN'] ?? 'claude';
   const res = spawnSync(bin, ['--version'], { encoding: 'utf8', timeout: 30_000 });
-  if (res.error || res.status !== 0) return undefined;
-  return /^(\d+\.\d+\.\d+)/.exec((res.stdout ?? '').trim())?.[1];
+  if (res.error) {
+    const code = (res.error as NodeJS.ErrnoException).code;
+    if (code === 'ENOENT') return undefined;
+    throw new Error(`\`${bin} --version\` could not be run: ${code ?? res.error.message}`);
+  }
+  if (res.status !== 0) {
+    throw new Error(`\`${bin} --version\` exited ${res.status}: ${(res.stderr ?? '').trim()}`);
+  }
+  const out = (res.stdout ?? '').trim();
+  const version = /^(\d+\.\d+\.\d+)/.exec(out)?.[1];
+  if (version === undefined) {
+    throw new Error(
+      `no version could be read from \`${bin} --version\` (${JSON.stringify(out)}). ` +
+        'If Claude Code reworked that line, re-run both probe arms from ' +
+        '.claude/rules/hooks.md before touching this test.'
+    );
+  }
+  return version;
 }
 
 interface HookSpec {
+  type?: string;
   command?: string;
 }
 interface HookEntry {
@@ -107,29 +129,35 @@ interface Settings {
 
 const settings = JSON.parse(readFileSync(SETTINGS, 'utf8')) as Settings;
 
-/** Alternatives of an `A|B|C` matcher, trimmed and order-insensitive. */
-function alternatives(matcher: string | undefined): string[] {
-  return (matcher ?? '')
-    .split('|')
-    .map((a) => a.trim())
-    .filter(Boolean)
-    .sort();
-}
-
 /**
- * Whether a matcher SELECTS the Bash tool, by the rule the 2.1.263 binary uses:
- * a matcher matching `[a-zA-Z0-9_|, -]+` is an exact name list, and anything
- * else is compiled as a regular expression. `not.toContain('Bash')` reads the
- * name list only, so a regex-spelled alternative escapes it.
+ * Whether a matcher SELECTS `tool`, transcribed from the 2.1.263 binary's own
+ * decision (`Mmr` / `Tms`), measured rather than guessed:
+ *
+ *   - an empty matcher or `*` selects EVERY tool;
+ *   - a matcher matching `/^[a-zA-Z0-9_|, -]+$/` is an exact NAME LIST, split
+ *     on `/[|,]/` and trimmed (space is padding, never a separator);
+ *   - anything else is compiled as a RegExp against the tool name, and an
+ *     UNCOMPILABLE one selects nothing at all.
+ *
+ * Both halves of the assertion pair go through this. Reading the presence half
+ * off a hand-split alternatives list was the round-4 finding on the cdkd twin:
+ * splitting `Edit|Write|NotebookEdit|[` on `|` reported the three tools
+ * present, so a matcher that compiles to NOTHING — the guard wholly inert —
+ * left the case green.
  */
-function matchesBash(matcher: string | undefined): boolean {
+function selectsTool(matcher: string | undefined, tool: string): boolean {
   const m = matcher ?? '';
-  if (/^[a-zA-Z0-9_|, -]+$/.test(m)) return alternatives(m).includes('Bash');
+  if (m === '' || m === '*') return true;
+  if (/^[a-zA-Z0-9_|, -]+$/.test(m)) {
+    return m
+      .split(/[|,]/)
+      .map((a) => a.trim())
+      .filter(Boolean)
+      .includes(tool);
+  }
   try {
-    return new RegExp(m).test('Bash');
+    return new RegExp(m).test(tool);
   } catch {
-    // An uncompilable matcher selects nothing; treat it as not selecting Bash
-    // rather than throwing here — the arrayContaining assertion already reds.
     return false;
   }
 }
@@ -140,7 +168,11 @@ function matchesBash(matcher: string | undefined): boolean {
  * trailing comment, an `&&` tail, or a wrapper all fall through, since each
  * would let an inert command answer for the gate it names.
  */
-function registeredScript(command: string | undefined): string | undefined {
+function registeredScript(hook: HookSpec | undefined): string | undefined {
+  // A hook whose `type` is anything but `command` is not a command hook at all,
+  // so a dropped or misspelled `type` must not answer for the gate either.
+  if (hook?.type !== 'command') return undefined;
+  const command = hook.command;
   if (!command?.startsWith(PROJECT_DIR_PREFIX)) return undefined;
   const rest = command.slice(PROJECT_DIR_PREFIX.length);
   return /^\/[\w./-]+\.sh$/.test(rest) ? rest.slice(1) : undefined;
@@ -149,7 +181,7 @@ function registeredScript(command: string | undefined): string | undefined {
 /** Every entry of `event` whose command runs exactly `script`. */
 function entriesRunningScript(event: string, script: string): HookEntry[] {
   return (settings.hooks?.[event] ?? []).filter((e) =>
-    (e.hooks ?? []).some((h) => registeredScript(h.command) === script)
+    (e.hooks ?? []).some((h) => registeredScript(h) === script)
   );
 }
 
@@ -180,15 +212,51 @@ describe('.claude/settings.json bash-first opt-out (go-to-k/cdk-real-drift#1893)
     // The invariant is the ABSENCE of `Bash` plus the three file tools being
     // present. A set equality false-reds a strictly STRONGER matcher — adding
     // `MultiEdit` widens the guard and must stay green.
-    const alts = alternatives(guard[0]?.matcher);
-    expect(alts).toEqual(expect.arrayContaining(['Edit', 'NotebookEdit', 'Write']));
-    expect(alts).not.toContain('Bash');
-    // Measured in the 2.1.263 binary: a matcher of `[a-zA-Z0-9_|, -]+` is an
-    // exact NAME LIST, anything else is compiled as a RegExp against the tool
-    // name. So `|Bash.*` or `|.*` selects Bash while clearing the check above —
-    // and it is THIS assertion that fails should the guard ever start seeing
-    // Bash, at which point the pin's rationale must be re-derived.
-    expect(matchesBash(guard[0]?.matcher)).toBe(false);
+    // Both halves read through the binary's own rule, so a matcher that compiles
+    // to nothing cannot satisfy the presence half. A strictly STRONGER matcher
+    // stays green: adding `MultiEdit` widens the guard, and a reordered list is
+    // the same list. It is the Bash assertion that fails should the guard ever
+    // start seeing Bash, at which point the pin's rationale must be re-derived.
+    const guardMatcher = guard[0]?.matcher;
+    for (const tool of ['Edit', 'Write', 'NotebookEdit']) {
+      expect(selectsTool(guardMatcher, tool), `guard no longer selects ${tool}`).toBe(true);
+    }
+    expect(selectsTool(guardMatcher, 'Bash')).toBe(false);
+  });
+
+  it('keeps the local override out of the repo', () => {
+    // `.claude/settings.local.json` OUTRANKS the pinned file, so a COMMITTED one
+    // carrying `"1"` beats the pin for everyone while every case above stays
+    // green. The `.gitignore` line added with the pin is what stops that.
+    //
+    // `-v` rather than `-q`, and the SOURCE is asserted: measured on the cdkd
+    // twin, deleting the line from the repo's own `.gitignore` still exits 0,
+    // because a developer's `~/.config/git/ignore` covers the same path. A fence
+    // whose verdict depends on what sits outside the checkout says nothing about
+    // what a contributor cloning it gets.
+    const ignored = spawnSync('git', ['-C', ROOT, 'check-ignore', '-v', LOCAL_SETTINGS], {
+      encoding: 'utf8',
+    });
+    expect(
+      ignored.status,
+      `${LOCAL_SETTINGS} is not ignored by git; a committed one would outrank ` +
+        '.claude/settings.json and silently beat the bash-first pin'
+    ).toBe(0);
+    expect(
+      (ignored.stdout ?? '').trim(),
+      `${LOCAL_SETTINGS} is ignored, but not by this repo's own .gitignore — a ` +
+        "global or per-user ignore file covers it on THIS machine and nobody else's"
+    ).toMatch(/^\.gitignore:/);
+
+    const tracked = spawnSync('git', ['-C', ROOT, 'ls-files', '--', LOCAL_SETTINGS], {
+      encoding: 'utf8',
+    });
+    expect(tracked.status).toBe(0);
+    expect(
+      (tracked.stdout ?? '').trim(),
+      `${LOCAL_SETTINGS} is TRACKED; being gitignored does not untrack a file that ` +
+        'was already added'
+    ).toBe('');
   });
 
   it('still runs on the Claude Code line the pin was measured against', () => {
@@ -197,6 +265,15 @@ describe('.claude/settings.json bash-first opt-out (go-to-k/cdk-real-drift#1893)
     // nobody could read.
     expect(PROBED_CLAUDE_VERSION).toMatch(/^\d+\.\d+\.\d+$/);
     expect(PROBED_ON).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    // The measurement is written down TWICE — here and in the prose carrying the
+    // probe recipe. Bumping one without the other leaves a reader re-probing
+    // against a version nobody measured, and CI, which has no binary to compare
+    // against, would otherwise certify nothing at all.
+    expect(
+      readFileSync(HOOKS_RULE, 'utf8'),
+      `.claude/rules/hooks.md no longer names ${PROBED_CLAUDE_VERSION}; the probe ` +
+        'recipe and this receipt must move together'
+    ).toContain(PROBED_CLAUDE_VERSION);
 
     const installed = installedClaudeVersion();
     if (installed === undefined) {
