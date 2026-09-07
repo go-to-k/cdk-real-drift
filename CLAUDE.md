@@ -315,6 +315,22 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
     on the cadence below, having reached NEITHER until
     go-to-k/cdk-real-drift#1844. Run **`/sweep-resources`** to do the
     cleanup + release the gate.
+- **The bash-first experiment must stay OFF.** `.claude/settings.json` pins
+  `env.CLAUDE_CODE_THRIFTY_SONIC: "0"`. With that flag on, the session is told to
+  read and WRITE files through `cat` / `sed -i` / heredocs instead of
+  Read / Edit / Write — and `worktree-guard` is matched on `Edit|Write|NotebookEdit`,
+  the TOOLS rather than the operation, so it stops firing entirely and a heredoc
+  write to the main checkout's `src/**` is refused by nothing, and this repo has
+  no snapshot hook to record it either. An explicitly set
+  value short-circuits the server-side cohort assignment, which is why the pin
+  belongs in the REPO's settings — a maintainer's `~/.claude/settings.json` fixes
+  one machine and leaves every contributor and parallel lane in whatever cohort
+  the server picked. Measured on Claude Code 2.1.263; the fence asserts a JSON
+  string and cannot assert vendor behavior, so re-probe on upgrade
+  (`tests/bash-first-optout-1893.test.ts`, mechanics in
+  [.claude/rules/hooks.md](.claude/rules/hooks.md) — which is where the detail
+  lives, while this bullet stays in CLAUDE.md because a session in the cohort is
+  exactly the one that may not open that file).
 - **`issue-dup-check-gate` — the one PreToolUse gate that is not a markgate gate.**
   It blocks `gh issue create` (and the REST mint `gh api repos/<o>/<r>/issues`)
   unless the body carries a `Dup-check:` line recording that the OPEN issue list

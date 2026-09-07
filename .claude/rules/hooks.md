@@ -5,6 +5,51 @@ follow-up): CLAUDE.md keeps the one-line rules and points here. Read this file
 when working on `.claude/hooks/**`, `.claude/settings.json`, or when a gate's
 verdict surprises you.
 
+- **A matcher names a TOOL, not an OPERATION — and a vendor prompt experiment
+  decides which tool the session uses** (go-to-k/cdk-real-drift#1893).
+  `worktree-guard.sh` is the repo's only file-tool-matched hook
+  (`Edit|Write|NotebookEdit`). Claude Code's bash-first experiment,
+  `CLAUDE_CODE_THRIFTY_SONIC`, appends a system-reminder telling the session to
+  read and WRITE through `cat` / `sed -i` / heredocs instead, so under it the
+  guard never fires and the #408 cross-session contamination class is unguarded
+  with no error line anywhere — and this repo carries no snapshot hook at all, so
+  nothing else records the overwrite either. Every other gate here is `Bash`-matched
+  and unaffected — which is what makes this narrow and silent rather than loud.
+  `.claude/settings.json` therefore pins `env.CLAUDE_CODE_THRIFTY_SONIC: "0"`.
+  Measured on Claude Code 2.1.263: the native binary parses the variable as a
+  tri-state bool and an EXPLICITLY SET value short-circuits the server-side cohort
+  assignment (`if (env.CLAUDE_CODE_THRIFTY_SONIC !== undefined) return it` sits
+  ahead of the `forced` / `cohort` branches), so the repo's settings decide it for
+  every clone while a maintainer's `~/.claude/settings.json` would fix one
+  machine. Probe by flipping the value to `"1"` and running `claude -p` with a
+  prompt asking whether `Do your work through the Bash tool` is in context: `"1"`
+  answers PRESENT, `"0"` and the unset baseline answer ABSENT — **only the `"1"`
+  arm discriminates**. `tests/bash-first-optout-1893.test.ts` fences the pin and
+  the reason, resolving the guard's entry by WHAT IT RUNS rather than by matcher
+  text or a command substring, and reading its matcher through the BINARY's own
+  selection rule (four review rounds on the sibling fence in cdkd cleared each
+  weaker lookup in turn — a decoy entry ahead of the real one, the gate's path
+  demoted to a trailing comment, and a matcher compiling to nothing while a
+  hand-split alternatives list still reported the tools present). It asserts a JSON string
+  and can never assert vendor behavior — a rename or a default flip makes the pin
+  a no-op with the other cases still green — so its VERSION case pins the Claude
+  Code line the measurement was taken on and reds when the installed MAJOR.MINOR
+  moves off it, telling the reader to re-run BOTH probe arms and update the two
+  constants together. A REMINDER, not a detector; compared at MAJOR.MINOR because
+  an exact pin would red an unrelated commit most weeks and get discharged by
+  editing the constant instead of re-probing, at the cost that a behavior change
+  shipped inside a patch release passes silently. Where no `claude` binary
+  answers — CI — there is no installed version to disagree with, so the case
+  asserts that the receipt is well-formed AND that this file still names the same
+  version: bumping one copy of the measurement without the other reds even there
+  (`CDKRD_CLAUDE_BIN` is the seam that probes that arm). Two
+  properties worth stating: the pin is a repo DEFAULT, not an unescapable one
+  (`.claude/settings.local.json` outranks the committed file and the fence never
+  reads it — what the pin removes is the SILENT version, where a server-side
+  cohort decides and nobody chose; that file is now listed in `.gitignore`, since a
+  CHECKED-IN one carrying `"1"` would beat the pin for everyone with the fence
+  still green), and `env` exports the variable into every
+  Bash subprocess a session spawns, a nested `claude` included.
 - **Naming the repo must never change a gate's verdict, and twice it did.** On
   2026-08-25, `gh -R <owner/repo> pr merge 1 --squash` matched NOTHING in
   `verify-pr-gate`, `ci-green-gate` and `bughunt-clean-gate` — measured exit 2

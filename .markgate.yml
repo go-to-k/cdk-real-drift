@@ -259,6 +259,14 @@ gates:
       # gate exists to close. It is therefore NO LONGER this gate's negative
       # control — an append there now correctly stales the marker.
       - 'CHANGELOG.md'
+      # `.gitignore` is a checker INPUT since go-to-k/cdk-real-drift#1893:
+      # `tests/bash-first-optout-1893.test.ts` requires
+      # `.claude/settings.local.json` to be ignored BY THIS FILE (it reads
+      # `git check-ignore -v`'s source), because a local settings file outranks
+      # `.claude/settings.json` and would beat the bash-first pin. Without this
+      # entry, deleting that line reds the suite while a `check` marker recorded
+      # a moment earlier still verifies FRESH.
+      - '.gitignore'
       #
       # This file itself — the go-to-k/cdk-local#624 sibling. The gate's own
       # definition decides what the marker MEANS, so editing it (this include
