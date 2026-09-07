@@ -27,18 +27,26 @@ import { describe, expect, it } from 'vite-plus/test';
 // still green, and nothing re-probes on upgrade — re-run the probe above when
 // Claude Code moves off the version named here.
 //
-// The second case fences the REASON, and it resolves the entry BY THE HOOK SCRIPT
-// IT REGISTERS rather than by matcher text. The sibling fence in cdkd first looked
-// entries up by matcher, and review found four mutations that left it green:
-// the gate's command swapped for `/bin/true`, its `hooks` array emptied, a decoy
-// `Edit|Write|NotebookEdit` entry inserted ahead of the real one while the real one
-// gained `Bash`, and — there — a second file-tool entry deleted with its matcher
-// kept. A fence whose job is "the protection is still there" must not be
-// satisfiable with the protection gone.
+// It also cannot see `.claude/settings.local.json`, which OUTRANKS the file it
+// reads: the pin is this repo's DEFAULT, not an unescapable one. What it removes
+// is the SILENT version, where a server-side cohort decides and nobody chose.
+//
+// The second case fences the REASON, and it resolves the entry BY WHAT IT RUNS
+// rather than by matcher text or a command substring. Two review rounds on the
+// sibling fence in cdkd cleared the weaker lookups seven ways: matcher text alone
+// by swapping the gate's command for `/bin/true`, by emptying its `hooks` array,
+// and by a decoy `Edit|Write|NotebookEdit` entry inserted ahead of the real one;
+// a command SUBSTRING by demoting the path to a trailing `#` comment and by
+// repointing it into a `disabled/` directory while `existsSync` still stated the
+// hard-coded original. So the command must be exactly the project-dir prefix plus
+// a script path, and that DERIVED path is the one checked on disk.
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SETTINGS = path.join(ROOT, '.claude', 'settings.json');
-const WORKTREE_GUARD = path.join(ROOT, '.claude', 'hooks', 'worktree-guard.sh');
+
+/** The prefix every hook command in this repo uses to reach the repo root. */
+const PROJECT_DIR_PREFIX = '${CLAUDE_PROJECT_DIR:-.}';
+const WORKTREE_GUARD_SCRIPT = '.claude/hooks/worktree-guard.sh';
 
 /**
  * The only value measured against a discriminating twin. Other spellings the
@@ -71,10 +79,22 @@ function alternatives(matcher: string | undefined): string[] {
     .sort();
 }
 
-/** Every entry of `event` registering a hook whose command matches `needle`. */
-function entriesRegistering(event: string, needle: RegExp): HookEntry[] {
+/**
+ * The repo-relative script a command runs, or `undefined` when the command is
+ * anything else. The whole command must be the prefix plus one `.sh` path — a
+ * trailing comment, an `&&` tail, or a wrapper all fall through, since each
+ * would let an inert command answer for the gate it names.
+ */
+function registeredScript(command: string | undefined): string | undefined {
+  if (!command?.startsWith(PROJECT_DIR_PREFIX)) return undefined;
+  const rest = command.slice(PROJECT_DIR_PREFIX.length);
+  return /^\/[\w./-]+\.sh$/.test(rest) ? rest.slice(1) : undefined;
+}
+
+/** Every entry of `event` whose command runs exactly `script`. */
+function entriesRunningScript(event: string, script: string): HookEntry[] {
   return (settings.hooks?.[event] ?? []).filter((e) =>
-    (e.hooks ?? []).some((h) => needle.test(h.command ?? ''))
+    (e.hooks ?? []).some((h) => registeredScript(h.command) === script)
   );
 }
 
@@ -88,17 +108,25 @@ describe('.claude/settings.json bash-first opt-out (go-to-k/cdk-real-drift#1893)
         'worktree-guard, the one gate protecting the main checkout from a ' +
         'concurrent lane'
     ).toBeDefined();
-    expect(String(value)).toBe(PINNED_OFF);
+    // A JSON number would read as `'0'` through `String()` while Claude Code's
+    // `env` map expects strings, so the shape is asserted rather than coerced.
+    expect(typeof value).toBe('string');
+    expect(value).toBe(PINNED_OFF);
   });
 
   it('still has the file-tool-only surface the pin protects', () => {
-    const guard = entriesRegistering('PreToolUse', /\/worktree-guard\.sh$/);
-    expect(guard.length, 'expected exactly one worktree-guard entry').toBe(1);
-    // No `Bash` alternative -> a Bash-written file is invisible to it, which is
-    // what makes the pin load-bearing rather than a preference. Should the guard
-    // ever learn to parse Bash commands, this case fails and the pin's rationale
-    // must be re-derived rather than trusted.
-    expect(alternatives(guard[0]?.matcher)).toEqual(['Edit', 'NotebookEdit', 'Write']);
-    expect(existsSync(WORKTREE_GUARD)).toBe(true);
+    const guard = entriesRunningScript('PreToolUse', WORKTREE_GUARD_SCRIPT);
+    expect(guard.length, `expected exactly one entry running ${WORKTREE_GUARD_SCRIPT}`).toBe(1);
+    // The DERIVED path, not a hard-coded twin: repointing the command into a
+    // `disabled/` directory must not leave the original still being stat'ed.
+    expect(existsSync(path.join(ROOT, WORKTREE_GUARD_SCRIPT))).toBe(true);
+    // The invariant is the ABSENCE of `Bash` plus the three file tools being
+    // present. A set equality false-reds a strictly STRONGER matcher — adding
+    // `MultiEdit` widens the guard and must stay green. Should the guard ever
+    // learn to parse Bash commands, the second assertion fails and the pin's
+    // rationale must be re-derived rather than trusted.
+    const alts = alternatives(guard[0]?.matcher);
+    expect(alts).toEqual(expect.arrayContaining(['Edit', 'NotebookEdit', 'Write']));
+    expect(alts).not.toContain('Bash');
   });
 });

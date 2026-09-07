@@ -25,14 +25,17 @@ verdict surprises you.
   prompt asking whether `Do your work through the Bash tool` is in context: `"1"`
   answers PRESENT, `"0"` and the unset baseline answer ABSENT — **only the `"1"`
   arm discriminates**. `tests/bash-first-optout-1893.test.ts` fences the pin and
-  the reason, resolving the guard's entry by the hook SCRIPT it registers rather
-  than by matcher text (the sibling fence in cdkd was first written the other way
-  and review found four mutations that left it green). It asserts a JSON string
+  the reason, resolving the guard's entry by WHAT IT RUNS rather than by matcher
+  text or a command substring (two review rounds on the sibling fence in cdkd
+  cleared the weaker lookups seven ways — a decoy entry ahead of the real one,
+  the gate's path demoted to a trailing comment, and more). It asserts a JSON string
   and can never assert vendor behavior — a rename or a default flip makes the pin
   a no-op with the fence still green, and nothing re-probes on upgrade. Two
-  properties worth stating: the pin has no escape hatch (project settings outrank
-  user settings and the fence reds on an edit), and `env` exports the variable
-  into every Bash subprocess a session spawns, a nested `claude` included.
+  properties worth stating: the pin is a repo DEFAULT, not an unescapable one
+  (`.claude/settings.local.json` outranks the committed file and the fence never
+  reads it — what the pin removes is the SILENT version, where a server-side
+  cohort decides and nobody chose), and `env` exports the variable into every
+  Bash subprocess a session spawns, a nested `claude` included.
 - **Naming the repo must never change a gate's verdict, and twice it did.** On
   2026-08-25, `gh -R <owner/repo> pr merge 1 --squash` matched NOTHING in
   `verify-pr-gate`, `ci-green-gate` and `bughunt-clean-gate` — measured exit 2
