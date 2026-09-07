@@ -259,12 +259,6 @@ gates:
       # gate exists to close. It is therefore NO LONGER this gate's negative
       # control — an append there now correctly stales the marker.
       - 'CHANGELOG.md'
-      #
-      # This file itself — the go-to-k/cdk-local#624 sibling. The gate's own
-      # definition decides what the marker MEANS, so editing it (this include
-      # list included) must stale a marker recorded under the old definition.
-      # Measured on the go-to-k/cdk-real-drift#1837 tree before the entry
-      # existed: appending include entries left `markgate verify check` at rc=0.
       # `.gitignore` is a checker INPUT since go-to-k/cdk-real-drift#1893:
       # `tests/bash-first-optout-1893.test.ts` requires
       # `.claude/settings.local.json` to be ignored BY THIS FILE (it reads
@@ -273,6 +267,12 @@ gates:
       # entry, deleting that line reds the suite while a `check` marker recorded
       # a moment earlier still verifies FRESH.
       - '.gitignore'
+      #
+      # This file itself — the go-to-k/cdk-local#624 sibling. The gate's own
+      # definition decides what the marker MEANS, so editing it (this include
+      # list included) must stale a marker recorded under the old definition.
+      # Measured on the go-to-k/cdk-real-drift#1837 tree before the entry
+      # existed: appending include entries left `markgate verify check` at rc=0.
       - '.markgate.yml'
       # .mise.toml pins the BINARY that runs the definitions above (`vp`), so it
       # decides what typecheck / lint / build / test MEAN — the same argument as

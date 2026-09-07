@@ -213,6 +213,20 @@ describe('.claude/settings.json bash-first opt-out (go-to-k/cdk-real-drift#1893)
     // which PreToolUse treats as non-blocking, so the guard goes inert with
     // every case here green — existence alone does not prove it can run.
     expect(() => accessSync(path.join(ROOT, WORKTREE_GUARD_SCRIPT), constants.X_OK)).not.toThrow();
+    // ...and the INDEX must carry the bit too. `accessSync` reads the LOCAL
+    // mode, so a file committed 100644 and `chmod +x`'d on this machine stays
+    // green here while every other checkout exits 126.
+    const staged = spawnSync(
+      'git',
+      ['-C', ROOT, 'ls-files', '--stage', '--', WORKTREE_GUARD_SCRIPT],
+      { encoding: 'utf8' }
+    );
+    expect(staged.status).toBe(0);
+    expect(
+      (staged.stdout ?? '').split(/\s/)[0],
+      `${WORKTREE_GUARD_SCRIPT} is not mode 100755 in the index; a fresh clone ` +
+        'would get a non-executable hook, which exits 126 and does not block'
+    ).toBe('100755');
     // Both halves read through the binary's own rule, so a matcher that compiles
     // to nothing cannot satisfy the presence half. A strictly STRONGER matcher
     // stays green: adding `MultiEdit` widens the guard, and a reordered list is
