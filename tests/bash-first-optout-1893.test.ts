@@ -25,7 +25,7 @@ import { describe, expect, it } from 'vite-plus/test';
 //
 // This file asserts a JSON STRING, never vendor behavior. A rename, a default
 // flip, or removal of that short-circuit makes the pin a no-op with the other
-// cases still green, so the third case pins the Claude Code line the
+// cases still green, so the VERSION case pins the Claude Code line the
 // measurement was taken on. It is a REMINDER to re-run the probe above, not a
 // detector — only running the probe observes the vendor's behavior, and what a
 // test can do is refuse to let the measurement go quietly out of date.
@@ -209,9 +209,6 @@ describe('.claude/settings.json bash-first opt-out (go-to-k/cdk-real-drift#1893)
     // not here — the filter admits only the exact path, so this join can never
     // disagree with it.)
     expect(existsSync(path.join(ROOT, WORKTREE_GUARD_SCRIPT))).toBe(true);
-    // The invariant is the ABSENCE of `Bash` plus the three file tools being
-    // present. A set equality false-reds a strictly STRONGER matcher — adding
-    // `MultiEdit` widens the guard and must stay green.
     // Both halves read through the binary's own rule, so a matcher that compiles
     // to nothing cannot satisfy the presence half. A strictly STRONGER matcher
     // stays green: adding `MultiEdit` widens the guard, and a reordered list is

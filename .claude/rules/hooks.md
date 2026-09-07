@@ -26,18 +26,22 @@ verdict surprises you.
   answers PRESENT, `"0"` and the unset baseline answer ABSENT — **only the `"1"`
   arm discriminates**. `tests/bash-first-optout-1893.test.ts` fences the pin and
   the reason, resolving the guard's entry by WHAT IT RUNS rather than by matcher
-  text or a command substring (two review rounds on the sibling fence in cdkd
-  cleared the weaker lookups seven ways — a decoy entry ahead of the real one,
-  the gate's path demoted to a trailing comment, and more). It asserts a JSON string
+  text or a command substring, and reading its matcher through the BINARY's own
+  selection rule (four review rounds on the sibling fence in cdkd cleared each
+  weaker lookup in turn — a decoy entry ahead of the real one, the gate's path
+  demoted to a trailing comment, and a matcher compiling to nothing while a
+  hand-split alternatives list still reported the tools present). It asserts a JSON string
   and can never assert vendor behavior — a rename or a default flip makes the pin
-  a no-op with the other cases still green — so its third case pins the Claude
+  a no-op with the other cases still green — so its VERSION case pins the Claude
   Code line the measurement was taken on and reds when the installed MAJOR.MINOR
   moves off it, telling the reader to re-run BOTH probe arms and update the two
   constants together. A REMINDER, not a detector; compared at MAJOR.MINOR because
   an exact pin would red an unrelated commit most weeks and get discharged by
   editing the constant instead of re-probing, at the cost that a behavior change
   shipped inside a patch release passes silently. Where no `claude` binary
-  answers — CI — the case asserts only that the receipt is readable
+  answers — CI — there is no installed version to disagree with, so the case
+  asserts that the receipt is well-formed AND that this file still names the same
+  version: bumping one copy of the measurement without the other reds even there
   (`CDKRD_CLAUDE_BIN` is the seam that probes that arm). Two
   properties worth stating: the pin is a repo DEFAULT, not an unescapable one
   (`.claude/settings.local.json` outranks the committed file and the fence never
