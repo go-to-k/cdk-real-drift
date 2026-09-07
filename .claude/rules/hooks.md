@@ -5,6 +5,34 @@ follow-up): CLAUDE.md keeps the one-line rules and points here. Read this file
 when working on `.claude/hooks/**`, `.claude/settings.json`, or when a gate's
 verdict surprises you.
 
+- **A matcher names a TOOL, not an OPERATION — and a vendor prompt experiment
+  decides which tool the session uses** (go-to-k/cdk-real-drift#1893).
+  `worktree-guard.sh` is the repo's only file-tool-matched hook
+  (`Edit|Write|NotebookEdit`). Claude Code's bash-first experiment,
+  `CLAUDE_CODE_THRIFTY_SONIC`, appends a system-reminder telling the session to
+  read and WRITE through `cat` / `sed -i` / heredocs instead, so under it the
+  guard never fires and the #408 cross-session contamination class is unguarded
+  with no error line anywhere; `restore-backup.sh` and its siblings are scoped to
+  git VERBS, so the snapshot is gone too. Every other gate here is `Bash`-matched
+  and unaffected — which is what makes this narrow and silent rather than loud.
+  `.claude/settings.json` therefore pins `env.CLAUDE_CODE_THRIFTY_SONIC: "0"`.
+  Measured on Claude Code 2.1.263: the native binary parses the variable as a
+  tri-state bool and an EXPLICITLY SET value short-circuits the server-side cohort
+  assignment (`if (env.CLAUDE_CODE_THRIFTY_SONIC !== undefined) return it` sits
+  ahead of the `forced` / `cohort` branches), so the repo's settings decide it for
+  every clone while a maintainer's `~/.claude/settings.json` would fix one
+  machine. Probe by flipping the value to `"1"` and running `claude -p` with a
+  prompt asking whether `Do your work through the Bash tool` is in context: `"1"`
+  answers PRESENT, `"0"` and the unset baseline answer ABSENT — **only the `"1"`
+  arm discriminates**. `tests/bash-first-optout-1893.test.ts` fences the pin and
+  the reason, resolving the guard's entry by the hook SCRIPT it registers rather
+  than by matcher text (the sibling fence in cdkd was first written the other way
+  and review found four mutations that left it green). It asserts a JSON string
+  and can never assert vendor behavior — a rename or a default flip makes the pin
+  a no-op with the fence still green, and nothing re-probes on upgrade. Two
+  properties worth stating: the pin has no escape hatch (project settings outrank
+  user settings and the fence reds on an edit), and `env` exports the variable
+  into every Bash subprocess a session spawns, a nested `claude` included.
 - **Naming the repo must never change a gate's verdict, and twice it did.** On
   2026-08-25, `gh -R <owner/repo> pr merge 1 --squash` matched NOTHING in
   `verify-pr-gate`, `ci-green-gate` and `bughunt-clean-gate` — measured exit 2
