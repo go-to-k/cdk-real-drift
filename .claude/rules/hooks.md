@@ -30,11 +30,21 @@ verdict surprises you.
   cleared the weaker lookups seven ways — a decoy entry ahead of the real one,
   the gate's path demoted to a trailing comment, and more). It asserts a JSON string
   and can never assert vendor behavior — a rename or a default flip makes the pin
-  a no-op with the fence still green, and nothing re-probes on upgrade. Two
+  a no-op with the other cases still green — so its third case pins the Claude
+  Code line the measurement was taken on and reds when the installed MAJOR.MINOR
+  moves off it, telling the reader to re-run BOTH probe arms and update the two
+  constants together. A REMINDER, not a detector; compared at MAJOR.MINOR because
+  an exact pin would red an unrelated commit most weeks and get discharged by
+  editing the constant instead of re-probing, at the cost that a behavior change
+  shipped inside a patch release passes silently. Where no `claude` binary
+  answers — CI — the case asserts only that the receipt is readable
+  (`CDKRD_CLAUDE_BIN` is the seam that probes that arm). Two
   properties worth stating: the pin is a repo DEFAULT, not an unescapable one
   (`.claude/settings.local.json` outranks the committed file and the fence never
   reads it — what the pin removes is the SILENT version, where a server-side
-  cohort decides and nobody chose), and `env` exports the variable into every
+  cohort decides and nobody chose; that file is now listed in `.gitignore`, since a
+  CHECKED-IN one carrying `"1"` would beat the pin for everyone with the fence
+  still green), and `env` exports the variable into every
   Bash subprocess a session spawns, a nested `claude` included.
 - **Naming the repo must never change a gate's verdict, and twice it did.** On
   2026-08-25, `gh -R <owner/repo> pr merge 1 --squash` matched NOTHING in
