@@ -12,8 +12,8 @@ verdict surprises you.
   `CLAUDE_CODE_THRIFTY_SONIC`, appends a system-reminder telling the session to
   read and WRITE through `cat` / `sed -i` / heredocs instead, so under it the
   guard never fires and the #408 cross-session contamination class is unguarded
-  with no error line anywhere; `restore-backup.sh` and its siblings are scoped to
-  git VERBS, so the snapshot is gone too. Every other gate here is `Bash`-matched
+  with no error line anywhere — and this repo carries no snapshot hook at all, so
+  nothing else records the overwrite either. Every other gate here is `Bash`-matched
   and unaffected — which is what makes this narrow and silent rather than loud.
   `.claude/settings.json` therefore pins `env.CLAUDE_CODE_THRIFTY_SONIC: "0"`.
   Measured on Claude Code 2.1.263: the native binary parses the variable as a

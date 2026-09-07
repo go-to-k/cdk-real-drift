@@ -320,8 +320,8 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   read and WRITE files through `cat` / `sed -i` / heredocs instead of
   Read / Edit / Write — and `worktree-guard` is matched on `Edit|Write|NotebookEdit`,
   the TOOLS rather than the operation, so it stops firing entirely and a heredoc
-  write to the main checkout's `src/**` is refused by nothing. `restore-backup.sh`
-  is git-verb-scoped, so it does not see the overwrite either. An explicitly set
+  write to the main checkout's `src/**` is refused by nothing, and this repo has
+  no snapshot hook to record it either. An explicitly set
   value short-circuits the server-side cohort assignment, which is why the pin
   belongs in the REPO's settings — a maintainer's `~/.claude/settings.json` fixes
   one machine and leaves every contributor and parallel lane in whatever cohort

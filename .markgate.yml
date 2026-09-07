@@ -265,6 +265,14 @@ gates:
       # list included) must stale a marker recorded under the old definition.
       # Measured on the go-to-k/cdk-real-drift#1837 tree before the entry
       # existed: appending include entries left `markgate verify check` at rc=0.
+      # `.gitignore` is a checker INPUT since go-to-k/cdk-real-drift#1893:
+      # `tests/bash-first-optout-1893.test.ts` requires
+      # `.claude/settings.local.json` to be ignored BY THIS FILE (it reads
+      # `git check-ignore -v`'s source), because a local settings file outranks
+      # `.claude/settings.json` and would beat the bash-first pin. Without this
+      # entry, deleting that line reds the suite while a `check` marker recorded
+      # a moment earlier still verifies FRESH.
+      - '.gitignore'
       - '.markgate.yml'
       # .mise.toml pins the BINARY that runs the definitions above (`vp`), so it
       # decides what typecheck / lint / build / test MEAN — the same argument as

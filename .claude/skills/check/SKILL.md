@@ -77,6 +77,9 @@ re-running `/check`. Since go-to-k/cdk-real-drift#1837 that scope is `src/**`,
 outside `src`/`tests` — `.claude/skills/**`, `.claude/settings.json`,
 `.claude/hooks/**`, `scripts/**`, `release-please-config.json`,
 `.release-please-manifest.json`, `CHANGELOG.md`, `.github/workflows/**`,
+`.gitignore` (read through `git check-ignore` by
+`tests/bash-first-optout-1893.test.ts`, which requires the local settings
+override to be ignored by THIS repo's file rather than by a per-user one),
 plus the hand-written markdown OUTSIDE those trees (`README.md`, `DESIGN.md`,
 `CLAUDE.md`, `CONTRIBUTING.md`, `docs/**`, `demo/README.md`,
 `.claude/rules/**` — the token-diet satellites split out of CLAUDE.md), which

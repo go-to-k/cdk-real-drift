@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { accessSync, constants, existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vite-plus/test';
@@ -10,8 +10,8 @@ import { describe, expect, it } from 'vite-plus/test';
 // With that flag on the session is told to read and WRITE files through
 // `cat` / `sed -i` / heredocs instead of the file tools, so an Edit to the MAIN
 // checkout's `src/**` spelled as a heredoc is refused by nothing: the one guard
-// against the #408 cross-session contamination goes silently inert, and the
-// git-verb-scoped `restore-backup.sh` never sees the overwrite either.
+// against the #408 cross-session contamination goes silently inert, and this
+// repo carries no snapshot hook that would record the overwrite either.
 //
 // Measured on Claude Code 2.1.263: the native binary parses the variable as a
 // tri-state bool and an EXPLICITLY SET value short-circuits the server-side
@@ -209,6 +209,10 @@ describe('.claude/settings.json bash-first opt-out (go-to-k/cdk-real-drift#1893)
     // not here — the filter admits only the exact path, so this join can never
     // disagree with it.)
     expect(existsSync(path.join(ROOT, WORKTREE_GUARD_SCRIPT))).toBe(true);
+    // ...and be EXECUTABLE. A dropped exec bit makes the command exit 126,
+    // which PreToolUse treats as non-blocking, so the guard goes inert with
+    // every case here green — existence alone does not prove it can run.
+    expect(() => accessSync(path.join(ROOT, WORKTREE_GUARD_SCRIPT), constants.X_OK)).not.toThrow();
     // Both halves read through the binary's own rule, so a matcher that compiles
     // to nothing cannot satisfy the presence half. A strictly STRONGER matcher
     // stays green: adding `MultiEdit` widens the guard, and a reordered list is
