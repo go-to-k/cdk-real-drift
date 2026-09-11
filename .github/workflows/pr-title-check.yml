@@ -38,7 +38,7 @@ jobs:
       # failed to release at all (the pre-release-please semantic-release headerPattern;
       # fixed in #1448). Enforce a SINGLE type + optional single scope here so the
       # release + changelog stay clean.
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v5
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v5
       - name: Reject compound / malformed PR title
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
