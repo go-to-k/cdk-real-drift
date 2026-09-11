@@ -94,34 +94,39 @@ function runBody(jobId: string, stepName: string): string {
 }
 
 /**
- * Whether a step `if:` is exempt from the unconditional-step rule.
+ * The ONLY step `if:` this workflow is allowed to carry, keyed exactly.
  *
- * `always()` is exempt outright — the step runs on every path, so it can never
- * be why a job reported success having done nothing.
+ * Two PREDICATE-shaped exemptions were tried here and both were holes:
  *
- * `failure()` / `cancelled()` are exempt ONLY when the job carries at least one
- * UNCONDITIONAL step. A diagnostic dump gated on `failure()` beside real work
- * is correct code (this repo carries exactly that step), but the SAME condition
- * on a job's only work skips on every green path while the job reports
- * `success`.
+ *   1. `failure()` / `cancelled()` exempt outright. A job whose only work is
+ *      gated on `failure()` skips on every green path, reports `success`, and
+ *      ci-ok counts it — the exact vacuity this fence exists for.
+ *   2. Exempt when "some step is unconditional". Every job opens with an
+ *      unconditional `uses: actions/checkout@…`, so that predicate is TRUE for
+ *      every job by construction and (1) came straight back. Gating all five
+ *      `run:` steps of `check-build-test` while leaving the two `uses:` steps
+ *      alone yielded zero offenders.
  *
- * What stays banned outright is a condition that can be FALSE on an ordinary
- * run (`github.event_name == 'push'`, an output test).
+ * A FLOOR on unconditional `run:` steps would close (2) but still admits
+ * gating four of five. So the exemption is an exact allow-list instead: the
+ * diagnostic dump this repo really carries, and nothing else. A new gated step
+ * is a deliberate decision, made here, with a reason.
  */
-function isExemptStepCondition(condition: string, jobSteps: { if?: string }[]): boolean {
-  const bare = condition
-    .trim()
-    .replace(/^\$\{\{\s*/, '')
-    .replace(/\s*\}\}$/, '')
-    .trim();
-  if (bare === 'always()') return true;
-  if (bare !== 'failure()' && bare !== 'cancelled()') return false;
-  // The qualifier is the whole point: a diagnostic dump gated on `failure()`
-  // BESIDE real work is correct code, but the same condition on a job's ONLY
-  // work skips on every green path while the job reports `success` — exactly
-  // the vacuity ci-ok cannot see. An earlier cut exempted these two
-  // unconditionally and readmitted that mutation.
-  return jobSteps.some((s) => s.if === undefined);
+const ALLOWED_STEP_CONDITIONS: { job: string; step: string; if: string }[] = [
+  {
+    // Dumps Node's crash reports when the job has ALREADY failed. It adds a
+    // gated step beside five unconditional ones and removes no work from the
+    // green path, so it cannot make a failing job report success.
+    job: 'check-build-test',
+    step: 'Dump Node diagnostic reports (on failure)',
+    if: 'failure()',
+  },
+];
+
+function isAllowedStepCondition(job: string, step: string | undefined, cond: string): boolean {
+  return ALLOWED_STEP_CONDITIONS.some(
+    (a) => a.job === job && a.step === step && a.if === cond.trim()
+  );
 }
 
 function bashStatus(
@@ -223,9 +228,9 @@ describe('ci-ok — the single required status check', () => {
         if (
           s.if !== undefined &&
           !ALLOWED_CONDITIONAL.has(name) &&
-          !isExemptStepCondition(s.if, j.steps ?? [])
+          !isAllowedStepCondition(name, s.name, s.if)
         ) {
-          offenders.push(`${name} > ${label} (step if:)`);
+          offenders.push(`${name} > ${label} (step if: ${s.if.trim()})`);
         }
         // NOT gated on ALLOWED_CONDITIONAL: a step-level `continue-on-error`
         // is the job-level lever one level down — the step fails, the job
@@ -241,6 +246,22 @@ describe('ci-ok — the single required status check', () => {
         `${offenders.join(', ')}. ci-ok accepts a SKIPPED upstream and cannot tell a ` +
         `continue-on-error success from a real one, so any of these makes the gate green ` +
         `over a CI that ran nothing.`
+    ).toEqual([]);
+  });
+
+  it('carries no stale step-condition exemption', () => {
+    // An entry whose step is gone, renamed, or no longer gated is an exemption
+    // for nothing — and the next author reads it as "this shape is fine here".
+    // Re-audited every run so the list can only shrink deliberately.
+    const jobs = workflow().jobs;
+    const stale = ALLOWED_STEP_CONDITIONS.filter((a) => {
+      const step = jobs[a.job]?.steps?.find((s) => s.name === a.step);
+      return step?.if?.trim() !== a.if;
+    }).map((a) => `${a.job} > ${a.step}`);
+    expect(
+      stale,
+      `these step-condition exemptions no longer match anything in ci.yml: ${stale.join(', ')}. ` +
+        'Remove the entry — an exemption for a step that is gone reads as permission for the shape.'
     ).toEqual([]);
   });
 
