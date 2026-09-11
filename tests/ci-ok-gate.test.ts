@@ -53,13 +53,26 @@ const CHANGELOG = 'CHANGELOG.md';
 const MANIFEST = '.release-please-manifest.json';
 
 interface CiWorkflow {
+  on?: Record<
+    string,
+    { paths?: unknown; 'paths-ignore'?: unknown; branches?: unknown; types?: unknown } | null
+  >;
   jobs: Record<
     string,
     {
       if?: string;
       needs?: string[];
       env?: Record<string, string>;
-      steps?: { name?: string; uses?: string; run?: string; with?: Record<string, unknown> }[];
+      permissions?: unknown;
+      'continue-on-error'?: unknown;
+      steps?: {
+        name?: string;
+        uses?: string;
+        run?: string;
+        if?: string;
+        'continue-on-error'?: unknown;
+        with?: Record<string, unknown>;
+      }[];
     }
   >;
 }
@@ -78,6 +91,37 @@ function runBody(jobId: string, stepName: string): string {
       `suite then attests to nothing.`
   ).toBeTruthy();
   return step?.run as string;
+}
+
+/**
+ * Whether a step `if:` is exempt from the unconditional-step rule.
+ *
+ * `always()` is exempt outright — the step runs on every path, so it can never
+ * be why a job reported success having done nothing.
+ *
+ * `failure()` / `cancelled()` are exempt ONLY when the job carries at least one
+ * UNCONDITIONAL step. A diagnostic dump gated on `failure()` beside real work
+ * is correct code (this repo carries exactly that step), but the SAME condition
+ * on a job's only work skips on every green path while the job reports
+ * `success`.
+ *
+ * What stays banned outright is a condition that can be FALSE on an ordinary
+ * run (`github.event_name == 'push'`, an output test).
+ */
+function isExemptStepCondition(condition: string, jobSteps: { if?: string }[]): boolean {
+  const bare = condition
+    .trim()
+    .replace(/^\$\{\{\s*/, '')
+    .replace(/\s*\}\}$/, '')
+    .trim();
+  if (bare === 'always()') return true;
+  if (bare !== 'failure()' && bare !== 'cancelled()') return false;
+  // The qualifier is the whole point: a diagnostic dump gated on `failure()`
+  // BESIDE real work is correct code, but the same condition on a job's ONLY
+  // work skips on every green path while the job reports `success` — exactly
+  // the vacuity ci-ok cannot see. An earlier cut exempted these two
+  // unconditionally and readmitted that mutation.
+  return jobSteps.some((s) => s.if === undefined);
 }
 
 function bashStatus(
@@ -137,6 +181,89 @@ describe('ci-ok — the single required status check', () => {
   it('takes the results through env, not as inlined expression text', () => {
     expect(runBody(GATE_JOB, GATE_STEP)).not.toContain('${{');
     expect(workflow().jobs[GATE_JOB]?.env?.['RESULTS']).toContain('join(needs.*.result');
+  });
+
+  it('lets the shell exit status decide the job', () => {
+    // The cases below EXECUTE the extracted shell, so they attest that its TEXT
+    // is correct — never that the runner acts on its exit status. Two one-line
+    // additions sever that link and make the job report success with nothing
+    // decided: `continue-on-error: true` (the failure stops failing the job)
+    // and a step-level `if:` that is false (the step is skipped). `?? false`
+    // because an explicit `continue-on-error: false` is identical to absence.
+    for (const jobId of [GATE_JOB, STALE_JOB]) {
+      const job = workflow().jobs[jobId];
+      const stepName = jobId === GATE_JOB ? GATE_STEP : STALE_STEP;
+      const step = job?.steps?.find((s) => s.name === stepName);
+      expect(step?.['continue-on-error'] ?? false, `${jobId} step`).toBe(false);
+      expect(step?.if, `${jobId} step`).toBeUndefined();
+      expect(job?.['continue-on-error'] ?? false, `${jobId} job`).toBe(false);
+    }
+  });
+
+  it('keeps every gated job unconditional and failing', () => {
+    // Three levers let an upstream job stop contributing a real verdict while
+    // ci-ok still counts it, each landing a different `needs.*.result`:
+    //   job `if:`               -> `skipped`, which ci-ok ACCEPTS
+    //   job `continue-on-error` -> a FAILED job reports `success`
+    //   step `if:`              -> `success` with the step never executed
+    // All three give `seen == EXPECTED_UPSTREAM` and a green gate over a CI
+    // that decided nothing; the first two also read green in the Checks UI.
+    const jobs = workflow().jobs;
+    const ALLOWED_CONDITIONAL = new Set([GATE_JOB, STALE_JOB]);
+    const offenders: string[] = [];
+    for (const [name, j] of Object.entries(jobs)) {
+      if (j.if !== undefined && !ALLOWED_CONDITIONAL.has(name)) {
+        offenders.push(`${name} (job if:)`);
+      }
+      if ((j['continue-on-error'] ?? false) !== false) {
+        offenders.push(`${name} (job continue-on-error)`);
+      }
+      for (const s of j.steps ?? []) {
+        const label = s.name ?? s.run?.split('\n')[0] ?? '<step>';
+        if (
+          s.if !== undefined &&
+          !ALLOWED_CONDITIONAL.has(name) &&
+          !isExemptStepCondition(s.if, j.steps ?? [])
+        ) {
+          offenders.push(`${name} > ${label} (step if:)`);
+        }
+        // NOT gated on ALLOWED_CONDITIONAL: a step-level `continue-on-error`
+        // is the job-level lever one level down — the step fails, the job
+        // reports `success`, and it reads green in the Checks UI too.
+        if ((s['continue-on-error'] ?? false) !== false) {
+          offenders.push(`${name} > ${label} (step continue-on-error)`);
+        }
+      }
+    }
+    expect(
+      offenders,
+      `these ci.yml jobs can report a verdict ci-ok counts without earning it: ` +
+        `${offenders.join(', ')}. ci-ok accepts a SKIPPED upstream and cannot tell a ` +
+        `continue-on-error success from a real one, so any of these makes the gate green ` +
+        `over a CI that ran nothing.`
+    ).toEqual([]);
+  });
+
+  it('pins the least privilege each new job was given', () => {
+    // ci.yml has no top-level `permissions:`, so deleting either of these
+    // silently restores the repo-default token to a job that runs shell.
+    expect(workflow().jobs[GATE_JOB]?.permissions).toEqual({});
+    expect(workflow().jobs[STALE_JOB]?.permissions).toEqual({ contents: 'read' });
+  });
+
+  it('runs on every PR, so ci-ok can be a required check at all', () => {
+    // A `paths:`-filtered workflow does not start when nothing matches, so the
+    // required check never reports and every PR blocks forever at "Expected".
+    // `branches:` narrows the same way.
+    const pr = workflow().on?.['pull_request'];
+    expect(pr, 'ci.yml no longer triggers on `pull_request`').not.toBeUndefined();
+    expect(pr?.paths).toBeUndefined();
+    expect(pr?.['paths-ignore']).toBeUndefined();
+    // `types:` is the same trap with a different key: narrowing it to
+    // `[opened]` means a later push creates a head sha with NO check run, so
+    // the required check sits at "Expected" on that sha forever.
+    expect(pr?.types).toBeUndefined();
+    expect(pr?.branches).toEqual(['main']);
   });
 
   describe('the extracted step', () => {
