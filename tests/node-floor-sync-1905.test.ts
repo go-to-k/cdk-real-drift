@@ -50,6 +50,12 @@ const OLDEST_EVER_SHIPPED_MAJOR = 18;
  * catch today's sentences — `major.minor` spellings included (`Node.js 22.12
  * or later` must be retired by the bump to 24 exactly as `Node.js 20 or
  * later` was by this one).
+ *
+ * KNOWN BOUND: a matrix ENUMERATION ("smoke-runs on Node 20 / 22 / 24") is
+ * not retired, because "On Node 20 / 22 the runtime swallows it" — a
+ * measurement in tests/setup.ts, outside the scanned set; the synthetic note
+ * below pins the shape — reads the same; such a sentence is caught only when
+ * a doc pins it positively (or by the bump's own grep).
  */
 function oldFloorSpellings(majors: ReadonlyArray<number>): ReadonlyArray<RegExp> {
   return majors.flatMap((m) => {
@@ -61,15 +67,13 @@ function oldFloorSpellings(majors: ReadonlyArray<number>): ReadonlyArray<RegExp>
       String.raw`Node(?:\.js)?\s+${v}\s+(?:or|and)\s+(?:later|higher|newer|up)`,
       String.raw`Node(?:\.js)?\s+${v}\+`,
       String.raw`Node\s+${v}\s+runtime`,
-      String.raw`v${m}\.x`,
+      String.raw`Node\s+${v}\s+\(the\s+(?:runtime|exact\s+floor)`,
       // A bare version in the "must report `v20.19.0` or higher" shape.
-      String.raw`\x60?v${m}(?:\.\d+)*\x60?\s+or\s+(?:later|higher|newer|up)`,
-      // KNOWN BOUND: a matrix ENUMERATION ("smoke-runs on Node 20 / 22 / 24")
-      // is not retired, because "On Node 20 / 22 the runtime swallows it"
-      // — a measurement — has the same shape; such a sentence is caught only
-      // when a doc pins it positively (or by the bump's own grep).
-      // `(?!\d)` keeps `>=20` from matching a `>=2026` date or a `>=200` count.
-      String.raw`>=\s?${v}(?!\d)`,
+      String.raw`v${m}(?:\.\d+)*(?:\.x)?\x60?\s+or\s+(?:later|higher|newer|up)`,
+      // A range, anchored to a Node / engines mention within the same clause
+      // (across a hard wrap) so `Docker >= 20.10` stays legal; `(?!\d)` keeps
+      // `>=20` from matching a `>=2026` date or a `>=200` count.
+      String.raw`(?:Node(?:\.js)?\**|engines)[\s\S]{0,40}>=\s?${v}(?!\d)`,
     ].map((src) => new RegExp(src));
   });
 }
@@ -109,10 +113,15 @@ describe('the published Node.js floor is one value across every surface (#1905)'
       'Node.js 20.x or later',
       'Node.js v20 or later',
       'Node 20 LTS or later',
+      'Node.js 20 or newer',
+      'Node 20 or up',
+      'Node.js 20+',
+      'runs on v20.x or later',
       'must report `v20.19.0` or higher',
       'with a Node 20 runtime target',
+      'on Node 20.19 (the exact floor) and 24',
       'engines >= 20.0.0',
-      'declares `>=20`',
+      'engines\n  declares `>=20`',
     ]) {
       expect(fires(claim), `"${claim}" is a floor claim and must fire`).toBe(true);
     }
@@ -123,6 +132,7 @@ describe('the published Node.js floor is one value across every surface (#1905)'
       'measured >= 2026-09-14',
       'across >= 200 fixtures',
       'the nodejs20.x Lambda runtime',
+      'Docker >= 20.10 for --add-host',
     ]) {
       expect(fires(note), `"${note}" claims no floor and must not fire`).toBe(false);
     }
