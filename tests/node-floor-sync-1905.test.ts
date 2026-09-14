@@ -25,8 +25,7 @@ import { describe, expect, it } from 'vite-plus/test';
  */
 
 const FLOOR = '22.12.0';
-const [FLOOR_MAJOR_STR, FLOOR_MINOR_STR] = FLOOR.split('.');
-const FLOOR_MAJOR = Number(FLOOR_MAJOR_STR);
+const FLOOR_MAJOR = Number(FLOOR.split('.')[0]);
 /**
  * The `major.minor` spelling the docs and the matrix's floor row use — the
  * bare major when the floor is an `.0` minor ("Node.js 24", not "24.0").
