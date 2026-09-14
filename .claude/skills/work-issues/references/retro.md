@@ -97,6 +97,10 @@ the files its fix touches; if any was read this run it is `now`
 (`.claude/rules/session-report.md`: `now` is the default, and the maintainer's
 wrap-time challenge on this has promoted every time).
 
+**Count the (b)s.** `.claude/rules/session-report.md`'s reason (b) — cold AND
+heavy — must stay rare; more than one (b) among this run's filings means
+re-classify all but the strongest as `now`.
+
 **A hit is a prompt for judgement, not a verdict** — it cannot tell a citation
 from a target (measured: one deferral hit its one target file; the other hit
 four, three cited as precedent). Do the item now, or re-classify it in the
@@ -146,15 +150,9 @@ Collect, with the concrete instance attached to each:
 
 **A cross-repo request outranks your own triage.** Inside a "handle this across
 the repos in one session" ask, a discovery cannot be `Session-fit: next` —
-three tells, any one forcing `now`: filing the SAME issue body in more than one
-repo (the split the request exists to end); a mechanical fix whose evidence is
-live now; or the user already said "finish it here" for the surrounding task,
-which the discovery inherits. A tidy `Effort` / `Estimate` for work the session
-is already positioned to do is the tell the fields are an excuse (2026-08-20: a
-run fixing inert sibling PreToolUse gates across cdkd, cdk-local and
-go-to-k/cdk-real-drift filed the remaining gap as three separate issues until
-the user objected; then done in the same SESSION as a follow-up PR per repo).
-"Same session" is the bar; "same PR" only when small enough to review together.
+`.claude/rules/session-report.md` carries the three tells and the 2026-08-20
+incident. "Same session" is the bar; "same PR" only when small enough to
+review together.
 
 ### 10-c. How to edit: amend, do not append
 
