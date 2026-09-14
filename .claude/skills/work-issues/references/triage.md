@@ -326,6 +326,14 @@ minutes where only a time-based gate could keep a second run off it.
 
 ### 3-b. Before writing `next`, NAME the verification — in the ISSUE BODY
 
+**`now` is the default, and the CONTEXT TEST comes before the decision.** List
+the files the fix touches; if this session has already read, edited or
+reviewed ANY of them, the item is `now` — `next` is reserved for the three
+reasons `.claude/rules/session-report.md` enumerates (a NEW verifier to write
+/ external input / a COLD subsystem). The maintainer's wrap-time "cheaper to
+do it here, with the context loaded?" has flipped every item it was asked
+about; this paragraph asks it in advance.
+
 `CLAUDE.md` ("The four TODO fields") forbids `Session-fit: next` until you can
 name the command the NEXT session will run to see the fix work, and can say a
 fresh session will be able to run it. Here the deferral becomes an ISSUE read

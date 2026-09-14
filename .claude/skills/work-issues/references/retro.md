@@ -93,6 +93,15 @@ rm -f /tmp/run-touched.$$
 Pipe the whole loop through `sort -u`: a body naming a file twice prints twice,
 reading as two findings.
 
+**The diff is a LOWER bound on what this run loaded — run the context test on
+every `next` as well.** The query sees files the run EDITED; the run also READ
+its reviewers' diffs, the modules its lanes traced and every sibling site a
+review named, none of which is in `run-touched`. For each `next` still open,
+list the files its fix touches and ask whether any was read this run — if one
+was, it is `now` (`.claude/rules/session-report.md`: the default is `now`, and
+the maintainer's wrap-time challenge on exactly this has promoted every time
+it was asked).
+
 **A hit is a prompt for judgement, not a verdict** — it cannot tell a citation
 from a target (measured: one deferral hit its one target file; the other hit
 four, three cited only as precedent). Do the item now while the context is
