@@ -40,22 +40,40 @@ const FLOOR_SHORT =
  * "Node 20 is past end of life" stays legal.
  */
 const OLDEST_EVER_SHIPPED_MAJOR = 18;
-const OLD_FLOOR_SPELLINGS = Array.from(
-  { length: FLOOR_MAJOR - OLDEST_EVER_SHIPPED_MAJOR },
-  (_, i) => OLDEST_EVER_SHIPPED_MAJOR + i
-).flatMap((m) => [
-  `Node.js ${m} or later`,
-  `Node.js ${m} or higher`,
-  `Node.js ${m} or newer`,
-  `Node.js ${m}+`,
-  `Node ${m} or later`,
-  `Node ${m} or higher`,
-  `Node ${m} or newer`,
-  `Node ${m}+`,
-  `v${m}.x`,
-  `>=${m}`,
-  `>= ${m}`,
-]);
+/**
+ * The retired-floor patterns for a set of majors, as bounded regexes
+ * restricted to a FLOOR CLAIM ("or later", "+", ">=", "runtime") so an EOL
+ * note stays legal. A function rather than a constant so the self-probe below
+ * can run it against the CURRENT floor and prove the next bump's fence would
+ * catch today's sentences — `major.minor` spellings included (`Node.js 22.12
+ * or later` must be retired by the bump to 24 exactly as `Node.js 20 or
+ * later` was by this one).
+ */
+function oldFloorSpellings(majors: ReadonlyArray<number>): ReadonlyArray<RegExp> {
+  return majors.flatMap((m) => {
+    // `20`, `20.19`, `20.19.0` — a floor is stated at any precision, and
+    // `\s+` between tokens because the docs hard-wrap mid-sentence.
+    const v = String.raw`${m}(?:\.\d+)*`;
+    return [
+      String.raw`Node(?:\.js)?\s+${v}\s+(?:or|and)\s+(?:later|higher|newer|up)`,
+      String.raw`Node(?:\.js)?\s+${v}\+`,
+      String.raw`Node\s+${v}\s+runtime`,
+      String.raw`v${m}\.x`,
+      // `(?!\d)` keeps `>=20` from matching a `>=2026` date or a `>=200` count.
+      String.raw`>=\s?${v}(?!\d)`,
+    ].map((src) => new RegExp(src));
+  });
+}
+const OLD_FLOOR_SPELLINGS = oldFloorSpellings(
+  Array.from(
+    { length: FLOOR_MAJOR - OLDEST_EVER_SHIPPED_MAJOR },
+    (_, i) => OLDEST_EVER_SHIPPED_MAJOR + i
+  )
+);
+/** The README's floor sentence, pinned positively in a Node.js context. */
+const README_FLOOR_STATEMENT = new RegExp(
+  String.raw`Requires\s+Node\.js\s+${FLOOR_SHORT.replace('.', String.raw`\.`)}\s+or\s+later`
+);
 
 const here = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(here, '..');
@@ -67,7 +85,21 @@ describe('the published Node.js floor is one value across every surface (#1905)'
     expect(Number.isInteger(FLOOR_MAJOR)).toBe(true);
     expect(FLOOR_MAJOR).toBeGreaterThan(OLDEST_EVER_SHIPPED_MAJOR);
     expect(OLD_FLOOR_SPELLINGS.length).toBeGreaterThan(0);
-    expect(FLOOR_SHORT).toBe('22.12');
+    // A derivation self-check, not a second floor literal: it pins the
+    // `.0`-minor rule's OTHER arm (a non-zero minor is kept).
+    expect(FLOOR_SHORT).toBe(`${FLOOR_MAJOR}.${FLOOR_MINOR_STR}`);
+  });
+
+  it('the retired-spelling generator would catch the CURRENT README sentence at the next bump', () => {
+    // Run the generator as the NEXT bump will, with today's floor as the old
+    // one, against the sentence the README carries today.
+    const sentence =
+      readFileSync(join(REPO_ROOT, 'README.md'), 'utf8').match(README_FLOOR_STATEMENT)?.[0] ?? '';
+    expect(sentence, 'README.md has no floor sentence to probe').not.toBe('');
+    expect(
+      oldFloorSpellings([FLOOR_MAJOR]).some((p) => p.test(sentence)),
+      `"${sentence}" would survive the next bump`
+    ).toBe(true);
   });
 
   it('package.json engines.node states the floor', () => {
@@ -123,7 +155,7 @@ describe('the published Node.js floor is one value across every surface (#1905)'
     // Any OTHER expanded name in the file is an example from a row that no
     // longer exists (a bare `(22)` and the retired `(20)` included).
     const escaped = FLOOR_SHORT.replace('.', String.raw`\.`);
-    expect(ci).not.toMatch(new RegExp(String.raw`runtime-compat \((?!${escaped}\))\d+(\.\d+)?\)`));
+    expect(ci).not.toMatch(new RegExp(String.raw`runtime-compat \((?!${escaped}\))[\d.]+\)`));
   });
 
   it('README and CONTRIBUTING state the floor and no older one', () => {
@@ -134,12 +166,11 @@ describe('the published Node.js floor is one value across every surface (#1905)'
       ['CONTRIBUTING.md', contributing],
     ] as const) {
       for (const stale of OLD_FLOOR_SPELLINGS) {
-        expect(text, `${name} still says "${stale}"`).not.toContain(stale);
+        expect(text, `${name} still says ${stale}`).not.toMatch(stale);
       }
     }
     // The README's Quick start states the floor, in a Node.js context — a
     // bare `22.12` elsewhere (a date, another product's version) is not it.
-    const escaped = FLOOR_SHORT.replace('.', String.raw`\.`);
-    expect(readme).toMatch(new RegExp(String.raw`Node\.js ${escaped} or later`));
+    expect(readme).toMatch(README_FLOOR_STATEMENT);
   });
 });
