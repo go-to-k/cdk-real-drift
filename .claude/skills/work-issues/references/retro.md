@@ -43,9 +43,10 @@ area are already filed. Only the first `M > N` reason is healthy:
   area, so the next hunt aims there.
 - **one root cause split into many issues** — §5's sweep rule should have
   folded them; fold what is still open into an umbrella now.
-- **discoveries with session-only evidence were deferred** — re-read the `now`
-  criteria in `CLAUDE.md`; a discovery whose repro dies with this session is
-  not a residual, and the next session would re-derive it.
+- **discoveries with session-only evidence were deferred** —
+  `.claude/rules/session-report.md`: a discovered bug is `now` even in a cold
+  subsystem, because the repro dies with this session and the next one would
+  re-derive it.
 
 **`filed <= closed` (M <= N) is NOT a target, and must never become one.** The
 goal is a correct codebase, not a short list: an unfiled finding is strictly
@@ -65,22 +66,17 @@ deliberately:
 # then went somewhere else.
 RANGE="<the sha main was at when this run started>..origin/main"
 git diff --name-only "$RANGE" | sort -u > /tmp/run-touched.$$
-# The population is the issues this run FILED and left OPEN -- not the folded
-# list above, and not the ones it filed and then fixed in the same lane, which
-# section 3-a makes routine.
+# Population: the issues this run FILED and left OPEN (not the folded list
+# above, nor the ones filed and fixed in the same lane).
 for n in <the numbers this run filed that are still open>; do
   b=$(gh issue view "$n" --json body -q .body)
-  # The prose says every `next`; without this the loop also reports items
-  # already classified `now`, which are not deferrals at all. `Session-fit`
-  # carries no GitHub label, so it has to be grepped out of the body.
+  # Only `next` is a deferral; `Session-fit` has no label, so grep the body.
   printf '%s' "$b" | grep -q 'Session-fit: *next' || continue
   printf '%s' "$b" \
     | grep -oE '[A-Za-z0-9_][A-Za-z0-9_./-]*\.[a-z]+' | sort -u \
     | while read -r f; do
-        # Suffix match, not equality: an issue body names a file by BASENAME far
-        # more often than by full path, and an exact whole-line compare misses
-        # every one of those. Measured: the exact form fired on 1 of this run's
-        # 2 deferrals and missed the one whose body used the basename.
+        # Suffix match, not equality: bodies name files by BASENAME far more
+        # often than by full path (measured: exact matching missed 1 of 2).
         grep -E "(^|/)$(printf '%s' "$f" | sed 's/[.[\*^$]/\\&/g')\$" \
           /tmp/run-touched.$$ | while read -r hit; do
             echo "PROMOTE #$n -- this run touched $hit"
@@ -90,29 +86,26 @@ done
 rm -f /tmp/run-touched.$$
 ```
 
-Pipe the whole loop through `sort -u`: a body naming a file twice prints twice,
-reading as two findings.
+Pipe the whole loop through `sort -u`: a body naming a file twice prints two
+findings.
 
 **The diff is a LOWER bound on what this run loaded — run the context test on
 every `next` as well.** The query sees files the run EDITED; the run also READ
 its reviewers' diffs, the modules its lanes traced and every sibling site a
-review named, none of which is in `run-touched`. For each `next` still open,
-list the files its fix touches and ask whether any was read this run — if one
-was, it is `now` (`.claude/rules/session-report.md`: the default is `now`, and
-the maintainer's wrap-time challenge on exactly this has promoted every time
-it was asked).
+review named, none of which is in `run-touched`. For each open `next`, list
+the files its fix touches; if any was read this run it is `now`
+(`.claude/rules/session-report.md`: `now` is the default, and the maintainer's
+wrap-time challenge on this has promoted every time).
 
 **A hit is a prompt for judgement, not a verdict** — it cannot tell a citation
 from a target (measured: one deferral hit its one target file; the other hit
-four, three cited only as precedent). Do the item now while the context is
-loaded, or re-classify it in the issue body with the reason it still does not
-belong here.
+four, three cited as precedent). Do the item now, or re-classify it in the
+issue body with the reason it still does not belong here.
 
 **Re-read the REASON too, and when a hit CONTRADICTS it, the BODY is the stale
 side.** A reason anchored to the filing session's own state goes false while
-the decision it justified still stands — §3-b carries the shape, its boundary
-against the PR-shaped reason that is refused outright, and the incidents.
-Correct the issue when this check catches one.
+the decision it justified still stands — §3-b carries the shape and the
+incidents. Correct the issue when this check catches one.
 
 ### 10-a. Evidence: only what this run actually produced
 
@@ -120,14 +113,12 @@ Collect, with the concrete instance attached to each:
 
 1. **Corrections the user made** — two on one theme across lanes is a defect in
    this text; the second occurrence is the signal.
-2. **Text that was WRONG as written** — a failed command, a probe reporting a
-   clear field while a lane was live, a flag / path / gate name that no longer
-   exists.
+2. **Text that was WRONG as written** — a failed command, a probe reporting
+   clear while a lane was live, a flag / path / gate name gone.
 3. **Steps you had to invent** because the skill is silent — the next run would
    re-invent them.
 4. **Right instruction, wrong place** — done, but a step too late.
-5. **Followed it and still paid** — the text was obeyed and a retry happened
-   anyway.
+5. **Followed it and still paid** — text obeyed, retry happened anyway.
 
 **No evidence, no edit.** A clean run's output is one wrap line
 ("retrospective: no skill change — §2 / §4 / §8 held"). A skill grown from
@@ -181,9 +172,9 @@ Every run appending one more bullet is how a long skill becomes an unread one.
   wrong. **A retro NEVER buys room by raising a byte cap or a corpus floor** —
   the caps and floors in `tests/skill-file-payload.test.ts` are the mechanical
   stop on this skill's growth loop, and a retro that raises one converts the
-  stop into a ratchet (this repo's corpus floor climbed 116,000 → 120,000 →
-  130,000 across two days of retro rounds tracking growth before the 2026-09-04
-  compression pass re-derived every bound DOWNWARD). If a lesson genuinely
+  stop into a ratchet (this repo's corpus floor climbed 116,000 → 130,000 over
+  two days of retro rounds before the 2026-09-04 compression pass re-derived
+  every bound DOWNWARD). If a lesson genuinely
   cannot be paid for by compression in its stage file, split the stage; the
   floor moves DOWN with compression passes, never up to accommodate growth.
 - Do not restate a rule living in `CLAUDE.md` or another step — point at it.

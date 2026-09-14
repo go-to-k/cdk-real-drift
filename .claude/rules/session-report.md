@@ -105,8 +105,8 @@ a deferral.
   of cdkd's integ ledger, 2026-08-20: median run 85 s, mean 4.6 min, p90 8.8
   min — a passing run costs a few hundred tokens, and one riding the session's
   current lane costs zero). What is genuinely expensive is WRITING a new
-  fixture, and a run that FAILS — unbounded, and paid again next session.
-  Defer on those. Review of a larger diff also grows superlinearly and that
+  fixture — reason (a) below — and a run that FAILS, which is an `Estimate`
+  line, not a reason: unbounded here is unbounded next session too. Review of a larger diff also grows superlinearly and that
   cost is real, but it is a reason to SPLIT the PR, not to end the session,
   and it belongs under `Effort` — the `large` line just above, where this same
   bullet already puts it. Until 2026-09-05 it ALSO stood here as a third thing
@@ -124,11 +124,14 @@ a deferral.
   question; it must never need asking again.
 
   **Write the CONTEXT TEST before the decision**: list the files the fix
-  touches and say, per file, whether this session already READ it — read,
-  edited, or reviewed in a diff; a reviewer's read set counts exactly like an
-  author's. ONE loaded file makes the item `now`: a fresh session pays the
-  launch probe, install, build, the module read and the evidence
-  re-derivation BEFORE its first edit, while this session pays the edit alone.
+  touches or must read to be made correctly (tests and docs included), and
+  say, per file, whether this session already READ it — read, edited, or
+  reviewed in a diff; a reviewer's read set counts exactly like an author's.
+  ONE loaded file makes the item `now`: a fresh session pays the launch
+  probe, install, build, the module read and the evidence re-derivation
+  BEFORE its first edit, while this session pays the edit alone. Precedence:
+  `next` reasons (a) and (b) below ask whether the work CAN finish here and
+  are decided first; (c) is what the test decides.
 
   - **`now`** — any of: a file the fix touches is loaded (above); skipping it
     leaves main self-inconsistent (docs contradicting shipped code, a stale
@@ -139,11 +142,15 @@ a deferral.
     "merged" is not done). **Residuals of a just-merged lane** — polish, nits,
     parity gaps, sibling sites a review named — are the hottest context there
     is and are `now` by the test above; "only a residual" names no cost.
-  - **`next`** — ONLY one of: a NEW verifier (fixture / corpus case) must be
-    WRITTEN and writing it is most of the work; external input (a quota, a
-    maintainer decision, an upstream fix, credentials or a host a fresh
-    session may lack); or the subsystem is COLD — no file the fix touches was
-    read this session AND no `now` criterion fires. **Nothing about the
+  - **`next`** — ONLY one of: (a) a NEW live-AWS fixture (`Effort: large`)
+    must be WRITTEN and writing it is most of the work — a unit case never
+    qualifies (every fix writes one), nor does a corpus case, which is
+    harvested from the live read this session already has (`/work-issues`
+    §3-b); (b) external input (a quota, an upstream fix, credentials or a
+    host a fresh session may lack, a maintainer decision already asked
+    through `AskUserQuestion` and unanswered — a routine call is yours to
+    make); or (c) the subsystem is COLD — nothing the fix touches or must
+    read was read this session AND no `now` criterion fires. **Nothing about the
     SESSION is a reason**: its length, the context left, "it has done
     enough", a wrap report already drafted, the PR already merged. The wrap
     reflex (file → classify → close) fires exactly when the context is
@@ -194,8 +201,8 @@ a deferral.
   **A newly DISCOVERED bug is `now` even in a COLD subsystem.** Its expensive
   part is the EVIDENCE — the repro you built, what you watched happen, the
   number you measured — which is what an issue body cannot carry cheaply. If
-  you defer anyway on a genuine `next` reason, put the EVIDENCE in the body,
-  not just the diagnosis.
+  you defer anyway on reason (a) or (b), put the EVIDENCE in the body, not
+  just the diagnosis.
 
   **One field per line — never pack two onto one**, and keep the field names
   and their order identical every time. A field with nothing to say gets an
