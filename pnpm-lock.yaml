@@ -13,7 +13,7 @@ importers:
     dependencies:
       '@aws-cdk/cloud-assembly-api':
         specifier: ^2.2.5
-        version: 2.2.5(@aws-cdk/cloud-assembly-schema@54.2.0)
+        version: 2.4.0(@aws-cdk/cloud-assembly-schema@54.21.0)
       '@aws-cdk/toolkit-lib':
         specifier: ^1.28.0
         version: 1.28.0(@aws-cdk/cli-plugin-contract@2.182.2)
@@ -269,8 +269,21 @@ packages:
     peerDependencies:
       '@aws-cdk/cloud-assembly-schema': '>=53.28.0'
 
+  '@aws-cdk/cloud-assembly-api@2.4.0':
+    resolution: {integrity: sha512-ooStESI1uXNcFAx1IgG6XcN7SsMuenoaxSb1FHqcLqwy7Lq5HUMWM52mtIzrS/uJmoFNvoxQ7fGbk8MfCGIjlw==}
+    engines: {node: '>= 18.0.0'}
+    peerDependencies:
+      '@aws-cdk/cloud-assembly-schema': '>=54.21.0'
+
   '@aws-cdk/cloud-assembly-schema@54.2.0':
     resolution: {integrity: sha512-u3lFXmiXSBozxGBmKTCVD/2mTDsaXzLZH3KYiIQKcB+zPldXOeE5TnooBgKV9ih2jVTo8ML0HpkhfAq2eiv0eQ==}
+    engines: {node: '>= 18.0.0'}
+    bundledDependencies:
+      - jsonschema
+      - semver
+
+  '@aws-cdk/cloud-assembly-schema@54.21.0':
+    resolution: {integrity: sha512-URh+k3/xG+e48lF41qBn/J8TzxwBaHt7Wsg5ZF+W4l76yiPhFmW7atV0BMVrWy7jh4SGO+yCuuqJe+CNjSk31w==}
     engines: {node: '>= 18.0.0'}
     bundledDependencies:
       - jsonschema
@@ -2373,6 +2386,9 @@ packages:
   json-schema-traverse@1.0.0:
     resolution: {integrity: sha512-NM8/P9n3XjXhIZn1lLhkFaACTOURQXjWhV4BA/RnOv8xvgqtqpAX9IO4mRQxSx1Rlo4tqzeqb0sOlruaOy3dug==}
 
+  json-source-map@0.6.1:
+    resolution: {integrity: sha512-1QoztHPsMQqhDq0hlXY5ZqcEdUzxQEIxgFkKl4WUp2pgShObl+9ovi4kRh2TfvAfxAoHOJ9vIMEqk3k4iex7tg==}
+
   jsonata@1.8.7:
     resolution: {integrity: sha512-tOW2/hZ+nR2bcQZs+0T62LVe5CHaNa3laFFWb/262r39utN6whJGBF7IR2Wq1QXrDbhftolk5gggW8uUJYlBTQ==}
     engines: {node: '>= 8'}
@@ -3094,9 +3110,18 @@ snapshots:
     dependencies:
       '@aws-cdk/cloud-assembly-schema': 54.2.0
       jsonschema: 1.5.0
-      semver: 7.8.4
+      semver: 7.8.5
+
+  '@aws-cdk/cloud-assembly-api@2.4.0(@aws-cdk/cloud-assembly-schema@54.21.0)':
+    dependencies:
+      '@aws-cdk/cloud-assembly-schema': 54.21.0
+      json-source-map: 0.6.1
+      jsonschema: 1.5.0
+      semver: 7.8.5
 
   '@aws-cdk/cloud-assembly-schema@54.2.0': {}
+
+  '@aws-cdk/cloud-assembly-schema@54.21.0': {}
 
   '@aws-cdk/cloudformation-diff@2.187.1(@aws-sdk/client-cloudformation@3.1066.0)':
     dependencies:
@@ -5547,6 +5572,8 @@ snapshots:
   js-tokens@4.0.0: {}
 
   json-schema-traverse@1.0.0: {}
+
+  json-source-map@0.6.1: {}
 
   jsonata@1.8.7: {}
 
