@@ -31,8 +31,11 @@ const FLOOR_MAJOR = Number(FLOOR_MAJOR_STR);
  * The `major.minor` spelling the docs and the matrix's floor row use — the
  * bare major when the floor is an `.0` minor ("Node.js 24", not "24.0").
  */
-const FLOOR_SHORT =
-  FLOOR_MINOR_STR === '0' ? FLOOR_MAJOR_STR : `${FLOOR_MAJOR_STR}.${FLOOR_MINOR_STR}`;
+function shortOf(floor: string): string {
+  const [major, minor] = floor.split('.');
+  return minor === '0' ? major! : `${major}.${minor}`;
+}
+const FLOOR_SHORT = shortOf(FLOOR);
 /**
  * Spellings that advertised an OLDER floor, generated for every major below
  * the current one back to the oldest this package ever shipped on. Kept
@@ -51,14 +54,21 @@ const OLDEST_EVER_SHIPPED_MAJOR = 18;
  */
 function oldFloorSpellings(majors: ReadonlyArray<number>): ReadonlyArray<RegExp> {
   return majors.flatMap((m) => {
-    // `20`, `20.19`, `20.19.0` — a floor is stated at any precision, and
-    // `\s+` between tokens because the docs hard-wrap mid-sentence.
-    const v = String.raw`${m}(?:\.\d+)*`;
+    // `20`, `v20`, `20.19`, `20.x`, `20 LTS` — a floor is stated at any
+    // precision and with the decorations a release note uses; `\s+` between
+    // tokens because the docs hard-wrap mid-sentence.
+    const v = String.raw`v?${m}(?:\.\d+)*(?:\.x)?(?:\s+LTS)?`;
     return [
       String.raw`Node(?:\.js)?\s+${v}\s+(?:or|and)\s+(?:later|higher|newer|up)`,
       String.raw`Node(?:\.js)?\s+${v}\+`,
       String.raw`Node\s+${v}\s+runtime`,
       String.raw`v${m}\.x`,
+      // A bare version in the "must report `v20.19.0` or higher" shape.
+      String.raw`\x60?v${m}(?:\.\d+)*\x60?\s+or\s+(?:later|higher|newer|up)`,
+      // KNOWN BOUND: a matrix ENUMERATION ("smoke-runs on Node 20 / 22 / 24")
+      // is not retired, because "On Node 20 / 22 the runtime swallows it"
+      // — a measurement — has the same shape; such a sentence is caught only
+      // when a doc pins it positively (or by the bump's own grep).
       // `(?!\d)` keeps `>=20` from matching a `>=2026` date or a `>=200` count.
       String.raw`>=\s?${v}(?!\d)`,
     ].map((src) => new RegExp(src));
@@ -85,9 +95,38 @@ describe('the published Node.js floor is one value across every surface (#1905)'
     expect(Number.isInteger(FLOOR_MAJOR)).toBe(true);
     expect(FLOOR_MAJOR).toBeGreaterThan(OLDEST_EVER_SHIPPED_MAJOR);
     expect(OLD_FLOOR_SPELLINGS.length).toBeGreaterThan(0);
-    // A derivation self-check, not a second floor literal: it pins the
-    // `.0`-minor rule's OTHER arm (a non-zero minor is kept).
-    expect(FLOOR_SHORT).toBe(`${FLOOR_MAJOR}.${FLOOR_MINOR_STR}`);
+    // Both arms of the `.0`-minor rule, on values the fence does not read.
+    expect(shortOf('22.12.0')).toBe('22.12');
+    expect(shortOf('24.0.0')).toBe('24');
+  });
+
+  it('the retired-spelling generator fires on floor claims and not on notes about a version', () => {
+    const patterns = oldFloorSpellings([20]);
+    const fires = (text: string): boolean => patterns.some((p) => p.test(text));
+    for (const claim of [
+      'Node.js 20 or later',
+      'Node 20+',
+      'Node.js 20.19 and later',
+      'Node.js 20.x or later',
+      'Node.js v20 or later',
+      'Node 20 LTS or later',
+      'must report `v20.19.0` or higher',
+      'with a Node 20 runtime target',
+      'engines >= 20.0.0',
+      'declares `>=20`',
+    ]) {
+      expect(fires(claim), `"${claim}" is a floor claim and must fire`).toBe(true);
+    }
+    for (const note of [
+      'Node.js 20 is past end of life',
+      'Node 20 or earlier is past end of life and no longer supported',
+      'On Node 20 / 22 the runtime swallows it silently',
+      'measured >= 2026-09-14',
+      'across >= 200 fixtures',
+      'the nodejs20.x Lambda runtime',
+    ]) {
+      expect(fires(note), `"${note}" claims no floor and must not fire`).toBe(false);
+    }
   });
 
   it('the retired-spelling generator would catch the CURRENT README sentence at the next bump', () => {
