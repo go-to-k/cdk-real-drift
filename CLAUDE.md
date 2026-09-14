@@ -445,12 +445,13 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   [.claude/rules/session-report.md](.claude/rules/session-report.md); read it
   when writing the report or filing a deferral. Classify a deferral the
   moment it arises, in the issue body — not at wrap time, when the evidence
-  is gone. **`now` is the DEFAULT; `next` needs one of that rule's three
-  reasons** (a NEW live-AWS fixture to write / external input / a COLD
-  subsystem). Once the first two are excluded, the context test decides: if
-  ANY file the fix touches or must read was read this session — a reviewer's
-  read set counts — it is `now`; every recent wrap-time challenge on this
-  flipped it.
+  is gone. **`now` is the DEFAULT; `next` needs one of that rule's two
+  reasons** (external input / COLD AND HEAVY). Once external input is
+  excluded, the context test decides: if ANY file the fix touches or must
+  read was read this session — a reviewer's read set counts — it is `now`;
+  so is `Severity: high`, and anything that compounds if left loose (an
+  unwritten fixture, a half-landed pattern). Every recent wrap-time challenge
+  on this flipped it.
 - **Claim a filed issue before working it — post a `gh issue comment` the moment
   you START (or commit to start) work, so parallel agents and sessions don't
   collide.** Multiple agents pick up open issues concurrently; two of them fixing
