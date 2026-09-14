@@ -67,8 +67,8 @@ result: 1 drift(s) (undeclared=1)
 
 ## Quick start
 
-Install it in your CDK project, then the `cdkrd` bin is on your `PATH` (via
-`npx`):
+Requires Node.js 22.12 or later. Install it in your CDK project, then the
+`cdkrd` bin is on your `PATH` (via `npx`):
 
 ```bash
 npm install -D cdk-real-drift   # in your CDK project
