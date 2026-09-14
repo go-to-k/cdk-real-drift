@@ -106,8 +106,9 @@ a deferral.
   min — a passing run costs a few hundred tokens, and one riding the session's
   current lane costs zero). What is genuinely expensive is WRITING a new
   fixture — reason (a) below — and a run that FAILS, which is an `Estimate`
-  line, not a reason: unbounded here is unbounded next session too. Review of a larger diff also grows superlinearly and that
-  cost is real, but it is a reason to SPLIT the PR, not to end the session,
+  line, not a reason: unbounded here is unbounded next session too. Review
+  of a larger diff also grows superlinearly and that cost is real, but it is
+  a reason to SPLIT the PR, not to end the session,
   and it belongs under `Effort` — the `large` line just above, where this same
   bullet already puts it. Until 2026-09-05 it ALSO stood here as a third thing
   to "defer on": the PR-shaped criterion arriving through the back door, in the
@@ -147,9 +148,10 @@ a deferral.
     qualifies (every fix writes one), nor does a corpus case, which is
     harvested from the live read this session already has (`/work-issues`
     §3-b); (b) external input (a quota, an upstream fix, credentials or a
-    host a fresh session may lack, a maintainer decision already asked
-    through `AskUserQuestion` and unanswered — a routine call is yours to
-    make); or (c) the subsystem is COLD — nothing the fix touches or must
+    host a fresh session may lack, a file held by another lane's OPEN PR, a
+    maintainer decision already asked through `AskUserQuestion` and
+    unanswered — a routine call is yours to make); or (c) the subsystem is
+    COLD — nothing the fix touches or must
     read was read this session AND no `now` criterion fires. **Nothing about the
     SESSION is a reason**: its length, the context left, "it has done
     enough", a wrap report already drafted, the PR already merged. The wrap
@@ -184,10 +186,10 @@ a deferral.
 
   **`Session-fit: next` is NOT available for work discovered inside a scope
   the user framed as "do this across the repos in one session".** Three tells
-  force `now`: (a) you are about to file the SAME issue body in more than one
-  repo — that is the split the framing exists to end, not triage; (b) the fix
+  force `now`: (1) you are about to file the SAME issue body in more than one
+  repo — that is the split the framing exists to end, not triage; (2) the fix
   is mechanical and its evidence is live right now (the repro is built, the
-  files are open, a gate cycle is already running); (c) the user already said
+  files are open, a gate cycle is already running); (3) the user already said
   "finish it here" for the surrounding task, and a discovery inside it
   inherits the instruction. The four fields exist to make a deferral HONEST,
   not to make one available — a defensible-looking `Effort` / `Estimate` for
@@ -200,9 +202,11 @@ a deferral.
 
   **A newly DISCOVERED bug is `now` even in a COLD subsystem.** Its expensive
   part is the EVIDENCE — the repro you built, what you watched happen, the
-  number you measured — which is what an issue body cannot carry cheaply. If
-  you defer anyway on reason (a) or (b), put the EVIDENCE in the body, not
-  just the diagnosis.
+  number you measured — which is what an issue body cannot carry cheaply —
+  unless that evidence is already PERSISTED in the repo (a corpus case
+  harvested into `tests/corpus/`, a committed fixture), when (c) applies as
+  usual. If you defer anyway on reason (a) or (b), put the EVIDENCE in the
+  body, not just the diagnosis.
 
   **One field per line — never pack two onto one**, and keep the field names
   and their order identical every time. A field with nothing to say gets an

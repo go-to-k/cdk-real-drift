@@ -328,10 +328,11 @@ minutes where only a time-based gate could keep a second run off it.
 
 ### 3-b. Before writing `next`, NAME the verification — in the ISSUE BODY
 
-**`now` is the default, and the CONTEXT TEST comes first.** List the files
-the fix touches; if this session read, edited or reviewed ANY of them, it is
-`now` — `next` needs one of `.claude/rules/session-report.md`'s three reasons
-(a NEW live fixture / external input / a COLD subsystem). The maintainer's
+**`now` is the default; `next` needs one of `.claude/rules/session-report.md`'s
+three reasons** (a NEW live fixture / external input / a COLD subsystem). Once
+the first two are excluded, the CONTEXT TEST decides: list the files the fix
+touches or must read; if this session read, edited or reviewed ANY of them,
+it is `now`. The maintainer's
 wrap-time "cheaper to do it here?" has flipped every item it was asked about;
 this paragraph asks it in advance.
 
@@ -348,9 +349,10 @@ session at tests/corpus/<type>.json, so `vp test run corpus-replay` fails on
 the fold and passes with the fix, on any machine, no AWS.
 ```
 
-Portability is NECESSARY for `next`, never sufficient: the context test above
-decides whether it is `next` at all, and this ladder only decides whether the
-named verification can be run by a fresh session. Cheapest first — the SECOND
+Portability is NECESSARY for `next`, never sufficient: the three reasons
+above decide whether it is `next` at all (the context test decides reason
+(c)), and this ladder only decides whether the named verification can be run
+by a fresh session. Cheapest first — the SECOND
 entry, which looks like an ordinary `next`, is the one that is almost always
 `now`:
 
@@ -360,7 +362,8 @@ entry, which looks like an ordinary `next`, is the one that is almost always
   here.
 - **Bound to THIS run's live AWS state, so `next` is a bad bet.** A
   hand-injected drift or a stack still standing: `/hunt-bugs`'s cleanup gate
-  (`.claude/hooks/bughunt-clean-gate.sh`) refuses every commit / PR / merge
+  (`.claude/hooks/bughunt-clean-gate.sh`) refuses every `git commit` /
+  `gh pr create` / `gh pr merge`
   until each tracked stack is deleted — this run cannot SHIP without
   destroying its own verifier. Counter-move (`/hunt-bugs` §5): while the stack
   is up, harvest the live read into `tests/corpus/` via `CDKRD_CORPUS_DIR`,
@@ -400,7 +403,7 @@ is still open", "that file is held by another lane's diff", "this lane has no
 live run budgeted". A PR can be named on either side; ask which of the two the
 sentence is ABOUT. Only the first two survive, as reason (b) ending at that
 merge; "no live run budgeted" is no longer a reason. Such a clause is legal
-only as the EXPIRY event of a `next` reason, and it goes STALE — classifying
+only when it carries its expiry event, and it goes STALE — classifying
 once freezes the DECISION, not the PREMISE. Prefer a reason the WORK owns; a
 session-state clause must NAME THE EVENT THAT ENDS IT on the same line. "No
 file overlap" is at most half of reason (c) — files READ decide, not files
@@ -417,8 +420,7 @@ no-behaviour-change alternative; the `next` reason costed only the first).
 
 Origin: go-to-k/cdk-local#560 was deferred on "a fixture / base-image change on
 a different axis" — the KIND of work, not who could check it (a Go RIE
-segfault under `linux/amd64` emulation, so the real verification was "run on
-an arm64 host"; the maintainer caught it, not the flow). That HOST binding
+segfault under `linux/amd64` emulation; the real verification was "run on an
+arm64 host", and the maintainer caught it, not the flow). That HOST binding
 cannot recur here (no Docker in cdkrd's gates); what bites HERE is the
-account / region / live-resource binding above. Same error either way: naming
-the KIND of work in place of the check.
+account / region / live-resource binding above.

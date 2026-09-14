@@ -86,8 +86,8 @@ done
 rm -f /tmp/run-touched.$$
 ```
 
-Pipe the whole loop through `sort -u`: a body naming a file twice prints two
-findings.
+Pipe the whole loop through `sort -u`: a body naming a file twice otherwise
+prints one finding twice.
 
 **The diff is a LOWER bound on what this run loaded — run the context test on
 every `next` as well.** The query sees files the run EDITED; the run also READ
