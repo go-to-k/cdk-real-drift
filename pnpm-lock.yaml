@@ -213,8 +213,8 @@ importers:
         specifier: ^9.1.0
         version: 9.1.0
       jsonata:
-        specifier: ^1.8.7
-        version: 1.8.7
+        specifier: ^2.2.2
+        version: 2.2.2
       picocolors:
         specifier: ^1.1.1
         version: 1.1.1
@@ -2373,8 +2373,8 @@ packages:
   json-schema-traverse@1.0.0:
     resolution: {integrity: sha512-NM8/P9n3XjXhIZn1lLhkFaACTOURQXjWhV4BA/RnOv8xvgqtqpAX9IO4mRQxSx1Rlo4tqzeqb0sOlruaOy3dug==}
 
-  jsonata@1.8.7:
-    resolution: {integrity: sha512-tOW2/hZ+nR2bcQZs+0T62LVe5CHaNa3laFFWb/262r39utN6whJGBF7IR2Wq1QXrDbhftolk5gggW8uUJYlBTQ==}
+  jsonata@2.2.2:
+    resolution: {integrity: sha512-XDFH2PuaAXv0AXJEWwElXbqADmKFGKMLMkFb+qOz0EhjQW2EIJ6pgtordLU+4u3IVERyBfqy6bi6kZKEncvRqA==}
     engines: {node: '>= 8'}
 
   jsonfile@6.2.1:
@@ -5548,7 +5548,7 @@ snapshots:
 
   json-schema-traverse@1.0.0: {}
 
-  jsonata@1.8.7: {}
+  jsonata@2.2.2: {}
 
   jsonfile@6.2.1:
     dependencies:
