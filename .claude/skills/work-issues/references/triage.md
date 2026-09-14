@@ -345,13 +345,15 @@ reason clause on the `Session-fit` line:
 
 ```text
 Session-fit: next (not this session) — context test: the fix touches
-normalize/noise.ts, not read this session (COLD); corpus case recorded this
-session at tests/corpus/<type>.json, so `vp test run corpus-replay` fails on
-the fold and passes with the fix, on any machine, no AWS.
+normalize/noise.ts and the whole fold table it feeds, none read this session
+(COLD), and this session's context is the revert planner, whose assumptions
+would misread the fold table (HEAVY); corpus case recorded this session at
+tests/corpus/<type>.json, so `vp test run corpus-replay` fails on the fold and
+passes with the fix, on any machine, no AWS.
 ```
 
 Portability is NECESSARY for `next`, never sufficient: the two reasons above
-decide whether it is `next` at all (the context test decides reason (b)),
+decide whether it is `next` at all (the context test gates reason (b)),
 and this ladder only decides whether the named verification can be run by a
 fresh session. Cheapest first — the SECOND
 entry, which looks like an ordinary `next`, is the one that is almost always

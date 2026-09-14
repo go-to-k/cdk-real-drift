@@ -45,9 +45,7 @@
 # `next` line whose REASON is PR-shaped. Everything else passes untouched,
 # including every legitimate `next` --
 #
-#   Session-fit: next (not this session) -- no fixture under tests/integration/
-#     covers this shape; one has to be written (a corpus case is harvested
-#     in-session and does not count)
+#   Session-fit: next (not this session) -- blocked on an upstream fix landing
 #   Session-fit: next (not this session) -- the verifier is the shared-name core
 #     suite, which needs a global clean window in us-east-1
 #   Session-fit: next (not this session) -- blocked on an AWS quota increase
@@ -81,8 +79,8 @@
 #      criterion arriving through the back door inside the paragraph that had
 #      just placed it correctly. That clause is now a following sentence -- the
 #      cost is real, it argues for SPLITTING the PR rather than ending the
-#      session, and it belongs under `Effort`. The defer list keeps WRITING a
-#      new fixture and a run that FAILS.
+#      session, and it belongs under `Effort`. WRITING a new fixture and a run
+#      that FAILS are `Effort` / `Estimate` lines there too, not reasons.
 #
 # The gate follows triage.md section 3-b and the `Effort: large` placement,
 # the passages written to settle the question, and all three repos running this

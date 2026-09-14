@@ -45,15 +45,16 @@ a deferral.
   when there is nothing); the issue body stays at the four CLASSIFICATION
   lines — what belongs there is only the part that outlives the session.
 
-  **The four answer four DIFFERENT questions and none derives from another**:
+  **The four answer four DIFFERENT questions and none is a spelling of
+  another** (the one sanctioned link: `Severity: high` forces `now` unless
+  external input blocks it):
   `Session-fit` is the decision, `Severity` the cost of leaving it undone,
   `Effort` which verification cycle the fix drags, `Estimate` the hours. Do not
   collapse `Severity` into `Session-fit` — a `high` item can still be `next`
   (external input) and a `low` one is usually `now` (it lands in a file this
   session already has open); `Severity` says what a USER suffers,
   `Session-fit` what THIS session does; the moment the two merely track each
-  other, one
-  field is wasted. Nor `Effort` into `Estimate`: "one live run" is a kind of
+  other, one field is wasted. Nor `Effort` into `Estimate`: "one live run" is a kind of
   cost, and the hours depend on which fixture.
 
   **The keys are spelled identically everywhere** — issue body, English report,
@@ -97,9 +98,10 @@ a deferral.
   specific condition; `low` = internal tidiness, invisible to users. **Rate
   what a user experiences, never why this session should do it** — "leaving
   main self-inconsistent" is a `Session-fit: now` trigger, not a Severity
-  level, and copying it here makes that flavour of `high` permanently
-  un-`next`-able. `Effort` measures the verification tail rather than the
-  edit: `small` = edit plus unit tests, riding verification this session
+  level; rating it `high` smuggles a Session-fit trigger through the wrong
+  field, and a misrated `high` now forces `now` by itself. `Effort` measures
+  the verification tail rather than the edit: `small` = edit plus unit
+  tests, riding verification this session
   already pays for; `medium` = one re-review round, or a live run this session
   was not otherwise going to make; `large` = a NEW fixture has to be WRITTEN,
   or a behavior change needing its own PR plus review. Calibration: RUNNING an
@@ -135,7 +137,8 @@ a deferral.
   probe, install, build, the module read and the evidence re-derivation
   BEFORE its first edit, while this session pays the edit alone. Precedence:
   `next` reason (a) below asks whether the work CAN finish here and is
-  decided first; (b) is what the test decides.
+  decided first; (b) is what the test gates — it decides whether (b) is
+  available, not that it fires.
 
   - **`now`** — any of: a file the fix touches is loaded (above); skipping it
     leaves main self-inconsistent (docs contradicting shipped code, a stale
@@ -146,10 +149,11 @@ a deferral.
     "merged" is not done); **leaving it loose compounds** — a fixture or
     corpus case not yet written for a subsystem this session holds, a pattern
     landed at some sites and not others, a guard with a known hole: the cost
-    of undone grows with every session that passes, and the fixture case is
-    the clearest — deferred, it is the piece that never lands; or
-    **`Severity: high`** — a wrong result, data loss, or a security surface
-    is `now` unless (a) blocks it; (b) never overrides a `high`.
+    of undone grows FOR THE REPO with every session that passes, and the
+    fixture case is the clearest — deferred, it is the piece that never
+    lands; or **`Severity: high`** — a wrong result, data loss, or a security
+    surface, rated on the scale above and never on the decision it forces —
+    is `now` unless (a) blocks it.
     **Residuals of a just-merged lane** — polish, nits, parity gaps, sibling
     sites a review named — are the hottest context there is and are `now` by
     the test above; "only a residual" names no cost. Writing a NEW live-AWS
@@ -162,18 +166,17 @@ a deferral.
     `AskUserQuestion` and unanswered — a routine call is yours to make); or
     (b) the work is COLD AND HEAVY — nothing the fix touches or must read was
     read this session, no `now` criterion fires, AND doing it here is clearly
-    worse than fresh: it needs a large body of context this session would
-    load from zero anyway, or the context this session does hold would
-    degrade the work (a security surface read through an unrelated
-    subsystem's assumptions). Cold alone is not (b) — a small cold fix is
-    `now`. (b) is legitimate and never to be forced through — but it must
-    stay RARE: the reason names the context the work needs and why THIS
-    session is the wrong one to load it; a (b) fired twice in one run, or on
-    an item with a loaded file, is the reflex, not the reason. **Nothing
-    about the SESSION is a reason**: its length, the context left, "it has
-    done enough", a wrap report already drafted, the PR already merged. The
-    wrap
-    reflex (file → classify → close) fires exactly when the context is
+    WORSE than fresh, not merely as costly: the reason names the modules to
+    load and says why loading them beside THIS session's context degrades
+    the work (a security surface read through an unrelated subsystem's
+    assumptions). That is the one claim about the session that counts. Cold
+    alone is not (b) — a small cold fix is `now`. (b) is legitimate and never
+    to be forced through — but it must stay RARE: a (b) fired twice in one
+    run is the reflex, not the reason, and `/work-issues` §10-0 counts them.
+    **Nothing about the SESSION is a reason**: its length, the context left,
+    "it has done enough", a wrap report already drafted, the PR already
+    merged. The wrap reflex (file → classify → close) fires exactly when the
+    context is
     richest, which is why it produces `next` — and why the context test is
     written first. Before the final report, re-run the test on every `next`
     it lists: the report is the last moment the loaded context can still be
@@ -190,9 +193,10 @@ a deferral.
   can ship, a hand-injected drift, a clean window on the shared-name suite) or
   to credentials a fresh session may not hold; it is bound to THIS host (CPU
   architecture, an installed toolchain, a pulled container image); it does NOT
-  EXIST yet and writing it is most of the work — the one case where `next` is
-  unambiguously right, and right BECAUSE you could name what is missing; or you
-  cannot name it at all, which is an unbounded deferral.
+  EXIST yet and writing it is most of the work — write it NOW while the
+  subsystem is loaded (an unwritten fixture is the loose end that compounds;
+  `next` only under (a) or (b)); or you cannot name it at all, which is an
+  unbounded deferral.
   Measured 2026-08-26: go-to-k/cdk-local#560 deferred on "a fixture /
   base-image change on a different axis" — the work's CATEGORY. Its defect was
   a Go RIE segfault under `linux/amd64` emulation on the arm64 host it was

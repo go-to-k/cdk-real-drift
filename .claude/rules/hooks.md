@@ -409,8 +409,9 @@ number,body`) an ANCHORED `Session-fit:` field line valued `next` selects 32
   listed "above all review of a larger diff" as a third thing to "defer on",
   the PR-shaped criterion arriving through the back door inside the paragraph
   that had just placed it under `Effort`; it is now a following sentence saying
-  that cost argues for SPLITTING the PR, not for ending the session. The defer
-  list keeps WRITING a new fixture and a run that FAILS.
+  that cost argues for SPLITTING the PR, not for ending the session. WRITING
+  a new fixture and a run that FAILS are `Effort` / `Estimate` lines there
+  too, not reasons.
 
   Escape hatch for the case the gate cannot see (a body quoting PR-shaped
   reasoning INLINE in order to argue against it):

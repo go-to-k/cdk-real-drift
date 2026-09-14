@@ -257,7 +257,7 @@ run_msg "the offending reason is quoted back" \
 
 # --- every legitimate `next` this repo documents PASSES ----------------------
 run "next: a fixture must be written" \
-  "gh issue create --title t --body 'Session-fit: next (not this session) -- no fixture under tests/integration/ covers this shape; one has to be written'" "$TMPROOT" 0
+  "gh issue create --title t --body 'Session-fit: next (not this session) -- blocked on an upstream fix landing'" "$TMPROOT" 0
 run "next: bound to this run's live AWS state" \
   "gh issue create --title t --body 'Session-fit: next (not this session) -- the verifier is the shared-name core suite and needs a global clean window in us-east-1'" "$TMPROOT" 0
 run "next: external input" \
@@ -565,7 +565,7 @@ run "a passing mention of an upstream pull request still passes" \
 
 # --- BODY CHANNELS ------------------------------------------------------------
 printf 'Session-fit: next (not this session) -- it needs its own PR\n' > "$BODY_DIR/bad.md"
-printf 'Session-fit: next (not this session) -- a new fixture must be written\n' > "$BODY_DIR/good.md"
+printf 'Session-fit: next (not this session) -- blocked on an upstream fix landing\n' > "$BODY_DIR/good.md"
 
 run "--body-file on disk"        "gh issue create --title t --body-file $BODY_DIR/bad.md"        "$TMPROOT" 2
 run "--body-file= on disk"       "gh issue create --title t --body-file=$BODY_DIR/bad.md"       "$TMPROOT" 2
@@ -592,7 +592,7 @@ gh issue create --title t --body-file $BODY_DIR/hd.md"
 run "heredoc body carries the PR-shaped reason" "$HD_BAD" "$TMPROOT" 2
 
 HD_OK="cat > $BODY_DIR/hd2.md <<'EOF'
-Session-fit: next (not this session) -- a new fixture must be written
+Session-fit: next (not this session) -- blocked on an upstream fix landing
 EOF
 gh issue create --title t --body-file $BODY_DIR/hd2.md"
 run "heredoc body carries a legitimate reason" "$HD_OK" "$TMPROOT" 0
@@ -696,7 +696,7 @@ GWDIR="$TMPROOT/gw dir"
 mkdir -p "$GWDIR"
 DEFER_BODY='Session-fit: next (not this session) -- it needs its own PR'
 printf '%s\n' "$DEFER_BODY" > "$GWDIR/defer.md"
-printf 'Session-fit: next (not this session) -- a new fixture must be written\n' > "$GWDIR/ok.md"
+printf 'Session-fit: next (not this session) -- blocked on an upstream fix landing\n' > "$GWDIR/ok.md"
 run "spaced --body-file path, double-quoted, blocks" \
   "gh issue create -t x --body-file \"$GWDIR/defer.md\"" "$TMPROOT" 2
 run "spaced --body-file path, backslash-escaped, blocks" \
