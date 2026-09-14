@@ -202,17 +202,22 @@ gates:
       # reddening edit is creating or deleting a top-level directory: rare, and
       # loud when it happens. Recorded rather than scoped.
       #
-      # DELIBERATELY OUT, with the measurement rather than a guess:
-      # `.node-version` (24.15.0) has no verified reader in the flow this marker
-      # attests to. `mise ls --current` lists no node tool here, `mise exec --
-      # node --version` reports v26.6.0, and editing .node-version changes
-      # neither — while CI pins its own `node-version: '24'` inside
-      # .github/workflows/**, which IS in scope. Scoping a file nothing reads
-      # would be the dead-entry shape go-to-k/cdk-local#630 is about. Same for
-      # `vp check`'s own format pass, which reads 1485 files on this tree:
+      # `.node-version` (24.15.0) was DELIBERATELY OUT until
+      # go-to-k/cdk-real-drift#1905, with the measurement rather than a guess:
+      # it had no verified reader in the flow this marker attests to (`mise ls
+      # --current` listed no node tool, `mise exec -- node --version` reported
+      # v26.6.0, and editing .node-version changed neither — while CI pins its
+      # own `node-version: '24'` inside .github/workflows/**, which IS in
+      # scope). Scoping a file nothing reads would be the dead-entry shape
+      # go-to-k/cdk-local#630 is about. It has a reader now:
+      # tests/node-floor-sync-1905.test.ts asserts the dev pin's major is one of
+      # the `runtime-compat` matrix rows, so a pin bump that leaves the matrix
+      # behind must stale this marker. The same argument still keeps `vp
+      # check`'s own format pass OUT — it reads 1485 files on this tree, and
       # scoping THAT would stale the marker on every edit anywhere, which is a
-      # different failure, not a smaller one. Both counts move with the file
-      # count — re-derive them rather than trusting these numbers.
+      # different failure, not a smaller one (a count that moves with the file
+      # count — re-derive it rather than trusting the number).
+      - '.node-version'
       - '.claude/skills/**'
       - '.claude/settings.json'
       - '.claude/hooks/**'
