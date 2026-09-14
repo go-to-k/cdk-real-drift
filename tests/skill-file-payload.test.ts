@@ -170,6 +170,14 @@ const SPLIT_SKILLS: Record<string, { minFiles: number; minCorpusBytes: number }>
   // never against the tree the branch was cut from. 9 files as of 2026-09-01,
   // when the launch-mode probe moved out of triage.md into
   // references/launch-mode.md, which the PARENT reads before stage 0.
+  // The `now`-by-default pass (triage.md 3-b's context-test-first paragraph,
+  // retro.md 10-0's read-set promotion bullet) first lapsed this floor and
+  // PAID rather than raised, per section 10-c: incident narratives in the
+  // same two files compressed to their citations in the same commit, so the
+  // floor is unchanged. Measured at the sha pushed, two review rounds folded
+  // in: corpus 143,890 B, largest implement.md 25,909 B, `corpus - largest`
+  // 117,981 -- 19 B of room, down from 219 B in the paragraph above. The
+  // next non-leader addition must be paid for in its own file.
   'work-issues': { minFiles: 9, minCorpusBytes: 118_000 },
   // 7 files / 108,940 B measured at the split (2026-08-28); largest 55,137 B; 87,180 B post-compression
   'hunt-bugs': { minFiles: 7, minCorpusBytes: 60_000 },

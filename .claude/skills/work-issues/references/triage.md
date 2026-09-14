@@ -303,7 +303,9 @@ disjointness gate and §4's claim-then-re-check still apply:
 - **You filed it yourself this run, meaning to work it yourself** (`/hunt-bugs`
   files then sends you here; your own §4 claim is the proof). It stops there:
   an issue filed FOR A LATER SESSION got no claim, and taking it back minutes
-  after handing it off contradicts the handoff.
+  after handing it off contradicts the handoff — unless the context test
+  (`.claude/rules/session-report.md`) promotes it, which is a re-classification
+  stated in the claim, not a contradiction.
 - **The maintainer named the issue in the invocation** (`/work-issues #<n>`) —
   an explicit instruction outranks a heuristic. Lifts this gate only, never
   §1's already-shipped check: a named issue is FRESH, so more likely than
@@ -326,96 +328,99 @@ minutes where only a time-based gate could keep a second run off it.
 
 ### 3-b. Before writing `next`, NAME the verification — in the ISSUE BODY
 
+**`now` is the default; `next` needs one of `.claude/rules/session-report.md`'s
+three reasons** (a NEW live fixture / external input / a COLD subsystem). Once
+the first two are excluded, the CONTEXT TEST decides: list the files the fix
+touches or must read; if this session read, edited or reviewed ANY of them,
+it is `now`. The maintainer's
+wrap-time "cheaper to do it here?" has flipped every item it was asked about;
+this paragraph asks it in advance.
+
 `CLAUDE.md` ("The four TODO fields") forbids `Session-fit: next` until you can
-name the command the NEXT session will run to see the fix work, and can say a
-fresh session will be able to run it. Here the deferral becomes an ISSUE read
-by a session with none of this run's context, so the named command goes INTO
-the body, as the reason clause on the `Session-fit` line:
+name the command the NEXT session will run to see the fix work, and say a
+fresh session can run it. The deferral becomes an ISSUE read by a session with
+none of this run's context, so the named command goes INTO the body, as the
+reason clause on the `Session-fit` line:
 
 ```text
-Session-fit: next (not this session) — no corpus case covers this type yet, so
-one has to be recorded from a live read first; after that `vp test run
-corpus-replay` fails on the fold and passes with the fix, on any machine, no AWS.
+Session-fit: next (not this session) — context test: the fix touches
+normalize/noise.ts, not read this session (COLD); corpus case recorded this
+session at tests/corpus/<type>.json, so `vp test run corpus-replay` fails on
+the fold and passes with the fix, on any machine, no AWS.
 ```
 
-The ladder, cheapest first — the SECOND entry, which looks like an ordinary
-`next`, is the one that is almost always `now`:
+Portability is NECESSARY for `next`, never sufficient: the three reasons
+above decide whether it is `next` at all (the context test decides reason
+(c)), and this ladder only decides whether the named verification can be run
+by a fresh session. Cheapest first — the SECOND
+entry, which looks like an ordinary `next`, is the one that is almost always
+`now`:
 
-- **Portable, so `next` is honest.** A committed unit test
+- **Portable, so the NAMING requirement is met.** A committed unit test
   (`vp test run <file>`) or golden-corpus replay (`vp test run corpus-replay`,
   over `tests/corpus/*.json`) runs offline on any machine. The common case
   here.
 - **Bound to THIS run's live AWS state, so `next` is a bad bet.** A
   hand-injected drift or a stack still standing: `/hunt-bugs`'s cleanup gate
   (`.claude/hooks/bughunt-clean-gate.sh`) refuses every `git commit` /
-  `gh pr create` / `gh pr merge` until each tracked stack is deleted — this run
-  cannot SHIP without destroying its own verifier. Counter-move (`/hunt-bugs`
-  §5): while the stack is up, harvest the live read into `tests/corpus/` via
-  `CDKRD_CORPUS_DIR`, converting the session-bound verifier into a portable one
-  — then the first entry applies and `next` is fine.
+  `gh pr create` / `gh pr merge`
+  until each tracked stack is deleted — this run cannot SHIP without
+  destroying its own verifier. Counter-move (`/hunt-bugs` §5): while the stack
+  is up, harvest the live read into `tests/corpus/` via `CDKRD_CORPUS_DIR`,
+  making the verifier portable — then the first entry applies (and the
+  harvested case is not reason (a)).
 - **Bound to the account, the region, or a window.** The shared-name core suite
   (`tests/integration/basic/verify.sh` and siblings) deploys FIXED stack names
   (`CdkdriftIntegBasic`) into one account in `us-east-1` and needs a GLOBAL
   CLEAN WINDOW (`/verify-pr` step 7); a fresh session may hold no credentials
-  at all (`/verify-pr` step 6 accepts that). Naming it still pays — it tells
-  the next session what to ACQUIRE first.
-- **It does not exist yet.** No fixture under `tests/integration/` and no
-  corpus case covers the shape, and writing one is most of the work. The one
-  case where `next` is unambiguously right — BECAUSE you could name what is
-  missing.
-- **You cannot name it at all.** Then nobody can confirm the fix later either —
-  an unbounded deferral. Do it now, or say in the body why the fix would be
-  unverifiable.
+  (`/verify-pr` step 6 accepts that). Naming it tells the next session what to
+  ACQUIRE first.
+- **It does not exist yet.** No fixture under `tests/integration/` covers the
+  shape, and writing one is most of the work — `.claude/rules/session-report.md`'s
+  reason (a), right BECAUSE you could name what is missing.
+- **You cannot name it at all.** Then nobody can confirm the fix later — an
+  unbounded deferral. Do it now, or say in the body why it is unverifiable.
 
 **Then ask what the next session will have to RE-DERIVE.** The question above
-names the verification; this one names the cost of the gap. If you can point
-at something that exists only in THIS session — a table you measured, a probe
-you built, a shape you just proved correct in a sibling repo — the deferral is
-not free and the answer is `now`. Understanding survives in an issue body; a
-measurement does not.
+names the verification; this one names the cost of the gap. If something
+exists only in THIS session — a table you measured, a probe you built, a shape
+just proved in a sibling repo — the deferral is not free and the answer is
+`now`. Understanding survives in an issue body; a measurement does not.
 
 **And "it needs its own PR" is NOT a `next` reason.** It is a `now` item that
 gets its own PR. The bar is the SESSION, not the diff — a separate review
-surface, a new file, a hook plus its suite are all reasons to split the PR and
-none is a reason to end the session. Writing "independent review surface" on a
-`Session-fit` line is the classify-by-MEANS error this section already forbids
-(2026-09-01: a hook missing from one sibling was filed `next` on exactly that
-wording, minutes after the same hook's defect had been measured and fixed in
-the other two repos — probe, corrected shape and rc table all in hand;
-re-classified `now` on the maintainer's challenge, and the port then found four
-more defects a fresh session would not have known to look for).
+surface, a new file, a hook plus its suite are reasons to split the PR, none
+to end the session. "Independent review surface" on a `Session-fit` line is
+the classify-by-MEANS error (2026-09-01: a hook missing from one sibling was
+filed `next` on that wording minutes after its defect was measured and fixed
+in the other two repos; re-classified `now` on the maintainer's challenge,
+and the port found four more defects).
 
 **And a reason about THIS SESSION's own state expires when the session does.**
-A different failure from the one just above: that is a claim about the PULL
-REQUEST, refused outright. This is a claim about the SESSION that filed the
-issue — "the PR carrying it is still open", "that file is held by another
-lane's diff", "this lane has no live run budgeted". A PR can be named on either
-side, so the mention is not the tell; ask which of the two the sentence is
-ABOUT. Such clauses are legal and merely go STALE, and classifying once does
-not protect them, because it freezes the DECISION, not the PREMISE. So prefer a
-reason the WORK owns; when a session-state clause is written anyway, NAME THE
-EVENT THAT ENDS IT on the same line, so a later reader can see it has expired
-without asking anyone. It bites hardest on a "no file overlap" reason, which is
-a claim about a MOVING target the lane keeps editing after writing it
-(go-to-k/cdkd#2440 is deferred on exactly that wording; go-to-k/cdkd#2259 on
-"that PR is still open", which survived unchanged into the wrap after
-go-to-k/cdkd#2247 merged). §10-0's end-of-run promotion check is the only thing
-that catches one.
+Not the failure just above (a claim about the PULL REQUEST, refused outright):
+this is a claim about the SESSION that filed the issue — "the PR carrying it
+is still open", "that file is held by another lane's diff", "this lane has no
+live run budgeted". A PR can be named on either side; ask which of the two the
+sentence is ABOUT. Only the first two survive, as reason (b) ending at that
+merge; "no live run budgeted" is no longer a reason. Such a clause is legal
+only when it carries its expiry event, and it goes STALE — classifying
+once freezes the DECISION, not the PREMISE. Prefer a reason the WORK owns; a
+session-state clause must NAME THE EVENT THAT ENDS IT on the same line. "No
+file overlap" is at most half of reason (c) — files READ decide, not files
+edited — and a claim about a MOVING target the lane keeps editing
+(go-to-k/cdkd#2440; go-to-k/cdkd#2259's "that PR is still open" survived into
+the wrap after go-to-k/cdkd#2247 merged). §10-0's end-of-run promotion check
+is the only thing that catches one.
 
 **And when the issue body offers more than one fix, say which one the four
 fields cost.** Cost the CHEAPEST one you would actually accept. A deferral
-justified by the expensive option is not a measurement, it is a choice of
-comparand (2026-09-02: an issue listed a three-repo behaviour change AND a
-six-line no-behaviour-change alternative; the `next` reason costed only the
-first — nobody had decided which fix to take, and the first one described
-became the one measured).
+justified by the expensive option is a choice of comparand, not a measurement
+(2026-09-02: an issue listed a three-repo behaviour change AND a six-line
+no-behaviour-change alternative; the `next` reason costed only the first).
 
 Origin: go-to-k/cdk-local#560 was deferred on "a fixture / base-image change on
-a different axis" — the KIND of work, not who could check it. The defect was a
-Go RIE segfault under `linux/amd64` emulation on an arm64 host; the filing
-machine WAS arm64, so the real verification was "run those fixtures on an arm64
-host" — the maintainer caught it, not the flow. That HOST binding cannot recur
-here (no Docker in cdkrd's gates; the `integ` gate in `.markgate.yml` is
-read-only AWS, no companion skill); what bites HERE is the account / region /
-live-resource binding above. Same error either way: naming the KIND of work in
-place of the check.
+a different axis" — the KIND of work, not who could check it (a Go RIE
+segfault under `linux/amd64` emulation; the real verification was "run on an
+arm64 host", and the maintainer caught it, not the flow). That HOST binding
+cannot recur here (no Docker in cdkrd's gates); what bites HERE is the
+account / region / live-resource binding above.

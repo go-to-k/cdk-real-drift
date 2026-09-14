@@ -351,10 +351,10 @@ merge 5` had each gate inspect THIS repo and permit a merge in one it never
   PULL REQUEST: `own PR` / `separate PR` / `share (a) PR` /
   `independent review surface` / `unreviewable` / `own review`,
   case-insensitively. `Session-fit` answers one question — do I finish this in
-  THIS session — and `.claude/rules/session-report.md`'s own test for it
-  ("NAME the command that verifies the fix") admits only answers about the
-  VERIFIER. Splitting across several PRs is normal, needs no permission and
-  costs no session; the review cost of a bigger diff is real and belongs under
+  THIS session — and `.claude/rules/session-report.md`'s own tests for it
+  (the context test, then "NAME the command that verifies the fix") admit
+  only answers about the READ SET and the VERIFIER. Splitting across several
+  PRs is normal, needs no permission and costs no session; the review cost of a bigger diff is real and belongs under
   `Effort: large`, where `session-report.md` already puts it ("a behavior
   change needing its own PR plus review").
 
