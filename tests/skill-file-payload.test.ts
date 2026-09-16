@@ -62,6 +62,13 @@ const MAX_ORCHESTRATOR_BYTES = 12_000; // orchestrators were 7,952 B / 6,932 B a
 // always-loaded file (a lane cannot pass on a value it was never told to record),
 // while its reading, its restore recipe and the IN-PLACE consequence rows all
 // went to references/launch-mode.md and references/ship.md.
+// RE-MEASURED 2026-09-16 by the go-to-k/cdk-real-drift#1913 mirror round, which
+// edits no orchestrator: work-issues/SKILL.md is 11,657 B on `origin/main`, so the
+// 11,812 B above is STALE by 155 B and the margin is 343 B, not 188 B -- the
+// figure the paragraph flagged as the one "a reader assumes was never
+// re-measured" is exactly the one that had gone stale. hunt-bugs/SKILL.md is
+// 6,932 B and verify-pr/SKILL.md (the largest NON-split skill) 12,571 B, both
+// unchanged.
 const MAX_REFERENCE_FILE_BYTES = 48_000; // RE-DERIVED DOWNWARD 64_000 -> 48_000 by the 2026-09-04
 // token-diet pass (rule + one-line-citation compression over the work-issues
 // stage files; largest stage file is hunt-bugs gotchas.md at 41,922 B,
@@ -141,6 +148,40 @@ const MAX_REFERENCE_FILE_BYTES = 48_000; // RE-DERIVED DOWNWARD 64_000 -> 48_000
 // working as designed, and the answer there is compression, never a bigger
 // number.
 //
+// RE-MEASURED 2026-09-16 by the go-to-k/cdk-real-drift#1913 mirror round (the
+// cdkd go-to-k/cdkd#3152 flow lessons: a lane forbidden real-AWS RUNS still WRITES
+// the arm, and a 429-killed lane resumes by SendMessage). The floor is UNCHANGED
+// at 118,000. work-issues is 143,815 B over the same 9 files with implement.md
+// still largest at 25,909 B, so the BINDING requirement is 117,906 and the margin
+// is 94 B (down from 204 B). The round ADDED 1,186 B -- the two lesson blocks,
+// 624 B to verify.md and 562 B to gotchas.md, each including its trailing blank
+// line -- and PAID 1,076 B back by compression in the same commit per
+// references/retro.md section 10-c, for a net of +110 B. Per file, none of them
+// the largest, which is the only compression that moves this number: shrinking
+// implement.md would shrink the corpus and the subtrahend alike and leave
+// `corpus - largest` exactly where it was. verify.md +69 B net (624 added, 555
+// compressed out), gotchas.md +271 B net (562 added, 291 out), retro.md -230 B
+// net, pure compression -- and 555 + 291 + 230 is the 1,076, which is how this
+// decomposition checks itself. What was cut: gotchas.md's copy of section 8's
+// `cache: false` measurement, now a pointer; incident narratives in verify.md
+// (the botocore grep aside, the pre-run cleanup bullet, the
+// reviewer-scratch-copy repair story, the lane-review sibling measurement)
+// reduced to rule plus citation; and, in retro.md's recon-CLAIM-SET bullet, the
+// five-sites parenthetical naming `/check` and `/check-docs` together with the
+// go-to-k/cdk-real-drift#1861 worked instance. The section 8-z counting
+// sentence that same bullet carries was KEPT verbatim -- an earlier revision of
+// THIS paragraph named it as the thing cut, which the diff refutes. Both
+// corrections came from the PR's review round, and both are the failure this
+// round's own lessons describe: a figure and a description written while
+// agreeing with the change, never re-read against the diff.
+//
+// The near-flip picture is unchanged in KIND and slightly worse in degree:
+// residuals if each candidate overtook implement.md are triage.md (25,171 B)
+// 118,644, verify.md (24,380 B) 119,435, retro.md (22,831 B) 120,984 -- all still
+// ABOVE the floor, as the paragraph above records, so the ASSERTION at the bottom
+// of this file remains the backstop and names the number when it fires. triage.md
+// is 738 B from becoming largest.
+//
 // hunt-bugs stays at 60,000: corpus 88,683 B, largest gotchas.md 41,922 B, so
 // 88,683 - 41,922 = 46,761 < 60,000 and its property still holds (untouched by
 // the 2026-09-04 pass). Re-measure both numbers for each skill whenever a
@@ -182,7 +223,10 @@ const SPLIT_SKILLS: Record<string, { minFiles: number; minCorpusBytes: number }>
   // corpus 143,901 B, `corpus - largest` 117,992, 8 B of room; its review
   // round then paid retro.md's (b)-counting bullet by pointing 10-b's
   // cross-repo paragraph at the rule file that already holds it: corpus
-  // 143,705 B, `corpus - largest` 117,796, 204 B of room.
+  // 143,705 B, `corpus - largest` 117,796, 204 B of room. The
+  // go-to-k/cdk-real-drift#1913 mirror round left it at corpus 143,815 B,
+  // `corpus - largest` 117,906, 94 B of room -- the paragraph above this
+  // constant carries what it added and what it cut to pay for it.
   'work-issues': { minFiles: 9, minCorpusBytes: 118_000 },
   // 7 files / 108,940 B measured at the split (2026-08-28); largest 55,137 B; 87,180 B post-compression
   'hunt-bugs': { minFiles: 7, minCorpusBytes: 60_000 },

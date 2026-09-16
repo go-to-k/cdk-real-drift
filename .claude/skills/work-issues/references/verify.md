@@ -7,11 +7,11 @@ Run `/verify-pr`. Its live-test rules decide how each PR is verified:
 **Run the integ LAST, and DECLARE the tree final, in words, to whoever is still
 editing it.** The `integ` gate is `hash: diff` over `src/**` and
 `tests/integration/**`: even a comment-only review fix to an in-scope file
-stales the marker and costs a full fixture run (three real-AWS runs of one
-fixture, the third for a zero-non-comment round — go-to-k/cdkd#2261). Tell the
-implementer to batch all remaining findings into ONE commit and report when the
-tree is FINAL — unsaid, it will re-verify per finding. Reviewer-side: scope the
-round to the delta and take its findings all at once, not trickled.
+stales the marker and costs a full fixture run (go-to-k/cdkd#2261 paid for three
+runs of one fixture, the third for a zero-non-comment round). Tell the
+implementer to batch remaining findings into ONE commit and report when the tree
+is FINAL — unsaid, it will re-verify per finding. Reviewer-side: scope the round
+to the delta and take its findings all at once, not trickled.
 
 - **fold / FP / classify fix** → the harvested **corpus** case is authoritative
   live data. If it is pinned by `vp test run corpus-replay` AND was live-proven
@@ -51,12 +51,12 @@ round to the delta and take its findings all at once, not trickled.
 - **A `cleanup` that ALSO runs before the run must not destroy anything the run
   then needs.** A `WORKDIR="$(mktemp -d …)"` computed at load time, removed by
   `cleanup`, called pre-run: the directory is gone before its first write, and
-  the symptom is a bare `No such file or directory` hundreds of lines from the
-  cause (cost a real-AWS cycle in cdkd). AWS resources are immune — creating
-  them IS a phase — a scratch path computed at variable-definition time is not.
-  Anything `cleanup` removes must be re-created by a phase or created after the
-  pre-run call. This repo's fixtures arm `trap cleanup EXIT` with no pre-run
-  call; if you add one, dry-run against stubs first.
+  the symptom is a bare `No such file or directory` far from the cause (cost a
+  real-AWS cycle in cdkd). AWS resources are immune — creating them IS a phase —
+  a scratch path computed at variable-definition time is not: re-create it in a
+  phase, or create it after the pre-run call. This repo's fixtures arm
+  `trap cleanup EXIT` with no pre-run call; if you add one, dry-run against
+  stubs first.
 - **When a fix round produces the NEXT round's blocker twice, stop reviewing
   the patch and question its SHAPE** (`/verify-pr` step 5 re-reads the whole
   diff each run). Blockers in a cascade are found by executing a probe or
@@ -72,11 +72,8 @@ round to the delta and take its findings all at once, not trickled.
   making the artifact **CLAIM LESS** — printing raw output and naming both
   outcomes instead of a verdict, because a command that claims nothing cannot
   claim something false. The tell: each fix more SOPHISTICATED than the last
-  while the plain rc-only sweeps beside it were right throughout
-  (`grep -q 'does not exist'` also matched botocore's
-  `The source_profile ... does not exist`, raised before any network call, so a
-  broken profile reported CLEAN having queried nothing). Expect the fix to feel
-  like a retreat — it converges. Corollaries, both paid for there:
+  while the plain rc-only sweeps beside it were right throughout. Expect the fix
+  to feel like a retreat — it converges. Corollaries, both paid for there:
 
   - **Fence the REMEDIATION, not just the detection.** A destroy built from
     names missing a required suffix exits 0 SILENTLY; every fence pinned the
@@ -144,15 +141,14 @@ round to the delta and take its findings all at once, not trickled.
     whole suite was 352 files / 6,665 tests green. The discriminator is the
     RE-RUN SHAPE, not the count: isolation, reduced parallelism, and waiting
     for the host to quiesce turn a load artifact green while leaving a real
-    failure red. Measure the host first — the same day, at `load average 137`,
+    failure red. Measure the host first: the same day, at `load average 137`,
     `--maxWorkers=4` was no longer enough and one test timed out running its
-    file ALONE. `uptime` costs nothing and tells you whether the machine, not
-    the diff, is the subject.
+    file ALONE — `uptime` tells you whether the machine, not the diff, is the
+    subject.
   - **Repeating a `vp run <task>` DOES re-execute here** — `check` (5/5) and
     `test` (3/3) reported `not cached because it modified its input`. Do not
-    import the sibling's cache-hit warning; the local cache trap
-    (go-to-k/cdk-real-drift#438) is already handled by `cache: false` in
-    `vite.config.ts`.
+    import the sibling's cache-hit warning: `cache: false` in `vite.config.ts`
+    already handles the local trap (go-to-k/cdk-real-drift#438).
   - **Inject the failure anywhere LINTED — here that includes the tests
     tree.** A non-underscore-prefixed unused variable fails `vp run check`
     rc=1 from `src/` AND from `tests/` (`lint.ignorePatterns` re-includes the
@@ -195,6 +191,15 @@ node_modules` to borrow `aws-cdk-lib` (rm any existing dir first — `ln -sfn`
   main checkout, and an IN-PLACE launch tree need not live under `.worktrees/`
   at all.
 
+**A lane forbidden real-AWS RUNS still WRITES the arm; the parent runs it.**
+The serialization invariant reserves the RUN, not the authoring — the throwaway
+app, its mutate/`revert` steps, the logging proxy above are lane work, so the §9
+turn is pure execution and the lane reports an arm that EXISTS, not only the
+tier it owes. Read as "no fixture either", the ban becomes a deferral:
+go-to-k/cdkd#3103's lane filed its `--no-wait` arm `Session-fit: next`, the
+parent wrote it and reddened its mutant within the hour, and go-to-k/cdkd#3096
+was re-classified `now` at claim because the arm by then existed (2026-09-14).
+
 **Fresh deploys: UNIQUE hunt-style stack names only** (`Cdkrd<issue>Verify`),
 never a shared fixed name and never a real prod stack — the account may hold
 the maintainer's production stacks. **Tag every ephemeral deploy
@@ -232,10 +237,9 @@ this repo has no ladder to fall back on.** A lane's reviewers are its children
 — same brief, same framing — so they clear what the lane already believes, and
 here nothing mechanical catches that: there is no multi-agent reviewer set and
 no review-tier skill, and the `pr-review` entry in `.markgate.yml` is wired to
-no hook. Measured on the sibling go-to-k/cdkd#2383 (which runs a reviewer
-ladder this repo does not): three rounds of the LANE's own reviewers each found
-the next spelling of one defect, and it took an independent orchestrator-level
-round to find the last one. This repo's go-to-k/cdk-real-drift#1838 spent its
+no hook. On the sibling go-to-k/cdkd#2383, three rounds of the LANE's own
+reviewers each found the next spelling of one defect and an independent
+orchestrator-level round found the last; go-to-k/cdk-real-drift#1838 spent its
 own rounds on the same class. So the depth is your own read of the whole diff
 plus a round you dispatch yourself; a lane's clean round is evidence about the
 lane's assumptions, not about the diff.
@@ -263,10 +267,10 @@ nothing announced it). Two lines belong in every read-only reviewer's brief:
 every repository, since deleting the `.git` file does not detach the copy, it
 only makes discovery walk UPWARD; and **report the TARGET worktree's
 `git status --porcelain` before AND after the round** — the pair is what makes
-damage attributable (that incident surfaced only because the NEXT reviewer
-volunteered "the tree went dirty mid-review, not mine"; the responsible one
-repaired the index with `git restore --staged` — index only, never the working
-tree). This repo's lanes live under `.worktrees/`, so the hazard is identical.
+damage attributable, and that incident surfaced only because the NEXT reviewer
+volunteered that the tree had gone dirty mid-review (the repair is
+`git restore --staged` — index only, never the working tree). This repo's lanes
+live under `.worktrees/`, so the hazard is identical.
 
 ### 8-z. When a mutation probe reports NO discrimination
 
@@ -336,15 +340,12 @@ the shell and the tooling, not anything cdkd-specific. Item 4 was added on
 2026-09-03 and did NOT come from that session.
 
 **When you add a shape here, fix every place that COUNTS it — and only half of
-them contain a digit that moves.** Adding item 4 touched four places, of which
-exactly TWO carried a changed numeral (the "N other things" opener and the
-"all N" closer); the other two kept their numeral and moved their SCOPE (the
-port note narrowed to the ORIGINAL four, the session attribution to the first
-three plus the fixture shape). A sweep for changed digits returns half of the
-work and looks complete, which is worse than returning none.
-`references/launch-mode.md` records the same failure on its IN-PLACE table — a
-count written beside a list is maintained, a count written a paragraph away is
-not.
+them contain a digit that moves.** Adding item 4 touched four places; exactly
+TWO carried a changed numeral (the "N other things" opener and the "all N"
+closer), while the other two kept theirs and moved their SCOPE (the port note
+and the session attribution above). A sweep for changed digits returns half the
+work looking complete, which is worse than returning none —
+`references/launch-mode.md` records the same failure on its IN-PLACE table.
 
 **A probe that DID discriminate is void just as easily: one that changed TWO
 things at once attests to neither.** Measured on go-to-k/cdkd#2612: a comment claimed
