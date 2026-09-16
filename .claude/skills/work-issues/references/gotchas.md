@@ -21,25 +21,30 @@
 - **`vp pack` before any `vp test run` / live-test in a fresh worktree** — with no
   `dist/`, 13 CLI-spawning tests fail on a clean `main` (measured 2026-08-19,
   go-to-k/cdk-real-drift#1768). The stale-cache worry that used to sit here is
-  handled in `vite.config.ts`: `build` is `cache: false`, and `check` / `test`
-  report a cache
-  MISS on every run.
+  handled in `vite.config.ts` — §8 carries the measurement.
 - **Earn the `verify-pr` marker via `/verify-pr`, never hand-set it.** A `src/**` PR
-  merge needs a fresh `verify-pr` marker, but `mise exec -- markgate set verify-pr`
-  from a shell is rejected by BOTH the `verify-pr-gate` PreToolUse hook AND the
-  auto-mode Bash classifier (which flags "self-merging a src PR on a hand-set marker
-  that skipped the live-test"). Run `/verify-pr <PR#>` — it does the checklist and is
-  the ONLY legitimate setter. If the classifier still blocks the self-merge, that is
-  the reviewer guardrail: get the maintainer's explicit authorization (or let them
-  merge) rather than working around it.
+  merge needs a fresh one, but `mise exec -- markgate set verify-pr` from a shell is
+  rejected by BOTH the `verify-pr-gate` PreToolUse hook AND the auto-mode Bash
+  classifier. `/verify-pr <PR#>` does the checklist and is the ONLY legitimate
+  setter; if the classifier still blocks the self-merge, that is the reviewer
+  guardrail — get the maintainer's authorization rather than working around it.
 - **`gh pr merge --delete-branch` from a worktree errors yet still merges.** Run from
   a worktree while `main` is checked out in the main tree, it exits 1 with
   `fatal: 'main' is already used by worktree …` — but the REMOTE merge AND remote
   branch delete already SUCCEEDED (gh only failed the post-merge local `checkout main`
   - local branch delete). Confirm with `gh pr view <n> --json state,mergedAt`
     (`MERGED`), then do the local cleanup yourself: `git checkout main && git pull`,
-    `git worktree remove …`, `git branch -D wt-…` (the `git push origin --delete` will
-    report "remote ref does not exist" — benign, gh already removed it).
+    `git worktree remove …`, `git branch -D wt-…` (a later `git push origin --delete`
+    reports "remote ref does not exist" — benign, gh already removed it).
+
+- **A lane killed by the account rate limit (HTTP 429 mid-turn) keeps its
+  context — `SendMessage` it, never re-dispatch.** Read the TREE first: it may
+  have committed, pushed and opened the PR already (three kills across the
+  go-to-k/cdkd#3103 / go-to-k/cdkd#3139 lanes, 2026-09-14). A re-dispatch starts
+  from the lane's last REPORT, which the tree has outrun — distrust its "markers
+  set" and re-read `markgate status` from the lane's own worktree (§6; no sha
+  binding here). The resume answers like §9's turn-grant: `queued` is not
+  delivered.
 
 - **An IN-PLACE run ends with the Stop hook still calling its lane unmerged, and
   the remedy that warning names is one this mode forbids.**
@@ -52,15 +57,14 @@
   to clear it from inside is to leave the branch —
   `git -C "<LANE_TREE>" switch --detach origin/main`, since the hook skips a
   worktree with no current branch and `main` itself is checked out in the main
-  checkout. **Never write that BARE.** As of
-  go-to-k/cdk-real-drift#1845 a bare `git switch --detach` run after a cwd reset
-  is REFUSED by `.claude/hooks/main-tree-branch-gate.sh` rather than silently
-  detaching the SHARED main checkout — its `switch` arm treats `--detach` as a
-  block, since detaching moves the shared tree off `main` exactly as a branch
-  switch does. That converts a silent clobber into a loud refusal; it does not
-  make the bare spelling correct. The `-C` is what makes the command target the
-  tree you MEAN, and a refusal still leaves the lane's detach undone. Whether to
-  detach at all belongs to whoever owns the workspace, not to this run — except
+  checkout. **Never write that BARE.** Since go-to-k/cdk-real-drift#1845 a bare
+  `git switch --detach` run after a cwd reset is REFUSED by
+  `.claude/hooks/main-tree-branch-gate.sh` (its `switch` arm treats `--detach`
+  as a block — detaching moves the shared tree off `main` exactly as a branch
+  switch does) rather than silently detaching the SHARED main checkout. That is a
+  loud refusal, not a licence: the `-C` targets the tree you MEAN, and a refusal
+  leaves the lane's detach undone. Whether to detach at all belongs to whoever
+  owns the workspace, not to this run — except
   in §10-d, where THIS run creates the retro branch in this tree and therefore
   owns that one branch move.
 

@@ -228,18 +228,15 @@ Every run appending one more bullet is how a long skill becomes an unread one.
     handed a recon checked claim-by-claim against this repo's files, and it was
     still stale in ten places and wrong about scope twice — both times
     UNDER-reporting: the false markgate-store claim sat at FIVE sites, not the
-    three it named (the two missed were `/check` and `/check-docs`, and
-    `/check` is the ORIGIN the others point back at); a §8-z addition touched
-    FOUR places of which only TWO carried a digit that changed, so a grep for
-    numerals finds half the work and looks finished. An under-reported scope is
-    SILENT — a lane treating the list as complete lands a partial fix, leaving
-    the copies corrected and the original still asserting the falsehood. For
-    every claim, grep for the OTHER sites before fixing the named one, and
-    count what a list-shaped instruction says it contains. (The worked instance
-    is this rule's own commit: it fixed `hunt-bugs/references/plan.md` and left
-    the identical "a mode and two paths" sentence in `references/triage.md` —
-    one claim, two copies, one corrected; a reviewer found it, not the author —
-    2026-09-03, go-to-k/cdk-real-drift#1861.)
+    three it named; a §8-z addition touched FOUR places of which only TWO
+    carried a digit that changed, so a grep for numerals finds half the work
+    and looks finished. An under-reported scope is SILENT — a lane treating the
+    list as complete lands a partial fix, leaving the copies corrected and the
+    original still asserting the falsehood. For every claim, grep for the OTHER
+    sites before fixing the named one, and count what a list-shaped instruction
+    says it contains (2026-09-03, go-to-k/cdk-real-drift#1861, whose own commit
+    corrected `hunt-bugs/references/plan.md` and left the twin sentence in
+    `references/triage.md` for a reviewer to find).
   - **Verify the cited EVIDENCE too — open the issue or PR the sentence names
     and confirm it says what the sentence claims.** Wrong evidence is wrong
     where WRITTEN and travels intact past every per-repo noun check: this file
