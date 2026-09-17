@@ -233,11 +233,19 @@ const SPLIT_SKILLS: Record<string, { minFiles: number; minCorpusBytes: number }>
   // and RELOCATED the independence sentence into it out of verify.md's
   // section 8-z ladder, which now points at it rather than restating it (one
   // home for the concept, per section 10-c's near-duplicate rule). Measured
-  // at the sha pushed: corpus 145,387 B, largest implement.md 27,420 B,
-  // `corpus - largest` 117,967 -- 33 B of room, down from 94. implement.md
-  // sits 20,580 B under its 48,000 B cap, so the per-file cap is nowhere near
+  // at the sha pushed: corpus 145,371 B, largest implement.md 27,452 B,
+  // `corpus - largest` 117,919 -- 81 B of room, down from 94. implement.md
+  // sits 20,548 B under its 48,000 B cap, so the per-file cap is nowhere near
   // binding here; this floor is, and it is UNCHANGED. The next addition to a
-  // non-leader file has under 33 B before it lapses -- pay in that file.
+  // non-leader file has under 81 B before it lapses -- pay in that file.
+  //
+  // Accounting stated exactly rather than as "paid in-file", because review
+  // measured that claim false on the sibling mirror: the bullet lands
+  // ENTIRELY in implement.md, which is the LARGEST file, so it does not move
+  // `corpus - largest` at all. What moved the margin is verify.md, which
+  // ABSORBED +13 B -- the pointer replacing the relocated sentence is longer
+  // than the sentence was. The first cut absorbed +61 B there and spent the
+  // whole margin; tightening the replacement is what bought it back.
   'work-issues': { minFiles: 9, minCorpusBytes: 118_000 },
   // 7 files / 108,940 B measured at the split (2026-08-28); largest 55,137 B; 87,180 B post-compression
   'hunt-bugs': { minFiles: 7, minCorpusBytes: 60_000 },

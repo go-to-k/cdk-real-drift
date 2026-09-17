@@ -342,13 +342,13 @@ argument had never been about the subject at all. Three requirements follow:
   subject maps a value to itself, and it leaves the replacement unpinned.
 - **An expected value must be an INDEPENDENT variable from the one under test**
   (the fixture-shape item closing `references/verify.md` §8-z's ladder sends
-  you here), so a class
-  TRANSCRIBED rather than imported needs a behaviour fence over the WHOLE
-  domain — a bound is an exemption too — over EVERY fact the transcription
-  copies, and against the copy **IN USE**. That last clause is the one shipped
-  broken and caught in review: cdkd's first fence declared its own third copy
-  of the class, so it paired only itself, and the two copies actually read
-  could be narrowed back with it green.
+  you here), so a class TRANSCRIBED rather than imported needs a behaviour
+  fence over the WHOLE domain — a bound is an exemption too — over EVERY fact
+  the transcription copies, and against the copy **IN USE**. That last clause
+  is the one shipped broken and caught in review (go-to-k/cdkd#3296,
+  2026-09-17): cdkd's first fence declared its own third copy of the class, so
+  it paired only itself, and the two copies actually read could be narrowed
+  back with it green.
 
 **Restore from a BYTE-EXACT copy of the subject, never by inverting the edit.**
 A probe deliberately breaks a file, so the restore is the half that has to be
