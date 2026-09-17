@@ -250,12 +250,18 @@ const SPLIT_SKILLS: Record<string, { minFiles: number; minCorpusBytes: number }>
   // pointer, is longer than the sentence was.
   //
   // That +52 is DELIBERATELY not tightened further, and the history below is
-  // the reason. Read it as written: an EARLIER draft of this paragraph
-  // mis-attributed all three rounds -- it credited round 1 with losing what
-  // round 1 also lost a second fact from, and credited THIS commit with the
-  // collapse it fixes -- which is the same false-attribution defect the
-  // mirrored lesson is about, in the comment written to record it. Re-derived
-  // by diffing the item at each sha rather than from memory:
+  // the reason. Read it as written: an EARLIER draft of this paragraph got all
+  // three of its attributions wrong, and here they are, so the correction can
+  // be checked rather than taken -- (1) it said round 1 converted the item
+  // FROM a question, when the item had been declarative since it was
+  // introduced and the same paragraph called the change a
+  // declarative-to-question conversion six lines down; (2) it credited round 2
+  // with losing "still served the content", which round 1 had already lost
+  // alongside "and the case could not fail"; (3) it credited THIS commit with
+  // the "both sides" collapse, which was round 2's and which this commit
+  // REVERSES. That is the same false-attribution defect the mirrored lesson is
+  // about, occurring in the comment written to record it. Re-derived by
+  // diffing the item at each sha rather than from memory:
   //
   //   main        declarative rule; "the producing and the consuming side";
   //               "still served the CONTENT"; "and the case could not fail".
