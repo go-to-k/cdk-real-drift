@@ -324,11 +324,11 @@ different run:
    check earns its keep — a whole file silently not loading leaves every OTHER
    file's count intact, so digits alone still read as green.
 
-And one shape inside the fixture itself: **an expected value must be an
-INDEPENDENT variable from the one under test.** A stub keyed its content on a
-sha whose default was the same literal on the producing and the consuming side,
-so breaking the producing call still served the content and the case could not
-fail.
+And one shape inside the fixture itself: the expected value was not INDEPENDENT
+of the one under test — a stub keyed its content on a sha defaulting to the
+same literal on the producing and the consuming side, so breaking the producing
+call still served it. `references/implement.md` carries that rule and its cost
+when the expected value is a TRANSCRIPTION of the subject.
 
 Only after all five does "the fence is weak" remain as the explanation.
 Deleting an assertion on the strength of an unexamined green is how a working

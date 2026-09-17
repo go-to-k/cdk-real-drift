@@ -227,6 +227,17 @@ const SPLIT_SKILLS: Record<string, { minFiles: number; minCorpusBytes: number }>
   // go-to-k/cdk-real-drift#1913 mirror round left it at corpus 143,815 B,
   // `corpus - largest` 117,906, 94 B of room -- the paragraph above this
   // constant carries what it added and what it cut to pay for it.
+  // The go-to-k/cdk-real-drift#1915 mirror of cdkd's go-to-k/cdkd#3296 retro
+  // (2026-09-17) added implement.md's "a narrow probe VALUE input and an
+  // assertion's EXEMPTION are one defect" bullet and its three requirements,
+  // and RELOCATED the independence sentence into it out of verify.md's
+  // section 8-z ladder, which now points at it rather than restating it (one
+  // home for the concept, per section 10-c's near-duplicate rule). Measured
+  // at the sha pushed: corpus 145,387 B, largest implement.md 27,420 B,
+  // `corpus - largest` 117,967 -- 33 B of room, down from 94. implement.md
+  // sits 20,580 B under its 48,000 B cap, so the per-file cap is nowhere near
+  // binding here; this floor is, and it is UNCHANGED. The next addition to a
+  // non-leader file has under 33 B before it lapses -- pay in that file.
   'work-issues': { minFiles: 9, minCorpusBytes: 118_000 },
   // 7 files / 108,940 B measured at the split (2026-08-28); largest 55,137 B; 87,180 B post-compression
   'hunt-bugs': { minFiles: 7, minCorpusBytes: 60_000 },

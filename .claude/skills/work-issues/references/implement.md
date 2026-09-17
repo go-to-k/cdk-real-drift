@@ -327,6 +327,29 @@ The general shape: **a fence is not evidence until you have watched it go red
 on something you had not already counted.** Calibration says it is not noisy;
 only the spelling and deletion probes say it is load-bearing.
 
+**A narrow probe VALUE input and an assertion's EXEMPTION are one defect.** An
+exemption is the enumeration the property replaced, and each exempt case is an
+unproved claim about the SUBJECT that only the TEST's own shape justified.
+Measured in go-to-k/cdkd#3275: a property assertion over a sanitizer's output
+exempted `\t` to defend the separator its inputs were JOINED with, then `\n` a
+round later on the same reasoning — the sanitizer strips both, so it twice
+admitted the shape it existed to catch, and it took a third round to see the
+argument had never been about the subject at all. Three requirements follow:
+
+- **Assert the subject's whole class, PER MESSAGE rather than over a join**, so
+  no separator needs exempting in the first place.
+- **Assert the VALUE, not `out === input`.** Identity is blind wherever the
+  subject maps a value to itself, and it leaves the replacement unpinned.
+- **An expected value must be an INDEPENDENT variable from the one under test**
+  (the fixture-shape item closing `references/verify.md` §8-z's ladder sends
+  you here), so a class
+  TRANSCRIBED rather than imported needs a behaviour fence over the WHOLE
+  domain — a bound is an exemption too — over EVERY fact the transcription
+  copies, and against the copy **IN USE**. That last clause is the one shipped
+  broken and caught in review: cdkd's first fence declared its own third copy
+  of the class, so it paired only itself, and the two copies actually read
+  could be narrowed back with it green.
+
 **Restore from a BYTE-EXACT copy of the subject, never by inverting the edit.**
 A probe deliberately breaks a file, so the restore is the half that has to be
 right, and an inverse string replace is not one: measured 2026-09-02 on this
