@@ -175,12 +175,15 @@ const MAX_REFERENCE_FILE_BYTES = 48_000; // RE-DERIVED DOWNWARD 64_000 -> 48_000
 // round's own lessons describe: a figure and a description written while
 // agreeing with the change, never re-read against the diff.
 //
-// The near-flip picture is unchanged in KIND and slightly worse in degree:
-// residuals if each candidate overtook implement.md are triage.md (25,171 B)
-// 118,644, verify.md (24,380 B) 119,435, retro.md (22,831 B) 120,984 -- all still
-// ABOVE the floor, as the paragraph above records, so the ASSERTION at the bottom
-// of this file remains the backstop and names the number when it fires. triage.md
-// is 738 B from becoming largest.
+// The near-flip picture is unchanged in KIND and EASED in degree by the
+// go-to-k/cdk-real-drift#1915 mirror, which grew the leader: residuals if each
+// candidate overtook implement.md are triage.md (25,171 B) 120,239, verify.md
+// (24,432 B) 120,978, retro.md (22,831 B) 122,579 -- all still ABOVE the floor,
+// as the paragraph above records, so the ASSERTION at the bottom of this file
+// remains the backstop and names the number when it fires. triage.md is 2,281 B
+// from becoming largest, up from 738: this comment quotes a figure the mirror
+// MOVED, which is why the rule two paragraphs down says to re-derive every
+// figure here at the sha you PUSH.
 //
 // hunt-bugs stays at 60,000: corpus 88,683 B, largest gotchas.md 41,922 B, so
 // 88,683 - 41,922 = 46,761 < 60,000 and its property still holds (untouched by
@@ -246,18 +249,28 @@ const SPLIT_SKILLS: Record<string, { minFiles: number; minCorpusBytes: number }>
   // ABSORBED +52 B -- the question replacing the relocated sentence, plus its
   // pointer, is longer than the sentence was.
   //
-  // That +52 is DELIBERATELY not tightened further, and the three rounds it
-  // took are the reason. Each tightening pass on this one sentence dropped a
-  // fact: round 1 took the item from a QUESTION (the ladder above says "Ask
-  // them in order") to a past-tense report and lost "and the case could not
-  // fail", the symptom section 8-z exists to diagnose; round 2 restored both
-  // and lost "still served the CONTENT"; round 3 bought 48 B by collapsing
-  // "the producing and the consuming side" to "both sides", which leaves
-  // CONSUMING named nowhere -- and naming the two sides IS the mechanism.
-  // A word-level diff against origin/main now reports only `an an be from
-  // must variable`, the declarative-to-question conversion, with the rule's
-  // own wording verbatim in implement.md. Bytes are the cheap resource here;
-  // pay from a file with room, never from the sentence.
+  // That +52 is DELIBERATELY not tightened further, and the history below is
+  // the reason. Read it as written: an EARLIER draft of this paragraph
+  // mis-attributed all three rounds -- it credited round 1 with losing what
+  // round 1 also lost a second fact from, and credited THIS commit with the
+  // collapse it fixes -- which is the same false-attribution defect the
+  // mirrored lesson is about, in the comment written to record it. Re-derived
+  // by diffing the item at each sha rather than from memory:
+  //
+  //   main        declarative rule; "the producing and the consuming side";
+  //               "still served the CONTENT"; "and the case could not fail".
+  //   r1 25a20ca3 rule -> past-tense REPORT; lost "and the case could not
+  //               fail" AND "the content" (-> "served it"). +61 B.
+  //   r2 7a10ccd1 report -> QUESTION (a new form, not a restoration) and
+  //               "could not fail" back; collapsed "the producing and the
+  //               consuming side" -> "both sides", leaving CONSUMING named
+  //               nowhere, though naming the two sides IS the mechanism. -48 B.
+  //   r3 d6b6da72 both restored. +39 B, net +52 against main.
+  //
+  // A word-level diff against main now reports six words DROPPED -- `an an be
+  // from must variable`, the declarative-to-question conversion -- with the
+  // rule's own wording verbatim in implement.md. Bytes are the cheap resource
+  // here; pay from a file with room, never from the sentence.
   'work-issues': { minFiles: 9, minCorpusBytes: 118_000 },
   // 7 files / 108,940 B measured at the split (2026-08-28); largest 55,137 B; 87,180 B post-compression
   'hunt-bugs': { minFiles: 7, minCorpusBytes: 60_000 },
