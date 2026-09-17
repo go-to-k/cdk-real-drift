@@ -257,9 +257,12 @@ const SPLIT_SKILLS: Record<string, { minFiles: number; minCorpusBytes: number }>
   // introduced and the same paragraph called the change a
   // declarative-to-question conversion six lines down; (2) it credited round 2
   // with losing "still served the content", which round 1 had already lost
-  // alongside "and the case could not fail"; (3) it credited THIS commit with
-  // the "both sides" collapse, which was round 2's and which this commit
-  // REVERSES. That is the same false-attribution defect the mirrored lesson is
+  // alongside "and the case could not fail"; (3) it credited round 3 with the
+  // "both sides" collapse, which was round 2's and which round 3 REVERSES.
+  // (That clause used to say "THIS commit" -- deixis, which resolves to
+  // nothing once these commits are squashed, and which was the one claim of
+  // the three a reader could not check against a sha the way the table below
+  // labels them.) That is the same false-attribution defect the lesson is
   // about, occurring in the comment written to record it. Re-derived by
   // diffing the item at each sha rather than from memory:
   //
