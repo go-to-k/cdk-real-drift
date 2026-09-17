@@ -233,19 +233,31 @@ const SPLIT_SKILLS: Record<string, { minFiles: number; minCorpusBytes: number }>
   // and RELOCATED the independence sentence into it out of verify.md's
   // section 8-z ladder, which now points at it rather than restating it (one
   // home for the concept, per section 10-c's near-duplicate rule). Measured
-  // at the sha pushed: corpus 145,371 B, largest implement.md 27,452 B,
-  // `corpus - largest` 117,919 -- 81 B of room, down from 94. implement.md
+  // at the sha pushed: corpus 145,410 B, largest implement.md 27,452 B,
+  // `corpus - largest` 117,958 -- 42 B of room, down from 94. implement.md
   // sits 20,548 B under its 48,000 B cap, so the per-file cap is nowhere near
   // binding here; this floor is, and it is UNCHANGED. The next addition to a
-  // non-leader file has under 81 B before it lapses -- pay in that file.
+  // non-leader file has under 42 B before it lapses -- pay in that file.
   //
   // Accounting stated exactly rather than as "paid in-file", because review
   // measured that claim false on the sibling mirror: the bullet lands
   // ENTIRELY in implement.md, which is the LARGEST file, so it does not move
   // `corpus - largest` at all. What moved the margin is verify.md, which
-  // ABSORBED +13 B -- the pointer replacing the relocated sentence is longer
-  // than the sentence was. The first cut absorbed +61 B there and spent the
-  // whole margin; tightening the replacement is what bought it back.
+  // ABSORBED +52 B -- the question replacing the relocated sentence, plus its
+  // pointer, is longer than the sentence was.
+  //
+  // That +52 is DELIBERATELY not tightened further, and the three rounds it
+  // took are the reason. Each tightening pass on this one sentence dropped a
+  // fact: round 1 took the item from a QUESTION (the ladder above says "Ask
+  // them in order") to a past-tense report and lost "and the case could not
+  // fail", the symptom section 8-z exists to diagnose; round 2 restored both
+  // and lost "still served the CONTENT"; round 3 bought 48 B by collapsing
+  // "the producing and the consuming side" to "both sides", which leaves
+  // CONSUMING named nowhere -- and naming the two sides IS the mechanism.
+  // A word-level diff against origin/main now reports only `an an be from
+  // must variable`, the declarative-to-question conversion, with the rule's
+  // own wording verbatim in implement.md. Bytes are the cheap resource here;
+  // pay from a file with room, never from the sentence.
   'work-issues': { minFiles: 9, minCorpusBytes: 118_000 },
   // 7 files / 108,940 B measured at the split (2026-08-28); largest 55,137 B; 87,180 B post-compression
   'hunt-bugs': { minFiles: 7, minCorpusBytes: 60_000 },
