@@ -32,8 +32,9 @@ the same dice until the fix is on `main`, and the REBASE delivers it (standing
 instance: `json-empty-on-error` flakes even with `dist/` packed, §8).
 
 **A PR's CI runs on the MERGE ref, not on your branch**, so a red check can come
-from a PEER's just-merged content your local green never saw, and it blocks
-`ci-green-gate`. Fetch, rebase, re-run; do not distrust the peer's new test.
+from a PEER's just-merged content your local green never saw, and the ruleset
+then refuses the merge. Fetch, rebase, re-run; do not distrust the peer's new
+test.
 
 **Before you watch CI, poll until checks EXIST.** `gh pr checks <n> --watch`
 does NOT cover that wait: with none reported it returns AT ONCE rather than
@@ -48,8 +49,9 @@ until gh pr checks <n> -R <owner>/<repo> --json name,state 2>/dev/null \
   | grep -q '"name"'; do sleep 20; done
 ```
 
-The wait is YOURS to keep: `ci-green-gate` FAILS OPEN on that state, so nothing
-stops a merge issued before CI has registered.
+The wait is YOURS to keep, and the server does not keep it for you: a required
+check that has not REGISTERED yet is not the same as one reporting failure, so
+poll until the checks exist, then watch them.
 
 Then bring the merges local — **run exactly ONE line**, per SKILL.md "Launch
 mode". IN-PLACE cannot `checkout main` (`already used by worktree ...`), so it

@@ -1,5 +1,5 @@
 {
-  "//": "PreToolUse hooks for cdk-real-drift. A hook may BLOCK only when the harm completes at the moment of the action AND lands irreversibly on a THIRD PARTY's artifact, on ANOTHER SESSION's work, or on the MAINTAINER's AWS account (AGENTS.md, Tooling Policy; roster in .claude/rules/hooks.md). Everything else is a sentence in AGENTS.md, a unit test over src/**, or nothing. Wired: branch-gate blocks a commit or push whose TARGET tree is on main; stale-base-gate blocks a `git push` whose branch sits on origin/main yet reverts files recent main commits changed (the stale-base soft-reset clobber); ci-green-gate blocks `gh pr merge` unless every GitHub Actions check reports pass or skipping; bughunt-clean-gate blocks `git commit` / `gh pr create` / `gh pr merge` while the COMMITTING owner's bug-hunt sentinel still lists un-deleted AWS resources — per-owner, so a peer session's live hunt does not block an unrelated commit; deploy-autoarm-gate arms that sentinel with a PER-SESSION token the moment a deploy-shaped command runs, so a throwaway live test cannot be forgotten; worktree-guard (matcher Edit|Write|NotebookEdit) blocks a file-tool write into the MAIN checkout's src/** or tests/** while a .worktrees/ worktree exists, because a Write there overwrites whatever uncommitted content another session left in the shared tree and nothing in git holds a copy. env: CLAUDE_CODE_THRIFTY_SONIC is pinned to \"0\" — Claude Code's bash-first experiment tells a session to write files through cat/sed -i/heredocs instead of Edit/Write, which makes worktree-guard (the only file-tool-matched entry here) stop firing entirely; fenced by tests/bash-first-optout-1893.test.ts.",
+  "//": "PreToolUse hooks for cdk-real-drift. A hook may BLOCK only when the harm completes at the moment of the action AND lands irreversibly on a THIRD PARTY's artifact, on ANOTHER SESSION's work, or on the MAINTAINER's AWS account (AGENTS.md, Tooling Policy; roster in .claude/rules/hooks.md), AND the server does not already refuse it. The `main` ruleset carries `deletion`, `non_fast_forward` and `required_status_checks` with ZERO bypass actors, so branch-gate and ci-green-gate were deleted: GitHub itself refuses a push to `main` and refuses a merge whose required checks are not green. Wired: stale-base-gate blocks a `git push` whose branch sits on origin/main yet reverts files recent main commits changed (the stale-base soft-reset clobber -- the server has no view of that, since the branch is a legitimate fast-forward); bughunt-clean-gate blocks `git commit` / `gh pr create` / `gh pr merge` while the COMMITTING owner's bug-hunt sentinel still lists un-deleted AWS resources -- per-owner, so a peer session's live hunt does not block an unrelated commit; deploy-autoarm-gate arms that sentinel with a PER-SESSION token the moment a deploy-shaped command runs, so a throwaway live test cannot be forgotten; worktree-guard (matcher Edit|Write|NotebookEdit) blocks a file-tool write into the MAIN checkout's src/** or tests/** while a .worktrees/ worktree exists, because a Write there overwrites whatever uncommitted content another session left in the shared tree and nothing in git holds a copy. env: CLAUDE_CODE_THRIFTY_SONIC is pinned to \"0\" -- Claude Code's bash-first experiment tells a session to write files through cat/sed -i/heredocs instead of Edit/Write, which makes worktree-guard (the only file-tool-matched entry here) stop firing entirely; fenced by tests/bash-first-optout-1893.test.ts.",
   "env": {
     "CLAUDE_CODE_THRIFTY_SONIC": "0"
   },
@@ -8,20 +8,6 @@
       {
         "matcher": "Bash",
         "hooks": [
-          {
-            "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/branch-gate.sh",
-            "if": "Bash(*git*commit*)",
-            "timeout": 10,
-            "statusMessage": "Checking target branch is not main..."
-          },
-          {
-            "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/branch-gate.sh",
-            "if": "Bash(*git*push*)",
-            "timeout": 10,
-            "statusMessage": "Checking target branch is not main..."
-          },
           {
             "type": "command",
             "command": "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/bughunt-clean-gate.sh",
@@ -49,13 +35,6 @@
             "if": "Bash(*git*push*)",
             "timeout": 10,
             "statusMessage": "Checking branch does not stale-base-clobber main..."
-          },
-          {
-            "type": "command",
-            "command": "${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/ci-green-gate.sh",
-            "if": "Bash(*gh*pr*merge*)",
-            "timeout": 30,
-            "statusMessage": "Checking the PR's CI is all-green before merge..."
           },
           {
             "type": "command",

@@ -7,6 +7,39 @@ a unit test over `src/**`, or nothing. Ask the two clauses separately — is the
 harm reversible, and whose artifact does it land on — never one about severity:
 irreversibility alone would block a duplicate issue, the filer's own artifact.
 
+**And a third question, asked before either: does the SERVER already refuse it?**
+This is the ONE place the `main` ruleset is enumerated
+(`gh api repos/go-to-k/cdk-real-drift/rulesets`); everything else points here.
+Over the default branch, with **zero bypass actors**:
+
+| Rule                     | What it refuses                                                                                                                                                              |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pull_request`           | Any change to `main` that did not arrive through a pull request. `required_approving_review_count: 0` (no review needed), `allowed_merge_methods: ["squash"]` (squash only). |
+| `required_status_checks` | A merge while `ci-ok`, `check` or `English-only (PR title / body)` is red, pending, or has never reported.                                                                   |
+| `non_fast_forward`       | A force-push to `main`.                                                                                                                                                      |
+| `deletion`               | Deleting `main`.                                                                                                                                                             |
+
+So **`git push origin main` is refused for any commit, green or not.** The
+`pull_request` rule is what makes that categorical; before it, a PR head whose
+contexts were already green could be fast-forwarded and pushed, un-squashed and
+with no merge button, and `branch-gate` was what refused that.
+
+**What the server cannot see**, so do not over-trust it: a commit on a LOCAL
+`main` (reversible with `git branch` + `git reset --hard origin/main`), and a
+red check outside the three required contexts. Both rows are in
+[docs/tooling-backlog.md](../../docs/tooling-backlog.md).
+
+`git push --dry-run` does NOT probe any of this, so do not reach for it as
+evidence.
+
+A local hook restating what the server DOES refuse adds no refusal the flow does
+not already meet; it adds a second place to keep in step, and it reads as
+protection while the real protection is elsewhere. `branch-gate.sh` (a commit or
+push on `main`) and `ci-green-gate.sh` (a merge over a red or pending check)
+were deleted for that reason. What the server does NOT see is still
+fair game — `stale-base-gate` is the standing example: the branch it refuses is
+a legitimate fast-forward that happens to revert another lane's work.
+
 **A hook that fails OPEN on an exotic shell shape is accepted as-is.** Quoting,
 heredocs, substitutions, `bash -c`, `eval`, case arms and redirections can all
 steer a command past a matcher. These hooks steer a COOPERATIVE agent away from
@@ -18,15 +51,6 @@ it bites a SECOND time.
 # The roster
 
 ## The shared `main` and other sessions' work
-
-- **`branch-gate.sh`** — blocks `git commit` / `git push` when the TARGET
-  working tree is on `main` / `master`, and when the MAIN checkout is on a
-  DETACHED HEAD. A detached LINKED worktree keeps passing: that is the
-  documented wind-down state for a lane that must not remove its worktree. The
-  branch-NAME read alone could not see the detached case, and nothing refuses
-  `git checkout <sha>` in the main checkout, so the hole was one allowed command
-  away (go-to-k/cdkd#2402). The printed remedy follows the operation in
-  progress, read from git's own state.
 
 - **`stale-base-gate.sh`** — blocks `git push` of a branch that sits ON TOP of
   the current `origin/main` (origin/main is an ancestor of HEAD) yet whose net
@@ -45,19 +69,6 @@ it bites a SECOND time.
   copy; a `cp`-recovery out of a contaminated main then pulls another session's
   freshly-merged work into an unrelated branch. Fail-OPEN on any ambiguity: no
   path, a relative path, no git context, or only the main worktree existing.
-
-## Third-party artifacts
-
-- **`ci-green-gate.sh`** — blocks `gh pr merge` unless EVERY GitHub Actions
-  check on the target PR reports `pass` or `skipping`; `fail`, `pending` and
-  "no checks reported" exit 2. A LIVE query, not a marker. An explicit `--admin`
-  is the maintainer's conscious override and passes; the agent must never add it
-  to get past a red CI. Fails OPEN when it cannot audit (no `gh`, not a git
-  repo, no resolvable PR) — it blocks only when it can PROVE CI is not green.
-  **A PR number does not name a pull request**: `42` exists in every repository,
-  so the gate resolves the selector from the MATCHED verb's own segment and
-  refuses a non-numeric token rather than letting a later bare `gh pr merge`
-  inherit an earlier number.
 
 ## The maintainer's AWS account
 
@@ -85,9 +96,11 @@ it bites a SECOND time.
   `autoarm-shared` token = fail-safe global block), so your deploy blocks your
   own commit and not a peer's.
 
-**Repo opt-in.** `branch-gate.sh` fires ONLY in a repo carrying `.markgate.yml`
-at the resolved target repo's top level. That file must therefore keep existing
-even though only the unwired `integ` gate is declared in it.
+**No hook reads `.markgate.yml` any more.** It was `branch-gate.sh`'s repo
+opt-in signal — the one thing that kept it from firing in an unrelated
+checkout — and that hook is gone. The file stays for its `integ` declaration; a
+NEW hook that needs a repo opt-in has to re-establish one rather than assume the
+file is still consulted.
 
 # Authoring a hook
 
@@ -126,13 +139,11 @@ arrives unexpanded and resolution must refuse rather than guess. These shapes
 must NOT be refused: an absolute `-C` or `cd` mooting an earlier unreadable one,
 a `cd` AFTER the verb, and a leading literal `~`.
 
-Hooks must be bash 3.2 compatible. `branch-gate.test.sh` is the harness that
-pins the interpreter: it puts a one-symlink shim directory first on PATH so
-every child `bash` is the fenced one — `/bin/bash` by default, `HOOK_BASH=<path>`
-for the other tally — prints on its first line which one it used, and treats an
-explicitly set but non-executable `HOOK_BASH` as FATAL rather than falling back
-to PATH bash. `scripts/run-hook-tests.sh` itself exports nothing; run it a second
-time under `/bin/bash` to get the 3.2 tally. Every hook has a `.test.sh` beside
+Hooks must be bash 3.2 compatible. No harness pins the interpreter any more —
+`branch-gate.test.sh` carried the one-symlink PATH shim that did, and it went
+with its hook. `scripts/run-hook-tests.sh` exports nothing, so run it a second
+time under `/bin/bash` to get the 3.2 tally, and treat that second run as the
+contract rather than assuming a harness enforces it. Every hook has a `.test.sh` beside
 it and every harness resolves its subject from its OWN script path — run a
 harness from `.claude/hooks/`, never from a copy parked elsewhere, or every case
 fails on exit 127 and reads as a regression (`tests/skill-doc-paths.test.ts`

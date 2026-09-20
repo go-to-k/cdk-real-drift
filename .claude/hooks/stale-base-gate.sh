@@ -26,8 +26,8 @@
 # flagged. Every git failure falls through to `exit 0` (we never block what
 # we cannot prove).
 #
-# cwd resolution mirrors branch-gate.sh (payload .cwd + leading `cd <path>`
-# + last `git -C <path>`), because this repo is worked via `git worktree`.
+# cwd resolution follows the worktree flow: payload .cwd + leading `cd <path>`
+# + last `git -C <path>`, via `gate_target_dir`.
 
 set -u
 
@@ -35,8 +35,8 @@ input=$(cat 2>/dev/null || true)
 cmd=$(printf '%s' "$input" | jq -r '.tool_input.command // ""' 2>/dev/null || echo "")
 hook_cwd=$(printf '%s' "$input" | jq -r '.cwd // ""' 2>/dev/null || echo "")
 
-# Only gate `git push` (subcommand position, line-start anchored — same shape
-# as branch-gate.sh so quoted "git push" substrings don't false-positive).
+# Only gate `git push` (subcommand position, segment-start anchored, so a quoted
+# "git push" substring does not false-positive).
 # Fail CLOSED if the shared matcher is missing or does not load: a gate that
 # cannot decide must not wave the command through. `[ -r … ] || exit 0` was the
 # first shape here, and it silently disabled the gate whenever the library was

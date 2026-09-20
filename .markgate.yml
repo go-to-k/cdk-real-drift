@@ -4,11 +4,17 @@
 # hooks that read them: a stale marker harms nobody at the moment of the commit.
 # `/check`, `/check-docs` and `/verify-pr` remain the recommended procedure and
 # their checklists still apply in full — nothing enforces them. The mechanical
-# merge conditions are CI green (`.claude/hooks/ci-green-gate.sh`) and a clean
-# bug-hunt sentinel (`.claude/hooks/bughunt-clean-gate.sh`).
+# merge conditions are the `main` ruleset's required status checks (`ci-ok`,
+# `check`, `English-only (PR title / body)`, enforced server-side with zero
+# bypass actors) and a clean bug-hunt sentinel
+# (`.claude/hooks/bughunt-clean-gate.sh`).
 #
-# This file must keep existing: `branch-gate.sh` uses a `.markgate.yml` at the
-# target repo's top level as its repo opt-in signal.
+# NOTHING READS THIS FILE AS A REPO OPT-IN ANY MORE. It was `branch-gate.sh`'s
+# opt-in signal — the one thing that kept it from firing in an unrelated
+# checkout — and that hook is gone, deleted because the ruleset already refuses
+# a push to `main`. The file stays for the `integ` declaration below; a new hook
+# wanting a repo opt-in must re-establish one rather than assume this file is
+# consulted.
 #
 # integ — real-AWS verification. A run here deploys real stacks into us-east-1
 #         and `inject-drift` / `revert` WRITE to the maintainer's account, so the

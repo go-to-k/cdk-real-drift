@@ -7,8 +7,9 @@ description: PR-readiness verification — quality checks, docs consistency, a l
 
 Recommended before `gh pr create` / `gh pr merge`: a superset of `/check` and
 `/check-docs` plus a live-test and a retrospective. Nothing records that it ran
-— the only mechanical merge conditions are CI green (`ci-green-gate`) and a
-clean bug-hunt sentinel (`bughunt-clean-gate`). A PR touching no `src/**` has
+— the mechanical merge conditions are the `main` ruleset's required status
+checks (server-side, zero bypass actors) and a clean bug-hunt sentinel
+(`bughunt-clean-gate`). A PR touching no `src/**` has
 nothing to live-test: `/check` + `/check-docs` + green CI is the whole
 requirement.
 

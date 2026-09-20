@@ -1424,13 +1424,11 @@ check` green). The earlier `TS2591 'process'` errors came from oxc's type-aware
    `vp run check` + test + build; `release.yml` release-please batched releases; `pr-title-check.yml`),
    `.claude/skills/{check,check-docs,verify-pr}` as RECOMMENDED procedure that
    nothing enforces, and a `.claude/hooks/` suite cut back to the gates that
-   clear the blocking criterion in AGENTS.md's Tooling Policy — `branch-gate`
-   (blocks `git commit` / `git push` when the target tree is on `main` /
-   `master`, and — since go-to-k/cdkd#2402 — when the MAIN checkout is on a
-   DETACHED HEAD, which the branch-NAME read could not see; a detached LINKED
-   worktree still passes, being the documented lane-clearing state),
-   `stale-base-gate`, `ci-green-gate`, `worktree-guard`, and the bug-hunt
-   cleanup pair (`bughunt-clean-gate` + `deploy-autoarm-gate`) — plus
+   clear the blocking criterion in AGENTS.md's Tooling Policy AND are not
+   already refused by the `main` ruleset — `stale-base-gate` (a push whose
+   branch is a legitimate fast-forward yet reverts work already on `main`, which
+   the server cannot see), `worktree-guard`, and the bug-hunt cleanup pair
+   (`bughunt-clean-gate` + `deploy-autoarm-gate`) — plus
    `AGENTS.md`, `CONTRIBUTING.md`, `docs/tooling-backlog.md` and a small
    `.claude/rules/`. Still deliberately absent: `.claude/agents`.
 8. **Ignore-rule management (R32)**: ignore rules live in `.cdkrd/ignore.yaml` and

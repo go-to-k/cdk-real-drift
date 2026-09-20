@@ -18,12 +18,17 @@ name: Release
 #
 # Known behavior: the release PR is created with GITHUB_TOKEN, and GitHub
 # suppresses workflow triggers for GITHUB_TOKEN-created events — so the release
-# PR triggers no pull_request workflows and carries no CI checks. Note this
-# repo's ci-green-gate FAILS OPEN on "no checks reported" (see its header), so
-# an agent-side `gh pr merge` of the release PR is NOT mechanically blocked
-# here — merging it via the web UI, and never without the maintainer asking
-# for a release, is convention, not enforcement. Giving the release-please
-# step a PAT instead of GITHUB_TOKEN would restore CI on it.
+# PR triggers no pull_request workflows and carries no CI checks. The `main`
+# ruleset requires `ci-ok`, `check` and `English-only (PR title / body)` with
+# zero bypass actors, so those checks never report and the release PR sits at
+# `mergeable_state=blocked` — releasing needs a maintainer to dispatch the
+# checks or relax the ruleset, and is not an agent-side action. Giving the
+# release-please step a PAT instead of GITHUB_TOKEN would restore CI on it.
+#
+# The ruleset's `pull_request` rule changes NOTHING here: the release PR is
+# already a pull request, `required_approving_review_count` is 0, and
+# `allowed_merge_methods` is `["squash"]`, which is how it is merged through the
+# web UI anyway. The blocker is the missing checks, and only that.
 #
 # STALE STANDING RELEASE PR — the trap workflow_dispatch below exists for.
 # release-please does NOT rebuild a standing release PR when the release it
