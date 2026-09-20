@@ -169,13 +169,22 @@ describe('the rule reaches every emitter in this family', () => {
     // private answer is exactly how the three cdkd copies drifted apart before
     // the fold was shared.
     const dir = join(import.meta.dirname, '..', 'scripts');
+    const matched: string[] = [];
     const offenders: string[] = [];
     for (const f of readdirSync(dir)) {
       if (!f.endsWith('.ts') || f === 'annotation-text.ts') continue;
       const src = readFileSync(join(dir, f), 'utf8');
       if (!/['"`]::(error|warning|notice)/.test(src)) continue;
+      matched.push(f);
       if (!src.includes("from './annotation-text.ts'")) offenders.push(f);
     }
+    // FLOOR, because the population is derived from a spelling: if `::error`
+    // were ever written some other way the filter would match nothing and this
+    // case would pass having examined no file at all.
+    expect(
+      matched.length,
+      'no script matched the annotation-emitter filter — the spelling it keys on changed'
+    ).toBeGreaterThanOrEqual(1);
     expect(
       offenders,
       `these scripts emit a workflow-command annotation without importing the shared ` +

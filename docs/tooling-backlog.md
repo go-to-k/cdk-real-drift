@@ -76,10 +76,19 @@ do not clear the blocking criterion, and the rule it enforced came back as CI
 of the sibling repo's coverage were NOT ported, recorded here as first
 occurrences rather than rebuilt:
 
-| Gap                                     | Why, and what would close it                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| The RENDERED report is not asserted     | cdkd parses the bot comment with `marked` and checks that each offender stays inside ONE list and that an all-backtick payload renders as one code block. `marked` is not a dependency here and one is not added for a test. What survives is the SOURCE-level contract: the fence is longer than the longest backtick run, the payload folds to one line, and the fence is indented two spaces so it stays inside its list item.                                      |
-| The allow-list is not driven end to end | `scripts/non-english-allowlist.txt` is EMPTY, because no tracked file carries a character in the blocked class. There is no entry to exercise, and seeding one would mean writing a permanent hole into the real list to test it. The allow-list contract is carried by five unit cases, including both CONTROLS (a non-listed sibling still blocks; a path merely PREFIXED by a listed one still blocks). Close it by driving a real entry the day this repo has one. |
+| Gap                                 | Why, and what would close it                                                                                                                                                                                                                                                                                                                                                                                                      |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The RENDERED report is not asserted | cdkd parses the bot comment with `marked` and checks that each offender stays inside ONE list and that an all-backtick payload renders as one code block. `marked` is not a dependency here and one is not added for a test. What survives is the SOURCE-level contract: the fence is longer than the longest backtick run, the payload folds to one line, and the fence is indented two spaces so it stays inside its list item. |
+
+A third piece is worth recording as a MEASUREMENT rather than a gap: the
+allow-list ships with six entries, all of them fixtures whose subject IS the
+non-ASCII bytes (mask alignment, terminal sanitizing, bidi handling, a Step
+Functions `Cause` whose masked RUN LENGTHS are the discriminator). An earlier
+draft of this PR claimed the list was empty; the scan behind that claim ran
+`grep -P` under `LC_ALL=C`, where the `\x{...}` ranges do not match, and a
+review caught it. `tests/pr-non-english-text.test.ts` now derives the answer
+from the tree with the SHIPPED detector, so an uncovered file fails there rather
+than on someone else's PR.
 
 Two weaker properties are inherent to the move from a PreToolUse gate to CI and
 are not gaps to close: the check now runs AFTER the text is public, so on an

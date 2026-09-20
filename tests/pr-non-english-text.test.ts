@@ -235,16 +235,49 @@ describe('the sidecar allow-list', () => {
 describe("the shipped allow-list and the check's own sources", () => {
   const REPO_ROOT = join(import.meta.dirname, '..');
 
-  // NO `length > 0` floor, and that is measured rather than lax: no tracked file
-  // in this repo carries a character in the blocked class, so the shipped list
-  // is EMPTY and an empty list is the state to want. The audit below is
-  // therefore vacuous today and becomes live the moment anyone adds an entry --
-  // which is the direction that matters, since a stale entry is a hole nobody
-  // can see. The list's own parse is exercised by the cases above.
   it('every shipped entry still exists', () => {
     const allowed = parseAllowlist(readFileSync(ALLOWLIST_PATH, 'utf8'));
+    // The floor is what makes the audit below non-vacuous: over an EMPTY list
+    // `findStaleAllowlistEntries` returns `[]` whatever it does.
+    expect(allowed.length).toBeGreaterThan(0);
     const stale = findStaleAllowlistEntries(allowed, (f) => existsSync(join(REPO_ROOT, f)));
     expect(stale).toEqual([]);
+  });
+
+  // The list exists because the check reads WHOLE file content, so a file that
+  // legitimately carries the characters blocks every PR that touches it. That is
+  // only true while the list actually COVERS every such file -- an uncovered one
+  // is a landmine that reds a future PR for a reason nothing in this repo
+  // explains. Derived from the tree, never from a list, so a new fixture that
+  // needs an entry fails HERE rather than on someone else's PR.
+  it('covers every tracked file that carries the characters', () => {
+    const tracked = execFileSync('git', ['ls-files'], {
+      cwd: REPO_ROOT,
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+    })
+      .split('\n')
+      .filter((f) => f !== '');
+    expect(tracked.length).toBeGreaterThan(100);
+
+    const allowed = parseAllowlist(readFileSync(ALLOWLIST_PATH, 'utf8'));
+    const uncovered: string[] = [];
+    for (const rel of tracked) {
+      if (!shouldScan(rel, allowed)) continue;
+      let content: string;
+      try {
+        content = readFileSync(join(REPO_ROOT, rel), 'utf8');
+      } catch {
+        continue;
+      }
+      if (findNonEnglishLines(content).length > 0) uncovered.push(rel);
+    }
+    expect(
+      uncovered,
+      `these tracked files carry a character in the blocked class and are not ` +
+        `allow-listed, so the PR check will red every future PR that touches them:\n` +
+        uncovered.join('\n')
+    ).toEqual([]);
   });
 
   // The property that keeps this family of files off its own list: describe
@@ -435,20 +468,24 @@ describe('end-to-end against a real repository', () => {
     expect(output).toContain('Scanned 1 changed file(s)');
   });
 
-  // cdkd's copy of this suite drives the allow-list end to end by taking the
-  // first SHIPPED entry. This repo's list is empty by measurement, so there is
-  // no entry to drive and seeding one would mean writing a permanent hole into
-  // the real list to test it. The allow-list contract is carried by the five
-  // unit cases above, including both CONTROLS (a non-listed sibling still
-  // blocks; a path merely PREFIXED by a listed one still blocks). Recorded in
-  // docs/tooling-backlog.md as a first occurrence, to be closed by driving a
-  // real entry the day this repo has one.
-  it('blocks a violation in a directory no entry covers', () => {
-    const repo = build({ 'src/nested/deep.ts': `const p = '${HIRAGANA}';\n` });
-    const { status, output } = runCheck(repo);
+  // Drives the SHIPPED list end to end, against the real file the check resolves
+  // from its own directory. The SIBLING half is the control: without it, "an
+  // allow-listed path passes" is also satisfied by a check that stopped scanning
+  // the whole directory.
+  it('passes an allow-listed path and blocks its non-listed sibling', () => {
+    const listed = parseAllowlist(readFileSync(ALLOWLIST_PATH, 'utf8'))[0]!;
+    const sibling = join(dirname(listed), 'not-listed.ts');
+
+    const allowed = build({ [listed]: `const p = '${HIRAGANA}';\n` });
+    const allowedRun = runCheck(allowed);
+
+    const blocked = build({ [sibling]: `const p = '${HIRAGANA}';\n` });
+    const blockedRun = runCheck(blocked);
     cleanup();
-    expect(status).toBe(1);
-    expect(output).toContain('src/nested/deep.ts');
+
+    expect(allowedRun.status).toBe(0);
+    expect(blockedRun.status).toBe(1);
+    expect(blockedRun.output).toContain(sibling);
   });
 
   it('skips a binary asset carrying the characters', () => {

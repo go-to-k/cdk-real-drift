@@ -49,7 +49,16 @@ const GATE_JOB = 'ci-ok';
 const GATE_STEP = 'every upstream job succeeded or was skipped';
 const STALE_JOB = 'release-pr-not-stale';
 const ENGLISH_JOB = 'english-only';
-const ENGLISH_BODY_STEP = 'Non-English text in the PR title and body';
+/**
+ * The ONE condition `english-only` may carry, pinned verbatim.
+ *
+ * It exists because a `push` to main has no `pull_request` payload: every ref
+ * the job reads would render empty and the scripts would fail closed on every
+ * push. `skipped` is a verdict `ci-ok` accepts, so ANY other expression here --
+ * `head.repo.full_name == github.repository`, say, which skips every fork PR --
+ * would leave the required check green with the check never run.
+ */
+const ENGLISH_JOB_IF = "github.event_name == 'pull_request'";
 const STALE_STEP = 'release-please-owned files on main must be ancestors of this branch';
 const CHANGELOG = 'CHANGELOG.md';
 const MANIFEST = '.release-please-manifest.json';
@@ -217,10 +226,19 @@ describe('ci-ok — the single required status check', () => {
     // All three give `seen == EXPECTED_UPSTREAM` and a green gate over a CI
     // that decided nothing; the first two also read green in the Checks UI.
     const jobs = workflow().jobs;
-    const ALLOWED_CONDITIONAL = new Set([GATE_JOB, STALE_JOB, ENGLISH_JOB]);
+    // `english-only` is NOT in this set. Its job `if:` is allowed, but only as
+    // the ONE exact expression pinned by the case below -- membership here
+    // would also license any expression (`head.repo.full_name ==
+    // github.repository` skips every fork PR) and any step-level `if: false`,
+    // both of which leave `ci-ok` green with the check never run.
+    const ALLOWED_CONDITIONAL = new Set([GATE_JOB, STALE_JOB]);
     const offenders: string[] = [];
     for (const [name, j] of Object.entries(jobs)) {
-      if (j.if !== undefined && !ALLOWED_CONDITIONAL.has(name)) {
+      if (
+        j.if !== undefined &&
+        !ALLOWED_CONDITIONAL.has(name) &&
+        !(name === ENGLISH_JOB && j.if.trim() === ENGLISH_JOB_IF)
+      ) {
         offenders.push(`${name} (job if:)`);
       }
       if ((j['continue-on-error'] ?? false) !== false) {
@@ -273,13 +291,11 @@ describe('ci-ok — the single required status check', () => {
     // restores the repo-default token to a job that runs shell.
     expect(workflow().jobs[GATE_JOB]?.permissions).toEqual({});
     expect(workflow().jobs[STALE_JOB]?.permissions).toEqual({ contents: 'read' });
-    // `english-only` reads the PR's own title and body through `gh pr view`, so
-    // it needs `pull-requests: read` and NOTHING else. A failing check run is
-    // its whole output; a write scope here would be privilege for no capability.
-    expect(workflow().jobs[ENGLISH_JOB]?.permissions).toEqual({
-      contents: 'read',
-      'pull-requests': 'read',
-    });
+    // `english-only` reads git and nothing else -- the PR's title and body are a
+    // different surface, checked in `pr-content-checks.yml`. A failing check run
+    // is its whole output; any write scope here would be privilege for no
+    // capability.
+    expect(workflow().jobs[ENGLISH_JOB]?.permissions).toEqual({ contents: 'read' });
   });
 
   // The `english-only` job takes the checker from the BASE commit on a FORK PR
@@ -306,18 +322,16 @@ describe('ci-ok — the single required status check', () => {
   // JSON file built server-side, never as expression source inside `run:`.
   it('never interpolates PR-controlled text into a shell command', () => {
     const job = workflow().jobs[ENGLISH_JOB];
-    for (const step of job?.steps ?? []) {
-      if (step.run === undefined) continue;
+    const runSteps = (job?.steps ?? []).filter((s) => s.run !== undefined);
+    // Non-vacuity: this job really does carry `run:` steps to examine.
+    expect(runSteps.length).toBeGreaterThanOrEqual(2);
+    for (const step of runSteps) {
       expect(step.run, `${step.name} inlines an expression`).not.toContain('${{');
     }
-    const bodyStep = job?.steps?.find((s) => s.name === ENGLISH_BODY_STEP);
-    expect(bodyStep?.run, 'the body step must fetch server-side with gh --json').toContain(
-      'gh pr view'
-    );
-    // Only numbers and the repository name cross into shell, and `--argjson`
-    // makes a non-numeric NUMBER fail loudly instead of becoming jq program text.
-    expect(bodyStep?.run).toContain('--argjson n "$NUMBER"');
-    expect(Object.keys(bodyStep?.env ?? {}).sort()).toEqual(['GH_TOKEN', 'NUMBER', 'REPO']);
+  });
+
+  it('carries exactly the one job condition it is allowed', () => {
+    expect(workflow().jobs[ENGLISH_JOB]?.if?.trim()).toBe(ENGLISH_JOB_IF);
   });
 
   it('runs on every PR, so ci-ok can be a required check at all', () => {

@@ -452,7 +452,7 @@ describe('the Bot-sender filter', () => {
 
   it.each([['User'], ['Organization'], [''], ['   '], [undefined]])('treats %j as a human', (t) => {
     // The default direction is load-bearing: an ABSENT SENDER_TYPE means the
-    // caller passed none (`english-pr` does not), and defaulting to SKIP
+    // caller passed none (`english-pr-body` does not), and defaulting to SKIP
     // would silently disable the check for any caller that forgot the env
     // var. Scanning a bot's text costs one redundant run; not scanning a
     // human's is the whole check gone.

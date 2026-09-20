@@ -183,9 +183,9 @@ export function scanSubject(subject: Subject): Offender[] {
  *
  * ## Why the rule lives here rather than only in the workflow
  *
- * Two of `issue-conventions.yml`'s jobs POST COMMENTS, and a comment is itself
- * an `issue_comment: created` event. Without this filter the English check
- * scans its SIBLINGS' output on every violation. That output is English and
+ * The `english-issue` job in `issue-conventions.yml` POSTS A COMMENT, and a
+ * comment is itself an `issue_comment: created` event. Without this filter the
+ * check scans its own output on every violation. That output is English and
  * would pass, which is exactly what makes it dangerous: it costs a run per
  * comment and reads as fine right up until one of those comments QUOTES an
  * offending body back at the author -- at which point the check fails on text
@@ -199,9 +199,10 @@ export function scanSubject(subject: Subject): Offender[] {
  *
  * ## Why the default is "not a bot"
  *
- * An ABSENT `SENDER_TYPE` means the caller did not pass one -- the `english-pr`
- * job does not, because a fork PR opened by a bot still publishes a body worth
- * checking and no PR job posts a comment that could feed back. Defaulting to
+ * An ABSENT `SENDER_TYPE` means the caller did not pass one -- the
+ * `english-pr-body` job in `pr-content-checks.yml` does not, because a fork PR
+ * opened by a bot still publishes a body worth checking and no PR job posts a
+ * comment that could feed back. Defaulting to
  * "skip" would silently disable the check for every caller that forgot the env
  * var, which is the fail-open direction; defaulting to "scan" costs at worst a
  * redundant run.

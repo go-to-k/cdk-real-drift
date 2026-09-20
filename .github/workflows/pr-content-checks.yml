@@ -1,0 +1,113 @@
+name: PR content checks
+
+# English-only on the PR's own TITLE and BODY -- text this repo PUBLISHES, like
+# an issue body and unlike the diff.
+#
+# ## Why this is not a step in ci.yml's `english-only` job
+#
+# A title or a body changes on an `edited` event and on nothing else. `ci.yml`
+# deliberately lists no `types:` for `pull_request`, so it runs on the default
+# [opened, synchronize, reopened] -- and `tests/ci-ok-gate.test.ts` pins that
+# absence, because NARROWING the list is how a required check ends up never
+# reporting on a head sha. Adding `edited` there would re-run the whole build
+# and unit suite on every title typo. So the surface that needs `edited` gets
+# its own workflow, which installs nothing and finishes in seconds.
+#
+# The DIFF half stays in `ci.yml`: a content change always produces a
+# `synchronize`, and being inside `ci-ok` is what makes it required.
+#
+# ## This check is not required until the ruleset says so
+#
+# `ci-ok` can only aggregate jobs in `ci.yml`, so this job reports as its own
+# check. `pr-title-check.yml`'s `check` is already a second required check
+# outside `ci-ok` in this repo; add `english-pr-body` beside it in the `main`
+# ruleset to make a non-English title or body block the merge rather than only
+# report.
+#
+# ## `pull_request`, not `pull_request_target`
+#
+# The job only has to say NO: a failing check run is its entire output, so it
+# needs no write scope. `pull_request_target` would hand a WRITE token and this
+# repo's secrets to a workflow whose whole job is to refuse.
+
+on:
+  pull_request:
+    # SPELLED OUT rather than left to the default, which omits `edited` -- the
+    # one event a title or body change produces. `synchronize` is here because
+    # required status checks are evaluated against the HEAD SHA: a check that
+    # does not re-run on a new commit leaves the PR waiting on a status that
+    # never arrives. `pr-title-check.yml` carries the same four for the same
+    # reason.
+    types: [opened, edited, synchronize, reopened]
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: pr-content-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  english-pr-body:
+    name: English-only (PR title / body)
+    runs-on: ubuntu-latest
+    # Any GitHub user can open a PR and spawn this job, so it carries a cap
+    # rather than the 360-minute default.
+    timeout-minutes: 10
+    # A job-level block REPLACES the workflow-level one rather than merging, so
+    # everything not listed here is `none`.
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          # SAME-REPO PR -> the head; FORK PR -> the base.
+          #
+          # TRUST: a fork PR must not supply the checker that judges it -- replace
+          # the script body with `process.exit(0)` and the check reports green
+          # while the violation ships. BOOTSTRAP: pinning base unconditionally
+          # means the PR that ADDS a checker runs a base without it and dies with
+          # ERR_MODULE_NOT_FOUND, so it could never go green. Fork-ness resolves
+          # both: a same-repo branch is pushed by someone who already has write
+          # access, so the head grants them nothing they do not have; a fork
+          # author has no such access, and the base copy is the only trustworthy
+          # one. The TEXT under test comes from the API either way, so this
+          # decides only WHICH CHECKER runs, never WHAT is checked.
+          ref: ${{ github.event.pull_request.head.repo.full_name == github.repository
+            && github.event.pull_request.head.sha
+            || github.event.pull_request.base.sha }}
+
+      # Node 24 strips type annotations, so `node scripts/*.ts` runs the
+      # TypeScript directly. `run-install: false` and `cache: false` because the
+      # checker imports nothing outside node: builtins -- deliberately, so this
+      # workflow cannot be blocked by a lockfile problem, and so nothing from a
+      # fork's lockfile or `.node-version` is consulted.
+      - uses: voidzero-dev/setup-vp@ca1c46663915d6c1042ae23bd39ab85718bfb0fa # v1
+        with:
+          node-version: '24'
+          cache: false
+          run-install: false
+
+      # The title and body are ATTACKER TEXT and never reach a shell as
+      # expression source: they are fetched SERVER-SIDE with `gh --json` and
+      # handed to the checker as a JSON file. Only NUMBER and REPO cross into
+      # shell, through `env:`, quoted -- and `--argjson` makes a NUMBER that is
+      # not a number fail loudly here instead of becoming jq program text.
+      - name: Non-English text in the PR title and body
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          gh pr view "$NUMBER" -R "$REPO" --json title,body,labels \
+            | jq --argjson n "$NUMBER" \
+                '{kind:"pull_request", number:$n, title:.title, body:.body,
+                  labels:[.labels[].name]}' > subject.json
+          # Piped through a NON-WHITESPACE prefix before it reaches the log. The
+          # runner TRIM-STARTS each line before deciding whether it is a workflow
+          # command, so the report's own two-space fence indent protects nothing:
+          # a PR body whose first offending line is `::stop-commands::<text>`
+          # would suppress every later annotation in this job.
+          node scripts/check-gh-body-english.ts subject.json | sed 's/^/| /'
