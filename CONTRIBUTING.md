@@ -117,12 +117,10 @@ blocks a commit on them; skipping them is how `main` goes red.
 
 ## Before you open a PR
 
-Work on a branch, and land it through a pull request. The `main` ruleset has no
-`pull_request` rule: it refuses a push whose commits cannot show the required
-checks — which a hand-made commit never can, since two of the three run only on
-a `pull_request` event — but a PR head that is already green can be
-fast-forwarded onto `main` and pushed directly. Using the merge button is
-convention, not machinery.
+Work on a branch, and land it through a pull request — the `main` ruleset
+requires one, with zero bypass actors, and allows only a squash merge. A direct
+`git push origin main` is refused whatever its checks say. The full ruleset is
+enumerated in [.claude/rules/hooks.md](.claude/rules/hooks.md).
 
 - `/verify-pr` — the PR readiness checklist. Its checklist applies in full: a PR
   whose live behaviour was never exercised is not ready, whatever the unit suite

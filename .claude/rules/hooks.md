@@ -8,24 +8,26 @@ harm reversible, and whose artifact does it land on — never one about severity
 irreversibility alone would block a duplicate issue, the filer's own artifact.
 
 **And a third question, asked before either: does the SERVER already refuse it?**
-The `main` ruleset (`gh api repos/go-to-k/cdk-real-drift/rulesets`) carries
-`deletion`, `non_fast_forward` and `required_status_checks` — `ci-ok`, `check`
-and `English-only (PR title / body)` — over the default branch with **zero
-bypass actors**. **Know its EDGE before leaning on it, because it is narrower
-than "the server refuses a push to `main`":**
+This is the ONE place the `main` ruleset is enumerated
+(`gh api repos/go-to-k/cdk-real-drift/rulesets`); everything else points here.
+Over the default branch, with **zero bypass actors**:
 
-- `deletion` and `non_fast_forward` do not bear on an ordinary push at all.
-- `required_status_checks` is evaluated against the SHA BEING PUSHED, at push
-  time. A commit no pull request ever produced cannot carry `check` or
-  `English-only (PR title / body)`, because `pr-title-check.yml` and
-  `pr-content-checks.yml` trigger on `pull_request` ONLY — so that push is
-  refused. (`ci-ok` is not the load-bearing one here: `ci.yml` also runs on
-  `push`, so a pushed commit can acquire it, but only AFTER the push.)
-- **The residual:** a PR head whose three contexts are ALREADY green satisfies
-  the rule, so `git merge --ff-only <that sha>` followed by `git push origin
-main` is ACCEPTED — landing un-squashed history without the merge button.
-  `branch-gate` refused that shape and nothing does now. Accepted knowingly; the
-  row is in [docs/tooling-backlog.md](../../docs/tooling-backlog.md).
+| Rule                     | What it refuses                                                                                                                                                              |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pull_request`           | Any change to `main` that did not arrive through a pull request. `required_approving_review_count: 0` (no review needed), `allowed_merge_methods: ["squash"]` (squash only). |
+| `required_status_checks` | A merge while `ci-ok`, `check` or `English-only (PR title / body)` is red, pending, or has never reported.                                                                   |
+| `non_fast_forward`       | A force-push to `main`.                                                                                                                                                      |
+| `deletion`               | Deleting `main`.                                                                                                                                                             |
+
+So **`git push origin main` is refused for any commit, green or not.** The
+`pull_request` rule is what makes that categorical; before it, a PR head whose
+contexts were already green could be fast-forwarded and pushed, un-squashed and
+with no merge button, and `branch-gate` was what refused that.
+
+**What the server cannot see**, so do not over-trust it: a commit on a LOCAL
+`main` (reversible with `git branch` + `git reset --hard origin/main`), and a
+red check outside the three required contexts. Both rows are in
+[docs/tooling-backlog.md](../../docs/tooling-backlog.md).
 
 `git push --dry-run` does NOT probe any of this, so do not reach for it as
 evidence.

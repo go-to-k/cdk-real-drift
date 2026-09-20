@@ -98,24 +98,32 @@ release-please from commit messages, which the PR-diff check already reads.
 
 ## Coverage given up with `branch-gate` and `ci-green-gate`
 
-Both hooks were deleted because the `main` ruleset covers most of what they did,
-server-side and with zero bypass actors. Most, not all. Recorded here as first
-occurrences rather than rebuilt, because each remainder is reversible and
-visible:
+Both hooks were deleted because the `main` ruleset covers what they did,
+server-side and with zero bypass actors. The ruleset is enumerated once, in
+[.claude/rules/hooks.md](../.claude/rules/hooks.md). Three remainders are
+recorded here as first occurrences rather than rebuilt, because each is
+reversible and visible:
 
-| Given up                                  | What the server does instead, and where it stops                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A local COMMIT on `main`                  | Nothing refuses it. The ruleset is evaluated at PUSH time and cannot see a commit that has not left the machine. Recovering is `git branch <name>` + `git reset --hard origin/main`.                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| A DIRECT PUSH of an already-green PR head | **Accepted by the server.** `deletion` and `non_fast_forward` do not bear on an ordinary push, and `required_status_checks` is satisfied by a SHA whose three contexts are already green — so `git merge --ff-only <green PR head>` then `git push origin main` lands un-squashed history without the merge button. What DOES refuse a hand-made commit is that `check` (`pr-title-check.yml`) and `English-only (PR title / body)` (`pr-content-checks.yml`) trigger on `pull_request` ONLY, so a commit no PR produced can never carry them. `ci-ok` is not load-bearing here: `ci.yml` also runs on `push`. |
-| A merge over a RED NON-REQUIRED check     | The ruleset requires three contexts; `ci-ok` aggregates every `ci.yml` job, so the only one outside it is `inherit` (`pr-inherit-issue-labels.yml`, `pull_request_target`, label metadata).                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| A free LIVENESS PROBE of the hook layer   | `git commit --dry-run` tripping `branch-gate` is gone. No surviving gate refuses an ordinary command: `bughunt-clean-gate` needs an ARMED sentinel (during a `/hunt-bugs` run it does give a free signal), `stale-base-gate` needs a clobbering push, `worktree-guard` needs a file-tool write into the shared main checkout. Treat the hooks as self-enforced unless one has been seen to fire.                                                                                                                                                                                                               |
+| Remainder                               | What the server does instead, and where it stops                                                                                                                                                                                                                                                                                                                                          |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A local COMMIT on `main`                | Nothing refuses it. The ruleset is evaluated when a ref MOVES on the server and cannot see a commit that has not left the machine. Recovering is `git branch <name>` + `git reset --hard origin/main`, which is why it is a row here and not a hook.                                                                                                                                      |
+| A merge over a RED NON-REQUIRED check   | The ruleset requires three contexts; `ci-ok` aggregates every `ci.yml` job, so the only check outside it is `inherit` (`pr-inherit-issue-labels.yml`, `pull_request_target`, label metadata). A failure there now merges silently.                                                                                                                                                        |
+| A free LIVENESS PROBE of the hook layer | `git commit --dry-run` tripping `branch-gate` is gone. No surviving gate refuses an ordinary command: `bughunt-clean-gate` needs an ARMED sentinel (so a `/hunt-bugs` run does give a free signal), `stale-base-gate` needs a clobbering push, `worktree-guard` needs a file-tool write into the shared main checkout. Treat the hooks as self-enforced unless one has been seen to fire. |
 
-**`git push --dry-run` is not a probe of any of this** — it does not exercise the
-ruleset. The evidence above is the ruleset JSON plus the workflow triggers, both
-read directly.
+**CLOSED: the direct-push residual.** An earlier revision of this file recorded
+a fourth row — a PR head whose required contexts were already green could be
+fast-forwarded onto `main` and pushed, landing un-squashed history with no merge
+button, because `required_status_checks` was satisfied by that SHA and
+`deletion` / `non_fast_forward` do not bear on an ordinary push. The maintainer
+closed it SERVER-SIDE rather than by restoring a hook: the `main` ruleset now
+carries a `pull_request` rule (`required_approving_review_count: 0`,
+`allowed_merge_methods: ["squash"]`, zero bypass actors), so every change to
+`main` must arrive through a pull request, only a squash merge is offered, and
+`git push origin main` is refused for any commit, green or not.
 
-Adding a `pull_request` rule to the ruleset would close the second row outright.
-That is the maintainer's call and is not assumed here.
+**`git push --dry-run` is not a probe of any of this** — it does not exercise
+the ruleset. The evidence above is the ruleset JSON plus the workflow triggers,
+both read directly.
 
 ## Open issues whose subject is the tooling
 

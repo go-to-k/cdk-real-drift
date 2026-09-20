@@ -25,6 +25,11 @@ name: Release
 # checks or relax the ruleset, and is not an agent-side action. Giving the
 # release-please step a PAT instead of GITHUB_TOKEN would restore CI on it.
 #
+# The ruleset's `pull_request` rule changes NOTHING here: the release PR is
+# already a pull request, `required_approving_review_count` is 0, and
+# `allowed_merge_methods` is `["squash"]`, which is how it is merged through the
+# web UI anyway. The blocker is the missing checks, and only that.
+#
 # STALE STANDING RELEASE PR — the trap workflow_dispatch below exists for.
 # release-please does NOT rebuild a standing release PR when the release it
 # computes is unchanged: it logs `PR #N remained the same` and leaves the

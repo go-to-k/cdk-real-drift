@@ -5,11 +5,11 @@
 Two mechanical conditions block a merge, and the first is the SERVER's: the
 `main` ruleset requires `ci-ok`, `check` and `English-only (PR title / body)`
 with zero bypass actors, so GitHub refuses the merge while any of them is red or
-pending. It does NOT categorically refuse a push to `main`: there is no
-`pull_request` rule, a commit no PR made simply cannot carry `check` or
-`English-only (PR title / body)` (both `pull_request`-only), but an
-already-green PR head CAN be fast-forwarded and pushed. Using the merge button
-is convention. The second condition is local: a **clean bug-hunt sentinel**
+pending. It also requires a PULL REQUEST for any change to `main` and allows
+only a SQUASH merge, so `git push origin main` is refused whatever its checks
+say. (Enumerated once, in `.claude/rules/hooks.md`; what the server still cannot
+see is a commit on your LOCAL `main`.) The second condition is local: a **clean
+bug-hunt sentinel**
 (`bughunt-clean-gate`, which also gates `git commit`; the ship stage covers
 releasing it). `stale-base-gate` additionally refuses a push that would revert
 work already on `main` — the one thing the server cannot see. Everything else here is procedure you run because it is right, not

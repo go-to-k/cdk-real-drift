@@ -119,9 +119,10 @@ node dist/cli.js revert [<stack>...] [--all]   # write the desired value back to
   major is not 0. Known behavior: the release PR is GITHUB_TOKEN-created, so it
   triggers no pull_request workflows and carries no CI checks, so the ruleset's
   required checks never report and the PR sits at `mergeable_state=blocked`
-  (measured on the standing one). Releasing therefore needs the maintainer to
-  dispatch the checks or relax the ruleset — it is not an agent-side action. Changes reach
-  real users, so weigh breaking ones accordingly.
+  (measured; the `pull_request` rule changes nothing for it — it IS a PR, needs
+  no approval, and squash is how it is merged anyway). Releasing needs the
+  maintainer to dispatch the checks or relax the ruleset — not an agent-side
+  action. Changes reach real users, so weigh breaking ones accordingly.
 - **A standing release PR goes STALE and stays MERGEABLE.** release-please does
   not rebuild a release PR whose computed release is unchanged — it logs
   `PR #N remained the same` and leaves the branch on the base it was cut from.
@@ -374,15 +375,14 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
 - **All changes go through a pull request — never commit directly to `main`.**
   Branch → run the checks → commit → push → `gh pr create`; the reviewer
   re-reviews the diff before merge.
-  **The server does NOT categorically refuse this, so the bullet is yours to
-  keep.** The ruleset has no `pull_request` rule; what stops a hand-made commit
-  is that two required contexts (`check`, `English-only (PR title / body)`) fire
-  on `pull_request` ONLY, so a commit no PR made can never carry them. But
-  **an already-green PR head CAN be fast-forwarded onto `main` and pushed** —
-  un-squashed, no merge button. `branch-gate` refused that; see
-  [docs/tooling-backlog.md](docs/tooling-backlog.md). `stale-base-gate` still
-  refuses a push reverting recent main work. **Wait for the checks before
-  `gh pr merge`** (`gh pr checks <N> --watch`, by NUMBER).
+  **The server enforces this now**: the ruleset's `pull_request` rule refuses
+  any change that did not arrive through a PR and allows only a SQUASH merge, so
+  `git push origin main` is refused for any commit, green or not. Enumerated
+  once, in [.claude/rules/hooks.md](.claude/rules/hooks.md). What it cannot see
+  is a commit on your LOCAL `main` (reversible: `git branch` + `git reset --hard
+origin/main`). `stale-base-gate` still refuses a push reverting recent main
+  work. **Wait for the checks before `gh pr merge`** (`gh pr checks <N>
+--watch`, by NUMBER).
 - **Every session-wrap / task-complete report MUST end with a "Remaining
   work" section AND a "Session close" verdict — unprompted.** The full field
   reference — The four TODO fields (`Session-fit` / `Severity` / `Effort` /
