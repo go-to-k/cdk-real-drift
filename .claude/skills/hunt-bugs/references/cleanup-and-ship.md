@@ -14,7 +14,8 @@ owner). Then run `/check` and `/check-docs` → commit → push → `/verify-pr`
 Take it all the way to merged — do not leave a green PR hanging:
 
 1. `gh pr merge <#> --squash --delete-branch` (squash only; the repo allows nothing
-   else). CI must be green first — `ci-green-gate` blocks the merge otherwise.
+   else). CI must be green first — the `main` ruleset refuses the merge while a
+   required check is red or pending.
 2. **Remove the worktree YOU created** — a left-behind worktree is the silent residue
    of this flow. From the MAIN checkout: `git worktree remove .worktrees/<name>`
    (`--force` if it refuses on leftover build artifacts), then `git branch -D

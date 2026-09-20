@@ -117,10 +117,10 @@ node dist/cli.js revert [<stack>...] [--all]   # write the desired value back to
   `bump-minor-pre-major: true` maps breaking changes to MINOR bumps, and the
   publish job in `.github/workflows/release.yml` hard-fails on any tag whose
   major is not 0. Known behavior: the release PR is GITHUB_TOKEN-created, so it
-  triggers no pull_request workflows and carries no CI checks — and `ci-green-gate`
-  FAILS OPEN on "no checks reported", so an agent-side `gh pr merge` of it is NOT
-  mechanically blocked. Merging it via the web UI, and never without the
-  maintainer asking for a release, is convention, not enforcement. Changes reach
+  triggers no pull_request workflows and carries no CI checks, so the ruleset's
+  required checks never report and the PR sits at `mergeable_state=blocked`
+  (measured on the standing one). Releasing therefore needs the maintainer to
+  dispatch the checks or relax the ruleset — it is not an agent-side action. Changes reach
   real users, so weigh breaking ones accordingly.
 - **A standing release PR goes STALE and stays MERGEABLE.** release-please does
   not rebuild a release PR whose computed release is unchanged — it logs
@@ -284,25 +284,23 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   the final sha); before a PR, run `/verify-pr`, whose checklist still applies
   in full — a PR whose live behaviour was never exercised is not ready, whatever
   the unit suite says. **No hook and no marker enforces any of them any more.**
-  The MECHANICAL merge conditions that remain are CI green (`ci-green-gate`) and
-  a clean bug-hunt sentinel (`bughunt-clean-gate`); `branch-gate` and
-  `stale-base-gate` still refuse a commit or push that lands on `main` or
-  clobbers it. Everything else is your own discipline, and skipping it is how
-  `main` goes red.
+  The MECHANICAL merge conditions are the **`main` ruleset's** required status
+  checks — `ci-ok`, `check`, `English-only (PR title / body)` — enforced
+  SERVER-SIDE with zero bypass actors, plus a clean bug-hunt sentinel
+  (`bughunt-clean-gate`). Everything else is your own discipline.
 - **Reviewer count**: **1 reviewer by default** (`pr-code-reviewer`); add
   **spec + test** when the `src/**` diff exceeds 400 lines or 8 files; add the
   **security reviewer** whenever a credential, role-assumption or revert-WRITE
   surface is touched, or the PR is a security fix. Reviewers run **once, on the
   final sha** — a fix round is re-checked by MESSAGING the same reviewer with the
   delta, never by a fresh dispatch.
-- **Hooks, rules, skills, fences: read the Tooling Policy section below before
-  adding, widening or filing an issue about any of them.** The default answer to
-  "should this become a hook / rule / fence?" is no.
-- **`.markgate.yml` declares one gate, `integ`, and nothing reads it.** It is a
-  declaration that a real-AWS run (which deploys stacks and whose
-  `inject-drift` / `revert` WRITE to the maintainer's account) is gate-worthy;
-  there is no companion `/run-integ` skill here to set the marker. The file must
-  keep existing regardless: `branch-gate` uses it as its repo opt-in signal.
+- **Hooks, rules, skills, fences: read the Tooling Policy below before adding,
+  widening or filing an issue about any.** The default answer is no.
+- **`.markgate.yml` declares one gate, `integ`, and nothing reads it.** It
+  records that a real-AWS run (which deploys stacks and whose `inject-drift` /
+  `revert` WRITE to the maintainer's account) is gate-worthy; no `/run-integ`
+  skill exists here to set the marker. Nothing reads the file as a repo opt-in
+  any more either — that was `branch-gate`'s, and the hook is gone.
   - `/hunt-bugs` is the (non-marker) skill that drives a periodic real-AWS bug-hunt:
     deploy UNCOVERED, high-frequency resource types / configs / CFn notations, then
     catch false positives (clean `record`→`check` must be CLEAN) and missed
@@ -335,22 +333,19 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
 - **The surviving safety hooks**: each blocks one foot-gun with an actionable
   error naming the exact replacement command, so the roster is NOT restated here
   — it is in [.claude/rules/hooks.md](.claude/rules/hooks.md), covering
-  `branch-gate.sh`, `stale-base-gate.sh`, `ci-green-gate.sh`,
-  `worktree-guard.sh`, `bughunt-clean-gate.sh` and the non-blocking
-  `deploy-autoarm-gate.sh`. Read it when working on `.claude/hooks/**` /
-  `.claude/settings.json`, or when a gate's verdict surprises you. One rule from
-  it is worth repeating: naming the repo (`-R` in any spelling) must never change
-  a gate's verdict.
-- **Registration is not execution — prove the gates are ALIVE before the first
-  commit of a session**: run `git commit --dry-run -m "gate liveness probe"` from
-  the repo root **as a Bash TOOL CALL**. PreToolUse hooks gate the AGENT's tool
-  calls only: the same line typed by a human into a terminal never passes through
-  them, so it proves nothing and will always look "unblocked". `--dry-run`
-  commits nothing regardless of the tree; a `Blocked by branch-gate` line means
-  the hooks fire. Git's ordinary output means they do NOT, and every gate is then
-  unenforced — which `/hooks` cannot show, because it lists registration, not
-  firing (go-to-k/cdk-real-drift#1801: an `if` holding `A or B` matches nothing,
-  and every gate was inert for a day).
+  `stale-base-gate.sh`, `worktree-guard.sh`, `bughunt-clean-gate.sh` and the
+  non-blocking `deploy-autoarm-gate.sh`. Read it when a gate's verdict surprises
+  you. Two rules from it: naming the repo (`-R` in any spelling) must never
+  change a gate's verdict, and **a hook the SERVER already refuses does not get
+  written**.
+- **Registration is not execution.** PreToolUse hooks gate the AGENT's tool
+  calls only, so a line typed by a human proves nothing, and `/hooks` lists
+  registration rather than firing (go-to-k/cdk-real-drift#1801: an `if` holding
+  `A or B` matched nothing and every gate was inert for a day). The probe that
+  used to prove liveness — `git commit --dry-run` tripping `branch-gate` — went
+  with that hook, and no surviving gate refuses an ordinary command: each needs
+  an armed sentinel, a dirty main checkout or a clobbering push. So treat every
+  gate as SELF-ENFORCED unless you have seen it fire this session.
 - **ALWAYS develop in a git worktree — never edit or branch in the main
   checkout, even for a single "sequential" session** (sessions that believed
   they were alone have collided twice: a README clobber, and a branch that
@@ -380,12 +375,12 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
 - **All changes go through a pull request — never commit directly to `main`.**
   Branch (or worktree branch) → run the checks → commit → push →
   `gh pr create`. The reviewer re-reviews the PR diff before merge.
-  `branch-gate` refuses a commit or push on `main`, and `stale-base-gate`
-  refuses a `git push` whose branch sits on `origin/main` yet reverts recent main
-  work — the stale-base soft-reset clobber that bit this worktree flow twice.
-  Merge only once CI is green (`ci-green-gate`) and the bug-hunt sentinel is
-  clear (`bughunt-clean-gate`); everything else about PR readiness is procedure,
-  not machinery.
+  The `main` ruleset refuses a push to `main`, and `stale-base-gate` refuses a
+  `git push` whose branch sits on `origin/main` yet reverts recent main work —
+  the clobber that bit this flow twice, and the one the server cannot see.
+  **Wait for the checks before `gh pr merge`** (`gh pr checks <N> --watch`,
+  naming the PR by NUMBER): the server refuses the merge while a required check
+  is red or pending.
 - **Every session-wrap / task-complete report MUST end with a "Remaining
   work" section AND a "Session close" verdict — unprompted.** The full field
   reference — The four TODO fields (`Session-fit` / `Severity` / `Effort` /
@@ -465,10 +460,14 @@ stated in the PR body for the maintainer to decide.
 6. **Enforcement is procedure, not machinery.** `/check`, `/check-docs` (once
    per PR, at the final sha), `/verify-pr` and the reviewer dispatch are the
    recommended path and are enforced by no hook and no marker. The mechanical
-   merge conditions are CI green (`ci-green-gate`) and a clean bug-hunt sentinel
-   (`bughunt-clean-gate`), with `branch-gate` / `stale-base-gate` /
-   `worktree-guard` refusing the three writes that land on `main` or on another
-   session. Do not add another without the maintainer's decision.
+   merge conditions are the `main` ruleset's required status checks and a clean
+   bug-hunt sentinel (`bughunt-clean-gate`), with `stale-base-gate` and
+   `worktree-guard` refusing the two writes that land on another lane's work.
+   **Before writing a hook, ask whether the SERVER already refuses it**: the
+   ruleset carries `deletion`, `non_fast_forward` and `required_status_checks`
+   with zero bypass actors, and a local restatement of any of it reads as
+   protection while the real protection is elsewhere. Do not add another without
+   the maintainer's decision.
 
 **Flow lessons stay in THIS repo.** cdkd, cdk-local and cdk-real-drift each keep
 their own `work-issues` / `hunt-bugs` text; porting a rule to a sibling, or

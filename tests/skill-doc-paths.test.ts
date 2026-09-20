@@ -157,8 +157,8 @@ describe('hook harnesses resolve their subject from their own script path', () =
   const harnesses = entries.filter((f) => f.endsWith('.test.sh'));
 
   it('finds the hooks to check (the extractor is not a no-op)', () => {
-    expect(hooks.length).toBeGreaterThanOrEqual(6);
-    expect(hooks).toContain('branch-gate.sh');
+    expect(hooks.length).toBeGreaterThanOrEqual(4);
+    expect(hooks).toContain('bughunt-clean-gate.sh');
   });
 
   it('every hook has a harness beside it', () => {

@@ -117,10 +117,11 @@ blocks a commit on them; skipping them is how `main` goes red.
 
 ## Before you open a PR
 
-Work on a branch — `branch-gate` blocks commits and pushes on `main`.
+Work on a branch — the `main` ruleset refuses a push to `main` outright.
 
 - `/verify-pr` — the PR readiness checklist. Its checklist applies in full: a PR
   whose live behaviour was never exercised is not ready, whatever the unit suite
   says. Nothing enforces it.
-- CI (`.github/workflows/ci.yml`) must be green before merging — `ci-green-gate`
-  blocks `gh pr merge` on a red or still-pending run.
+- CI must be green before merging. The `main` ruleset requires `ci-ok`, `check`
+  and `English-only (PR title / body)` with zero bypass actors, so GitHub itself
+  refuses the merge while any of them is red or pending.

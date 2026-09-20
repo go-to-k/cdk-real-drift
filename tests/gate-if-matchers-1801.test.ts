@@ -14,7 +14,7 @@ import { describe, expect, it } from 'vite-plus/test';
 // 2. go-to-k/cdk-real-drift#1801 — that join is not a supported expression. An `if`
 //    holding `A or B` matches NOTHING, so every gate was inert: on 2026-08-20
 //    `git commit` on `main` with no markers reached git in both a VS Code session
-//    and a plain terminal one, while running `branch-gate.sh` by hand on the same
+//    and a plain terminal one, while running the gate by hand on the same
 //    payload blocked with exit 2. Probed with three throwaway hooks: an `if`-less
 //    hook fired, `if: "Bash(git status*)"` fired, and
 //    `if: "Bash(git commit*) or Bash(git status*)"` did not.
@@ -34,10 +34,8 @@ const SETTINGS = path.join(ROOT, '.claude', 'settings.json');
 
 /** What each gate must be selected for. `deploy-autoarm` matches a command SHAPE. */
 const REQUIRED: Record<string, string[]> = {
-  'branch-gate.sh': ['Bash(*git*commit*)', 'Bash(*git*push*)'],
   'bughunt-clean-gate.sh': ['Bash(*git*commit*)', 'Bash(*gh*pr*create*)', 'Bash(*gh*pr*merge*)'],
   'stale-base-gate.sh': ['Bash(*git*push*)'],
-  'ci-green-gate.sh': ['Bash(*gh*pr*merge*)'],
   // A command SHAPE, not a verb: three entries, never one joined pattern.
   'deploy-autoarm-gate.sh': ['Bash(*deploy*)', 'Bash(*create-stack*)', 'Bash(*update-stack*)'],
 };
@@ -73,9 +71,9 @@ describe('PreToolUse gate matchers (go-to-k/cdk-real-drift#1786, go-to-k/cdk-rea
 
   it('finds the repo gate hooks', () => {
     const names = new Set(hooks.map((h) => h.name));
-    expect(names.has('branch-gate.sh')).toBe(true);
-    expect(names.has('ci-green-gate.sh')).toBe(true);
     expect(names.has('bughunt-clean-gate.sh')).toBe(true);
+    expect(names.has('stale-base-gate.sh')).toBe(true);
+    expect(names.has('deploy-autoarm-gate.sh')).toBe(true);
   });
 
   // THE regression case for go-to-k/cdk-real-drift#1801. An `or` in an `if` disables
@@ -140,11 +138,13 @@ describe('PreToolUse gate matchers (go-to-k/cdk-real-drift#1786, go-to-k/cdk-rea
       'cd /w/t && git commit -m x',
       'git add -A && git commit -m x',
     ];
-    const commitPatterns = hooks.filter((h) => h.name === 'branch-gate.sh').map((h) => h.condition);
+    const commitPatterns = hooks
+      .filter((h) => h.name === 'bughunt-clean-gate.sh')
+      .map((h) => h.condition);
     for (const spelling of spellings) {
       expect(
         commitPatterns.some((p) => globToRe(p).test(spelling)),
-        `no branch-gate pattern selects: ${spelling}`
+        `no bughunt-clean-gate pattern selects: ${spelling}`
       ).toBe(true);
     }
     const ghPatterns = hooks
