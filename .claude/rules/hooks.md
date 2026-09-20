@@ -126,12 +126,17 @@ arrives unexpanded and resolution must refuse rather than guess. These shapes
 must NOT be refused: an absolute `-C` or `cd` mooting an earlier unreadable one,
 a `cd` AFTER the verb, and a leading literal `~`.
 
-Hooks must be bash 3.2 compatible; `scripts/run-hook-tests.sh` exports
-`HOOK_BASH` so the HOOK, not just the harness, runs under it. Every hook has a
-`.test.sh` beside it and every harness resolves its subject from its OWN script
-path — run a harness from `.claude/hooks/`, never from a copy parked elsewhere,
-or every case fails on exit 127 and reads as a regression
-(`tests/skill-doc-paths.test.ts` fences both).
+Hooks must be bash 3.2 compatible. `branch-gate.test.sh` is the harness that
+pins the interpreter: it puts a one-symlink shim directory first on PATH so
+every child `bash` is the fenced one — `/bin/bash` by default, `HOOK_BASH=<path>`
+for the other tally — prints on its first line which one it used, and treats an
+explicitly set but non-executable `HOOK_BASH` as FATAL rather than falling back
+to PATH bash. `scripts/run-hook-tests.sh` itself exports nothing; run it a second
+time under `/bin/bash` to get the 3.2 tally. Every hook has a `.test.sh` beside
+it and every harness resolves its subject from its OWN script path — run a
+harness from `.claude/hooks/`, never from a copy parked elsewhere, or every case
+fails on exit 127 and reads as a regression (`tests/skill-doc-paths.test.ts`
+fences both).
 
 # The shared matcher (`.claude/hooks/_command-match.sh`)
 
@@ -154,11 +159,12 @@ commit`, so target resolution fell back to the payload cwd and the gate passed
   spellings (space, `=`, GLUED); a hand-rolled `-C`-only absorber let
   `gh -R <owner/repo> pr merge` walk past every merge gate. Build a new verb
   regex from `GATE_GH_C`, never by hand.
-- `gate_word_is_literal` answers whether a shell WORD provably reaches the
-  command as the text it carries, and answers NO by default. **An incomplete
-  parse may not ALLOW**: a caller must never relax a verdict on a word whose
-  expansion it cannot see. Enumerating more shell forms there is the losing
-  move; it was tried three times.
+- **An incomplete parse may not ALLOW.** A gate must never relax a verdict on a
+  word whose expansion it cannot see. The library once carried an ARGV splitter
+  and a word-literality test for exactly this; both went with the only gate that
+  used them, so a new gate needing them restores them from history rather than
+  writing a looser copy. Enumerating more shell forms is the losing move; it was
+  tried three times.
 - Target resolution reads the payload cwd, then a leading `cd <path>`, then the
   LAST `git`/`gh -C <path>` in the matched segment. An UNEXPANDED path
   (`cd "$WT"`) is not a path and is skipped, which falls back to the payload cwd

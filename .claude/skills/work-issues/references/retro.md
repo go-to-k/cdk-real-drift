@@ -90,12 +90,11 @@ cutting a line this run proved stale, subsumed or wrong; a stage file is loaded
 WHOLE at stage entry, so a lesson that cannot be paid for by compression splits
 the stage instead of growing it.
 
-Two mechanical rules, both enforced by `tests/skill-doc-paths.test.ts`:
+Two rules, one a convention and one enforced:
 
 - **Write every issue / PR reference FULLY QUALIFIED — `owner/repo#N`, never a
-  bare `#N`.** The test fails on any unqualified reference in any `.md` under
-  `.claude/skills/**`; it reads plain prose only, so counter-examples can stay
-  written as code spans.
+  bare `#N`** — a convention, fenced by nothing. A bare `#N` renders against
+  whichever repo is reading it.
 - **A skill doc cannot cite a repo path in order to say it is ABSENT**, because
   the test resolves every path-shaped code span with no negation exemption — a
   stale path would otherwise hide behind "no longer exists" phrasing. Reword:

@@ -125,12 +125,10 @@ describe('skill docs cite real repo paths', () => {
 
   it('actually inspects a meaningful number of citations (the extractor is not a no-op)', () => {
     const total = docs.reduce((n, rel) => n + citations(rel).length, 0);
-    // 89 measured on 2026-08-28 across 21 docs (SKILL.md + references/);
-    // 83 after the same-day rule+citation compression pass; 92 after
-    // go-to-k/cdk-real-drift#1837 added path citations to check/SKILL.md and
-    // verify-pr/SKILL.md. The floor sits above the ~20 the SKILL.md-only
-    // population yielded, so a population regression back to
-    // orchestrators-only fails here.
+    // An ANTI-VACUITY floor, not a budget: the population is every `.md` under
+    // each skill (SKILL.md orchestrators AND `references/*.md`), and a
+    // regression back to orchestrators-only yields well under this figure, so
+    // the block would otherwise pass while scanning almost nothing.
     expect(total).toBeGreaterThanOrEqual(60);
   });
 });

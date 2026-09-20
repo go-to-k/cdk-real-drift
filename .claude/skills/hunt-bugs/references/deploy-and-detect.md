@@ -49,6 +49,13 @@ create-resource` → OOB-mutate → bare-`remove` probe → explicit-`add` probe
 - **Check upstream before pushing a same-table fix** — parallel sessions find the same
   rows on the same day.
 
+**Two API constraints a probe design must respect.** S3
+`VersioningConfiguration` "converges" by SUSPENDING — a bucket can never return
+to never-versioned, so a zero-drift assertion on that property is unreachable
+and the fixture must assert `Suspended`. And the out-of-band API accepts a
+FOREIGN account id only on an INACTIVE set, so an end-to-end leg exercising that
+path must target an `Activate: false` set.
+
 **Revert-failure flavors and their fixes** (each live-proven; expect new ones):
 
 1. **Silent bare-remove no-op** → RSDP entry (the base class). A type that rejects an

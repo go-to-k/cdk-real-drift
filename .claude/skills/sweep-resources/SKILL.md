@@ -25,8 +25,10 @@ touching a resource backed by an active stack.
   fixtures). If a name is not obviously an ephemeral test resource, STOP and
   ask.
 - **Protect peers.** `sweep-orphans.sh` skips any resource backed by an active
-  stack (incl. `CREATE/UPDATE/DELETE_IN_PROGRESS`), across all project regions
-  for global IAM. Still eyeball the dry-run: anything created TODAY by a peer
+  stack (incl. `CREATE/UPDATE/DELETE_IN_PROGRESS`), matching the name
+  case-insensitively and, for global IAM, across the region set
+  `CDKRD_SWEEP_IAM_REGIONS` names — deploying outside that set makes an IAM role
+  look unbacked. Still eyeball the dry-run: anything created TODAY by a peer
   live-test/hunt (a `wt-*` worktree exists, or the name matches another agent's
   issue) is theirs — leave it.
 - **`delstack`, never `cdk destroy` / `aws cloudformation delete-stack`** —

@@ -180,9 +180,9 @@ source changes before telling the user to test.
 - **Test files import from `vite-plus/test`, not `vitest`** — all 342 of them do.
   `vitest` is not a dependency and is not present in `node_modules` at all (Vite+
   aliases it at test RUNTIME, so the suite still passes), but the type-aware oxc
-  lint resolves it against `tests/tsconfig.json` and fails the `check` gate with
+  lint resolves it against `tests/tsconfig.json` and fails `vp run check` with
   `TS2307: Cannot find module 'vitest'`. A new test written the habitual way looks
-  green under `vp test run` and only breaks a gate cycle later (PR #1765):
+  green under `vp test run` and only reds in CI later (PR #1765):
 
   ```typescript
   import { describe, expect, it, vi } from 'vite-plus/test'; // correct

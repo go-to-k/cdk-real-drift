@@ -85,7 +85,7 @@ cdk.context.json
 report.*.json
 .markgate-bughunt-verified.d/
 
-# Python bytecode from the hook testdata probes.
+# Python bytecode from any ad-hoc probe script.
 __pycache__/
 
 # Claude Code local settings override -- never committed: it OUTRANKS

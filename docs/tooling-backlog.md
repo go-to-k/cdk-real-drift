@@ -71,7 +71,7 @@ hook, and still requires each harness to derive its subject from its own path.
 
 All 17 open issues at the time this file was written are about the tooling
 rather than about `cdkrd` behaviour a user can hit: the `work-issues` and
-`hunt-bugs` skill prose (including thirteen "mirror a flow lesson from the
+`hunt-bugs` skill prose (including ten "mirror a flow lesson from the
 sibling repo" issues, which the mirroring decision above makes moot), the hook
 layer's shell parsing, and one prose-fence test that no longer exists. They are
 recorded here so the history survives, and are to be closed on the tracker.

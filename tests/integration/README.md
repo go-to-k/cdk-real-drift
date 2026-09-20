@@ -33,7 +33,7 @@ never commit recordings from confidential stacks.
 
 These do NOT run in CI (they need credentials and mutate a real account):
 
-- **Before every release** (the `/verify-pr` gate): run EVERY fixture —
+- **Before every release** (part of `/verify-pr`): run EVERY fixture —
   `basic` (+ `verify-deleted-guards.sh` + `verify-vs-cdk-drift.sh` +
   `verify-mutation-matrix.sh`), `iam`, `lambda`, `revert`, `policies`, `atdefault`,
   `noise`, `readgap`, and the false-positive matrix (`dynamodb`, `sqs`,
