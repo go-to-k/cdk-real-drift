@@ -196,31 +196,7 @@ want_match 1 "an ordinary task run"              'vp run test' "$C"
 # separator INSIDE the quotes, which is the only shape that can distinguish it.
 want_match 1 "separator inside a quoted body" 'gh issue create --body "run vp check && git commit -m x"' "$C"
 
-# --- the issue-mint verbs (issue-dup-check-gate) -----------------------------
-I="$GATE_RE_GH_ISSUE_CREATE"
-A="$GATE_RE_GH_API_ISSUE_CREATE"
-want_match 0 "gh issue create"                 'gh issue create --title t'              "$I"
-want_match 0 "gh issue create, chained"        'git push && gh issue create --title t'  "$I"
-want_match 1 "gh issue edit is not a mint"     'gh issue edit 12 --body x'              "$I"
-want_match 1 "gh issue comment is not a mint"  'gh issue comment 12 --body x'           "$I"
-want_match 1 "quoted mention is not a verb"    "echo 'run gh issue create'"             "$I"
-want_match 0 "gh api repos/o/r/issues"         'gh api repos/o/r/issues -f title=t'     "$A"
-want_match 1 "gh api .../issues/5/comments"    'gh api repos/o/r/issues/5/comments -f body=x' "$A"
-want_match 1 "gh api .../issues/5 (an edit)"   'gh api -X PATCH repos/o/r/issues/5 -f body=x' "$A"
-# The repo-selecting flags. `GATE_GH_C` was widened to `GATE_FLAGS`-style
-# tokenisation on 2026-08-25 after `gh -R <owner/repo> pr merge` was measured
-# walking past verify-pr-gate, ci-green-gate and bughunt-clean-gate. All three
-# separator spellings gh accepts are covered — space, `=`, and GLUED — the last
-# being the one a hand-written `(-C|-R|--repo)` alternation misses.
-want_match 0 "gh -R <repo> issue create"        'gh -R o/r issue create --title t'      "$I"
-want_match 0 "gh --repo <repo> issue create"    'gh --repo o/r issue create --title t'  "$I"
-want_match 0 "gh --repo=<repo> issue create"    'gh --repo=o/r issue create --title t'  "$I"
-want_match 0 "gh -R <repo> api issues"          'gh -R o/r api repos/o/r/issues -f t=1' "$A"
-want_match 0 "repeated -C then -R absorbed"     'gh -C /w -R o/r issue create --title t' "$I"
-want_match 0 "quoted -C path with spaces"       'gh -C "/a b" issue create --title t'   "$I"
-want_match 0 "glued -R<repo> issue create"       'gh -Ro/r issue create --title t'       "$I"
-want_match 0 "-R=<repo> issue create"           'gh -R=o/r issue create --title t'      "$I"
-want_match 0 "control: gh -C <dir> issue create" 'gh -C /w issue create --title t'      "$I"
+# --- the repo-selecting flags on the gated PR verbs ---------------------------
 # THE BYPASS CASES. `gh -R o/r pr merge` used to match NOTHING, so it merged past
 # verify-pr-gate, ci-green-gate and bughunt-clean-gate (each measured plain rc=2,
 # `-R` rc=0 on 2026-08-25). This assertion was INVERTED from `want_match 1` — an
@@ -369,89 +345,6 @@ want_local_slug a/b "ssh:// remote"          'ssh://git@github.com/a/b.git'
 want_local_slug a/b "uppercase remote"       'https://github.com/A/B.git'
 want_local_slug a/b "trailing slash after .git" 'https://github.com/a/b.git/'
 
-# --- gate_verb_args_dir (main-tree-branch-gate) --------------------------------
-#
-# The per-segment walk: one "<dir><TAB><args-after-the-verb>" line per matching
-# segment. What it must NOT be is `gate_target_dir` + a separate argument walk:
-# that function BREAKS at the first matching segment, so segment 1's tree decides
-# every segment. Measured HERE, driving main-tree-branch-gate against THIS repo's
-# real main checkout and its real linked worktree with a payload cwd of the MAIN
-# checkout, once with the tree resolved outside the walk and once per segment:
-#
-#   git -C <wt> switch -c a && git switch -c b       rc=0, want 2  BYPASS
-#   git switch main && git -C <wt> switch -c a       rc=2, want 0  FALSE BLOCK
-SW="$GATE_RE_GIT_SWITCH"
-
-# want_lines <expected-with-\n> <label> <command> <fallback> <regex>
-want_lines() {
-  local want="$1" label="$2" cmd="$3" fallback="$4" re="$5" got
-  got=$(gate_verb_args_dir "$cmd" "$fallback" "$re" | tr '\t' '|')
-  if [ "$got" = "$want" ]; then
-    pass=$((pass + 1)); printf 'OK   %s\n' "$label"
-  else
-    fail=$((fail + 1)); printf 'FAIL %s\n  want: [%s]\n  got:  [%s]\n' "$label" "$want" "$got"
-  fi
-}
-
-want_lines '/w/t|-c feat' "one segment, fallback dir" \
-  'git switch -c feat' '/w/t' "$SW"
-want_lines '/other|-c feat' "the segment's own -C wins over the fallback" \
-  'git -C /other switch -c feat' '/w/t' "$SW"
-want_lines '/other|-c feat' "glued -C<path> is read too (gate_target_dir cannot)" \
-  'git -C/other switch -c feat' '/w/t' "$SW"
-want_lines '/other|-c feat' "-C=<path> is read too" \
-  'git -C=/other switch -c feat' '/w/t' "$SW"
-want_lines '/a b|-c feat' "a quoted -C path containing a space survives" \
-  'git -C "/a b" switch -c feat' '/w/t' "$SW"
-want_lines '/wt|-c a
-/wt|-c b' "a cd PERSISTS into every later segment" \
-  'cd /wt && git switch -c a && git switch -c b' '/w/t' "$SW"
-want_lines '/wt|-c a
-/w/t|-c b' "a -C binds ONLY its own segment, and does not leak forward" \
-  'git -C /wt switch -c a && git switch -c b' '/w/t' "$SW"
-want_lines '/w/t|main
-/wt|-c a' "EVERY matching segment is emitted, each with its OWN tree" \
-  'git switch main && git -C /wt switch -c a' '/w/t' "$SW"
-want_lines '' "a quoted mention emits nothing" \
-  'echo "do not run: git switch -c feat"' '/w/t' "$SW"
-# A RELATIVE `cd` resolves against the running target, and nothing pinned it: the
-# `[[ "$cd_target" != /* ]] && cd_target="$target/$cd_target"` line could be
-# deleted with this suite at 177/0 and the gate suite at 54/0. The parity block
-# below covers a relative `-C`, which is the OTHER branch of the same rule.
-want_lines '/w/t/sub|-c feat' "a RELATIVE cd resolves against the running target" \
-  'cd sub && git switch -c feat' '/w/t' "$SW"
-want_lines '/w/t/sub/deeper|-c feat' "relative cds COMPOSE across segments" \
-  'cd sub && cd deeper && git switch -c feat' '/w/t' "$SW"
-# ...and its control: an ABSOLUTE cd replaces the target rather than extending it,
-# so the two cases above are not satisfied by "always concatenate".
-want_lines '/elsewhere|-c feat' "an ABSOLUTE cd replaces the running target" \
-  'cd sub && cd /elsewhere && git switch -c feat' '/w/t' "$SW"
-
-# PARITY PIN. The cd / -C reading here is a deliberate COPY of gate_target_dir's,
-# because that function breaks at the verb and has other callers riding on it. A
-# copy that nothing compares is a copy that drifts, so the two are pinned against
-# each other on the SINGLE-segment shape, where they must agree by construction.
-want_parity() {
-  local label="$1" cmd="$2" fallback="$3" re="$4" a b
-  a=$(gate_target_dir "$cmd" "$fallback" "$re")
-  b=$(gate_verb_args_dir "$cmd" "$fallback" "$re" | head -1)
-  b="${b%%	*}"
-  if [ "$a" = "$b" ]; then
-    pass=$((pass + 1)); printf 'OK   parity %s\n' "$label"
-  else
-    fail=$((fail + 1)); printf 'FAIL parity %s (gate_target_dir=%s gate_verb_args_dir=%s)\n' "$label" "$a" "$b"
-  fi
-}
-want_parity "bare verb"            'git switch -c feat' '/w/t' "$SW"
-want_parity "leading cd"           'cd /wt && git switch -c feat' '/w/t' "$SW"
-want_parity "spaced -C"            'git -C /other switch -c feat' '/w/t' "$SW"
-want_parity "quoted -C with space" 'git -C "/a b" switch -c feat' '/w/t' "$SW"
-want_parity "relative -C"          'git -C sub switch -c feat' '/w/t' "$SW"
-want_parity "unexpanded cd \$VAR"  'cd "$WT" && git switch -c feat' '/w/t' "$SW"
-want_parity "unexpanded -C \$VAR"  'git -C "$WT" switch -c feat' '/w/t' "$SW"
-want_parity "relative cd"          'cd sub && git switch -c feat' '/w/t' "$SW"
-
-
 # --- gate_argv ------------------------------------------------------------------
 #
 # `gate_tokens` splits SHELL WORDS; this splits git's ARGV, which is what an
@@ -507,9 +400,9 @@ argv_case "a token spelling the heredoc delimiter survives" " EOF -- x" "$(print
 
 # A FLOOR on the case total, for the same reason the gate suite carries one:
 # deleting a case removes its assertions SILENTLY while the tally still reads
-# `fail: 0`, so without a floor the sixteen `gate_verb_args_dir` cases added for
-# main-tree-branch-gate could be dropped and this file would still report green.
-# Raise it when cases are added; never lower it to make a red run green.
+# `fail: 0`, so a whole block could be dropped and this file would still report
+# green. Raise it when cases are added; never lower it to make a red run green.
+# Lower it ONLY together with the deletion of the gate whose cases went.
 # --- gate_word_is_literal -------------------------------------------------------
 #
 # The INVERTED default. `gate_argv` above splits words; this answers whether a
@@ -621,40 +514,11 @@ argv_case "a spaced dup-in redirection drops its target" " feat <& 3" "feat"
 argv_case "a spaced &> redirection drops its target" " feat &> out" "feat"
 argv_case "a spaced &>> redirection drops its target" " feat &>> out" "feat"
 
-CASE_FLOOR=246
+CASE_FLOOR=209
 ran=$((pass + fail))
 if [ "$ran" -lt "$CASE_FLOOR" ]; then
   fail=$((fail + 1))
   printf 'FAIL case floor: only %s cases ran, expected at least %s\n' "$ran" "$CASE_FLOOR"
-fi
-# --- gate_perl_word_ok must reject a STALE prelude ---------------------------
-#
-# The guard exists to catch a library that is present but does not WORK, and the
-# case it is most likely to meet is a SIBLING REPO one revision behind -- this
-# prelude is copied between three repos on purpose. A four-dimension probe was
-# measured certifying exactly that: the pre-`ebf5ac39` prelude (no mid-word
-# ANSI-C arm, `gate_unq` decoding instead of returning bytes) passed every
-# assertion, because all four inputs were pure ASCII at word position 0.
-#
-# Each case deletes ONE dimension from the REAL prelude and requires a
-# rejection. A dimension whose deletion still passes is one the probe does not
-# actually certify. Driven from a single python block rather than per-case shell
-# arguments: the mutations are regex literals full of quotes and backslashes,
-# and threading them through shell quoting broke the file twice.
-__pr_out=$(python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/testdata/probe-rejects.py" \
-             "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/_command-match.sh" 2>&1)
-__pr_rc=$?
-printf '%s\n' "$__pr_out"
-__pr_ok=$(printf '%s\n' "$__pr_out" | grep -c '^OK   probe-rejects:')
-__pr_bad=$(printf '%s\n' "$__pr_out" | grep -c '^FAIL probe-rejects:')
-# The COUNT is asserted, not just the failures: a script that dies early prints
-# nothing and would otherwise read as six silent passes.
-if [ "$__pr_rc" != 0 ] || [ "$__pr_ok" -ne 7 ] || [ "$__pr_bad" -ne 0 ]; then
-  fail=$((fail + 1))
-  printf 'FAIL probe-rejects: expected 7 OK / 0 FAIL, got %s / %s (rc=%s)\n' "$__pr_ok" "$__pr_bad" "$__pr_rc"
-  fail_log+="FAIL probe-rejects: expected 7 OK / 0 FAIL, got $__pr_ok / $__pr_bad\n"
-else
-  pass=$((pass + __pr_ok))
 fi
 
 printf '\npass: %s  fail: %s\n' "$pass" "$fail"

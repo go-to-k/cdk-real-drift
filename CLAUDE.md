@@ -276,27 +276,31 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   across regions for global IAM) AND anything younger than
   `CDKRD_SWEEP_MIN_AGE_HOURS` (default 2h — a name-match can miss a live resource
   whose CFn physical name was truncated / hyphen-derived).
-- **markgate gates** (see `.markgate.yml`) — each has a companion skill that sets
-  its marker:
-  - `/check` → `check` marker (typecheck / lint+format / build / unit tests).
-  - `/check-docs` → `docs` marker (README / DESIGN / docs consistency with src).
-  - `/verify-pr` → `verify-pr` marker (pre-PR superset of check + docs plus a
-    live-test + retrospective).
-  - A `check-gate` PreToolUse hook blocks `git commit` unless both the `check` and
-    `docs` markers are fresh, and a `verify-pr-gate` hook blocks `gh pr create` /
-    `gh pr merge` unless `verify-pr` is fresh — except for a docs/tooling-only PR
-    (no `src/**` in the diff), which the gate lets through on `check` + `docs`.
-    Run the relevant skill before committing or opening the PR.
-  - **Hash modes**: `check` / `docs` hash file CONTENT (`hash: files`) — the
-    stricter mode, kept because re-running them is cheap. The inert `integ`
-    gate is the ONE gate on `hash: diff` (markgate 0.4+, #1756): it digests
-    this branch's delta against `merge-base(origin/main, HEAD)` restricted to
-    its include set, so an unrelated in-scope merge from `main` no longer
-    stales an expensive real-AWS verification, while a same-file change and any
-    local in-scope edit still do; it ERRORS (exit 2) from a clean base branch.
-    The invalidations removed are provably uninformative; the accepted risk —
-    undetected cross-FILE interaction — is bounded but NOT quantified. Full
-    rationale in `.markgate.yml`.
+- **Before every commit, and before opening or merging any PR — recommended, not
+  enforced**: run `/check` (typecheck / lint+format / build / unit tests) and
+  `/check-docs` (README / DESIGN / `docs/` consistency with src, ONCE per PR at
+  the final sha); before a PR, run `/verify-pr`, whose checklist still applies
+  in full — a PR whose live behaviour was never exercised is not ready, whatever
+  the unit suite says. **No hook and no marker enforces any of them any more.**
+  The MECHANICAL merge conditions that remain are CI green (`ci-green-gate`) and
+  a clean bug-hunt sentinel (`bughunt-clean-gate`); `branch-gate` and
+  `stale-base-gate` still refuse a commit or push that lands on `main` or
+  clobbers it. Everything else is your own discipline, and skipping it is how
+  `main` goes red.
+- **Reviewer count**: **1 reviewer by default** (`pr-code-reviewer`); add
+  **spec + test** when the `src/**` diff exceeds 400 lines or 8 files; add the
+  **security reviewer** whenever a credential, role-assumption or revert-WRITE
+  surface is touched, or the PR is a security fix. Reviewers run **once, on the
+  final sha** — a fix round is re-checked by MESSAGING the same reviewer with the
+  delta, never by a fresh dispatch.
+- **Hooks, rules, skills, fences: read the Tooling Policy section below before
+  adding, widening or filing an issue about any of them.** The default answer to
+  "should this become a hook / rule / fence?" is no.
+- **`.markgate.yml` declares one gate, `integ`, and nothing reads it.** It is a
+  declaration that a real-AWS run (which deploys stacks and whose
+  `inject-drift` / `revert` WRITE to the maintainer's account) is gate-worthy;
+  there is no companion `/run-integ` skill here to set the marker. The file must
+  keep existing regardless: `branch-gate` uses it as its repo opt-in signal.
   - `/hunt-bugs` is the (non-marker) skill that drives a periodic real-AWS bug-hunt:
     deploy UNCOVERED, high-frequency resource types / configs / CFn notations, then
     catch false positives (clean `record`→`check` must be CLEAN) and missed
@@ -310,90 +314,41 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
     `delstack`) and `sweep-orphans.sh` reports SWEEP CLEAN. A deployed stack can
     never be forgotten. As a backstop (even for a live-test that never called
     `add`), the `deploy-autoarm-gate` hook arms a generic token on ANY
-    deploy-shaped command, and the `stop-cleanup-warn` Stop hook warns at session
-    end if the sentinel is still armed — to the USER on every turn and to the MODEL
-    on the cadence below, having reached NEITHER until
-    go-to-k/cdk-real-drift#1844. Run **`/sweep-resources`** to do the
-    cleanup + release the gate.
+    deploy-shaped command. Run **`/sweep-resources`** to do the cleanup + release
+    the gate.
 - **The bash-first experiment must stay OFF.** `.claude/settings.json` pins
   `env.CLAUDE_CODE_THRIFTY_SONIC: "0"`. With that flag on, the session is told to
   read and WRITE files through `cat` / `sed -i` / heredocs instead of
   Read / Edit / Write — and `worktree-guard` is matched on `Edit|Write|NotebookEdit`,
   the TOOLS rather than the operation, so it stops firing entirely and a heredoc
-  write to the main checkout's `src/**` is refused by nothing, and this repo has
-  no snapshot hook to record it either. An explicitly set
+  write to the main checkout's `src/**` is refused by nothing. An explicitly set
   value short-circuits the server-side cohort assignment, which is why the pin
   belongs in the REPO's settings — a maintainer's `~/.claude/settings.json` fixes
   one machine and leaves every contributor and parallel lane in whatever cohort
-  the server picked. Measured on Claude Code 2.1.263; the fence asserts a JSON
-  string and cannot assert vendor behavior, so re-probe on upgrade
-  (`tests/bash-first-optout-1893.test.ts`, mechanics in
-  [.claude/rules/hooks.md](.claude/rules/hooks.md) — which is where the detail
-  lives, while this bullet stays in CLAUDE.md because a session in the cohort is
-  exactly the one that may not open that file).
-- **`issue-dup-check-gate` — the one PreToolUse gate that is not a markgate gate.**
-  It blocks `gh issue create` (and the REST mint `gh api repos/<o>/<r>/issues`)
-  unless the body carries a `Dup-check:` line recording that the OPEN issue list
-  was searched for an issue already naming this root cause (`/work-issues` §5 has
-  the search + fold-into-a-checklist-row recipe). `gh issue edit` /
-  `gh issue comment` are deliberately NOT gated: folding a finding into the
-  issue that already covers its root cause is the outcome the gate steers
-  toward, so taxing it would penalise the cheap path. It never asks you to drop
-  a finding — §10-0 is explicit that an unfiled finding is strictly worse than a
-  filed one; it changes only WHERE the finding is written. Scoped by repo opt-in
-  (`.markgate.yml` at the resolved cwd's repo root), so filing into an unrelated
-  personal repo is not refused. The local case is prophylactic and weaker than
-  either sibling's — zero open issues here on 2026-08-25 and no verified
-  duplicate, versus cdk-local's two duplicates nine minutes apart
-  (go-to-k/cdk-local#528 / go-to-k/cdk-local#531) — and the gate's own header
-  says so rather than borrowing their numbers.
-  `gh -R <owner/repo> issue create` — the cross-repo mirror flow's own spelling,
-  and therefore this gate's primary shape — IS matched: the shared `GATE_GH_C`
-  absorbs the repo flags in every spelling `gh` accepts (space, `=`, and glued
-  `-Ro/r`).
-- **`issue-deferral-criteria-gate` — a `Session-fit: next` may not be
-  PR-shaped.** Same two mints and the same repo opt-in as `issue-dup-check-gate`,
-  refusing a body that defers the work because it wants its `own PR` /
-  a `separate PR` / cannot `share a PR` / is an `independent review surface` /
-  is `unreviewable` / needs its `own review`. `Session-fit` answers only "do I
-  finish this in THIS session", and splitting across several PRs costs no
-  session — the review cost of a bigger diff belongs under `Effort: large`,
-  where [.claude/rules/session-report.md](.claude/rules/session-report.md) puts
-  it. An escalation of `/work-issues` §3-b, said in prose and violated anyway.
-  `gh issue edit` / `gh issue comment` are NOT gated: re-classifying to `now` is
-  the outcome wanted. Mechanics, measured coverage, the bypass, and the two
-  contradictions in this repo's own text it surfaced and the maintainer resolved
-  on 2026-09-05 (`references/implement.md` + that rule's calibration paragraph):
-  [.claude/rules/hooks.md](.claude/rules/hooks.md).
-- **`integ-base-behind-warn` — the one NON-BLOCKING PreToolUse hook.** Before a
-  fixture's `verify*.sh` or a `cdk deploy` runs, it warns on stderr that the
-  branch is behind `origin/main` and names how many arriving files land in the
-  `integ` gate's scope. A real deploy + `delstack` teardown in us-east-1 spent
-  on a superseded tree buys a result about the wrong tree. **Not
-  `stale-base-gate`** — that one BLOCKS a push whose branch is AHEAD of
-  `origin/main` yet reverts main's work; this one fires on the opposite
-  condition and never blocks. Details in
-  [.claude/rules/hooks.md](.claude/rules/hooks.md).
-- **Hook / gate mechanics and their measured history live in
-  [.claude/rules/hooks.md](.claude/rules/hooks.md)** — read it when working on
-  `.claude/hooks/**` / `.claude/settings.json` or when a gate's verdict
-  surprises you. The rules it details, in one line each: naming the repo
-  (`-R` in any spelling) must never change a gate's verdict; the two `Stop`
-  hooks (`stop-cleanup-warn.sh` / `stop-unmerged-lane-warn.sh`) own their
-  channels and cadence; and a branch switch in the main checkout is GATED by
-  `main-tree-branch-gate.sh` (a real option parse over git's ARGV — glued
-  spellings, prefixes, remote-only branches and `-`/`@{-1}` are all refused,
-  file restores pass), with `branch-gate` catching the commit/push symptom.
+  the server picked. The fence asserts a JSON string and cannot assert vendor
+  behavior, so re-probe on upgrade — the probe recipe and the measured build are
+  in `tests/bash-first-optout-1893.test.ts`. This bullet stays in CLAUDE.md
+  because a session in the cohort is exactly the one that may not open a rule
+  file.
+- **The surviving safety hooks**: each blocks one foot-gun with an actionable
+  error naming the exact replacement command, so the roster is NOT restated here
+  — it is in [.claude/rules/hooks.md](.claude/rules/hooks.md), covering
+  `branch-gate.sh`, `stale-base-gate.sh`, `ci-green-gate.sh`,
+  `worktree-guard.sh`, `bughunt-clean-gate.sh` and the non-blocking
+  `deploy-autoarm-gate.sh`. Read it when working on `.claude/hooks/**` /
+  `.claude/settings.json`, or when a gate's verdict surprises you. One rule from
+  it is worth repeating: naming the repo (`-R` in any spelling) must never change
+  a gate's verdict.
 - **Registration is not execution — prove the gates are ALIVE before the first
   commit of a session**: run `git commit --dry-run -m "gate liveness probe"` from
   the repo root **as a Bash TOOL CALL**. PreToolUse hooks gate the AGENT's tool
   calls only: the same line typed by a human into a terminal never passes through
-  them, so it proves nothing and will always look "unblocked". `--dry-run` commits nothing regardless of the tree; a `Blocked by
-branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
-  output means they do NOT, and every gate below is then unenforced. On
-  2026-08-20 all eight were registered and inert for a day (go-to-k/cdk-real-drift#1801:
-  an `if` holding `A or B` matches nothing), which `/hooks` cannot show because it
-  lists registration, not firing.
+  them, so it proves nothing and will always look "unblocked". `--dry-run`
+  commits nothing regardless of the tree; a `Blocked by branch-gate` line means
+  the hooks fire. Git's ordinary output means they do NOT, and every gate is then
+  unenforced — which `/hooks` cannot show, because it lists registration, not
+  firing (go-to-k/cdk-real-drift#1801: an `if` holding `A or B` matches nothing,
+  and every gate was inert for a day).
 - **ALWAYS develop in a git worktree — never edit or branch in the main
   checkout, even for a single "sequential" session** (sessions that believed
   they were alone have collided twice: a README clobber, and a branch that
@@ -401,7 +356,7 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   worktree with DISJOINT files:
   `git worktree add .worktrees/<name> -b wt-<name> origin/main` →
   `mise trust .worktrees/<name>/.mise.toml` → `pnpm install` (worktrees have no
-  `node_modules`) → work → run gates + set markers → commit on the branch.
+  `node_modules`) → work → run the checks → commit on the branch.
   **`origin/main`, not local `main`**: local `main` only advances on an
   explicit pull, and `stale-base-gate.sh` opens with
   `git merge-base --is-ancestor "$base" HEAD || exit 0`, so a lane cut from a
@@ -420,22 +375,15 @@ branch-gate` / `Blocked by check-gate` line means the hooks fire. Git's ordinary
   branch already checked out, one lane at a time, and leave the tree for
   whoever made it. `/work-issues` computes which case applies before its first
   stage and `/hunt-bugs` points at that probe; do not re-implement it here.
-- **A branch switch in the main checkout is GATED** — mechanics in
-  [.claude/rules/hooks.md](.claude/rules/hooks.md) (see the summary bullet
-  above).
 - **All changes go through a pull request — never commit directly to `main`.**
-  Branch (or worktree branch) → run the gates + set markers → commit → push →
-  `gh pr create`. The reviewer re-reviews the PR diff before merge. cdkd's
-  branch-protection (`branch-gate`) and verify-pr-merge (`verify-pr-gate`) gates
-  ARE now ported and wired (R83), plus the OSS English-only
-  `non-english-text-gate` and the `stale-base-gate` (blocks a `git push`
-  whose branch sits on `origin/main` yet reverts recent main work — the
-  stale-base soft-reset clobber that bit this worktree flow twice).
-  `verify-pr-gate` is EXEMPT for docs/tooling-only PRs (no `src/**` in the
-  diff): `check` + `docs` already cover them, so a full `/verify-pr` (with
-  its real-AWS live-test) is not demanded. pr-review and integ-\* stay UNPORTED on purpose:
-  pr-review is multi-agent (cdkrd is solo); integ-\* depends on cdkd's
-  providers/state/destroy paths cdkrd lacks (see `.markgate.yml`).
+  Branch (or worktree branch) → run the checks → commit → push →
+  `gh pr create`. The reviewer re-reviews the PR diff before merge.
+  `branch-gate` refuses a commit or push on `main`, and `stale-base-gate`
+  refuses a `git push` whose branch sits on `origin/main` yet reverts recent main
+  work — the stale-base soft-reset clobber that bit this worktree flow twice.
+  Merge only once CI is green (`ci-green-gate`) and the bug-hunt sentinel is
+  clear (`bughunt-clean-gate`); everything else about PR readiness is procedure,
+  not machinery.
 - **Every session-wrap / task-complete report MUST end with a "Remaining
   work" section AND a "Session close" verdict — unprompted.** The full field
   reference — The four TODO fields (`Session-fit` / `Severity` / `Effort` /
@@ -465,6 +413,64 @@ src/revert/plan.ts`). This is the issue-level twin of the worktree
   "working on this" comment (and open PRs referencing the issue) BEFORE you start
   — if one exists, pick a different issue. Skip only for a trivial change you will
   PR within minutes.
+
+## Tooling Policy
+
+The agent-tooling layer (hooks, markgate gates, `.claude/rules/**`,
+`.claude/skills/**`, prose fences) had grown to 27 PreToolUse entries over 17
+hook scripts, five markgate gates, 49 KB of rules and 288 KB of skills — while
+every open issue on the tracker was about that layer rather than about `cdkrd`.
+The tooling itself bred bugs: a bash parser for shell commands is never
+finished, and each miss became an issue, a PR and a review round as if it were a
+product bug. **These rules exist so it does not grow back.** An exception is
+stated in the PR body for the maintainer to decide.
+
+1. **Default answer: do not build it.** A new hook, gate, CI fence, rule
+   paragraph, skill step or test-of-prose is added only on the **SECOND**
+   occurrence of the same failure. The first occurrence is a row in
+   [docs/tooling-backlog.md](docs/tooling-backlog.md) and nothing is built. "It
+   would have caught this" is the first occurrence, not the second.
+2. **A hook may BLOCK only when the harm completes at the moment of the action
+   AND lands irreversibly on a THIRD PARTY's artifact, ANOTHER SESSION's work,
+   or the MAINTAINER's AWS account.** Everything else is a sentence in this
+   file, a unit test over `src/**`, or nothing. A hook that fails OPEN on an
+   exotic shell shape (quoting, heredocs, `$( )`, `bash -c`, `eval`, case arms,
+   redirections) is accepted as-is: hooks steer a cooperative agent, they are
+   not a security boundary, and `main` is protected server-side by a GitHub
+   ruleset. Such a miss is not issue-worthy and not backlog-worthy. Roster and
+   criterion: [.claude/rules/hooks.md](.claude/rules/hooks.md).
+3. **No fences on prose.** A test may check that a link resolves, a file exists,
+   a `paths:` glob matches, or a byte cap holds. It may not count phrases, pin
+   wording, compare two copies of a sentence, or assert that a paragraph exists.
+   Keep prose true by editing it, not by testing it.
+4. **Rule and skill files carry invariants and pointers, not history.** A rule
+   paragraph survives only if an engineer editing that subsystem would make a
+   wrong change without it. No dates, measurements, suite tallies, incident
+   narratives or instructions to future authors — provenance is at most one
+   issue or PR number per decision. Budgets: `.claude/rules/**` ≤ 40 KB total
+   and ≤ 12 KB per file, with a 20 KB allowance for at most two INDEX files
+   (today `session-report.md` is the only one that uses it); the MARKDOWN under
+   `.claude/skills/**` ≤ 150 KB total (an executable such as
+   `hunt-bugs/bughunt-track.sh` is run, never loaded as instructions, so it
+   costs no context and is outside the cap); `CLAUDE.md` no larger than it is
+   now. A change that pushes a file over its budget trims that file in the same
+   PR.
+5. **Tooling findings are not issues.** Hooks, rules, skills, CI fences and the
+   verification harness are not `cdkrd` behaviour a user can hit; the issue
+   tracker is for behaviour a user can hit. Record the finding in
+   [docs/tooling-backlog.md](docs/tooling-backlog.md); it becomes an issue only
+   when someone starts working it.
+6. **Enforcement is procedure, not machinery.** `/check`, `/check-docs` (once
+   per PR, at the final sha), `/verify-pr` and the reviewer dispatch are the
+   recommended path and are enforced by no hook and no marker. The mechanical
+   merge conditions are CI green (`ci-green-gate`) and a clean bug-hunt sentinel
+   (`bughunt-clean-gate`), with `branch-gate` / `stale-base-gate` /
+   `worktree-guard` refusing the three writes that land on `main` or on another
+   session. Do not add another without the maintainer's decision.
+
+**Flow lessons stay in THIS repo.** cdkd, cdk-local and cdk-real-drift each keep
+their own `work-issues` / `hunt-bugs` text; porting a rule to a sibling, or
+opening a mirror PR there, is not owed by any skill.
 
 ## Dependencies
 

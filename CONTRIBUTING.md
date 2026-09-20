@@ -108,22 +108,19 @@ that the targeted noise is removed and that genuine drift still surfaces.
 
 ## Before you commit
 
-Run the markgate companion skills (they back the pre-commit gate):
+Run these, every time — **recommended, not enforced**. No hook and no marker
+blocks a commit on them; skipping them is how `main` goes red.
 
-- `/check` — typecheck / lint+format / build / unit tests (sets the `check` marker).
-- `/check-docs` — README / DESIGN / docs consistency with src (sets the `docs`
-  marker).
-
-A `check-gate` hook blocks `git commit` unless both markers are fresh. Run the
-relevant skill, then commit.
+- `/check` — typecheck / lint+format / build / unit tests.
+- `/check-docs` — README / DESIGN / docs consistency with src. Once per PR, at
+  the final sha.
 
 ## Before you open a PR
 
 Work on a branch — `branch-gate` blocks commits and pushes on `main`.
 
-- `/verify-pr` — the PR readiness checklist; sets the `verify-pr` marker that
-  `verify-pr-gate` requires for `gh pr create` / `gh pr merge`. A PR whose diff
-  touches no `src/**` (docs / tooling only) is exempt: `check` + `docs` already
-  cover it.
+- `/verify-pr` — the PR readiness checklist. Its checklist applies in full: a PR
+  whose live behaviour was never exercised is not ready, whatever the unit suite
+  says. Nothing enforces it.
 - CI (`.github/workflows/ci.yml`) must be green before merging — `ci-green-gate`
   blocks `gh pr merge` on a red or still-pending run.

@@ -8,12 +8,11 @@ import { describe, expect, it } from 'vite-plus/test';
 // Two failures, a day apart, both silent:
 //
 // 1. go-to-k/cdk-real-drift#1786 — the `cd <worktree> && <cmd>` spelling section 5
-//    mandates was missing from three gates' matchers, so `cd <wt> && git commit`
-//    bypassed check-gate and `cd <wt> && gh pr create` bypassed verify-pr-gate and
-//    the English-only gate. Fixed by adding a second and third anchored alternative
-//    per verb, joined with ` or `.
+//    mandates was missing from three gates' matchers, so a `cd <wt> && <verb>`
+//    spelling reached git and gh ungated. Fixed by adding a second and third
+//    anchored alternative per verb, joined with ` or `.
 // 2. go-to-k/cdk-real-drift#1801 — that join is not a supported expression. An `if`
-//    holding `A or B` matches NOTHING, so all eight gates were inert: on 2026-08-20
+//    holding `A or B` matches NOTHING, so every gate was inert: on 2026-08-20
 //    `git commit` on `main` with no markers reached git in both a VS Code session
 //    and a plain terminal one, while running `branch-gate.sh` by hand on the same
 //    payload blocked with exit 2. Probed with three throwaway hooks: an `if`-less
@@ -35,38 +34,13 @@ const SETTINGS = path.join(ROOT, '.claude', 'settings.json');
 
 /** What each gate must be selected for. `deploy-autoarm` matches a command SHAPE. */
 const REQUIRED: Record<string, string[]> = {
-  'check-gate.sh': ['Bash(*git*commit*)'],
   'branch-gate.sh': ['Bash(*git*commit*)', 'Bash(*git*push*)'],
-  // TWO entries, one per verb — never one `Bash(*git*switch*) or Bash(*git*checkout*)`,
-  // which matches nothing (go-to-k/cdk-real-drift#1801). `branch-gate` guards the
-  // SYMPTOM (a commit/push while the tree is on main); this one guards the CAUSE
-  // (the switch that put a feature branch in the shared checkout at all).
-  'main-tree-branch-gate.sh': ['Bash(*git*switch*)', 'Bash(*git*checkout*)'],
   'bughunt-clean-gate.sh': ['Bash(*git*commit*)', 'Bash(*gh*pr*create*)', 'Bash(*gh*pr*merge*)'],
   'stale-base-gate.sh': ['Bash(*git*push*)'],
-  'verify-pr-gate.sh': ['Bash(*gh*pr*create*)', 'Bash(*gh*pr*merge*)'],
   'ci-green-gate.sh': ['Bash(*gh*pr*merge*)'],
-  'non-english-text-gate.sh': ['Bash(*gh*pr*create*)', 'Bash(*gh*pr*edit*)', 'Bash(*gh*pr*merge*)'],
-  'issue-classification-label-gate.sh': ['Bash(*gh*issue*create*)', 'Bash(*gh*issue*edit*)'],
+  // A command SHAPE, not a verb: three entries, never one joined pattern.
   'deploy-autoarm-gate.sh': ['Bash(*deploy*)', 'Bash(*create-stack*)', 'Bash(*update-stack*)'],
-  // Two entries, never one joined pattern: `gh issue create` and the REST mint
-  // `gh api repos/<o>/<r>/issues`. Both are deliberately UNANCHORED and broad —
-  // the gate re-matches the command precisely with `GATE_RE_GH_ISSUE_CREATE` /
-  // `GATE_RE_GH_API_ISSUE_CREATE` and re-derives its own target dir.
-  'issue-dup-check-gate.sh': ['Bash(*gh*issue*create*)', 'Bash(*gh*api*issues*)'],
-  // Same two mints as issue-dup-check-gate, for the same reason: `gh issue create`
-  // and the REST mint are the two ways a deferral decision is first written down.
-  // `gh issue edit` is deliberately absent — re-classifying a `next` to a `now` is
-  // the outcome this gate wants, so taxing it would penalise the fix.
-  'issue-deferral-criteria-gate.sh': ['Bash(*gh*issue*create*)', 'Bash(*gh*api*issues*)'],
-  // The only NON-BLOCKING entry in this table. Two shapes an integ run arrives in:
-  // a fixture's `verify*.sh` and the `cdk deploy` those scripts (and an agent
-  // reproducing a step by hand) run. Both deliberately over-approximate — the hook
-  // re-matches precisely and, in particular, stays silent for this repo's own
-  // `*.test.sh` harnesses, which the `*verify*.sh*` glob also selects.
-  'integ-base-behind-warn.sh': ['Bash(*verify*.sh*)', 'Bash(*cdk*deploy*)'],
 };
-
 interface GateHook {
   name: string;
   condition: string;
@@ -99,9 +73,9 @@ describe('PreToolUse gate matchers (go-to-k/cdk-real-drift#1786, go-to-k/cdk-rea
 
   it('finds the repo gate hooks', () => {
     const names = new Set(hooks.map((h) => h.name));
-    expect(names.has('check-gate.sh')).toBe(true);
-    expect(names.has('verify-pr-gate.sh')).toBe(true);
-    expect(names.has('non-english-text-gate.sh')).toBe(true);
+    expect(names.has('branch-gate.sh')).toBe(true);
+    expect(names.has('ci-green-gate.sh')).toBe(true);
+    expect(names.has('bughunt-clean-gate.sh')).toBe(true);
   });
 
   // THE regression case for go-to-k/cdk-real-drift#1801. An `or` in an `if` disables
@@ -166,18 +140,20 @@ describe('PreToolUse gate matchers (go-to-k/cdk-real-drift#1786, go-to-k/cdk-rea
       'cd /w/t && git commit -m x',
       'git add -A && git commit -m x',
     ];
-    const commitPatterns = hooks.filter((h) => h.name === 'check-gate.sh').map((h) => h.condition);
+    const commitPatterns = hooks.filter((h) => h.name === 'branch-gate.sh').map((h) => h.condition);
     for (const spelling of spellings) {
       expect(
         commitPatterns.some((p) => globToRe(p).test(spelling)),
-        `no check-gate pattern selects: ${spelling}`
+        `no branch-gate pattern selects: ${spelling}`
       ).toBe(true);
     }
-    const ghPatterns = hooks.filter((h) => h.name === 'verify-pr-gate.sh').map((h) => h.condition);
+    const ghPatterns = hooks
+      .filter((h) => h.name === 'bughunt-clean-gate.sh')
+      .map((h) => h.condition);
     for (const spelling of ['gh pr create --fill', 'gh -R go-to-k/x pr create --fill']) {
       expect(
         ghPatterns.some((p) => globToRe(p).test(spelling)),
-        `no verify-pr-gate pattern selects: ${spelling}`
+        `no bughunt-clean-gate pattern selects: ${spelling}`
       ).toBe(true);
     }
   });

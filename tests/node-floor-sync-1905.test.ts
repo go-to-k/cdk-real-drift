@@ -92,7 +92,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(here, '..');
 
 // Every read below spells its target as literal `join(REPO_ROOT, ...)` segments
-// so tests/check-scope-checker-inputs-1837.test.ts can see it as a checker input.
+// so a reader can see at a glance which files this test treats as inputs.
 describe('the published Node.js floor is one value across every surface (#1905)', () => {
   it('the derived spellings are non-vacuous', () => {
     expect(Number.isInteger(FLOOR_MAJOR)).toBe(true);

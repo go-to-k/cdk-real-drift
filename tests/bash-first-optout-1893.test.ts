@@ -52,7 +52,6 @@ const SETTINGS = path.join(ROOT, '.claude', 'settings.json');
 const PROJECT_DIR_PREFIX = '${CLAUDE_PROJECT_DIR:-.}';
 const WORKTREE_GUARD_SCRIPT = '.claude/hooks/worktree-guard.sh';
 const LOCAL_SETTINGS = '.claude/settings.local.json';
-const HOOKS_RULE = path.join(ROOT, '.claude', 'rules', 'hooks.md');
 
 /**
  * The only value measured against a discriminating twin. Other spellings the
@@ -107,8 +106,8 @@ function installedClaudeVersion(): string | undefined {
   if (version === undefined) {
     throw new Error(
       `no version could be read from \`${bin} --version\` (${JSON.stringify(out)}). ` +
-        'If Claude Code reworked that line, re-run both probe arms from ' +
-        '.claude/rules/hooks.md before touching this test.'
+        'If Claude Code reworked that line, re-run both probe arms from this ' +
+        "file's header before touching this test."
     );
   }
   return version;
@@ -280,15 +279,10 @@ describe('.claude/settings.json bash-first opt-out (go-to-k/cdk-real-drift#1893)
     // nobody could read.
     expect(PROBED_CLAUDE_VERSION).toMatch(/^\d+\.\d+\.\d+$/);
     expect(PROBED_ON).toMatch(/^\d{4}-\d{2}-\d{2}$/);
-    // The measurement is written down TWICE — here and in the prose carrying the
-    // probe recipe. Bumping one without the other leaves a reader re-probing
-    // against a version nobody measured, and CI, which has no binary to compare
-    // against, would otherwise certify nothing at all.
-    expect(
-      readFileSync(HOOKS_RULE, 'utf8'),
-      `.claude/rules/hooks.md no longer names ${PROBED_CLAUDE_VERSION}; the probe ` +
-        'recipe and this receipt must move together'
-    ).toContain(PROBED_CLAUDE_VERSION);
+    // This file is the single home of the measurement. It used to be written
+    // down TWICE, with a second assertion requiring `.claude/rules/hooks.md` to
+    // quote the same version string — a fence on prose, which the Tooling
+    // Policy no longer allows. The constants below are the receipt.
 
     const installed = installedClaudeVersion();
     if (installed === undefined) {

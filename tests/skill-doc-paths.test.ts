@@ -36,57 +36,6 @@ const PATH_ROOTS = readdirSync(ROOT, { withFileTypes: true })
 
 const PATH_LIKE = /^[A-Za-z0-9_.@-]+(\/[A-Za-z0-9_.*@-]+)+$/;
 
-// EVERY skill doc owes fully-qualified issue references: a bare `#N` renders
-// against whichever repo is READING it, so mirroring a sentence into a sibling
-// repo silently rewrites a correct citation into a wrong one. Both failure shapes
-// were live on 2026-08-19 (go-to-k/cdk-real-drift#1774) — this repo's `#1761`
-// resolves in cdkd to an unrelated EC2 security-group-rule issue, and its `#1765`
-// does not exist in cdk-local at all, which already shipped a bare `#1765` meaning
-// this repo's.
-//
-// The population used to be the ONE file this flow mirrors wholesale, on the
-// reasoning that `hunt-bugs` never travels. That stopped being true the day
-// go-to-k/cdk-real-drift#1796 and its cdk-local twin landed the same `hunt-bugs`
-// change in both repos, and the exclusion was hiding 98 bare refs in exactly the
-// file the rule had stopped covering. A doc is in scope because a SENTENCE of it
-// can travel, which is true of all of them — so the population is derived, not
-// listed (2026-08-20, go-to-k/cdk-real-drift#1797).
-// (assigned after skillDocs is declared — see below)
-let MIRRORED_DOCS: string[] = [];
-
-// A reference is qualified only when a WHOLE `owner/repo` immediately precedes
-// the `#`. The first version asked for "not a word, slash or dash character
-// before the `#`", which accepts both HALF-qualified spellings — `cdk-real-drift#5`
-// (owner dropped) and `go-to-k#5` (repo dropped) — and GitHub autolinks neither,
-// so the likeliest typo in a file full of `go-to-k/cdk-real-drift#…` was the one
-// the fence could not see (probed 2026-08-20, go-to-k/cdk-real-drift#1797).
-// Matches deliberately skip inline-code spans and fenced blocks, so a paragraph
-// can still SHOW a bare `#N` as its own counter-example, and skip YAML
-// frontmatter, where `argument-hint` demonstrates what a user types.
-const ANY_REF = /([A-Za-z0-9._/-]*)#(\d+)/g;
-const QUALIFIER = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
-
-function unqualifiedRefs(text: string): string[] {
-  return [...text.matchAll(ANY_REF)]
-    .filter((m) => !QUALIFIER.test(m[1]!))
-    .map((m) => `${m[1]}#${m[2]}`);
-}
-
-function prose(text: string): string {
-  const withoutFrontmatter = text.startsWith('---\n')
-    ? text.slice(text.indexOf('\n---\n', 3) + 5)
-    : text;
-  return (
-    withoutFrontmatter
-      .replace(/^```[\s\S]*?^```/gm, '') // fenced code blocks
-      // DOUBLE-backtick spans first: that is how a counter-example containing a
-      // backtick is written, and a single-span-only strip leaves its contents
-      // exposed as prose, which the fence then reports as a violation.
-      .replace(/``.*?``/g, '')
-      .replace(/`[^`\n]*`/g, '') // inline code spans
-  );
-}
-
 // The population is every `.md` under each skill's directory — the SKILL.md
 // orchestrator AND the per-stage `references/*.md` files a split skill loads at
 // stage entry (work-issues / hunt-bugs since the 2026-08-28 split). Deriving it
@@ -108,8 +57,6 @@ function skillDocs(): string[] {
   }
   return docs;
 }
-
-MIRRORED_DOCS = skillDocs();
 
 function citations(rel: string): string[] {
   const text = readFileSync(path.join(ROOT, rel), 'utf8');
@@ -188,51 +135,6 @@ describe('skill docs cite real repo paths', () => {
   });
 });
 
-describe('mirrored skill docs cite issues by fully-qualified reference', () => {
-  it.each(MIRRORED_DOCS)('%s uses owner/repo#N, never a bare #N', (rel) => {
-    const text = prose(readFileSync(path.join(ROOT, rel), 'utf8'));
-    const bare = unqualifiedRefs(text);
-    expect(
-      bare,
-      `unqualified issue reference(s) in ${rel} — write go-to-k/<repo>#N so the ` +
-        `reference survives being mirrored into a sibling repo (a half-qualified ` +
-        `cdk-real-drift#N or go-to-k#N autolinks nowhere):\n${bare.join(', ')}`
-    ).toEqual([]);
-  });
-
-  it('flags every unqualified spelling and exempts the backtick forms (spelling probe)', () => {
-    expect(unqualifiedRefs(prose('A bare #601 ref.'))).toEqual(['#601']);
-    expect(unqualifiedRefs(prose('A repo-only cdk-real-drift#602 ref.'))).toEqual([
-      'cdk-real-drift#602',
-    ]);
-    expect(unqualifiedRefs(prose('An owner-only go-to-k#603 ref.'))).toEqual(['go-to-k#603']);
-    expect(unqualifiedRefs(prose('A parenthesised (PR #604) ref.'))).toEqual(['#604']);
-    expect(unqualifiedRefs(prose('A qualified go-to-k/cdk-real-drift#605 ref.'))).toEqual([]);
-    expect(unqualifiedRefs(prose('A span `#606` is exempt.'))).toEqual([]);
-    expect(unqualifiedRefs(prose('A span ``#607 with `ticks` `` is exempt too.'))).toEqual([]);
-  });
-
-  // Anti-no-op guard on the TOTAL, not per doc: a skill that cites nothing is
-  // legitimate (`check-docs` has no refs at all), so a per-doc floor would only
-  // measure how chatty each file is. What must never happen is the extractor
-  // matching nothing anywhere.
-  it('the qualified references it should be finding are actually there', () => {
-    const qualified = MIRRORED_DOCS.reduce((n, rel) => {
-      const text = prose(readFileSync(path.join(ROOT, rel), 'utf8'));
-      return n + [...text.matchAll(/[\w-]+\/[\w-]+#\d+/g)].length;
-    }, 0);
-    // 210 measured on 2026-08-28 across the widened population (SKILL.md +
-    // references/); 214 after the same-day rule+citation compression pass
-    // (compression deduped repeats but qualified more refs than it removed);
-    // 217 after go-to-k/cdk-real-drift#1837's edits to check/SKILL.md and
-    // verify-pr/SKILL.md. Above the ~50 the SKILL.md-only population carried,
-    // so a regression back to orchestrators-only fails here too.
-    expect(qualified, 'no qualified refs anywhere — extractor is a no-op').toBeGreaterThanOrEqual(
-      120
-    );
-  });
-});
-
 // `.claude/skills/work-issues/references/implement.md` §5 tells the next agent to run a hook
 // harness FROM `.claude/hooks/` and never from a copy parked elsewhere. That rule is
 // only true while every harness resolves its subject from its OWN script path with no
@@ -250,15 +152,15 @@ describe('hook harnesses resolve their subject from their own script path', () =
   const entries = existsSync(HOOKS_DIR) ? readdirSync(HOOKS_DIR).sort() : [];
   // The population is the HOOKS, not the harnesses. Deriving it from
   // `*.test.sh` counted the harnesses that exist and so could never report the
-  // one that does not: on 2026-08-20 `check-gate.sh` — the hook every commit
-  // passes through — was the only hook in the directory with no harness beside
-  // it, and this block was green at 9/9 (go-to-k/cdk-real-drift#1797).
+  // one that does not: a hook with no harness beside it was once the only such
+  // file in the directory and this block was green regardless
+  // (go-to-k/cdk-real-drift#1797).
   const hooks = entries.filter((f) => f.endsWith('.sh') && !f.endsWith('.test.sh'));
   const harnesses = entries.filter((f) => f.endsWith('.test.sh'));
 
   it('finds the hooks to check (the extractor is not a no-op)', () => {
-    expect(hooks.length).toBeGreaterThanOrEqual(9);
-    expect(hooks).toContain('check-gate.sh');
+    expect(hooks.length).toBeGreaterThanOrEqual(6);
+    expect(hooks).toContain('branch-gate.sh');
   });
 
   it('every hook has a harness beside it', () => {

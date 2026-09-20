@@ -14,8 +14,8 @@
 #
 # Behavior:
 #   - Only `gh pr merge` is gated (create/edit pass — CI has not run yet at
-#     create time). Line-start anchored so the substring inside a quoted arg
-#     body does not false-positive (mirrors verify-pr-gate.sh).
+#     create time). Segment-start anchored so the substring inside a quoted arg
+#     body does not false-positive.
 #   - `gh pr checks <pr>` is run for the resolved PR (explicit number/URL/branch
 #     arg, else the current branch's PR). Exit 0 = all passing; any non-zero
 #     (a failing check OR a still-pending run) blocks — a red or in-flight CI
@@ -26,8 +26,8 @@
 #   - Fails OPEN when it cannot audit (no gh, not a git repo, PR/checks not
 #     resolvable) — it only blocks when it can PROVE the CI is not green.
 #
-# cwd-aware target resolution mirrors verify-pr-gate.sh (worktree flow: cwd +
-# leading `cd <path>` + last `gh -C <path>`).
+# cwd-aware target resolution follows the worktree flow: payload cwd + leading
+# `cd <path>` + last `gh -C <path>`, via `gate_target_dir`.
 
 set -u
 
@@ -123,7 +123,7 @@ command -v gh >/dev/null 2>&1 || exit 0
 # _command-match.test.sh and by this gate's own harness, whose stub answers PER
 # SELECTOR.
 prsel=$(gate_pr_selector "$cmd" "$GATE_RE")
-# A SECOND, INDEPENDENT shape guard, mirroring non-english-text-gate's. Two
+# A SECOND, INDEPENDENT shape guard on the resolved selector. Two
 # guards beat one here specifically: this is the gate whose fail-open arm turns a
 # bad selector into a merge past red CI — `gh pr checks <not-a-pr>` prints
 # `no pull requests found for branch "…"`, which the grep below reads as "no CI
