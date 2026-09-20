@@ -105,8 +105,9 @@ Two rules, one a convention and one enforced:
 ### 10-d. Ship it like any other change
 
 MAIN-CHECKOUT (SKILL.md "Launch mode") — run THIS block, not the next one. You
-are on `main`, which the `main` ruleset refuses a push to, so the retro gets its
-own worktree. Date-suffix the branch: the previous run's was deleted on merge, so
+are on `main`, and nothing refuses a commit there any more — the ruleset sees
+only the push. The worktree is procedure, and it is still the right one: a
+commit on the shared checkout is another lane's problem to unpick. Date-suffix the branch: the previous run's was deleted on merge, so
 reusing the name re-creates an orphan ref no PR tracks.
 
 ```bash

@@ -11,7 +11,10 @@ irreversibility alone would block a duplicate issue, the filer's own artifact.
 The `main` ruleset (`gh api repos/go-to-k/cdk-real-drift/rulesets`) carries
 `deletion`, `non_fast_forward` and `required_status_checks` — `ci-ok`, `check`
 and `English-only (PR title / body)` — over the default branch with **zero
-bypass actors**. A local hook restating any of that adds no refusal the flow
+bypass actors**. Know its EDGE precisely before leaning on it: there is no
+`pull_request` rule, so it refuses a push or a merge carrying commits whose
+required checks have not passed, and nothing more. A LOCAL commit on `main` is
+invisible to it, and a green branch may be pushed straight to `main`. A local hook restating any of that adds no refusal the flow
 does not already meet; it adds a second place to keep in step, and it reads as
 protection while the real protection is elsewhere. `branch-gate.sh` (a commit or
 push on `main`) and `ci-green-gate.sh` (a merge over a red or pending check)

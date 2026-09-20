@@ -284,9 +284,9 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   the final sha); before a PR, run `/verify-pr`, whose checklist still applies
   in full — a PR whose live behaviour was never exercised is not ready, whatever
   the unit suite says. **No hook and no marker enforces any of them any more.**
-  The MECHANICAL merge conditions are the **`main` ruleset's** required status
-  checks — `ci-ok`, `check`, `English-only (PR title / body)` — enforced
-  SERVER-SIDE with zero bypass actors, plus a clean bug-hunt sentinel
+  The MECHANICAL merge conditions are the **`main` ruleset's** required checks
+  — `ci-ok`, `check`, `English-only (PR title / body)` — enforced SERVER-SIDE
+  with zero bypass actors, plus a clean bug-hunt sentinel
   (`bughunt-clean-gate`). Everything else is your own discipline.
 - **Reviewer count**: **1 reviewer by default** (`pr-code-reviewer`); add
   **spec + test** when the `src/**` diff exceeds 400 lines or 8 files; add the
@@ -334,18 +334,17 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   error naming the exact replacement command, so the roster is NOT restated here
   — it is in [.claude/rules/hooks.md](.claude/rules/hooks.md), covering
   `stale-base-gate.sh`, `worktree-guard.sh`, `bughunt-clean-gate.sh` and the
-  non-blocking `deploy-autoarm-gate.sh`. Read it when a gate's verdict surprises
-  you. Two rules from it: naming the repo (`-R` in any spelling) must never
-  change a gate's verdict, and **a hook the SERVER already refuses does not get
-  written**.
+  non-blocking `deploy-autoarm-gate.sh`. Two rules from it: naming the repo
+  (`-R` in any spelling) must never change a gate's verdict, and **a hook the
+  SERVER already refuses does not get written**.
 - **Registration is not execution.** PreToolUse hooks gate the AGENT's tool
   calls only, so a line typed by a human proves nothing, and `/hooks` lists
   registration rather than firing (go-to-k/cdk-real-drift#1801: an `if` holding
-  `A or B` matched nothing and every gate was inert for a day). The probe that
-  used to prove liveness — `git commit --dry-run` tripping `branch-gate` — went
-  with that hook, and no surviving gate refuses an ordinary command: each needs
-  an armed sentinel, a dirty main checkout or a clobbering push. So treat every
-  gate as SELF-ENFORCED unless you have seen it fire this session.
+  `A or B` matched nothing and every gate was inert for a day). The old liveness
+  probe went with `branch-gate`, and no surviving gate refuses an ordinary
+  command — each needs an armed sentinel, a dirty main checkout or a clobbering
+  push. Treat every gate as SELF-ENFORCED unless you have seen it fire this
+  session.
 - **ALWAYS develop in a git worktree — never edit or branch in the main
   checkout, even for a single "sequential" session** (sessions that believed
   they were alone have collided twice: a README clobber, and a branch that
@@ -373,14 +372,16 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   whoever made it. `/work-issues` computes which case applies before its first
   stage and `/hunt-bugs` points at that probe; do not re-implement it here.
 - **All changes go through a pull request — never commit directly to `main`.**
-  Branch (or worktree branch) → run the checks → commit → push →
-  `gh pr create`. The reviewer re-reviews the PR diff before merge.
-  The `main` ruleset refuses a push to `main`, and `stale-base-gate` refuses a
-  `git push` whose branch sits on `origin/main` yet reverts recent main work —
-  the clobber that bit this flow twice, and the one the server cannot see.
-  **Wait for the checks before `gh pr merge`** (`gh pr checks <N> --watch`,
-  naming the PR by NUMBER): the server refuses the merge while a required check
-  is red or pending.
+  Branch → run the checks → commit → push → `gh pr create`; the reviewer
+  re-reviews the diff before merge.
+  **Know the server's EDGE, because that is where you will trip:** the ruleset
+  has no `pull_request` rule. It refuses a push or a merge carrying commits
+  whose required checks have not passed — and nothing more. A LOCAL commit on
+  `main` is invisible to it, and a green branch may be pushed straight to
+  `main`. So this bullet is CONVENTION now; `branch-gate` enforced it and is
+  gone. Keep it anyway. `stale-base-gate` still refuses a push whose branch
+  reverts recent main work — the one thing the server cannot see. **Wait for
+  the checks before `gh pr merge`** (`gh pr checks <N> --watch`, by NUMBER).
 - **Every session-wrap / task-complete report MUST end with a "Remaining
   work" section AND a "Session close" verdict — unprompted.** The full field
   reference — The four TODO fields (`Session-fit` / `Severity` / `Effort` /
@@ -460,14 +461,12 @@ stated in the PR body for the maintainer to decide.
 6. **Enforcement is procedure, not machinery.** `/check`, `/check-docs` (once
    per PR, at the final sha), `/verify-pr` and the reviewer dispatch are the
    recommended path and are enforced by no hook and no marker. The mechanical
-   merge conditions are the `main` ruleset's required status checks and a clean
+   merge conditions are the `main` ruleset's required checks and a clean
    bug-hunt sentinel (`bughunt-clean-gate`), with `stale-base-gate` and
    `worktree-guard` refusing the two writes that land on another lane's work.
-   **Before writing a hook, ask whether the SERVER already refuses it**: the
-   ruleset carries `deletion`, `non_fast_forward` and `required_status_checks`
-   with zero bypass actors, and a local restatement of any of it reads as
-   protection while the real protection is elsewhere. Do not add another without
-   the maintainer's decision.
+   **Before writing a hook, ask whether the SERVER already refuses it**: a local
+   restatement of a ruleset rule reads as protection while the real protection
+   is elsewhere. Do not add another without the maintainer's decision.
 
 **Flow lessons stay in THIS repo.** cdkd, cdk-local and cdk-real-drift each keep
 their own `work-issues` / `hunt-bugs` text; porting a rule to a sibling, or

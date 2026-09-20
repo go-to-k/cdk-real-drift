@@ -117,11 +117,16 @@ blocks a commit on them; skipping them is how `main` goes red.
 
 ## Before you open a PR
 
-Work on a branch — the `main` ruleset refuses a push to `main` outright.
+Work on a branch. The `main` ruleset refuses a push to `main` that carries
+commits whose required checks have not passed; it carries no `pull_request`
+rule, so landing work through a PR rather than a green direct push is
+convention, not machinery.
 
 - `/verify-pr` — the PR readiness checklist. Its checklist applies in full: a PR
   whose live behaviour was never exercised is not ready, whatever the unit suite
   says. Nothing enforces it.
 - CI must be green before merging. The `main` ruleset requires `ci-ok`, `check`
   and `English-only (PR title / body)` with zero bypass actors, so GitHub itself
-  refuses the merge while any of them is red or pending.
+  refuses the merge while any of them is red, pending, or has never reported at
+  all. Nothing keeps the last wait FOR you, though: poll until the checks
+  EXIST before you watch them.

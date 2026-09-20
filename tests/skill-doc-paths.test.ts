@@ -157,7 +157,9 @@ describe('hook harnesses resolve their subject from their own script path', () =
   const harnesses = entries.filter((f) => f.endsWith('.test.sh'));
 
   it('finds the hooks to check (the extractor is not a no-op)', () => {
-    expect(hooks.length).toBeGreaterThanOrEqual(4);
+    // EXACT, not a floor with slack: one slot of give lets a hook and its
+    // harness be deleted together without this case noticing.
+    expect(hooks.length).toBe(5);
     expect(hooks).toContain('bughunt-clean-gate.sh');
   });
 
