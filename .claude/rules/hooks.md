@@ -11,14 +11,30 @@ irreversibility alone would block a duplicate issue, the filer's own artifact.
 The `main` ruleset (`gh api repos/go-to-k/cdk-real-drift/rulesets`) carries
 `deletion`, `non_fast_forward` and `required_status_checks` — `ci-ok`, `check`
 and `English-only (PR title / body)` — over the default branch with **zero
-bypass actors**. Know its EDGE precisely before leaning on it: there is no
-`pull_request` rule, so it refuses a push or a merge carrying commits whose
-required checks have not passed, and nothing more. A LOCAL commit on `main` is
-invisible to it, and a green branch may be pushed straight to `main`. A local hook restating any of that adds no refusal the flow
-does not already meet; it adds a second place to keep in step, and it reads as
+bypass actors**. **Know its EDGE before leaning on it, because it is narrower
+than "the server refuses a push to `main`":**
+
+- `deletion` and `non_fast_forward` do not bear on an ordinary push at all.
+- `required_status_checks` is evaluated against the SHA BEING PUSHED, at push
+  time. A commit no pull request ever produced cannot carry `check` or
+  `English-only (PR title / body)`, because `pr-title-check.yml` and
+  `pr-content-checks.yml` trigger on `pull_request` ONLY — so that push is
+  refused. (`ci-ok` is not the load-bearing one here: `ci.yml` also runs on
+  `push`, so a pushed commit can acquire it, but only AFTER the push.)
+- **The residual:** a PR head whose three contexts are ALREADY green satisfies
+  the rule, so `git merge --ff-only <that sha>` followed by `git push origin
+main` is ACCEPTED — landing un-squashed history without the merge button.
+  `branch-gate` refused that shape and nothing does now. Accepted knowingly; the
+  row is in [docs/tooling-backlog.md](../../docs/tooling-backlog.md).
+
+`git push --dry-run` does NOT probe any of this, so do not reach for it as
+evidence.
+
+A local hook restating what the server DOES refuse adds no refusal the flow does
+not already meet; it adds a second place to keep in step, and it reads as
 protection while the real protection is elsewhere. `branch-gate.sh` (a commit or
 push on `main`) and `ci-green-gate.sh` (a merge over a red or pending check)
-were deleted for exactly that reason. What the server does NOT see is still
+were deleted for that reason. What the server does NOT see is still
 fair game — `stale-base-gate` is the standing example: the branch it refuses is
 a legitimate fast-forward that happens to revert another lane's work.
 

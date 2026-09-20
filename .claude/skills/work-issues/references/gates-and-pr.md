@@ -5,18 +5,23 @@
 Two mechanical conditions block a merge, and the first is the SERVER's: the
 `main` ruleset requires `ci-ok`, `check` and `English-only (PR title / body)`
 with zero bypass actors, so GitHub refuses the merge while any of them is red or
-pending, and refuses a push to `main` outright. The second is local: a **clean
-bug-hunt sentinel** (`bughunt-clean-gate`, which also gates `git commit`; the
-ship stage covers releasing it). `stale-base-gate` additionally refuses a push
-that would revert work already on `main` — the one thing the server
-cannot see. Everything else here is procedure you run because it is right, not
+pending. It does NOT categorically refuse a push to `main`: there is no
+`pull_request` rule, a commit no PR made simply cannot carry `check` or
+`English-only (PR title / body)` (both `pull_request`-only), but an
+already-green PR head CAN be fast-forwarded and pushed. Using the merge button
+is convention. The second condition is local: a **clean bug-hunt sentinel**
+(`bughunt-clean-gate`, which also gates `git commit`; the ship stage covers
+releasing it). `stale-base-gate` additionally refuses a push that would revert
+work already on `main` — the one thing the server cannot see. Everything else here is procedure you run because it is right, not
 because something stops you.
 
 **No liveness probe proves the local hooks are alive any more.** The one that
 did — `git commit --dry-run` tripping `branch-gate` — went with that hook, and
 every surviving gate needs an armed sentinel, a dirty main checkout or a
-clobbering push before it refuses anything. So treat them as SELF-ENFORCED
-unless you have watched one fire this session, and say which in the report.
+clobbering push before it refuses anything — so a `/hunt-bugs` run, which arms
+the sentinel, is the one context that gives a free signal. Otherwise treat them
+as SELF-ENFORCED unless you have watched one fire this session, and say which in
+the report. `git push --dry-run` proves nothing about the ruleset either.
 
 From inside the worktree — no `dist/` there yet, and the tests that spawn the
 built CLI fail without it, so `vp pack` runs before the suite:

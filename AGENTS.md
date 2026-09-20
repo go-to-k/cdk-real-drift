@@ -340,11 +340,11 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
 - **Registration is not execution.** PreToolUse hooks gate the AGENT's tool
   calls only, so a line typed by a human proves nothing, and `/hooks` lists
   registration rather than firing (go-to-k/cdk-real-drift#1801: an `if` holding
-  `A or B` matched nothing and every gate was inert for a day). The old liveness
-  probe went with `branch-gate`, and no surviving gate refuses an ordinary
-  command — each needs an armed sentinel, a dirty main checkout or a clobbering
-  push. Treat every gate as SELF-ENFORCED unless you have seen it fire this
-  session.
+  `A or B` matched nothing and every gate was inert for a day). The old probe
+  went with `branch-gate`, and no surviving gate refuses an ordinary command —
+  each needs an armed sentinel, a dirty main checkout or a clobbering push (so a
+  `/hunt-bugs` run does give a free signal). Treat every gate as SELF-ENFORCED
+  until seen to fire.
 - **ALWAYS develop in a git worktree — never edit or branch in the main
   checkout, even for a single "sequential" session** (sessions that believed
   they were alone have collided twice: a README clobber, and a branch that
@@ -374,14 +374,15 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
 - **All changes go through a pull request — never commit directly to `main`.**
   Branch → run the checks → commit → push → `gh pr create`; the reviewer
   re-reviews the diff before merge.
-  **Know the server's EDGE, because that is where you will trip:** the ruleset
-  has no `pull_request` rule. It refuses a push or a merge carrying commits
-  whose required checks have not passed — and nothing more. A LOCAL commit on
-  `main` is invisible to it, and a green branch may be pushed straight to
-  `main`. So this bullet is CONVENTION now; `branch-gate` enforced it and is
-  gone. Keep it anyway. `stale-base-gate` still refuses a push whose branch
-  reverts recent main work — the one thing the server cannot see. **Wait for
-  the checks before `gh pr merge`** (`gh pr checks <N> --watch`, by NUMBER).
+  **The server does NOT categorically refuse this, so the bullet is yours to
+  keep.** The ruleset has no `pull_request` rule; what stops a hand-made commit
+  is that two required contexts (`check`, `English-only (PR title / body)`) fire
+  on `pull_request` ONLY, so a commit no PR made can never carry them. But
+  **an already-green PR head CAN be fast-forwarded onto `main` and pushed** —
+  un-squashed, no merge button. `branch-gate` refused that; see
+  [docs/tooling-backlog.md](docs/tooling-backlog.md). `stale-base-gate` still
+  refuses a push reverting recent main work. **Wait for the checks before
+  `gh pr merge`** (`gh pr checks <N> --watch`, by NUMBER).
 - **Every session-wrap / task-complete report MUST end with a "Remaining
   work" section AND a "Session close" verdict — unprompted.** The full field
   reference — The four TODO fields (`Session-fit` / `Severity` / `Effort` /

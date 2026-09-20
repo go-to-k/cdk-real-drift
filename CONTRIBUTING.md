@@ -117,9 +117,11 @@ blocks a commit on them; skipping them is how `main` goes red.
 
 ## Before you open a PR
 
-Work on a branch. The `main` ruleset refuses a push to `main` that carries
-commits whose required checks have not passed; it carries no `pull_request`
-rule, so landing work through a PR rather than a green direct push is
+Work on a branch, and land it through a pull request. The `main` ruleset has no
+`pull_request` rule: it refuses a push whose commits cannot show the required
+checks — which a hand-made commit never can, since two of the three run only on
+a `pull_request` event — but a PR head that is already green can be
+fast-forwarded onto `main` and pushed directly. Using the merge button is
 convention, not machinery.
 
 - `/verify-pr` — the PR readiness checklist. Its checklist applies in full: a PR
