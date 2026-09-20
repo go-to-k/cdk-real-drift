@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run every PreToolUse / Stop hook harness under .claude/hooks/.
+# Run every hook harness under .claude/hooks/.
 #
 # The harnesses existed for months with nothing invoking them: no `vp run` task
 # and no CI step, so a hook could rot and its own smoke test would never say so

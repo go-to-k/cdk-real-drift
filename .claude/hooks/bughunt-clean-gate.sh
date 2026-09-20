@@ -64,9 +64,9 @@ fi
 # separator CHARACTERS inside quotes are swapped for placeholders while splitting,
 # and a verb inside a string still fails to match because each verb regex is
 # anchored at the segment START.
-# DERIVED from the shared constants, never hand-rolled — see verify-pr-gate.sh
-# for the `-R` bypass this closes (here it let a merge through with live AWS
-# resources still standing).
+# DERIVED from the shared constants, never hand-rolled: a hand-rolled
+# `gh([[:space:]]+-C[[:space:]]+[^[:space:]]+)?` absorber misses `gh -R <repo> pr
+# merge`, which let a merge through with live AWS resources still standing.
 GATE_RE_COMMIT_OR_PR=$(gate_re_any "$GATE_RE_GIT_COMMIT" "$GATE_RE_GH_PR_CREATE" "$GATE_RE_GH_PR_MERGE")
 
 # NO foreign-`-R` refusal here, deliberately, and recorded because this is the

@@ -759,14 +759,13 @@ run_case "cd \"<main with spaces>\" && git commit blocked" 2 \
 # `symbolic-ref --short HEAD` is EMPTY on a detached HEAD, so the gate's
 # `case "$branch" in main|master)` matched neither arm and fell to `exit 0`.
 # Measured on a scratch opted-in repo before the fix, same payload both times:
-# rc=2 on `main`, rc=0 once detached -- while `main-tree-branch-gate.sh` passes
-# `git checkout <sha>` in the main checkout, so the route to that state is one
-# allowed command.
+# rc=2 on `main`, rc=0 once detached -- and nothing refuses `git checkout <sha>`
+# in the main checkout, so the route to that state is one allowed command.
 #
 # BOTH POLARITIES ARE PINNED, because the fix has an allowed half that is easy
-# to lose: a detached HEAD in a LINKED worktree is what this repo's own
-# `stop-unmerged-lane-warn.sh` tells a session to do (`git switch --detach
-# origin/main`) when it must not remove its worktree.
+# to lose: a detached HEAD in a LINKED worktree is the documented wind-down step
+# (`git switch --detach origin/main`) for a session that must not remove its
+# worktree.
 
 git -C "$mt_repo" checkout -q --detach "$mt_sha"
 
@@ -806,8 +805,8 @@ run_case_msg "detached block prints 'in progress: nothing' when nothing is" 2 \
   "  in progress        : nothing"
 # The cwd one level DOWN. The gate compares TOPLEVELS rather than the raw
 # resolved dir, so a subdirectory of the main checkout is still the main
-# checkout. `main_tree_of` in main-tree-branch-gate.sh compares the raw dir and
-# would answer "not the main checkout" here.
+# checkout. A comparison against the RAW dir would answer "not the main
+# checkout" here, which is the regression this row pins.
 run_case "detached HEAD in the MAIN checkout, cwd a SUBDIR: BLOCKED" 2 \
   "$(printf '{"cwd":"%s/sub","tool_input":{"command":"git commit -m oops"}}' "$mt_repo")"
 # Reached by `-C` from a LINKED worktree cwd, so the verdict is on the RESOLVED
@@ -1312,9 +1311,8 @@ op_reset
 # whose absence let the bisect arm repeat, verbatim, the defect rows 1 and 2
 # fixed for rebase. The old wording said the bisect "is what detached HEAD here"
 # and that `bisect reset` "restores the branch you started from"; both are false
-# from a tree that was already detached, and `main-tree-branch-gate.sh` passes
-# `git checkout <sha>` in the main checkout, so that state is one allowed
-# command away. Measured on git 2.53, same fixture both ways:
+# from a tree that was already detached, which is one `git checkout <sha>` away.
+# Measured on git 2.53, same fixture both ways:
 #
 #   started FROM a branch   BISECT_START = main    reset -> branch main
 #   started DETACHED        BISECT_START = <sha>   reset -> rc=0, STILL DETACHED

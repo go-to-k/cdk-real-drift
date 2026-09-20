@@ -62,9 +62,6 @@ cdk.context.json
 # Development worktrees (mandated by CLAUDE.md workflow rules; never committed)
 .worktrees/
 
-# markgate pr-review sentinel
-.markgate-pr-review-sha
-
 # /hunt-bugs cleanup sentinel: lists integ stacks deployed to real AWS; the
 # bughunt-clean-gate.sh PreToolUse hook blocks git commit / gh pr create / gh pr
 # merge while it is non-empty, so bug-hunt resources cannot be forgotten. Written
@@ -88,7 +85,7 @@ cdk.context.json
 report.*.json
 .markgate-bughunt-verified.d/
 
-# Python bytecode from the hook testdata probes.
+# Python bytecode from any ad-hoc probe script.
 __pycache__/
 
 # Claude Code local settings override -- never committed: it OUTRANKS

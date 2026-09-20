@@ -1,310 +1,44 @@
 # markgate configuration — https://github.com/go-to-k/markgate
 #
-# Gates back the pre-commit / pre-PR / pre-merge checks (mirrors cdk-local's
-# layout). cdk-real-drift is READ-ONLY against AWS (no destroy path, no schema
-# migration), so cdkd's destroy / broad / schema-migration gates are not needed.
+# The `check`, `docs`, `verify-pr` and `pr-review` gates were removed with the
+# hooks that read them: a stale marker harms nobody at the moment of the commit.
+# `/check`, `/check-docs` and `/verify-pr` remain the recommended procedure and
+# their checklists still apply in full — nothing enforces them. The mechanical
+# merge conditions are CI green (`.claude/hooks/ci-green-gate.sh`) and a clean
+# bug-hunt sentinel (`.claude/hooks/bughunt-clean-gate.sh`).
 #
-# Gates:
-#   check     — typecheck (tsc) / lint+fmt (vp check) / build / unit tests
-#               (set by /check and /verify-pr).
-#   docs      — README / DESIGN / docs consistency with src
-#               (set by /check-docs and /verify-pr).
-#   verify-pr — PR readiness checklist; AND of check + docs. (set by
-#               /verify-pr.) This is a pre-PR gate: .claude/hooks/verify-pr-gate.sh
-#               blocks `gh pr create` / `gh pr merge` until the marker is fresh.
-#               Docs/tooling-only PRs (no `src/**` in the diff) are EXEMPT — the
-#               skill's heavy half is the live-test of changed runtime behavior,
-#               and check + docs already cover a PR that has none.
+# This file must keep existing: `branch-gate.sh` uses a `.markgate.yml` at the
+# target repo's top level as its repo opt-in signal.
 #
-# The check / docs / verify-pr gates each have a companion skill under
-# .claude/skills/ that SETS their marker (/check, /check-docs, /verify-pr). Those
-# three are the wanted, satisfiable gates for this solo repo.
+# integ — real-AWS verification. A run here deploys real stacks into us-east-1
+#         and `inject-drift` / `revert` WRITE to the maintainer's account, so the
+#         path it covers clears the blocking criterion in CLAUDE.md's Tooling
+#         Policy exactly as cdkd's `integ-destroy` does. It is a DECLARATION
+#         only: no hook reads it and no skill sets it, because cdkrd has no
+#         companion `/run-integ`. Wiring one is new machinery and the
+#         maintainer's call.
 #
-# INERT gates (kept for layout parity with the sibling repos, but with NO
-# companion skill in cdkrd — do NOT wire a commit/merge hook to either until a
-# companion skill is ported, or it would become unsatisfiable and brick the flow):
-#   pr-review — `/review-pr` reviewer-dispatch verification (sha-bound). The repo
-#               does have a remote and a PR flow, but /review-pr dispatches
-#               multi-agent reviewers from `.claude/agents`, which cdkrd has not
-#               ported (CLAUDE.md R83). No companion skill.
-#   integ     — read-only real-AWS verification (gather/check/inject-drift). cdkrd
-#               is READ-ONLY against AWS (no deploy/destroy, no schema migration),
-#               so cdkd's destroy / broad / local / schema-migration integ gates
-#               are deliberately ABSENT here — only this single read-only gate
-#               remains, and it has no companion /run-integ skill yet. 14d TTL
-#               (AWS-side wire-format + Cloud Control behavior drift over time).
-#
-#               This is the ONE gate on `hash: diff` (markgate 0.4+, go-to-k/cdk-real-drift#1756). Its
-#               digest is the working-tree delta against `merge-base(origin/main,
-#               HEAD)` restricted to the include set, so a merge arriving from
-#               `main` that moves an UNRELATED in-scope file no longer invalidates
-#               the marker — while a change to a file this branch also touched, and
-#               any in-scope edit on this branch (committed or not), still do. On
-#               the last 250 merged PRs here, 69 of the 83 cross-PR invalidations
-#               (83%) carried no information about the branch being gated. `base:`
-#               is mandatory for a diff gate and is pinned to `origin/main`
-#               explicitly: markgate has no `origin/HEAD` fallback, and that ref is
-#               commonly unset in CI clones, which would make the same gate mean
-#               different things locally and in CI. Accepted cost: cross-FILE
-#               interaction goes unseen — a caller uses A and B, this branch
-#               changes A, `main` changes B. By definition those two changes sit in
-#               DIFFERENT files, so this class lives inside the 69 ZERO-OVERLAP
-#               cases, NOT the 14 overlapping ones: an overlapping change lands
-#               inside this branch's own delta and is still caught. The residual
-#               risk is therefore bounded above by 69, and how much of that 69 is
-#               genuine semantic coupling rather than genuinely independent work is
-#               UNMEASURED — the measurement distinguishes file overlap, not
-#               coupling. The trade is still worth making, but on those terms: the
-#               invalidations removed are provably uninformative, while the risk
-#               accepted is bounded but not quantified. The 14d TTL still forces a
-#               periodic real run. On a clean `main` the delta is empty and
-#               markgate ERRORS (exit 2) rather than silently passing.
-#
-#               `check` / `docs` deliberately STAY on `hash: files`: it is the
-#               stricter mode, and strictness is only worth trading away where the
-#               re-verification it forces is expensive — re-running typecheck /
-#               lint / build / unit tests is not. `pr-review` is bound to a
-#               sentinel file, so a pull cannot invalidate it either way.
+#         It is on `hash: diff` (markgate 0.4+, go-to-k/cdk-real-drift#1756):
+#         the digest is the working-tree delta against
+#         `merge-base(origin/main, HEAD)` restricted to the include set, so a
+#         merge arriving from `main` that moves an UNRELATED in-scope file does
+#         not invalidate the marker, while any in-scope edit on this branch
+#         still does. `base:` is mandatory for a diff gate and is pinned to
+#         `origin/main` explicitly: markgate has no `origin/HEAD` fallback and
+#         that ref is commonly unset in CI clones, which would make the same
+#         gate mean different things locally and in CI. Accepted cost:
+#         cross-FILE interaction goes unseen. On a clean `main` the delta is
+#         empty and markgate ERRORS (exit 2) rather than silently passing.
 #
 # Bug-hunt cleanup is NOT a markgate gate — it is a sentinel-file gate
 # (.markgate-bughunt-pending + .claude/hooks/bughunt-clean-gate.sh), armed by
-# /hunt-bugs's bughunt-track.sh BEFORE any deploy and released only after every
-# deployed stack is deleted + SWEEP CLEAN. A sentinel (not a content hash) is used
-# deliberately: it tracks outstanding live resources regardless of which fixture
-# files a later commit happens to touch, so a deployed stack can never be forgotten.
-#
-# NOTE: the commit/PR-blocking ENFORCEMENT (the .claude hooks that call markgate)
-# is now installed (R83): check-gate (commit), verify-pr-gate (gh pr create/merge),
-# plus the marker-free branch-gate and non-english-text-gate. Hooks are wired ONLY
-# to check / docs / verify-pr — the gates with companion skills. pr-review and integ
-# remain INERT and UNWIRED (no companion skill) so they cannot brick the flow.
-# CI (.github/workflows/ci.yml) still enforces typecheck/lint/build/test on push.
+# /hunt-bugs's bughunt-track.sh and by deploy-autoarm-gate.sh BEFORE any deploy,
+# and released only after every deployed stack is deleted + SWEEP CLEAN. A
+# sentinel (not a content hash) is used deliberately: it tracks outstanding live
+# resources regardless of which files a later commit happens to touch, so a
+# deployed stack can never be forgotten.
 
 gates:
-  check:
-    hash: files
-    include:
-      - 'src/**'
-      - 'tests/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      # pnpm-workspace.yaml carries `overrides` (today pinning @smithy/types),
-      # which decide the dependency graph the suite runs against — the same
-      # 'decides what green means' argument as .mise.toml. Its effect is
-      # MEDIATED by pnpm-lock.yaml above, which is already in scope, so this
-      # entry catches the window between editing an override and
-      # regenerating the lock. Cheap: the file changes rarely.
-      - 'pnpm-workspace.yaml'
-      - 'tsconfig*.json'
-      - 'vite.config.ts'
-      # Checker-INPUT files outside src/** and tests/**: the unit suite READS
-      # these, so an edit to one can red `vp test run` while a previously
-      # recorded `check` marker still verifies FRESH — the marker then attests
-      # to a tree whose checker INPUT it never digested. Third instance of the
-      # root cause fixed in go-to-k/cdk-local#620 / go-to-k/cdk-local#624 and
-      # go-to-k/cdkd#2041 / go-to-k/cdkd#2364 (go-to-k/cdk-real-drift#1837).
-      # Each entry names the test that reads it and the edit that reds the suite:
-      #
-      #   - .claude/skills/** — tests/skill-file-payload.test.ts and
-      #     tests/skill-doc-paths.test.ts read every .md under a skill directory
-      #     (SKILL.md plus references/*.md). Growing one past its byte cap, or
-      #     citing a repo path that no longer resolves, reds the suite.
-      #   - .claude/settings.json — tests/gate-if-matchers-1801.test.ts parses it
-      #     as its WHOLE population: gateHooks() walks hooks.PreToolUse[].hooks[]
-      #     and keeps the commands naming .claude/hooks/. Rejoining two `if:`
-      #     patterns with ` or ` reds 4 of its 16 cases — measured here — and is
-      #     the go-to-k/cdk-real-drift#1801 inert-gate class the test exists for.
-      #   - .claude/hooks/** — the WHOLE glob, deliberately not the precise file
-      #     list go-to-k/cdkd#2364 uses. skill-doc-paths.test.ts's "hook
-      #     harnesses resolve their subject from their own script path" block
-      #     readdirSync()s the DIRECTORY, so the population IS the directory:
-      #     adding a hook with no *.test.sh beside it reds "every hook has a
-      #     harness beside it" (measured) while touching no file a precise list
-      #     could have named. cdkd's precise list is right THERE because its
-      #     tests name specific hooks; copying its shape here misses the edit.
-      #   - scripts/** — tests/check-pr-title.test.ts execFileSync()s
-      #     scripts/check-pr-title.mjs as the shipped PR-title validator, and the
-      #     citation walk below reaches scripts/measure-schema-defaults.mjs. The
-      #     glob rather than those two files: a precise pair would be a list of
-      #     the citations that happen to exist today.
-      #   - release-please-config.json / .release-please-manifest.json —
-      #     tests/release-please-v0.test.ts reads both: the config's
-      #     bump-minor-pre-major and the manifest's 0.x version, two of the
-      #     layers that keep an accidental v1.0.0 unshippable.
-      #   - .github/workflows/** — two files are read directly:
-      #     tests/pr-inherit-issue-labels.test.ts extracts
-      #     pr-inherit-issue-labels.yml's `run:` block and executes it against a
-      #     stub `gh`, and tests/release-please-v0.test.ts parses release.yml's
-      #     publish-job v0 guard (and executes its run block under bash); the
-      #     citation walk below additionally reaches ci.yml, so the glob is the
-      #     honest shape here.
-      #   - README.md, DESIGN.md, CLAUDE.md, CONTRIBUTING.md, docs/**,
-      #     demo/README.md — see the markdown-scanner note below. These also sit
-      #     in the `docs` gate; the overlap is deliberate and mirrors the one
-      #     go-to-k/cdk-local#620 accepted for `.claude/rules/**`.
-      #
-      # THE MARKDOWN SCANNER IS NOT A CARVE-OUT HERE, and that is the one place
-      # this repo must NOT copy its siblings' comment. Both of them document a
-      # repo-wide `git ls-files` scanner as a benign known limit with CI as the
-      # backstop, which is proportionate for them because those scanners fire on
-      # something RARE (a control byte, an unlisted binary extension). The
-      # predicate that matters is not "repo-wide vs finite", it is "does the
-      # assertion fire on a rare condition, or on ORDINARY content?".
-      # tests/markdown-fmt-corruption-1771.test.ts is the second kind: it globs
-      # `git ls-files "*.md"` (minus CHANGELOG.md), and ONE of its two scans is
-      # a PROSE-SHAPE check. (`glueDamage` is the rare kind — it only fires on
-      # text a buggy formatter already mangled. `boldGlobHazard` carries the
-      # whole argument: it reds on a bolded run containing a code span with
-      # `**` inside it.)
-      #
-      # That shape is not exotic — it is what writing **bold** around a
-      # `src/**`-style glob produces, and it arises unprompted wherever this
-      # test is not policing. Measured on 2026-08-29 by running this repo's own
-      # boldGlobHazard over each sibling's tracked *.md: cdkd 5 live hits in 245
-      # files (.claude/skills/check/SKILL.md, two work-issues stage files,
-      # docs/changelog-cdkd.md x2), cdk-local 6 in 33 (.claude/CLAUDE.md, retro.md,
-      # verify.md x4). This repo scores 0 in 32 — necessarily, since the test
-      # forces zero, which is exactly why the count had to be taken next door.
-      # And the reddening edit really is an ordinary one: appending a single
-      # such line to docs/limitations.md takes that file to rc=1 while a `check`
-      # marker recorded a moment earlier still verified FRESH.
-      # So the 10 tracked .md files that sat outside this include (CLAUDE.md,
-      # CONTRIBUTING.md, DESIGN.md, README.md, demo/README.md and the five under
-      # docs/) are now IN it — which is what converts this reader back into the
-      # benign class rather than leaving CI to catch a normal doc edit. Proved by
-      # CONTAINMENT rather than spot check: all 32 files in that scanner's
-      # population are in `markgate verify check --explain`'s resolved scope,
-      # zero uncovered. And it STAYS that way without vigilance — the floor in
-      # tests/check-scope-checker-inputs-1837.test.ts re-derives the population
-      # from the same `git ls-files "*.md"` and fails by name on any file this
-      # list does not cover.
-      #
-      # KNOWN LIMIT that genuinely remains, and it is the rare-condition kind:
-      # skill-doc-paths.test.ts's resolves() existsSync-walks EVERY backticked
-      # path token in every skill doc — 92 by that test's own metric (the sum of
-      # per-doc distinct citations over 21 docs; its floor asserts only >= 60,
-      # so 92 is the measurement, not the threshold), 48 distinct repo-wide, 19
-      # of those outside src/tests, all measured on this branch — so deleting or
-      # renaming any cited target reds it. 18 of those 19 land in a glob above;
-      # the 19th is a bare `.claude/**` prefix citation, which can only red if
-      # `.claude` itself is removed. The population is nonetheless "whatever a
-      # skill doc happens to name", which no finite include can follow — a NEW
-      # citation to an unscoped path reopens the gap, and unlike the markdown
-      # scanner there is no cheap finite enumeration to floor it against. The
-      # reddening edit is a RENAME, not an ordinary edit, so CI
-      # (.github/workflows/ci.yml) is a proportionate backstop here.
-      #
-      # SECOND KNOWN LIMIT, same file, same kind: skill-doc-paths.test.ts:33
-      # builds PATH_ROOTS with readdirSync(ROOT), which makes the repo's ROOT
-      # LISTING a checker input — adding or removing a TOP-LEVEL directory
-      # changes which backticked tokens count as path citations and can red the
-      # scan. No glob can follow "the set of top-level entries", and the
-      # reddening edit is creating or deleting a top-level directory: rare, and
-      # loud when it happens. Recorded rather than scoped.
-      #
-      # `.node-version` (24.15.0) was DELIBERATELY OUT until
-      # go-to-k/cdk-real-drift#1905, with the measurement rather than a guess:
-      # it had no verified reader in the flow this marker attests to (`mise ls
-      # --current` listed no node tool, `mise exec -- node --version` reported
-      # v26.6.0, and editing .node-version changed neither — while CI pins its
-      # own `node-version: '24'` inside .github/workflows/**, which IS in
-      # scope). Scoping a file nothing reads would be the dead-entry shape
-      # go-to-k/cdk-local#630 is about. It has a reader now:
-      # tests/node-floor-sync-1905.test.ts asserts the dev pin's major is one of
-      # the `runtime-compat` matrix rows, so a pin bump that leaves the matrix
-      # behind must stale this marker. The same argument still keeps `vp
-      # check`'s own format pass OUT — it reads 1485 files on this tree, and
-      # scoping THAT would stale the marker on every edit anywhere, which is a
-      # different failure, not a smaller one (a count that moves with the file
-      # count — re-derive it rather than trusting the number).
-      - '.node-version'
-      - '.claude/skills/**'
-      - '.claude/settings.json'
-      - '.claude/hooks/**'
-      - 'scripts/**'
-      # release-please-v0.test.ts reads both (plus release.yml, already covered
-      # by the workflows glob below): the config's bump-minor-pre-major and the
-      # manifest's 0.x version — two of the layers that keep an accidental
-      # v1.0.0 unshippable.
-      - 'release-please-config.json'
-      - '.release-please-manifest.json'
-      - '.github/workflows/**'
-      - 'README.md'
-      - 'DESIGN.md'
-      - 'CLAUDE.md'
-      - 'CONTRIBUTING.md'
-      # .claude/rules/** — the token-diet split moved CLAUDE.md's hook history
-      # and session-report reference here; tracked *.md, so the markdown
-      # scanner reads them (a `check`-only input like CLAUDE.md itself — the
-      # docs gate does not cover this tree).
-      - '.claude/rules/**'
-      - 'docs/**'
-      # NARROW ON PURPOSE — do not "helpfully" widen this to `demo/**`. The rest
-      # of demo/ (from `git ls-files demo`: app.ts, cdk.json, cdkrd.tape,
-      # demo.gif, package.json, run.sh, setup.sh, teardown.sh, tmux-clean.conf
-      # — 9 files, 3 of them shell) is read by no checker, and a
-      # glob matching only unread files is the dead-entry shape
-      # go-to-k/cdk-local#630 is about. The entry is safe to keep narrow because
-      # the FLOOR in tests/check-scope-checker-inputs-1837.test.ts owns the
-      # relation: every file `git ls-files "*.md"` returns (bar CHANGELOG.md)
-      # must be covered by an entry here, so a future demo/GUIDE.md fails that
-      # test by name instead of silently reopening the gap. Cap plus floor, not
-      # cap plus vigilance — vigilance is what failed across all three repos.
-      - 'demo/README.md'
-      # CHANGELOG.md — IN SCOPE since the release-please splice fix, and it was
-      # deliberately absent before. It is still the one .md the markdown scanner
-      # excludes (machine-generated, rewritten wholesale on every release), but
-      # it is now READ by tests/release-please-v0.test.ts, which fences the two
-      # properties release-please's Changelog updater needs: a newline ahead of
-      # the first version header, and H2 (never H1) version headers. Those held
-      # by accident before and cost a mis-ordered release when they stopped
-      # (go-to-k/cdkd#2503). The cost of scoping it is that a release commit
-      # stales this marker; the alternative is a checker input outside the
-      # digest, which is exactly the go-to-k/cdk-real-drift#1837 class this
-      # gate exists to close. It is therefore NO LONGER this gate's negative
-      # control — an append there now correctly stales the marker.
-      - 'CHANGELOG.md'
-      # `.gitignore` is a checker INPUT since go-to-k/cdk-real-drift#1893:
-      # `tests/bash-first-optout-1893.test.ts` requires
-      # `.claude/settings.local.json` to be ignored BY THIS FILE (it reads
-      # `git check-ignore -v`'s source), because a local settings file outranks
-      # `.claude/settings.json` and would beat the bash-first pin. Without this
-      # entry, deleting that line reds the suite while a `check` marker recorded
-      # a moment earlier still verifies FRESH.
-      - '.gitignore'
-      #
-      # This file itself — the go-to-k/cdk-local#624 sibling. The gate's own
-      # definition decides what the marker MEANS, so editing it (this include
-      # list included) must stale a marker recorded under the old definition.
-      # Measured on the go-to-k/cdk-real-drift#1837 tree before the entry
-      # existed: appending include entries left `markgate verify check` at rc=0.
-      - '.markgate.yml'
-      # .mise.toml pins the BINARY that runs the definitions above (`vp`), so it
-      # decides what typecheck / lint / build / test MEAN — the same argument as
-      # .markgate.yml, one level down (go-to-k/cdkd#1954). It is also a direct
-      # input to one test: markdown-fmt-corruption-1771.test.ts shells out to
-      # `vp fmt` to prove the formatter round-trips the corruption repro, and
-      # mise resolves that binary from the `[tools."http:vp"]` pin here — while
-      # package.json's `vite-plus` devDependency, which IS in this include, is
-      # not the version that runs. The gate was watching the wrong pin.
-      - '.mise.toml'
-
-  docs:
-    hash: files
-    include:
-      - 'src/**'
-      - 'docs/**'
-      - 'README.md'
-      - 'DESIGN.md'
-
-  verify-pr:
-    requires: [check, docs]
-
-  pr-review:
-    hash: files
-    include:
-      - '.markgate-pr-review-sha'
-
   integ:
     hash: diff
     base: origin/main

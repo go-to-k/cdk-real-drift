@@ -5,14 +5,10 @@ description: Run local quality checks (typecheck, lint, build, tests). Quick che
 
 # Local Quality Check
 
-Run all local quality checks. Use during development to verify the current state quickly.
-
-cdk-real-drift (cdkrd) is developed solo, but on a GitHub remote and through
-PRs: work lands via `wt-*` worktree branches, and `.claude/hooks/verify-pr-gate.sh`
-gates `gh pr create` / `gh pr merge`. This skill is the LOCAL half of that flow —
-it runs no real-AWS deploy/destroy — and mirrors the CI workflow
-(`.github/workflows/ci.yml`), which runs typecheck / lint+format / build / unit
-tests on every push.
+Run all local quality checks to verify the current state quickly. This is the
+LOCAL half of the flow — it runs no real-AWS deploy/destroy — and mirrors the CI
+workflow (`.github/workflows/ci.yml`), which runs typecheck / lint+format /
+build / unit tests on every push.
 
 ## Steps
 
@@ -20,27 +16,21 @@ Run these sequentially and report results:
 
 1. `vp run typecheck` — `tsc --project tsconfig.json --noEmit`.
 2. `vp check --fix` — lint + Prettier formatting, with auto-fix. **Use this, not
-   `vp run lint:fix`**: CI runs `vp check` (which includes formatting), and
-   `lint:fix` does NOT touch formatting — so a `lint:fix`-only run can pass
-   locally while CI fails with formatting issues on the same branch.
-3. `vp pack` (tsdown ESM bundle to `dist/`) — and run it BEFORE step 4, because a
-   fresh worktree has no `dist/` and 13 tests fail without it (they spawn the built
-   CLI). Either
-   invocation rebuilds: `build` is `cache: false` in `vite.config.ts` and has been
-   since the toolchain landed, so `vp run build` cannot serve a stale `dist/`. What
-   HAS caused a false-negative live-test is a `dist/` nobody rebuilt: a stale
-   binary that lacked the change under test.
+   `vp run lint:fix`**: CI runs `vp check` (which includes formatting) and
+   `lint:fix` does NOT touch formatting, so a `lint:fix`-only run can pass
+   locally while CI fails on the same branch.
+3. `vp pack` (tsdown ESM bundle to `dist/`) — run it BEFORE step 4: a fresh
+   worktree has no `dist/` and the tests that spawn the built CLI fail without
+   it. A `dist/` nobody rebuilt is also what makes a live-test a false negative,
+   because the binary under test lacks the change.
 4. `vp test run` (Vitest unit tests; `tests/integration/**` is excluded by
-   `vite.config.ts`). The run-task cache is a real foot-gun — PR go-to-k/cdk-real-drift#438's duplicate
-   object key passed a CACHED `vp run typecheck` and reached `main`, which is why
-   `typecheck` is now `cache: false` — but `test` reported a cache MISS on every
-   run measured on 2026-08-19 (go-to-k/cdk-real-drift#1768). Prefer the direct form; do not treat a
-   `vp run test` result as suspect on cache grounds alone.
+   `vite.config.ts`). Prefer this direct form over `vp run test`.
 
 When piping any of the above to `tail` / `head` / `grep`, **check the actual
 output content** for `Error` / `Command failed` markers — `$?` after a pipeline
 reflects the LAST stage (usually 0), NOT the build tool's exit. When in doubt,
-capture without piping: `vp <cmd> > /tmp/out 2>&1; rc=$?; tail -3 /tmp/out; echo "[rc=$rc]"`.
+capture without piping:
+`vp <cmd> > /tmp/out 2>&1; rc=$?; tail -3 /tmp/out; echo "[rc=$rc]"`.
 
 ## Output
 
@@ -53,87 +43,14 @@ Report as a table:
 | build (`vp pack`)                | pass/fail |
 | tests (N files, M tests)         | pass/fail |
 
-If all pass, confirm "All checks passed."
-If any fail, show the error output and STOP — do not write the commit-gate marker.
+If all pass, confirm "All checks passed." If any fail, show the error output
+and STOP.
 
-**Before treating a failure in a file you did NOT touch as a real (or peer-introduced)
-`main` regression, rule out a stale worktree cache.** A long-lived worktree's
-tsc/oxc cache can REPLAY phantom errors from an earlier dependency/lockfile state
-(the inverse of the cache MASKING real ones). If CI on `main` is green and the
-failure is in code outside your diff, REPRODUCE it in a throwaway fresh worktree
-(`git worktree add … origin/main` → `pnpm install` → `vp check`) before reporting "main is
-red" or opening a fix lane — a clean fresh worktree means the error was a local cache
-artifact, not a regression.
-
-## Commit-gate marker (on success only)
-
-After all four checks pass, record the `check` marker so the markgate `check`
-gate is satisfied. The marker captures the current working-tree state of the
-gate's scope; any subsequent edit in that scope invalidates it and requires
-re-running `/check`. Since go-to-k/cdk-real-drift#1837 that scope is `src/**`,
-`tests/**`, the build inputs (`package.json`, `pnpm-lock.yaml`,
-`pnpm-workspace.yaml`, `tsconfig*.json`, `vite.config.ts`, `.mise.toml`, `.node-version` — read by
-`tests/node-floor-sync-1905.test.ts`, which pins the dev pin's major to the CI matrix), this gate's own definition
-(`.markgate.yml`), and the checker-INPUT files the unit suite reads from
-outside `src`/`tests` — `.claude/skills/**`, `.claude/settings.json`,
-`.claude/hooks/**`, `scripts/**`, `release-please-config.json`,
-`.release-please-manifest.json`, `CHANGELOG.md`, `.github/workflows/**`,
-`.gitignore` (read through `git check-ignore` by
-`tests/bash-first-optout-1893.test.ts`, which requires the local settings
-override to be ignored by THIS repo's file rather than by a per-user one),
-plus the hand-written markdown OUTSIDE those trees (`README.md`, `DESIGN.md`,
-`CLAUDE.md`, `CONTRIBUTING.md`, `docs/**`, `demo/README.md`,
-`.claude/rules/**` — the token-diet satellites split out of CLAUDE.md), which
-`tests/markdown-fmt-corruption-1771.test.ts` reads.
-
-**A markdown edit therefore stales `check` — with no exception left, since
-`CHANGELOG.md` joined the gate.** Two buckets: `README.md` / `DESIGN.md` /
-`docs/**` are also the `docs` gate's
-subject, so they need `/check` AND `/check-docs`; `CLAUDE.md`,
-`CONTRIBUTING.md`, `demo/README.md`, `.claude/rules/**` and `CHANGELOG.md` are
-`check`-only inputs, because the `docs` gate includes just `src/**`, `docs/**`,
-`README.md` and `DESIGN.md`. `CHANGELOG.md` is the one file the markdown
-scanner itself excludes (machine-generated, rewritten wholesale on every
-release), but it is in the `check` gate anyway since the release-please splice
-fix, because `tests/release-please-v0.test.ts` now reads it to fence the two
-properties release-please's Changelog updater needs — a newline ahead of the
-first version header, and H2 (never H1) version headers. (The scanner's
-population is every tracked `*.md` bar that one, so
-`tests/integration/README.md` is in it too — already covered by `tests/**`.)
-**Read `.markgate.yml` for the
-authoritative list**, not this sentence: each entry there names the test that
-reads it, and this copy has already gone stale once (go-to-k/cdk-real-drift#1837
-widened the gate and had to repair the enumeration here in the same PR).
-
-Run from the root of the tree you are WORKING in — the worktree, not the main
-checkout, whenever the lane lives in one. The marker store is PER-WORKTREE --
-`<git rev-parse --absolute-git-dir>/markgate/`, which resolves to `.git/markgate`
-only for the MAIN checkout and to `.git/worktrees/<name>/markgate/` for a lane --
-so a marker set from the main checkout is not merely computed over the wrong
-files, it is INVISIBLE from the lane. Re-measured 2026-09-03 on the `.mise.toml`
-pin (markgate 0.4.1), three trees of this ONE repo answering
-`markgate status check` three different ways:
-
-| tree                     | store on disk                     | answer                                         |
-| ------------------------ | --------------------------------- | ---------------------------------------------- |
-| main checkout            | `.git/markgate/`                  | `created 2026-07-21T13:17:24Z / mismatch` rc=1 |
-| an existing lane         | `.git/worktrees/<name>/markgate/` | `created 2026-08-29T19:42:42Z / match` rc=0    |
-| a freshly-added worktree | none                              | `state: no marker` rc=1                        |
-
-It fails CLOSED either way, so the cost is a wasted gate cycle plus a "run /check
-first" message right after you ran it -- but the lane prints `no marker`, not a
-digest mismatch, so do not go hunting for one. This paragraph used to say the
-store was `.git/markgate`, SHARED by every worktree, and dated the reading
-2026-08-19; the rc pair it recorded was real, the mechanism behind it was not. Also set it in its OWN command, separate from the `git commit` —
-`check-gate` is a PreToolUse hook and judges the call before anything in it runs, so
-a `markgate set … && git commit` one-liner is blocked in full.
-
-cdkrd pins markgate via mise, so use `mise exec` to avoid PATH issues when shims
-aren't active:
-
-```bash
-mise exec -- markgate set check
-```
-
-Skip this step if any check failed — a stale or missing marker correctly forces
-re-running `/check` after fixing the failure.
+**Before treating a failure in a file you did NOT touch as a real (or
+peer-introduced) `main` regression, rule out a stale worktree cache.** A
+long-lived worktree's tsc/oxc cache can REPLAY phantom errors from an earlier
+dependency/lockfile state (the inverse of a cache MASKING real ones). If CI on
+`main` is green and the failure is outside your diff, REPRODUCE it in a
+throwaway fresh worktree (`git worktree add … origin/main` → `pnpm install` →
+`vp check`) before reporting "main is red" or opening a fix lane — a clean fresh
+worktree means the error was a local cache artifact, not a regression.

@@ -1422,29 +1422,17 @@ check` green). The earlier `TS2591 'process'` errors came from oxc's type-aware
    output). Worth a YAML-template pass.
 7. **Governance / repo hygiene (in place)**: CI (`.github/workflows/ci.yml` =
    `vp run check` + test + build; `release.yml` release-please batched releases; `pr-title-check.yml`),
-   `.markgate.yml` (check/docs/verify-pr), `.claude/skills/{check,check-docs,verify-pr}`,
-   the `.claude/hooks/` suite (+ `.claude/settings.json`) — `check-gate`,
-   `branch-gate` (blocks `git commit` / `git push` when the target tree is on
-   `main` / `master`, and — since go-to-k/cdkd#2402 — when the MAIN checkout is
-   on a DETACHED HEAD, which the branch-NAME read could not see; a detached
-   LINKED worktree still passes, being the lane-clearing state the Stop hook
-   prescribes), `main-tree-branch-gate` (refuses a `git switch` / `git checkout`
-   onto a feature branch when the target tree is the MAIN checkout — the
-   cause-side twin of `branch-gate`, go-to-k/cdk-real-drift#1845),
-   `verify-pr-gate`, `ci-green-gate`, `stale-base-gate`,
-   `non-english-text-gate`, `worktree-guard`, the two issue-mint gates
-   (`issue-dup-check-gate`, `issue-classification-label-gate`) plus
-   `issue-deferral-criteria-gate` (refuses a `Session-fit: next` deferred for a
-   PR-shaped reason), the one NON-blocking hook `integ-base-behind-warn` (warns
-   before a fixture run that the branch is behind `origin/main` — the opposite
-   condition to `stale-base-gate`, and not to be confused with it), and the
-   bug-hunt cleanup gates —
-   plus `CLAUDE.md` and `CONTRIBUTING.md`, and since the #1878 split a small
-   `.claude/rules/` (two on-demand satellites moved out of CLAUDE.md). Still
-   deliberately absent: `.claude/agents` (and with it the pr-review gate) —
-   cdkd's heavy 50-hook / 10-rule suite is disproportionate for a repo this size.
-   _Open question: which of those become worth adding once there are external
-   contributors?_
+   `.claude/skills/{check,check-docs,verify-pr}` as RECOMMENDED procedure that
+   nothing enforces, and a `.claude/hooks/` suite cut back to the gates that
+   clear the blocking criterion in CLAUDE.md's Tooling Policy — `branch-gate`
+   (blocks `git commit` / `git push` when the target tree is on `main` /
+   `master`, and — since go-to-k/cdkd#2402 — when the MAIN checkout is on a
+   DETACHED HEAD, which the branch-NAME read could not see; a detached LINKED
+   worktree still passes, being the documented lane-clearing state),
+   `stale-base-gate`, `ci-green-gate`, `worktree-guard`, and the bug-hunt
+   cleanup pair (`bughunt-clean-gate` + `deploy-autoarm-gate`) — plus
+   `CLAUDE.md`, `CONTRIBUTING.md`, `docs/tooling-backlog.md` and a small
+   `.claude/rules/`. Still deliberately absent: `.claude/agents`.
 8. **Ignore-rule management (R32)**: ignore rules live in `.cdkrd/ignore.yaml` and
    can be hand-edited or appended by the `cdkrd ignore` verb (comment-preserving,
    append-only). _Open question: add a `cdkrd ignore --list` view to inspect the
@@ -1464,7 +1452,7 @@ reads, more fail-closed intrinsics (FindInMap / Split / ImportValue / Select-OOB
 identity, write-only `readGap` surfacing, real Lambda-Permission values,
 declared-only `--pre-deploy`, and selective `record`.
 
-Repo hygiene (CLAUDE.md, CONTRIBUTING.md, check-gate hook, CI) is in place too.
+Repo hygiene (CLAUDE.md, CONTRIBUTING.md, the hook suite, CI) is in place too.
 
 DONE since this section was written: the public GitHub repo exists and is pushed,
 and publishing is automated — release-please batches merges to `main` into a
