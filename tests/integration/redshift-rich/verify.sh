@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # cdk-real-drift redshift-rich integration test (real AWS).
-# The "clean deploy -> ZERO potential drift" invariant oracle (CLAUDE.md / DESIGN.md):
+# The "clean deploy -> ZERO potential drift" invariant oracle (AGENTS.md / DESIGN.md):
 # deploy -> check BEFORE record MUST show no [Potential Drift] (every undeclared value
 # is an AWS-assigned initial/default and must fold to atDefault) -> record -> check
 # stays CLEAN. A missing fold regresses the invariant and fails here. A cleanup trap

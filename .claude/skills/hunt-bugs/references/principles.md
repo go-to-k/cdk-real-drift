@@ -30,14 +30,14 @@ additionally root-cause, fix, add the unit test, keep the fixture, carry through
 2. **The two signals ARE the priority — hunt FP and FN above all else.** Incidental
    findings (a crash, a read-gap `skipped=`, cosmetic output) are worth noting but are
    not the target.
-   - **False positive (FP)** — most user-damaging. **Invariant (CLAUDE.md /
+   - **False positive (FP)** — most user-damaging. **Invariant (AGENTS.md /
      DESIGN.md): a clean, un-mutated deploy shows ZERO `[Potential Drift]` even on a
      `check` BEFORE `record`.** An undeclared creation-time value is a default and
      MUST fold to `atDefault`; `[Potential Drift]` means REAL divergence only (a
      change AFTER creation). On a fresh fixture **every entry = fold gap = bug**.
      Never ship one as "conservative" or rationalize `undeclared` as "honest";
      N→"a few" is not a fix — target zero.
-   - **Fold-strategy decision order** (first match wins, per CLAUDE.md): (1)
+   - **Fold-strategy decision order** (first match wins, per AGENTS.md): (1)
      equality-gated constant (`KNOWN_DEFAULTS` / `KNOWN_DEFAULT_PATHS`) — detection
      kept; (2) **derived** default (`CONTEXT_DEFAULTS` = f(region), `ENGINE_DEFAULTS`
      = f(engine), or f(a declared sibling prop)) when deterministic in declared

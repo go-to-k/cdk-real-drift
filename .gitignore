@@ -59,7 +59,7 @@ cdk.context.json
 .claude/scheduled_tasks.lock
 .claude/worktrees/
 
-# Development worktrees (mandated by CLAUDE.md workflow rules; never committed)
+# Development worktrees (mandated by AGENTS.md workflow rules; never committed)
 .worktrees/
 
 # /hunt-bugs cleanup sentinel: lists integ stacks deployed to real AWS; the

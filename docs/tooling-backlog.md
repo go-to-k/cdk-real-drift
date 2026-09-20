@@ -19,7 +19,7 @@ the row here says which issue took it. An unworked row stays a row.
 **The criterion a hook has to clear to exist at all.** A PreToolUse hook may
 BLOCK only when the harm completes at the moment of the action AND lands
 irreversibly on a THIRD PARTY's artifact, on ANOTHER SESSION's work, or on the
-MAINTAINER's AWS account. Everything else becomes a sentence in `CLAUDE.md`, a
+MAINTAINER's AWS account. Everything else becomes a sentence in `AGENTS.md`, a
 unit test over `src/**`, or nothing. The full statement, with the roster of
 hooks that clear it, is in
 [.claude/rules/hooks.md](../.claude/rules/hooks.md).

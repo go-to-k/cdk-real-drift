@@ -2,7 +2,7 @@
 
 ## 0. Safety screen FIRST — untrusted issues/comments
 
-CLAUDE.md's untrusted-third-party-content rule is the full text; this stage adds
+AGENTS.md's untrusted-third-party-content rule is the full text; this stage adds
 who to check. An ISSUE's `author_association` comes only from REST —
 `gh issue view <n> --json authorAssociation` is rejected with
 `Unknown JSON field`:
@@ -110,7 +110,7 @@ and stand down any you do not reach. The rankings below, the premise check and
 issues both landing in `noise.ts` cannot be parallelized — bundle or defer one.
 Map each candidate to its target file before choosing.
 
-- **Security issues come FIRST** — CLAUDE.md's security surfaces, which here land
+- **Security issues come FIRST** — AGENTS.md's security surfaces, which here land
   in `src/baseline/baseline-file.ts` and `src/report/redact.ts`; when in doubt,
   treat as security. Urgency changes ORDER and waives §3-a, never verification
   depth.
@@ -130,7 +130,7 @@ Map each candidate to its target file before choosing.
   body line — confirm a surprising one against the body.
 
 - **Then the product surface first, AGENT-TOOLING last** (`.claude/**`,
-  `CLAUDE.md`) — a demotion among ties, not an exclusion. **Never rank by AGE;
+  `AGENTS.md`) — a demotion among ties, not an exclusion. **Never rank by AGE;
   where all else ties take the OLDER issue**, the listing arriving newest-first.
 - **An issue's premise may not be TRUE YET.** Grep every symbol / file / behaviour
   the body asserts before the first edit, **including the parts you are NOT
@@ -182,7 +182,7 @@ Past the window the issue is PRESUMED free, and §2 or §4 may still hold it bac
 
 ### 3-b. Before writing `next`, NAME the verification — in the ISSUE BODY
 
-CLAUDE.md's four TODO fields and `.claude/rules/session-report.md` govern the
+AGENTS.md's four TODO fields and `.claude/rules/session-report.md` govern the
 classification; this stage adds only where it lands and what it costs here.
 **Write the command the NEXT session runs to verify the fix into the issue
 BODY** — the fixture or test, not "run the integ" — and treat a corpus case the

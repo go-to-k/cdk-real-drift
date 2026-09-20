@@ -3,7 +3,7 @@
 #
 # PreToolUse hook (Edit / Write / NotebookEdit). Blocks an edit to the MAIN
 # checkout's `src/**` or `tests/**` while a development worktree exists under
-# `.worktrees/`. Per CLAUDE.md the main checkout is reserved for integration
+# `.worktrees/`. Per AGENTS.md the main checkout is reserved for integration
 # (`git checkout <branch> -- <files>` / pulls / PR plumbing) — all real work
 # happens in a per-line-of-work worktree.
 #
@@ -71,5 +71,5 @@ esac
 
 rel="${canon_path#"$canon_main"/}"
 others=$((wt_count - 1))
-echo "Blocked by worktree-guard: editing the MAIN checkout ($rel) while ${others} worktree(s) exist under .worktrees/. Per CLAUDE.md, all src/** and tests/** work belongs in a worktree — the path must contain .worktrees/<name>. Editing main directly has caused cross-session collisions (e.g. a cp-recovery pulling another session's merged PR into your branch). Edit the file under .worktrees/<name>/ instead; the main checkout is for integration only (git checkout / pulls / PR plumbing)." >&2
+echo "Blocked by worktree-guard: editing the MAIN checkout ($rel) while ${others} worktree(s) exist under .worktrees/. Per AGENTS.md, all src/** and tests/** work belongs in a worktree — the path must contain .worktrees/<name>. Editing main directly has caused cross-session collisions (e.g. a cp-recovery pulling another session's merged PR into your branch). Edit the file under .worktrees/<name>/ instead; the main checkout is for integration only (git checkout / pulls / PR plumbing)." >&2
 exit 2

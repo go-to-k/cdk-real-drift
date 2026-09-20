@@ -3665,7 +3665,7 @@ export const GENERATED_NESTED_PATHS: Record<string, ReadonlySet<string>> = {
 // drift invariant), while a change AWAY from the default must still surface. The composite-key
 // subset surfacing (classify.ts) consults `ebOptionSettingTier` per live-only entry.
 //
-// Three tiers per the CLAUDE.md fold-strategy order:
+// Three tiers per the AGENTS.md fold-strategy order:
 //  - EB_OPTION_DEFAULTS — equality-gated constants: fold when the live value equals the pinned
 //    default; a change away surfaces (detection kept). The default choice.
 //  - EB_OPTION_DERIVED — the default is a deterministic function of the sibling `EnvironmentType`

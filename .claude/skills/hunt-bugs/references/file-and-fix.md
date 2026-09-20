@@ -11,7 +11,7 @@ later fixer has the evidence. Search the open issues first and fold a hit into t
 existing one rather than minting a duplicate — a hunt is the highest-volume filer.
 
 **Every issue this hunt files also carries the four classification lines**
-(`CLAUDE.md` → "The four TODO fields"), in English, one field per line:
+(`AGENTS.md` → "The four TODO fields"), in English, one field per line:
 
 ```text
 Session-fit: now (do it in this session) | next (not this session) - <reason>

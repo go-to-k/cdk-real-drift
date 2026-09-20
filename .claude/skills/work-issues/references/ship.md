@@ -65,7 +65,7 @@ git checkout main && git pull origin main      # MAIN-CHECKOUT only
 git -C "<MAIN_CHECKOUT>" pull origin main      # IN-PLACE instead, never both
 ```
 
-**Release** is BATCHED, and its rules live in `CLAUDE.md` → "State of the Repo"
+**Release** is BATCHED, and its rules live in `AGENTS.md` → "State of the Repo"
 (an ordinary merge publishes nothing; the standing release PR is never yours to
 merge). This stage owes one check —
 `gh pr list --state open --search "chore(release) in:title"` — and no

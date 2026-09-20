@@ -69,7 +69,7 @@ MECHANISM on its second.**
     every invocation and changed only when the stage list changes.
   - **another skill**, only one this run exercised (`/verify-pr`,
     `/sweep-resources`, `/check`, `/check-docs`).
-  - **`CLAUDE.md`, `DESIGN.md` or `docs/`** when it applies to any work here.
+  - **`AGENTS.md`, `DESIGN.md` or `docs/`** when it applies to any work here.
   - **memory** (`~/.claude/projects/.../memory/`) for judgemental cross-repo
     lessons. Weakest — where a rule lands when nothing above holds it.
 
@@ -82,7 +82,7 @@ Every run appending one more bullet is how a long skill becomes an unread one.
 Put the fix **in the step where it fires** (a claiming lesson belongs in §4;
 gotchas is for traps that span steps, not a run log). **Amend the sentence that
 was wrong** rather than adding a sibling, and point at a rule living in
-`CLAUDE.md` or another step instead of restating it. **Carry the evidence as ONE
+`AGENTS.md` or another step instead of restating it. **Carry the evidence as ONE
 line**: the rule plus at most one issue / PR citation per decision, never the
 narrative — a rule with no citation cannot be re-judged or retired, and a rule
 buried in its own incident report is not read. **Pay for what you add** by

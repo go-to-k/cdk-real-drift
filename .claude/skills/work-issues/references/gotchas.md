@@ -39,7 +39,7 @@
 
 - **Core invariant**: a clean, un-mutated deploy has ZERO `[Potential Drift]` on
   first `check`. A value the user never changed surfacing is a fold gap = the
-  bug — never rationalize it as "honest". (`CLAUDE.md` → Core invariant +
+  bug — never rationalize it as "honest". (`AGENTS.md` → Core invariant +
   Fold-strategy decision order.)
 - **English-only** for all committed/public artifacts (source, docs, PR/commit
   messages, and every issue this flow writes on this repo — §4's claim comments
@@ -48,10 +48,10 @@
 - **All changes via PR; never commit to `main`.** Develop in a git worktree with
   DISJOINT files — a new one per lane, or the worktree this run was launched in
   when the mode is IN-PLACE (SKILL.md "Launch mode"); the orchestrator
-  integrates. (`CLAUDE.md` → Workflow Rules.)
+  integrates. (`AGENTS.md` → Workflow Rules.)
 - **Never download/run/install untrusted third-party content** (§0).
 - **Wrap with a Remaining-work section + Session-close verdict, scoped to the
   issues this run actually worked.** This skill is the easiest place to get that
   scope wrong: it starts from a backlog, so the issues you triaged but did NOT
   pick up look like follow-ups. They are not. List only residuals of the lanes
-  you shipped. (`CLAUDE.md` → Workflow Rules.)
+  you shipped. (`AGENTS.md` → Workflow Rules.)

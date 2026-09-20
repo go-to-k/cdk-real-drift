@@ -1,7 +1,7 @@
 [tools]
 "ubi:go-to-k/markgate" = "0.4.1"
 # Force-delete CloudFormation stacks (incl. DELETE_FAILED / retained / protected
-# resources) so test & integ teardown never leaves orphans — see CLAUDE.md.
+# resources) so test & integ teardown never leaves orphans — see AGENTS.md.
 "ubi:go-to-k/delstack" = "2.11.1"
 
 [tools."http:vp"]
