@@ -1,6 +1,6 @@
 # Session-wrap report — the full field reference
 
-CLAUDE.md keeps the contract summary and points here. Read this file when
+AGENTS.md keeps the contract summary and points here. Read this file when
 writing a wrap report or filing a deferral.
 
 ## The three closing sections

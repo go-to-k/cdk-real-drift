@@ -1,4 +1,4 @@
-# CLAUDE.md
+# AGENTS.md
 
 This file guides Claude Code (claude.ai/code) and human contributors working in
 this repository. Keep it concise — the full design lives in
@@ -329,7 +329,7 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   one machine and leaves every contributor and parallel lane in whatever cohort
   the server picked. The fence asserts a JSON string and cannot assert vendor
   behavior, so re-probe on upgrade — the probe recipe and the measured build are
-  in `tests/bash-first-optout-1893.test.ts`. This bullet stays in CLAUDE.md
+  in `tests/bash-first-optout-1893.test.ts`. This bullet stays in AGENTS.md
   because a session in the cohort is exactly the one that may not open a rule
   file.
 - **The surviving safety hooks**: each blocks one foot-gun with an actionable
@@ -454,7 +454,7 @@ stated in the PR body for the maintainer to decide.
    (today `session-report.md` is the only one that uses it); the MARKDOWN under
    `.claude/skills/**` ≤ 150 KB total (an executable such as
    `hunt-bugs/bughunt-track.sh` is run, never loaded as instructions, so it
-   costs no context and is outside the cap); `CLAUDE.md` no larger than it is
+   costs no context and is outside the cap); `AGENTS.md` no larger than it is
    now. A change that pushes a file over its budget trims that file in the same
    PR.
 5. **Tooling findings are not issues.** Hooks, rules, skills, CI fences and the

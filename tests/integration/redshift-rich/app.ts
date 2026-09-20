@@ -1,6 +1,6 @@
 // CDK app for the cdk-real-drift redshift-rich integration test.
 // AWS::Redshift::Cluster is a common data-warehouse primitive. This fixture is the
-// FP oracle for the "clean deploy -> zero potential drift" invariant (CLAUDE.md /
+// FP oracle for the "clean deploy -> zero potential drift" invariant (AGENTS.md /
 // DESIGN.md): a minimal RA3 single-node cluster declares only identity/sizing, so
 // every OTHER value AWS returns is an initial/default it materialized. On a first
 // `check` BEFORE `record`, NONE of them may surface as [Potential Drift] — they must

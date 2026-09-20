@@ -8,7 +8,7 @@
  * A PreToolUse gate on `gh pr create` / `gh pr edit` / `gh pr merge` that
  * refused the call when the PR diff carried non-English writing-system
  * characters. The repo is OSS and every committed artifact must be English
- * (CLAUDE.md, Workflow Rules). The gate went because a hook may block only when
+ * (AGENTS.md, Workflow Rules). The gate went because a hook may block only when
  * the harm completes at the moment of the action and lands irreversibly on a
  * third party, and publishing a PR does not -- but the RULE it enforced is
  * unchanged, so it returns as a CI check, which is where a reversible content
@@ -50,7 +50,7 @@
  *       U+4E00-U+9FFF  CJK Unified Ideographs (kanji / Chinese)
  *       U+AC00-U+D7AF  Hangul Syllables
  *     General-purpose Unicode the repo already uses PASSES: em-dashes, curly
- *     quotes, box-drawing characters in the CLAUDE.md ASCII art, arrow glyphs
+ *     quotes, box-drawing characters in the AGENTS.md ASCII art, arrow glyphs
  *     in docs. Writing systems only.
  *   - The binary / lockfile / asset extension skip list, including its
  *     case-sensitivity and the fact that the four lockfile names are matched

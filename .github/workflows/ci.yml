@@ -94,7 +94,7 @@ jobs:
   # to refuse `gh pr create` / `edit` / `merge` on it; the hook was deleted with
   # the rest of the gates that do not clear the blocking criterion (the harm is
   # reversible and lands on this repo's own artifact), which left the rule with
-  # nothing but a sentence in CLAUDE.md. This is where a reversible content rule
+  # nothing but a sentence in AGENTS.md. This is where a reversible content rule
   # belongs.
   #
   # IN ci.yml, not in a workflow of its own, even though it installs nothing and

@@ -12,7 +12,7 @@
 #
 # integ — real-AWS verification. A run here deploys real stacks into us-east-1
 #         and `inject-drift` / `revert` WRITE to the maintainer's account, so the
-#         path it covers clears the blocking criterion in CLAUDE.md's Tooling
+#         path it covers clears the blocking criterion in AGENTS.md's Tooling
 #         Policy exactly as cdkd's `integ-destroy` does. It is a DECLARATION
 #         only: no hook reads it and no skill sets it, because cdkrd has no
 #         companion `/run-integ`. Wiring one is new machinery and the

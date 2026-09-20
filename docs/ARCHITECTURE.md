@@ -1424,14 +1424,14 @@ check` green). The earlier `TS2591 'process'` errors came from oxc's type-aware
    `vp run check` + test + build; `release.yml` release-please batched releases; `pr-title-check.yml`),
    `.claude/skills/{check,check-docs,verify-pr}` as RECOMMENDED procedure that
    nothing enforces, and a `.claude/hooks/` suite cut back to the gates that
-   clear the blocking criterion in CLAUDE.md's Tooling Policy — `branch-gate`
+   clear the blocking criterion in AGENTS.md's Tooling Policy — `branch-gate`
    (blocks `git commit` / `git push` when the target tree is on `main` /
    `master`, and — since go-to-k/cdkd#2402 — when the MAIN checkout is on a
    DETACHED HEAD, which the branch-NAME read could not see; a detached LINKED
    worktree still passes, being the documented lane-clearing state),
    `stale-base-gate`, `ci-green-gate`, `worktree-guard`, and the bug-hunt
    cleanup pair (`bughunt-clean-gate` + `deploy-autoarm-gate`) — plus
-   `CLAUDE.md`, `CONTRIBUTING.md`, `docs/tooling-backlog.md` and a small
+   `AGENTS.md`, `CONTRIBUTING.md`, `docs/tooling-backlog.md` and a small
    `.claude/rules/`. Still deliberately absent: `.claude/agents`.
 8. **Ignore-rule management (R32)**: ignore rules live in `.cdkrd/ignore.yaml` and
    can be hand-edited or appended by the `cdkrd ignore` verb (comment-preserving,
@@ -1452,7 +1452,7 @@ reads, more fail-closed intrinsics (FindInMap / Split / ImportValue / Select-OOB
 identity, write-only `readGap` surfacing, real Lambda-Permission values,
 declared-only `--pre-deploy`, and selective `record`.
 
-Repo hygiene (CLAUDE.md, CONTRIBUTING.md, the hook suite, CI) is in place too.
+Repo hygiene (AGENTS.md, CONTRIBUTING.md, the hook suite, CI) is in place too.
 
 DONE since this section was written: the public GitHub repo exists and is pushed,
 and publishing is automated — release-please batches merges to `main` into a

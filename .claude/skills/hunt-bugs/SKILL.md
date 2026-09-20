@@ -68,7 +68,7 @@ worktrees.
 - **A confirmed bug gets an issue AND a unit test with its fix** — never a silent fix,
   never a fix without the test.
 - **A clean, un-mutated deploy has ZERO `[Potential Drift]` on first `check`**
-  (CLAUDE.md core invariant) — anything surfaced is a fold gap, i.e. the bug.
+  (AGENTS.md core invariant) — anything surfaced is a fold gap, i.e. the bug.
 - **English only in every committed/published artifact** (code, issues, PRs).
 
 ## Where lessons land (keeps this file thin)
