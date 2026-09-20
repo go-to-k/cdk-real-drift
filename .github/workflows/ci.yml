@@ -90,6 +90,117 @@ jobs:
       - run: vp run build
       - run: vp env exec --node ${{ matrix.node-version }} node dist/cli.js --version
 
+  # English-only, on the two PR surfaces: the DIFF and the published TITLE /
+  # BODY. `.claude/hooks/non-english-text-gate.sh` used to refuse `gh pr create`
+  # / `edit` / `merge` on the diff; it was deleted with the rest of the gates
+  # that do not clear the blocking criterion (the harm is reversible and lands
+  # on this repo's own artifact), which left the rule with nothing but a
+  # sentence in CLAUDE.md. This is where a reversible content rule belongs.
+  #
+  # IN ci.yml, not in a workflow of its own, even though it installs nothing and
+  # runs in seconds: `ci-ok` is the SINGLE check the `main` ruleset requires and
+  # it can only aggregate jobs in THIS file. A separate workflow would be a
+  # check nobody is required to pass.
+  #
+  # `pull_request`, never `pull_request_target`: the job only has to say NO. A
+  # failing check run is its entire output, it needs no write scope, and
+  # `pull_request_target` would hand a WRITE token and this repo's secrets to a
+  # workflow whose whole job is to refuse.
+  english-only:
+    name: English-only (PR diff + title/body)
+    # The one job-level `if:` added here, and it is the same shape
+    # `release-pr-not-stale` carries: on a `push` to main there is no
+    # `github.event.pull_request`, so every ref below would render empty and the
+    # scripts would fail closed on every push. Skipped is a verdict `ci-ok`
+    # accepts; exempted by name in tests/ci-ok-gate.test.ts.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    # Any GitHub user can open a PR and spawn this job, so it carries a cap
+    # rather than the 360-minute default.
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          # SAME-REPO PR -> the head; FORK PR -> the base.
+          #
+          # Two requirements pull opposite ways and both are real. TRUST: a fork
+          # PR must not supply the checker that judges it -- edit the script to
+          # `process.exit(0)`, or add your own file to the allow-list, and this
+          # required check reports green while the violation ships. BOOTSTRAP:
+          # pinning base unconditionally means the PR that ADDS a checker runs a
+          # base that does not contain it, so the job dies with
+          # ERR_MODULE_NOT_FOUND and can never go green.
+          #
+          # Fork-ness resolves both: a same-repo branch is pushed by someone who
+          # already has write access, so taking the checker from the head grants
+          # them nothing they do not have; a fork author has no such access, and
+          # for them the base copy is the only trustworthy one. The CONTENT under
+          # test always comes from `$HEAD_SHA` inside the script either way, so
+          # this decides only WHICH CHECKER runs, never WHAT is checked.
+          ref: ${{ github.event.pull_request.head.repo.full_name == github.repository
+            && github.event.pull_request.head.sha
+            || github.event.pull_request.base.sha }}
+          # Load-bearing: the script runs `git merge-base <base> <head>` for the
+          # same three-dot view `gh pr diff` gave the hook. A shallow clone makes
+          # that fail -- and the script treats that as an ERROR, not a pass, so a
+          # regression here goes red rather than silently scanning nothing.
+          fetch-depth: 0
+
+      # The head commit is not an ancestor of base, and for a FORK PR it is not
+      # on any branch of this repo -- it lives at `refs/pull/N/head`. Fetch it as
+      # DATA so `git show $HEAD_SHA:<path>` and `git merge-base` resolve. Nothing
+      # from it is executed.
+      - name: Fetch the PR head as data
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --quiet origin \
+            "+refs/pull/${PR_NUMBER}/head:refs/remotes/pr/${PR_NUMBER}/head"
+
+      # Node 24 strips type annotations, so `node scripts/*.ts` runs directly.
+      # `run-install: false` and `cache: false`: both checkers import node
+      # builtins only, deliberately, so this check cannot be blocked by a
+      # lockfile problem. A runner whose node cannot strip types fails LOUDLY
+      # ("Unknown file extension .ts"), never silently.
+      - uses: voidzero-dev/setup-vp@ca1c46663915d6c1042ae23bd39ab85718bfb0fa # v1
+        with:
+          node-version: '24'
+          cache: false
+          run-install: false
+
+      - name: Non-English writing-system characters in the PR diff
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/check-pr-non-english-text.ts
+
+      # The title and body are ATTACKER TEXT and never reach a shell as
+      # expression source: they are fetched SERVER-SIDE with `gh --json` and
+      # handed to the checker as a JSON file. Only NUMBER and REPO cross into
+      # shell, through `env:`, quoted -- and `--argjson` makes a NUMBER that is
+      # not a number fail loudly here instead of becoming jq program text.
+      - name: Non-English text in the PR title and body
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          gh pr view "$NUMBER" -R "$REPO" --json title,body,labels \
+            | jq --argjson n "$NUMBER" \
+                '{kind:"pull_request", number:$n, title:.title, body:.body,
+                  labels:[.labels[].name]}' > subject.json
+          # Piped through a NON-WHITESPACE prefix before it reaches the log. The
+          # runner TRIM-STARTS each line before deciding whether it is a workflow
+          # command, so the report's own two-space fence indent protects nothing:
+          # a PR body whose first offending line is `::stop-commands::<text>`
+          # would suppress every later annotation in this job.
+          node scripts/check-gh-body-english.ts subject.json | sed 's/^/| /'
+
   # A stale standing release PR is MERGEABLE and silently reverts main.
   # release-please does not rebuild a release PR whose computed release is
   # unchanged — it logs `PR #N remained the same` and leaves the branch on the
@@ -183,7 +294,7 @@ jobs:
   # `pr-title-check.yml`'s `check` is the whole required set.
   ci-ok:
     if: always()
-    needs: [check-build-test, runtime-compat, release-pr-not-stale]
+    needs: [check-build-test, runtime-compat, english-only, release-pr-not-stale]
     runs-on: ubuntu-latest
     permissions: {}
     env:
@@ -194,14 +305,15 @@ jobs:
       # Must equal the length of `needs:` above. Both halves are read out of
       # this file by tests/ci-ok-gate.test.ts, which also asserts `needs:`
       # covers every other job — so this cannot drift silently.
-      EXPECTED_UPSTREAM: '3'
+      EXPECTED_UPSTREAM: '4'
     steps:
       - name: every upstream job succeeded or was skipped
         run: |
           set -euo pipefail
           # `skipped` is accepted on purpose: release-pr-not-stale skips on
-          # every non-release PR, and a matrix job skipped because its `needs`
-          # failed is already reported by that failing job's own result.
+          # every non-release PR, english-only skips on a `push` to main, and a
+          # matrix job skipped because its `needs` failed is already reported by
+          # that failing job's own result.
           echo "upstream results: ${RESULTS}"
           seen=0
           for r in ${RESULTS}; do

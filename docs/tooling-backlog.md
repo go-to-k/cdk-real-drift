@@ -67,6 +67,26 @@ The structural halves survive: `tests/skill-doc-paths.test.ts` still resolves
 every repo path a skill doc cites, still requires a `.test.sh` beside every
 hook, and still requires each harness to derive its subject from its own path.
 
+## Coverage the English-only CI port did not carry over
+
+`.claude/hooks/non-english-text-gate.sh` was deleted with the other gates that
+do not clear the blocking criterion, and the rule it enforced came back as CI
+(`scripts/check-pr-non-english-text.ts` over the PR diff,
+`scripts/check-gh-body-english.ts` over the published title / body). Two pieces
+of the sibling repo's coverage were NOT ported, recorded here as first
+occurrences rather than rebuilt:
+
+| Gap                                     | Why, and what would close it                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The RENDERED report is not asserted     | cdkd parses the bot comment with `marked` and checks that each offender stays inside ONE list and that an all-backtick payload renders as one code block. `marked` is not a dependency here and one is not added for a test. What survives is the SOURCE-level contract: the fence is longer than the longest backtick run, the payload folds to one line, and the fence is indented two spaces so it stays inside its list item.                                      |
+| The allow-list is not driven end to end | `scripts/non-english-allowlist.txt` is EMPTY, because no tracked file carries a character in the blocked class. There is no entry to exercise, and seeding one would mean writing a permanent hole into the real list to test it. The allow-list contract is carried by five unit cases, including both CONTROLS (a non-listed sibling still blocks; a path merely PREFIXED by a listed one still blocks). Close it by driving a real entry the day this repo has one. |
+
+Two weaker properties are inherent to the move from a PreToolUse gate to CI and
+are not gaps to close: the check now runs AFTER the text is public, so on an
+issue or comment it can only report and ask for an edit; and release notes
+(`gh release create --notes`) are not covered, though releases here are cut by
+release-please from commit messages, which the PR-diff check already reads.
+
 ## Open issues whose subject is the tooling
 
 All 17 open issues at the time this file was written are about the tooling

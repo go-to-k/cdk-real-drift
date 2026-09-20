@@ -1,0 +1,31 @@
+# non-english-allowlist.txt
+#
+# Repo-relative paths that `scripts/check-pr-non-english-text.ts` does NOT scan.
+#
+# The check reads each changed file's WHOLE content at the PR head, not just
+# the added lines, so a file that legitimately CONTAINS non-English characters
+# blocks every PR that touches it -- forever, and for a reason that has nothing
+# to do with the change. This list is the sidecar for exactly that case.
+#
+# Keep it SMALL and keep each entry's reason with it: an entry is a permanent
+# hole in the English-only rule for that path. Prose that merely happens to be
+# in another language is NOT a candidate -- translate it instead.
+#
+# One path per line. Blank lines and `#` comments are ignored. Paths are
+# repo-relative and matched EXACTLY (no globbing, no prefixes) so an entry
+# cannot silently widen to cover a directory. An entry naming a path that no
+# longer exists FAILS the check -- drop it when the file goes.
+#
+# This file is NOT on its own list, deliberately: a list that exempts itself is
+# a hole anyone can widen by writing into it. So describe an entry's content
+# here; never reproduce it.
+#
+# Neither check nor either unit test needs an entry: they build every probe
+# string from CODE POINTS (`String.fromCodePoint`), so their sources stay ASCII.
+# Any future check that has to exercise these characters should do the same
+# before reaching for an entry here.
+#
+# THE LIST IS EMPTY, and that is the measured state of this repo rather than an
+# oversight: no tracked file carries a character in the blocked class. The
+# stale-entry audit in the check still runs, so the first entry anyone adds is
+# audited from the moment it lands.
