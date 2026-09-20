@@ -1,0 +1,52 @@
+# non-english-allowlist.txt
+#
+# Repo-relative paths that `scripts/check-pr-non-english-text.ts` does NOT scan.
+#
+# The check reads each changed file's WHOLE content at the PR head, not just
+# the added lines, so a file that legitimately CONTAINS non-English characters
+# blocks every PR that touches it -- forever, and for a reason that has nothing
+# to do with the change. This list is the sidecar for exactly that case.
+#
+# Keep it SMALL and keep each entry's reason with it: an entry is a permanent
+# hole in the English-only rule for that path. Prose that merely happens to be
+# in another language is NOT a candidate -- translate it instead. Every entry
+# below is here because the CHARACTERS ARE THE SUBJECT UNDER TEST: the fixture
+# exercises how cdkrd handles a non-ASCII value, so an English spelling would
+# not exercise it.
+#
+# One path per line. Blank lines and `#` comments are ignored. Paths are
+# repo-relative and matched EXACTLY (no globbing, no prefixes) so an entry
+# cannot silently widen to cover a directory. An entry naming a path that no
+# longer exists FAILS the check -- drop it when the file goes.
+#
+# This file is NOT on its own list, deliberately: a list that exempts itself is
+# a hole anyone can widen by writing into it. So describe an entry's content
+# here; never reproduce it.
+#
+# Neither check nor any of their unit tests needs an entry: they build every
+# probe string from CODE POINTS (`String.fromCodePoint`), so their sources stay
+# ASCII. Any NEW test that has to exercise these characters should do the same
+# before reaching for an entry here -- reach for one only when the fixture's
+# point is the BYTES, as it is for the six below.
+
+# A declared-side fold fixture: a Japanese label interleaved with ASCII, so the
+# 1:1 `?` mask CloudFormation's GetTemplate applies must stay aligned around it.
+tests/classify-declared-push-funnel.test.ts
+
+# The same mask, asserted on a JSON string value rather than a push site.
+tests/classify-json-string-nonascii-mask.test.ts
+
+# A Step Functions `Cause` observed live as two Japanese runs masked 1:1 while
+# CloudFormation's own drift detection reported IN_SYNC. The RUN LENGTHS are the
+# discriminator, so the characters cannot be substituted.
+tests/classify-sfn-definition-712.test.ts
+
+# `sanitizeForTerminal` must leave non-ASCII text UNTOUCHED while stripping
+# control sequences; the case is only meaningful with real non-ASCII input.
+tests/report-sanitize-829.test.ts
+
+# Bidi / non-ASCII handling in a reported `actual` value.
+tests/report-value-bidi-1307.test.ts
+
+# The revert-plan mask guard, on a Japanese `Cause` string.
+tests/revert-plan-mask-guard.test.ts
