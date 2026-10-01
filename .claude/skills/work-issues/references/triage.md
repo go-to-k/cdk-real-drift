@@ -110,9 +110,9 @@ and stand down any you do not reach. The rankings below, the premise check and
 issues both landing in `noise.ts` cannot be parallelized — bundle or defer one.
 Map each candidate to its target file before choosing.
 
-- **Security issues come FIRST** — AGENTS.md's security surfaces, which here land
-  in `src/baseline/baseline-file.ts` and `src/report/redact.ts`; when in doubt,
-  treat as security. Urgency changes ORDER and waives §3-a, never verification
+- **Security issues come FIRST** — SECURITY.md's in-scope list, which here lands
+  in `src/baseline/baseline-file.ts` and `src/report/redact.ts`; its
+  out-of-scope class never ranks here. Urgency changes ORDER and waives §3-a, never verification
   depth.
 - **Then higher `Severity` first, when BOTH candidates carry it** (`high` >
   `medium` > `low`); a proxy (title prefix, hunch) does not outrank the

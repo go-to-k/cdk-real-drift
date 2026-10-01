@@ -2,7 +2,8 @@
 
 ### 6. On a confirmed bug: file an issue, then fix it — with a unit test (mandatory)
 
-**Always file a GitHub issue for every confirmed bug** (`gh issue create`), even when
+**File a GitHub issue for every confirmed bug that meets AGENTS.md's "File only
+what a user can hit" bar** (`gh issue create`), even when
 you fix it in the same session — every bug becomes a tracked, claimable unit, so
 nothing is silently lost and parallel sessions do not duplicate it. An issue-only
 round files the issue and stops there; a fix-in-session round still files it, then
