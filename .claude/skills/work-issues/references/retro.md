@@ -19,9 +19,8 @@ counts findings folded into an EXISTING issue; `updatedAt` cannot answer that,
 since §4 makes every lane post a CLAIM comment, so count the issues whose BODY
 gained a checklist row. When `M > N`, add the reason in one line; one root cause
 split across issues means §5's sweep rule should have folded them, so fold the
-open ones into an umbrella now. **`filed <= closed` is NOT a target and must
-never become one** — an unfiled finding removes the defect from the record while
-leaving it in the product. If weighing whether to file, file.
+open ones into an umbrella now. Whatever the counts, name which filed items
+AGENTS.md's "File only what a user can hit" bar admitted.
 
 **Then run the PROMOTION check on every `next` this run filed**: a deferral is
 judged against the run that HAPPENED, not the one predicted when it was written.

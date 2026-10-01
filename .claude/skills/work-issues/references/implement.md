@@ -94,7 +94,9 @@ the root cause is named, grep the shape across `src/`.
 ### 5-c. What you do NOT fix here
 
 **A TOOLING finding — hooks, skills, rules, CI — is recorded in
-`docs/tooling-backlog.md`, never filed as an issue.** For a product defect,
+`docs/tooling-backlog.md`, never filed as an issue.** A product finding below
+AGENTS.md's "File only what a user can hit" bar (a reviewer's included) is one
+line in the PR body, neither filed nor folded. For a product defect,
 **resolve it against the issues ALREADY OPEN first**: the code sweep finds
 sibling SITES, this finds a sibling ISSUE, written from a different site by
 another lane and naming different symbols.

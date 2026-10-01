@@ -94,7 +94,7 @@ never by hand on a PR.
 
 ## Scales
 
-**`Severity`.** `high` = a wrong result, data loss, a security surface, or
+**`Severity`.** `high` = a wrong result, data loss, an exposure SECURITY.md puts in scope, or
 something a user hits in normal operation; `medium` = a capability is missing
 but there is a workaround, or it only shows up under a specific condition;
 `low` = internal tidiness, invisible to users. **Rate what a user experiences,

@@ -397,8 +397,12 @@ origin/main`). `stale-base-gate` still refuses a push reverting recent main
   excluded, the context test decides: if ANY file the fix touches or must
   read was read this session — a reviewer's read set counts — it is `now`;
   so is `Severity: high`, and anything that compounds if left loose (an
-  unwritten fixture, a half-landed pattern). Every recent wrap-time challenge
-  on this flipped it.
+  unwritten fixture, a half-landed pattern).
+- **File only what a user can hit.** An issue names a path from a CDK app or
+  deployed stack and a documented command to a false drift, a missed drift, a
+  crash, a wrong revert, or an exposure [SECURITY.md](SECURITY.md) puts in
+  scope. Wording, an input no CDK app produces, and SECURITY.md's
+  out-of-scope class are a line in the PR body, never an issue.
 - **Claim a filed issue before working it — post a `gh issue comment` the moment
   you START (or commit to start) work, so parallel agents and sessions don't
   collide.** Multiple agents pick up open issues concurrently; two of them fixing
@@ -415,13 +419,9 @@ src/revert/plan.ts`). This is the issue-level twin of the worktree
 
 ## Tooling Policy
 
-The agent-tooling layer (hooks, markgate gates, `.claude/rules/**`,
-`.claude/skills/**`, prose fences) had grown to 27 PreToolUse entries over 17
-hook scripts, five markgate gates, 49 KB of rules and 288 KB of skills — while
-every open issue on the tracker was about that layer rather than about `cdkrd`.
-The tooling itself bred bugs: a bash parser for shell commands is never
-finished, and each miss became an issue, a PR and a review round as if it were a
-product bug. **These rules exist so it does not grow back.** An exception is
+The agent-tooling layer (hooks, gates, `.claude/rules/**`, `.claude/skills/**`,
+prose fences) once outgrew `cdkrd` itself and bred its own bugs; these rules keep
+it from growing back. An exception is
 stated in the PR body for the maintainer to decide.
 
 1. **Default answer: do not build it.** A new hook, gate, CI fence, rule
