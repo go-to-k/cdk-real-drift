@@ -4,8 +4,9 @@
 
 **File a GitHub issue for every confirmed bug that meets AGENTS.md's "File only
 what a user can hit" bar** (`gh issue create`), even when
-you fix it in the same session — every bug becomes a tracked, claimable unit, so
-nothing is silently lost and parallel sessions do not duplicate it. An issue-only
+you fix it in the same session — every such bug becomes a tracked, claimable unit,
+so parallel sessions do not duplicate it. A confirmed bug below the bar is one line
+in the hunt's report (and the fix PR's body, if fixed), never filed. An issue-only
 round files the issue and stops there; a fix-in-session round still files it, then
 closes it from the PR. The body carries the real repro (live model / commands) so the
 later fixer has the evidence. Search the open issues first and fold a hit into the
