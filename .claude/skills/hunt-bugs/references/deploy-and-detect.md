@@ -34,10 +34,10 @@ fixture: `revert-toggle-converge`.
 **Probe methods (cheapest first):**
 
 - **Stackless CC probe** (when the resource is CC-creatable): `cloudcontrol
-create-resource` → OOB-mutate → bare-`remove` probe → explicit-`add` probe → delete.
+  create-resource` → OOB-mutate → bare-`remove` probe → explicit-`add` probe → delete.
   The whole per-property proof for ~$0, no fixture (go-to-k/cdk-real-drift#1689).
 - **Explicit-write probe before writing a fix**: `aws cloudcontrol update-resource
---patch-document '[{"op":"add","path":"/X","value":<default>}]'` against a
+  --patch-document '[{"op":"add","path":"/X","value":<default>}]'` against a
   CLI-created resource answers "does the explicit write converge?" with no stack.
 - **Piggyback** the probe (mutate → revert → re-read) on every NEW `KNOWN_DEFAULTS`
   fold a hunt ships, while the stack is still up — nearly free.

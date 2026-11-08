@@ -160,7 +160,7 @@ commit`, `cd <wt>; git commit`, `(cd <wt> && git commit)` and
 
 - Separators inside quoted spans are **NEUTRALISED to a placeholder, never
   deleted**. Blanking the span also erased the PATH in `cd "<worktree>" && git
-commit`, so target resolution fell back to the payload cwd and the gate passed
+  commit`, so target resolution fell back to the payload cwd and the gate passed
   a commit it should have blocked (go-to-k/cdk-local#542). Segments keep their
   original text; a verb inside a string still does not match, because each verb
   regex is anchored at the segment START.

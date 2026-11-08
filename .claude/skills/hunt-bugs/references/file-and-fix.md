@@ -58,13 +58,13 @@ Then fix it:
    Redshift / S3 / EFS). When the root cause generalizes:
    - **Map the blast radius.** Enumerate which other types/properties share the
      trigger (`aws cloudformation describe-type --type RESOURCE --type-name <T>
---query Schema`) and name them in the PR.
+     --query Schema`) and name them in the PR.
    - **Add a DATA-DRIVEN invariant test, not just a per-type one.** A hand-built
      single-type test proves the symptom is gone for ONE shape. Drive the test from
      the golden corpus's REAL schemas: load every `tests/corpus/*.json` (via
      `reviveSchema`), reproduce the trigger for each, and assert the invariant holds
      for ALL of them — it then self-extends as the corpus grows (reference:
      `tests/revert-plan.test.ts`, `create-only invariant over all real corpus
-schemas`).
+     schemas`).
    - **Confirm it fails without the fix and passes with it**, like any regression
      test — then the whole class is proven closed, not just one instance.

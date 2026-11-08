@@ -111,7 +111,7 @@ fields, canonicalization) rather than by maintaining a hand-curated allow-list o
    ApiGateway::Method needs NO adapter, its CFn physical id is already the full
    `RestApiId|ResourceId|HttpMethod`; plus
    EC2::TransitGatewayRouteTablePropagation, whose `[TransitGatewayRouteTableId,
-TransitGatewayAttachmentId]` composite is built from TWO declared props (its
+   TransitGatewayAttachmentId]` composite is built from TWO declared props (its
    CFn Ref is the underscore `attach_rtb` console id, not the CC pipe composite
    — the sibling RouteTableAssociation/Route Refs ARE already the pipe composite,
    so they need no adapter) — `CC_IDENTIFIER_ADAPTERS`
@@ -743,7 +743,7 @@ only when non-zero — unrecorded values are named as such, never folded into
   the user never decided on (no baseline entry, resource never snapshot-complete —
   which includes every undeclared value on a no-baseline stack) is reported as
   `notRevertable` (`unrecorded — record it if the live value is right, or
---remove-unrecorded to remove it`) **in a no-prompt run** (`--yes` or non-TTY) —
+  --remove-unrecorded to remove it`) **in a no-prompt run** (`--yes` or non-TTY) —
   there the un-guarded revert mirror would be **destructive** (a bulk REMOVE of every
   undecided value that slipped through subtraction). But in a gated interactive
   prompt (TTY, no `--yes`) the standout undeclared values ARE surfaced as opt-in
@@ -881,7 +881,7 @@ only when non-zero — unrecorded values are named as such, never folded into
   single-statement rebuild #1714, which still REFUSES — honestly, per-resource — a
   statement carrying a condition key the reader does not project, e.g.
   `lambda:EventSourceToken`, rather than silently dropping it), a `deleted` resource (`deleted — recreate via cdk
-deploy`: a patch can't recreate a resource), a **create-only** property (drift on a
+  deploy`: a patch can't recreate a resource), a **create-only** property (drift on a
   HARD `createOnlyProperties` field needs a resource replacement, which an in-place
   `UpdateResource` can't do — caught from the schema at plan time, not at apply
   time; `conditionalCreateOnlyProperties` are NOT barred — they are create-only only
@@ -1385,7 +1385,7 @@ and KMS-alias fixes are cdkrd-only because cdkd's baseline is an AWS snapshot
 Things worth a reviewer's challenge before Phase 4:
 
 1. **Lint (RESOLVED)**: `vp check` is now clean (0 errors, 7 warnings; CI `vp run
-check` green). The earlier `TS2591 'process'` errors came from oxc's type-aware
+   check` green). The earlier `TS2591 'process'` errors came from oxc's type-aware
    lint using the root `tsconfig.json` (which excludes tests) for test files; fixed by
    adding `tests/tsconfig.json` (oxc discovers the nearest per-file project), which
    includes the tests with node types. The 7 remaining are intentional `no-explicit-any`
