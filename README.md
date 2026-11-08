@@ -496,7 +496,7 @@ it just reports (#1054/#1185); use the standalone `record --yes` / `ignore --yes
 / `revert --yes` verbs for scripted, non-interactive decisions.
 
 - **`check` with drift** offers `Record / Revert / Ignore / Decide per finding /
-Nothing` (see [The model](#the-model-one-verb-you-run-three-it-offers)). Each
+  Nothing` (see [The model](#the-model-one-verb-you-run-three-it-offers)). Each
   option appears only when it applies (no Revert if nothing is revertable; "Decide per finding" only
   with >1 finding). Aborting the Revert confirmation writes nothing.
 - **`revert`** shows the plan, then a multiselect of the op(s) to write. **Every op
@@ -850,14 +850,14 @@ mode: a `record` / `ignore` that would need the selection prompt refuses without
 (`"exit": 2`). Per-verb element:
 
 - `record` → `{ "stack", "recorded": <n>, "wrote": <bool>, "baselinePath"?: "<path>",
-"refused"?: true, "error"?: "<reason>" }` — `recorded` is how many undeclared
+  "refused"?: true, "error"?: "<reason>" }` — `recorded` is how many undeclared
   value(s) were written; `baselinePath` is the baseline file written (a path string,
   deliberately NOT named `baseline` — that key is check's boolean flag; #1336).
 - `ignore` → `{ "stack", "added": <n>, "wrote": <bool>, "config"?:
-".cdkrd/ignore.yaml", "refused"?: true, "error"?: "<reason>" }` — `added` is how
+  ".cdkrd/ignore.yaml", "refused"?: true, "error"?: "<reason>" }` — `added` is how
   many new rules were appended.
 - `revert` → `{ "stack", "reverted": <n>, "failed": <n>, "aborted": <bool>, "exit":
-<n>, "error"?: "<reason>" }` — `reverted` / `failed` count resources; `exit` is
+  <n>, "error"?: "<reason>" }` — `reverted` / `failed` count resources; `exit` is
   that stack's contribution (0 clean / 1 drift remains / 2 failure).
 
 After publication this shape is a backward-compatible API.

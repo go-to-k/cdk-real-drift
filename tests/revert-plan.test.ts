@@ -4509,8 +4509,7 @@ describe('#968 — pure-null array husks nested INSIDE an array emit descending 
       let node: unknown = out;
       for (let i = 0; i < segs.length - 1; i++) node = (node as Record<string, unknown>)[segs[i]!];
       const last = segs[segs.length - 1]!;
-      if (Array.isArray(node))
-        node.splice(Number(last), 1); // SPLICE — shifts subsequent indices (as CC does)
+      if (Array.isArray(node)) node.splice(Number(last), 1); // SPLICE — shifts subsequent indices (as CC does)
       else delete (node as Record<string, unknown>)[last];
     }
     return out;

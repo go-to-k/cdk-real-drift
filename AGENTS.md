@@ -257,7 +257,7 @@ detail:
 - **Conventional commits**: use `feat:` / `fix:` / `chore:` / `docs:` / `test:`
   prefixes. A `pr-title-check` workflow enforces PR titles.
 - **Delete CloudFormation stacks with `delstack`, NOT `aws cloudformation
-delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
+  delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   `DELETE_FAILED` — orphaning its resources — whenever a member can't be deleted
   (an out-of-band-modified Route53 record once blocked its hosted zone's deletion
   and left the zone billing). `delstack` force-deletes the stack and its
@@ -265,7 +265,7 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   **`delstack -s <stack> -r <region> -y -f`** is
   CloudFormation-based (delete a stack by name); the **`delstack cdk`** subcommand
   is a drop-in for `cdk destroy` (CDK-aware) — `delstack cdk -a cdk.out -r
-<region> -f -y` reads an existing `cdk.out` (no re-synth; omit `-a` to
+  <region> -f -y` reads an existing `cdk.out` (no re-synth; omit `-a` to
   synthesize, or `-s` to target specific stacks). Integ/dogfood teardown traps
   use `delstack cdk -a cdk.out`. Pinned in `.mise.toml`
   (`ubi:go-to-k/delstack`). `delstack` only sees stack members — after deleting,
@@ -380,9 +380,9 @@ delete-stack` / `npx cdk destroy`.** Plain deletion leaves a stack
   `git push origin main` is refused for any commit, green or not. Enumerated
   once, in [.claude/rules/hooks.md](.claude/rules/hooks.md). What it cannot see
   is a commit on your LOCAL `main` (reversible: `git branch` + `git reset --hard
-origin/main`). `stale-base-gate` still refuses a push reverting recent main
+  origin/main`). `stale-base-gate` still refuses a push reverting recent main
   work. **Wait for the checks before `gh pr merge`** (`gh pr checks <N>
---watch`, by NUMBER).
+  --watch`, by NUMBER).
 - **Every session-wrap / task-complete report MUST end with a "Remaining
   work" section AND a "Session close" verdict — unprompted.** The full field
   reference — The four TODO fields (`Session-fit` / `Severity` / `Effort` /
@@ -411,7 +411,7 @@ origin/main`). `stale-base-gate` still refuses a push reverting recent main
   `diff/classify.ts`, `revert/plan.ts`), so same-issue almost always means
   same-file. Before editing, comment which PR / worktree branch you are using and
   which file(s) you will touch (e.g. `working on this in PR #669 —
-src/revert/plan.ts`). This is the issue-level twin of the worktree
+  src/revert/plan.ts`). This is the issue-level twin of the worktree
   DISJOINT-FILE rule: the comment is the lock. Also check for an existing
   "working on this" comment (and open PRs referencing the issue) BEFORE you start
   — if one exists, pick a different issue. Skip only for a trivial change you will

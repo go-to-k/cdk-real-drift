@@ -78,7 +78,7 @@ additionally root-cause, fix, add the unit test, keep the fixture, carry through
    `record`→`check` is hollow and the deploy yields nothing; such a type is an
    `SDK_OVERRIDES` reader candidate, a separate feature task. Confirm first with
    `aws cloudformation describe-type --type RESOURCE --type-name <T> --query
-ProvisioningType`, then probe READ with `cloudcontrol get-resource` on a live instance.
+   ProvisioningType`, then probe READ with `cloudcontrol get-resource` on a live instance.
 
    **A `read` handler is NOT enough — also check `primaryIdentifier` ARITY.** A
    COMPOSITE `primaryIdentifier` whose CFn physical id is only the CHILD segment makes

@@ -19,7 +19,7 @@ Take it all the way to merged — do not leave a green PR hanging:
 2. **Remove the worktree YOU created** — a left-behind worktree is the silent residue
    of this flow. From the MAIN checkout: `git worktree remove .worktrees/<name>`
    (`--force` if it refuses on leftover build artifacts), then `git branch -D
-wt-<name>` if the branch lingers, and `git worktree prune`; confirm with
+   wt-<name>` if the branch lingers, and `git worktree prune`; confirm with
    `git worktree list`.
    **A hunt launched IN-PLACE (§1) added none, so it removes none**: it must not
    `git worktree remove` the tree it is running in — that deletes its own cwd — nor

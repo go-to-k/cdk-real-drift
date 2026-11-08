@@ -12,7 +12,7 @@
 - **An added-direction probe must create its OOB children AFTER `record`** —
   pre-record children are endorsed as recorded-added and never surface, by design.
   Added-after-record IS confirmed drift, so assert exit 1 with `appeared since
-record` and expect plain `revert --yes` to delete it; the marker is stamped at
+  record` and expect plain `revert --yes` to delete it; the marker is stamped at
   `record` time, so a baseline from an older binary keeps potential-only behavior.
 - **An FN detect-probe needs its resource at `readGap=0`** — R62 fires only on
   snapshot-COMPLETE resources, so one unprojected declared prop (or a declared
@@ -140,7 +140,7 @@ record` and expect plain `revert --yes` to delete it; the marker is stamped at
   use `autoDeleteObjects` in a zero-skip fixture, whose custom resource is ALWAYS
   `skipped=1`.
 - **A container-image Lambda fixture MUST build with `--provenance=false
---sbom=false`** — Docker 24+ attestation layers are rejected at CREATE
+  --sbom=false`** — Docker 24+ attestation layers are rejected at CREATE
   NON-DETERMINISTICALLY, so it reads as flakiness. Build `--platform linux/amd64`
   unless the function declares `arm64`.
 - **A service that VALIDATES a role's permissions at create races a `grant()`-style

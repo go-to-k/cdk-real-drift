@@ -118,7 +118,7 @@
     "agent-base": "^9.0.0",
     "http-proxy-agent": "^9.1.0",
     "https-proxy-agent": "^9.1.0",
-    "jsonata": "^1.8.7",
+    "jsonata": "^1.8.9",
     "picocolors": "^1.1.1",
     "proxy-from-env": "^2.1.0",
     "yaml": "^2.9.0"
@@ -129,6 +129,6 @@
     "aws-sdk-client-mock": "^4.1.0",
     "tsdown": "^0.22.9",
     "typescript": "^7.0.2",
-    "vite-plus": "^0.2.9"
+    "vite-plus": "^1.4.0"
   }
 }
