@@ -12,8 +12,8 @@ importers:
   .:
     dependencies:
       '@aws-cdk/cloud-assembly-api':
-        specifier: ^2.2.5
-        version: 2.2.5(@aws-cdk/cloud-assembly-schema@55.3.0)
+        specifier: ^3.0.0
+        version: 3.0.0(@aws-cdk/cloud-assembly-schema@55.3.0)
       '@aws-cdk/toolkit-lib':
         specifier: ^1.45.0
         version: 1.45.0(@aws-cdk/cli-plugin-contract@2.182.2)
@@ -262,12 +262,6 @@ packages:
   '@aws-cdk/cli-plugin-contract@2.182.2':
     resolution: {integrity: sha512-M1G52uA2JZPErOIKAkr0cjty7Y+/g99KHH7p9ZQv5jpZG7PNhtIraufbgBAo3iCEAH38SDtiPJL3+Ac8EttrIQ==}
     engines: {node: '>= 18.0.0'}
-
-  '@aws-cdk/cloud-assembly-api@2.2.5':
-    resolution: {integrity: sha512-RrjdgAgOjc0rMSGhMmIq1IKRI2lSYEK5XLu+863pQjecxNaNQkrQCyI62Z3JClFnQnjBeFSfDoY78apS9Aa9tA==}
-    engines: {node: '>= 18.0.0'}
-    peerDependencies:
-      '@aws-cdk/cloud-assembly-schema': '>=53.28.0'
 
   '@aws-cdk/cloud-assembly-api@3.0.0':
     resolution: {integrity: sha512-/URaK/LT3OXH0RArT7Fb8PYG3rZ23saBDGKZcDaPDPPAlXizJwSB8IehA5KgAcSZ6mNu/T89T2H3FJ9wD5q6FQ==}
@@ -2494,13 +2488,13 @@ packages:
   safe-buffer@5.2.1:
     resolution: {integrity: sha512-rp3So07KcdmmKbGvgaNxQSJr7bGVSVk5S9Eq1F+ppbRo70+YeaDxkw5Dd8NPN+GD6bjnYm2VuPuCXmpuYvmCXQ==}
 
-  semver@7.8.4:
-    resolution: {integrity: sha512-rUCObTnP32Q08R2uuIrt7r9PlEonuTmtuXYcW6s5kjdlj3xbnwe+21yXptAUYcMAABLkYYTtnmzb3w3EDZfueA==}
+  semver@7.8.5:
+    resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
     engines: {node: '>=10'}
     hasBin: true
 
-  semver@7.8.5:
-    resolution: {integrity: sha512-Y7/KDsb8LjooZpwaqGyulO6DQlksgCncchHGk+sZIY4SBvUocMBEFH5Ur1fI4dV+Jvl0w6cjvucaIi40puRioA==}
+  semver@7.8.6:
+    resolution: {integrity: sha512-9lpSSU4Mly3mrtruwLs1eLK6+gzbzqeBFwRNjIjE+9LuDpWdYctrQlQ3ej1Ilgi7gknpsTRnPoLP8DpCHqHIJw==}
     engines: {node: '>=10'}
     hasBin: true
 
@@ -2800,17 +2794,11 @@ snapshots:
 
   '@aws-cdk/cli-plugin-contract@2.182.2': {}
 
-  '@aws-cdk/cloud-assembly-api@2.2.5(@aws-cdk/cloud-assembly-schema@55.3.0)':
-    dependencies:
-      '@aws-cdk/cloud-assembly-schema': 55.3.0
-      jsonschema: 1.5.0
-      semver: 7.8.4
-
   '@aws-cdk/cloud-assembly-api@3.0.0(@aws-cdk/cloud-assembly-schema@55.3.0)':
     dependencies:
       '@aws-cdk/cloud-assembly-schema': 55.3.0
       jsonschema: 1.5.0
-      semver: 7.8.5
+      semver: 7.8.6
 
   '@aws-cdk/cloud-assembly-schema@55.3.0': {}
 
@@ -5443,9 +5431,9 @@ snapshots:
 
   safe-buffer@5.2.1: {}
 
-  semver@7.8.4: {}
-
   semver@7.8.5: {}
+
+  semver@7.8.6: {}
 
   shebang-command@2.0.0:
     dependencies:
