@@ -121,6 +121,31 @@ const WRITEONLY_REINCLUDE_OVERRIDE_READABLE: Record<string, readonly string[]> =
   'AWS::ECS::Service': ['VolumeConfigurations'],
 };
 
+// The override-readable props (above) of `resourceType` that a SELECTED `sdk` item of the
+// same resource is itself reverting (an op at or under the prop). For these the Cloud
+// Control re-include must carry the DECLARED value — exactly what that SDK writer sends —
+// not the drifted live one: the items apply in no guaranteed order, so a live-valued
+// re-include applied AFTER the writer would write the drift straight back (#1941 M2).
+// Evaluate it on the POST-selection plan, so a deselected sdk item does not count.
+export function sdkRevertedOverrideReadablePaths(
+  items: readonly { logicalId: string; kind: string; ops: readonly PatchOp[] }[],
+  logicalId: string,
+  resourceType: string
+): Set<string> {
+  const out = new Set<string>();
+  for (const path of WRITEONLY_REINCLUDE_OVERRIDE_READABLE[resourceType] ?? []) {
+    const ptr = toPointer(path);
+    const hit = items.some(
+      (i) =>
+        i.kind === 'sdk' &&
+        i.logicalId === logicalId &&
+        i.ops.some((o) => o.path === ptr || o.path.startsWith(`${ptr}/`))
+    );
+    if (hit) out.add(path);
+  }
+  return out;
+}
+
 // SDK-override types that are nonetheless Cloud Control FULLY_MUTABLE — their override
 // exists only to work around a READ quirk, NOT because CC cannot UPDATE them, so a CC
 // UpdateResource revert is valid and they are EXEMPT from the "read-override => not
@@ -2152,7 +2177,10 @@ export function writeOnlyReincludeOps(
   resourceType?: string,
   // The raw live model (CC read + SDK supplement). The SOLE value source for an
   // override-readable prop (WRITEONLY_REINCLUDE_OVERRIDE_READABLE); unused otherwise.
-  live?: Record<string, unknown>
+  live?: Record<string, unknown>,
+  // Override-readable paths a selected sdk item of the same resource is reverting
+  // (sdkRevertedOverrideReadablePaths): for these the value source is DECLARED, not live.
+  declaredSourced?: ReadonlySet<string>
 ): PatchOp[] {
   if (!declared || !schema) return [];
   // The override-readable write-only props the exemption stripped (#1941) are appended so
@@ -2211,8 +2239,9 @@ export function writeOnlyReincludeOps(
     // An override-readable prop is preserved from LIVE (no live value → skipped, never a
     // declared fallback — see WRITEONLY_REINCLUDE_OVERRIDE_READABLE). It still requires a
     // declared value: an undeclared one has no template intent to keep alive.
-    const fromLive = overrideReadable.includes(path);
-    if (fromLive && valueAtDottedPath(declared, path) === undefined) continue;
+    const fromLive = overrideReadable.includes(path) && !declaredSourced?.has(path);
+    if (overrideReadable.includes(path) && valueAtDottedPath(declared, path) === undefined)
+      continue;
     const value = fromLive
       ? live
         ? valueAtDottedPath(live, path)

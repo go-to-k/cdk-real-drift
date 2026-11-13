@@ -461,6 +461,59 @@ describe('augmentRevertPlan (#760 — the previewed/confirmed plan reflects the 
     expect(out).toBe(sdkItem); // returned unchanged (same reference)
   });
 
+  // #1941 M2: ECS VolumeConfigurations is re-included from LIVE (a preserve), but when the
+  // user ALSO selected the VolumeConfigurations drift (an sdk item, applied in no
+  // guaranteed order), the cc re-include must carry the DECLARED value that writer sends —
+  // else a cc update applied after the writer writes the drift back.
+  describe('ECS VolumeConfigurations re-include source (#1941)', () => {
+    const declaredVols = [{ Name: 'ebs', ManagedEBSVolume: { RoleArn: 'arn:r', SizeInGiB: 20 } }];
+    const liveVols = [{ Name: 'ebs', ManagedEBSVolume: { RoleArn: 'arn:r', SizeInGiB: 50 } }];
+    const schemas = new Map([['AWS::ECS::Service', schemaWithWriteOnly([])]]);
+    const live = new Map([['Svc', { DesiredCount: 1, VolumeConfigurations: liveVols }]]);
+    const declaredFor = (id: string) =>
+      id === 'Svc' ? { DesiredCount: 0, VolumeConfigurations: declaredVols } : undefined;
+    const base = {
+      logicalId: 'Svc',
+      displayId: 'Stack/Svc',
+      resourceType: 'AWS::ECS::Service',
+      physicalId: 'arn:svc',
+    };
+    const cc: RevertPlan['items'][number] = {
+      ...base,
+      kind: 'cc',
+      ops: [{ op: 'add', path: '/DesiredCount', value: 0, human: '' }],
+    };
+    const sdk: RevertPlan['items'][number] = {
+      ...base,
+      kind: 'sdk',
+      ops: [
+        {
+          op: 'add',
+          path: '/VolumeConfigurations/0/ManagedEBSVolume/SizeInGiB',
+          value: 20,
+          human: '',
+        },
+      ],
+    };
+    const reincluded = (items: RevertPlan['items']) =>
+      augmentRevertPlan({ items, notRevertable: [] }, schemas, live, declaredFor)
+        .items.find((i) => i.kind === 'cc')!
+        .ops.find((o) => o.path === '/VolumeConfigurations');
+
+    it('only the cc item selected -> re-includes the LIVE value', () => {
+      expect(reincluded([cc])?.value).toEqual(liveVols);
+    });
+    it('sdk VolumeConfigurations item selected FIRST -> cc carries the DECLARED value', () => {
+      expect(reincluded([sdk, cc])?.value).toEqual(declaredVols);
+    });
+    it('sdk VolumeConfigurations item selected AFTER -> cc carries the DECLARED value', () => {
+      expect(reincluded([cc, sdk])?.value).toEqual(declaredVols);
+    });
+    it('an sdk item of ANOTHER resource does not switch the source', () => {
+      expect(reincluded([cc, { ...sdk, logicalId: 'Other' }])?.value).toEqual(liveVols);
+    });
+  });
+
   it('a cc item with no schema / no write-only declared value is returned with its ops intact', () => {
     const plan: RevertPlan = { items: [ccItem()], notRevertable: [] };
     const augmented = augmentRevertPlan(plan, new Map(), new Map(), () => undefined);
