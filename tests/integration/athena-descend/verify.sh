@@ -47,7 +47,7 @@ if [ -n "$CORPUS_DIR" ]; then
 fi
 
 node -e '
-const j=require("/tmp/cdkrd-athena-descend.json");
+const j=require("/tmp/cdkrd-athena-descend.json")[0]; // --json is one array, one element per stack (#983)
 const wg=(j.findings||[]).filter(f=>f.resourceType==="AWS::Athena::WorkGroup");
 const drift=wg.filter(f=>f.tier==="undeclared"||f.tier==="declared").map(f=>f.path);
 console.error("WorkGroup findings:",JSON.stringify(wg.map(f=>({tier:f.tier,path:f.path}))));

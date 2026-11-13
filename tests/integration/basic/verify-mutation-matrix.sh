@@ -9,10 +9,16 @@
 #   M2 undeclared-add     acceleration appears (R62:        resolve: record
 #                         "appeared since record" on a
 #                         snapshot-complete resource)
-#   M3 undeclared-change  recorded acceleration value flips resolve: record
+#   M3 undeclared-change  recorded acceleration value flips resolve: restore
+#                         to the AWS default (Suspended)
 #   M4 undeclared-add     out-of-band CORS config appears   resolve: record
-#   M5 value-remove       recorded CORS deleted ->          resolve: record
+#   M5 value-remove       recorded CORS deleted ->          resolve: restore
 #                         "baseline value removed since record"
+#
+# M3/M5 resolve by RESTORING the live value, not by `record --yes`: since
+# #1174 (#758), a scripted record PRESERVES a recorded watch whose value
+# reverted to default or was removed (dropping one is an interactive-only
+# decision), so the drift must survive that record. Both steps assert it.
 #
 # M4/M5 use CORS, not tags (first live run, R68): put-bucket-tagging REPLACES
 # the whole TagSet and S3 refuses to drop the CFn-applied aws:* system tags
@@ -65,6 +71,16 @@ expect_clean() {
     || fail "$name: expected CLEAN (exit 0) after resolving"
 }
 
+# record --yes must keep a reverted-to-default / removed watch (#758): it
+# says so, and the next check still reports the drift with the given pattern.
+expect_record_preserves() {
+  local name="$1" pattern="$2"
+  $CLI record "$STACK" --region "$REGION" --yes 2>&1 | tee "$OUT"
+  [ "${PIPESTATUS[0]}" -eq 0 ] || fail "$name: record --yes failed"
+  grep -q "PRESERVED 1 recorded watch" "$OUT" || fail "$name: record --yes did not report the preserved watch"
+  expect_drift "$name (after record --yes)" "Undeclared Drift" "$pattern"
+}
+
 echo "=== build cdk-real-drift ==="
 (cd "$ROOT" && vp run build) || fail "build"
 
@@ -97,12 +113,14 @@ echo "=== M3 undeclared-change: recorded acceleration value flips ==="
 aws s3api put-bucket-accelerate-configuration --bucket "$BUCKET" \
   --accelerate-configuration Status=Suspended --region "$REGION" || fail "M3 inject"
 expect_drift "M3" "Undeclared Drift" "AccelerateConfiguration"
-$CLI record "$STACK" --region "$REGION" --yes || fail "M3 record"
+expect_record_preserves "M3" "AccelerateConfiguration"
+aws s3api put-bucket-accelerate-configuration --bucket "$BUCKET" \
+  --accelerate-configuration Status=Enabled --region "$REGION" || fail "M3 restore"
 expect_clean "M3"
 
 echo "=== M4 undeclared-add: out-of-band CORS configuration ==="
-aws s3api put-bucket-cors --bucket "$BUCKET" --region "$REGION" --cors-configuration \
-  '{"CORSRules":[{"AllowedMethods":["GET"],"AllowedOrigins":["https://example.com"]}]}' \
+CORS='{"CORSRules":[{"AllowedMethods":["GET"],"AllowedOrigins":["https://example.com"]}]}'
+aws s3api put-bucket-cors --bucket "$BUCKET" --region "$REGION" --cors-configuration "$CORS" \
   || fail "M4 inject"
 expect_drift "M4" "Undeclared Drift" "CorsConfiguration" "appeared since record"
 $CLI record "$STACK" --region "$REGION" --yes || fail "M4 record"
@@ -111,7 +129,9 @@ expect_clean "M4"
 echo "=== M5 value-remove: the recorded CORS configuration disappears ==="
 aws s3api delete-bucket-cors --bucket "$BUCKET" --region "$REGION" || fail "M5 inject"
 expect_drift "M5" "Undeclared Drift" "CorsConfiguration" "baseline value removed since record"
-$CLI record "$STACK" --region "$REGION" --yes || fail "M5 record"
+expect_record_preserves "M5" "CorsConfiguration"
+aws s3api put-bucket-cors --bucket "$BUCKET" --region "$REGION" --cors-configuration "$CORS" \
+  || fail "M5 restore"
 expect_clean "M5"
 
 echo "INTEG PASS"

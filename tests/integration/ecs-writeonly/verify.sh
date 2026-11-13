@@ -45,7 +45,7 @@ echo "=== check: ECS Service is READ (composite identifier), not skipped ==="
 $CLI check "$STACK" --region "$REGION" --json > /tmp/cdkrd-ecs-clean.json 2>/tmp/cdkrd-ecs-clean.err \
   || { cat /tmp/cdkrd-ecs-clean.err; fail "check errored"; }
 node -e '
-  const j = require("/tmp/cdkrd-ecs-clean.json");
+  const j = require("/tmp/cdkrd-ecs-clean.json")[0]; // --json is one array, one element per stack (#983)
   const svc = (j.findings||[]).filter(f => f.resourceType === "AWS::ECS::Service");
   if (svc.some(f => f.tier === "skipped")) { console.error("ECS Service was SKIPPED — adapter not applied"); process.exit(1); }
   if (svc.some(f => f.tier === "declared")) { console.error("unexpected declared drift pre-mutation:\n"+JSON.stringify(svc,null,2)); process.exit(1); }
@@ -65,7 +65,7 @@ sleep 4
 echo "=== check DETECTS the DesiredCount declared drift ==="
 $CLI check "$STACK" --region "$REGION" --json > /tmp/cdkrd-ecs-drift.json 2>/dev/null
 node -e '
-  const j = require("/tmp/cdkrd-ecs-drift.json");
+  const j = require("/tmp/cdkrd-ecs-drift.json")[0]; // --json is one array, one element per stack (#983)
   const hit = (j.findings||[]).some(f => f.resourceType === "AWS::ECS::Service" && f.tier === "declared" && String(f.path).includes("DesiredCount"));
   if (!hit) { console.error("DesiredCount drift NOT detected"); process.exit(1); }
   console.log("DesiredCount drift detected ✓");

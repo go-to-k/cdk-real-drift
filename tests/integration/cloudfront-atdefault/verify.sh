@@ -29,7 +29,7 @@ echo "=== check: schema-defaulted nested values fold as atDefault, none are drif
 $CLI check "$STACK" --region "$REGION" --show-all --json > /tmp/cdkrd-cfad.json 2>/tmp/cdkrd-cfad.err \
   || { cat /tmp/cdkrd-cfad.err; fail "check errored"; }
 node -e '
-  const j = require("/tmp/cdkrd-cfad.json");
+  const j = require("/tmp/cdkrd-cfad.json")[0]; // --json is one array, one element per stack (#983)
   const dist = (j.findings||[]).filter(f => f.resourceType === "AWS::CloudFront::Distribution");
   const tierOf = (substr) => {
     const f = dist.find(x => String(x.path).includes(substr));
