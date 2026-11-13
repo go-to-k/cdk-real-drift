@@ -24,6 +24,17 @@ updates:
       prefix: 'chore'
       prefix-development: 'chore'
       include: 'scope'
+    ignore:
+      # jsonata 2.x makes `Expression.evaluate` async; src/diff/classify.ts
+      # evaluates registry propertyTransforms inside the synchronous classify
+      # path, so the major is a code migration, not a bump. 1.8.x has no open
+      # advisory.
+      - dependency-name: 'jsonata'
+        update-types: ['version-update:semver-major']
+      # Typed against the engines floor (node >=22.12), so a newer major's
+      # types cannot let code call an API that 22.x lacks.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
     groups:
       # The @aws-sdk/client-* deps release in lockstep; one PR, not many.
       aws-sdk:
