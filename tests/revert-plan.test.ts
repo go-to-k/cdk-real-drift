@@ -3584,15 +3584,59 @@ describe('writeOnlyReincludeOps (Cloud Control read-modify-write contract, cdkd 
       'AWS::ECS::Service'
     );
     expect(prod.writeOnlyPaths).not.toContain('VolumeConfigurations');
+    const live = { DesiredCount: 1, VolumeConfigurations: [{ Name: 'ebs-data' }] };
     const ops = writeOnlyReincludeOps(
       declared,
       prod,
       [{ op: 'add', path: '/DesiredCount', value: 0, human: '' }],
-      'AWS::ECS::Service'
+      'AWS::ECS::Service',
+      live
     );
     expect(ops.map((o) => [o.op, o.path, 'value' in o ? o.value : undefined])).toEqual([
       ['add', '/VolumeConfigurations', [{ Name: 'ebs-data' }]],
     ]);
+  });
+
+  // #1941 M1: VolumeConfigurations is READABLE (its own finding, SDK-writer reverted). A
+  // user who reverts DesiredCount but deselects / ignores a VolumeConfigurations drift must
+  // keep the live value — the re-include is a PRESERVE, so it carries LIVE, not declared.
+  it('re-includes the LIVE ECS VolumeConfigurations when declared and live differ (#1941)', () => {
+    const prod = exemptOverrideReadable(
+      schemaWithWriteOnly('VolumeConfigurations'),
+      'AWS::ECS::Service'
+    );
+    const liveVols = [
+      { Name: 'ebs-data', ManagedEBSVolume: { RoleArn: 'arn:r', SizeInGiB: 50, Encrypted: true } },
+    ];
+    const ops = writeOnlyReincludeOps(
+      {
+        DesiredCount: 0,
+        VolumeConfigurations: [
+          { Name: 'ebs-data', ManagedEBSVolume: { RoleArn: 'arn:r', SizeInGiB: 20 } },
+        ],
+      },
+      prod,
+      [{ op: 'add', path: '/DesiredCount', value: 0, human: '' }],
+      'AWS::ECS::Service',
+      { DesiredCount: 1, VolumeConfigurations: liveVols }
+    );
+    expect(ops.map((o) => [o.op, o.path, 'value' in o ? o.value : undefined])).toEqual([
+      ['add', '/VolumeConfigurations', liveVols],
+    ]);
+  });
+
+  it('never falls back to the DECLARED ECS VolumeConfigurations when live has none (#1941)', () => {
+    const prod = exemptOverrideReadable(
+      schemaWithWriteOnly('VolumeConfigurations'),
+      'AWS::ECS::Service'
+    );
+    const existing = [{ op: 'add' as const, path: '/DesiredCount', value: 0, human: '' }];
+    // supplement failed / no live model at all
+    expect(writeOnlyReincludeOps(declared, prod, existing, 'AWS::ECS::Service')).toEqual([]);
+    // live model present but without the prop
+    expect(
+      writeOnlyReincludeOps(declared, prod, existing, 'AWS::ECS::Service', { DesiredCount: 1 })
+    ).toEqual([]);
   });
 
   it('does not re-include an override-readable write-only prop for an unlisted type (#1941)', () => {

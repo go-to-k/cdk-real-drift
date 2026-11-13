@@ -104,6 +104,19 @@ const WRITEONLY_REINCLUDE_SKIP: Record<string, readonly string[]> = {
 // runtime" (#1941). Opt-in per prop, not the whole exempt table: re-including e.g.
 // LaunchTemplateData or ElasticBeanstalk OptionSettings would be a side-effectful write
 // (a new template version / an environment update), the WRITEONLY_REINCLUDE_SKIP class.
+//
+// These props are re-included from the LIVE model (the SDK supplement's projection), NEVER
+// the declared one. Unlike a true write-only prop they are readable, so an out-of-band
+// change to them is its own finding (reverted by the SDK writer); a user who reverts an
+// unrelated prop but deselects or ignores that finding must keep the live value. The
+// re-include is a PRESERVE (read-modify-write) op, so it carries what is live. With no live
+// value (the supplement failed, or the service has none) it is SKIPPED, never filled from
+// the declared model: a skip can at worst fail the update honestly (the #1941 error),
+// whereas a declared fallback could silently revert a drift the user chose to keep.
+//
+// Never add a create-only prop here: on a DescribeType failure the schema is the EMPTY
+// fallback (schema/schema-strip.ts), so the create-only skip below would not see it and the
+// op would reach Cloud Control, which rejects any create-only path on update.
 const WRITEONLY_REINCLUDE_OVERRIDE_READABLE: Record<string, readonly string[]> = {
   'AWS::ECS::Service': ['VolumeConfigurations'],
 };
@@ -2136,11 +2149,14 @@ export function writeOnlyReincludeOps(
   declared: Record<string, unknown> | undefined,
   schema: SchemaInfo | undefined,
   existingOps: PatchOp[],
-  resourceType?: string
+  resourceType?: string,
+  // The raw live model (CC read + SDK supplement). The SOLE value source for an
+  // override-readable prop (WRITEONLY_REINCLUDE_OVERRIDE_READABLE); unused otherwise.
+  live?: Record<string, unknown>
 ): PatchOp[] {
   if (!declared || !schema) return [];
   // The override-readable write-only props the exemption stripped (#1941) are appended so
-  // the loop below re-includes them under exactly the same skip rules.
+  // the loop below re-includes them under exactly the same skip rules, valued from LIVE.
   const overrideReadable = resourceType
     ? (WRITEONLY_REINCLUDE_OVERRIDE_READABLE[resourceType] ?? [])
     : [];
@@ -2192,7 +2208,16 @@ export function writeOnlyReincludeOps(
     // prop it cannot diff. The revert BAR (#413's honest-failure contract) is UNTOUCHED — only
     // this re-inclusion path changes.
     if (isUnderCreateOnly(path, schema.conditionalCreateOnlyPaths ?? [])) continue;
-    const value = valueAtDottedPath(declared, path);
+    // An override-readable prop is preserved from LIVE (no live value → skipped, never a
+    // declared fallback — see WRITEONLY_REINCLUDE_OVERRIDE_READABLE). It still requires a
+    // declared value: an undeclared one has no template intent to keep alive.
+    const fromLive = overrideReadable.includes(path);
+    if (fromLive && valueAtDottedPath(declared, path) === undefined) continue;
+    const value = fromLive
+      ? live
+        ? valueAtDottedPath(live, path)
+        : undefined
+      : valueAtDottedPath(declared, path);
     if (value === undefined || value === UNRESOLVED || hasUnresolved(value)) continue;
     const pointer = toPointer(path);
     if (touched.has(pointer)) continue;

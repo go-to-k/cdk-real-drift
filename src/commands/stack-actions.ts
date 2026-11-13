@@ -1161,7 +1161,9 @@ export function augmentCcItemOps(
     declaredByLogical(item.logicalId),
     schemas.get(item.resourceType),
     tagged,
-    item.resourceType
+    item.resourceType,
+    // Override-readable props (ECS VolumeConfigurations, #1941) are preserved from LIVE.
+    liveRaw
   );
   // Drop service-echoed empty arrays the service itself rejects on update
   // (#481 — VpcLattice Rule HeaderMatches []). Live-gated + ancestor-aware.
