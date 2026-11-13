@@ -40,7 +40,7 @@ echo "=== check CLEAN (no false declared drift on the OAI bucket policy) ==="
 $CLI check "$STACK" --region "$REGION" --json > /tmp/cdkrd-oai-clean.json 2>/tmp/cdkrd-oai-clean.err \
   || { cat /tmp/cdkrd-oai-clean.err; fail "check errored"; }
 node -e '
-  const j = require("/tmp/cdkrd-oai-clean.json");
+  const j = require("/tmp/cdkrd-oai-clean.json")[0]; // --json is one array, one element per stack (#983)
   const bad = (j.findings||[]).filter(f =>
     f.resourceType === "AWS::S3::BucketPolicy" &&
     (f.tier === "declared" || f.tier === "undeclared"));
@@ -65,7 +65,7 @@ sleep 3
 echo "=== check DETECTS the injected statement (no blanket suppression) ==="
 $CLI check "$STACK" --region "$REGION" --json > /tmp/cdkrd-oai-drift.json 2>/dev/null
 node -e '
-  const j = require("/tmp/cdkrd-oai-drift.json");
+  const j = require("/tmp/cdkrd-oai-drift.json")[0]; // --json is one array, one element per stack (#983)
   const hit = (j.findings||[]).some(f => f.resourceType === "AWS::S3::BucketPolicy");
   if (!hit) { console.error("injected bucket-policy statement was NOT detected"); process.exit(1); }
   console.log("injected statement detected ✓");
