@@ -91,6 +91,23 @@ const WRITEONLY_REINCLUDE_SKIP: Record<string, readonly string[]> = {
   'AWS::Lambda::Function': ['Code'],
 };
 
+// The MIRROR of WRITEONLY_REINCLUDE_SKIP: registry-schema write-only props that
+// `exemptOverrideReadable` (schema/schema-strip.ts OVERRIDE_READABLE_WRITEONLY) REMOVES from
+// `schema.writeOnlyPaths` because an SDK reader projects them for COMPARE — yet Cloud
+// Control's own read handler still cannot return them, so its UpdateResource
+// read-modify-write still drops them and they must STILL be re-included. The exemption
+// is a compare-side fact; the CC update contract is unchanged by it. Without this the
+// re-include loop never saw these paths in production (unit tests passed a raw schema).
+// AWS::ECS::Service `VolumeConfigurations` is the case: reverting DesiredCount on a
+// service whose task definition has a `configuredAtLaunch` EBS volume failed live with
+// "Task definition has configuredAtLaunch volume but no volume configuration provided at
+// runtime" (#1941). Opt-in per prop, not the whole exempt table: re-including e.g.
+// LaunchTemplateData or ElasticBeanstalk OptionSettings would be a side-effectful write
+// (a new template version / an environment update), the WRITEONLY_REINCLUDE_SKIP class.
+const WRITEONLY_REINCLUDE_OVERRIDE_READABLE: Record<string, readonly string[]> = {
+  'AWS::ECS::Service': ['VolumeConfigurations'],
+};
+
 // SDK-override types that are nonetheless Cloud Control FULLY_MUTABLE — their override
 // exists only to work around a READ quirk, NOT because CC cannot UPDATE them, so a CC
 // UpdateResource revert is valid and they are EXEMPT from the "read-override => not
@@ -2121,7 +2138,17 @@ export function writeOnlyReincludeOps(
   existingOps: PatchOp[],
   resourceType?: string
 ): PatchOp[] {
-  if (!declared || !schema || schema.writeOnlyPaths.length === 0) return [];
+  if (!declared || !schema) return [];
+  // The override-readable write-only props the exemption stripped (#1941) are appended so
+  // the loop below re-includes them under exactly the same skip rules.
+  const overrideReadable = resourceType
+    ? (WRITEONLY_REINCLUDE_OVERRIDE_READABLE[resourceType] ?? [])
+    : [];
+  const writeOnlyPaths = [
+    ...schema.writeOnlyPaths,
+    ...overrideReadable.filter((p) => !schema.writeOnlyPaths.includes(p)),
+  ];
+  if (writeOnlyPaths.length === 0) return [];
   const touched = new Set(existingOps.map((o) => o.path));
   const skipPrefixes = resourceType ? (WRITEONLY_REINCLUDE_SKIP[resourceType] ?? []) : [];
   const ops: PatchOp[] = [];
@@ -2132,7 +2159,7 @@ export function writeOnlyReincludeOps(
   // object (e.g. LoginProfile, which CC returns WITHOUT the write-only Password) to
   // UpdateResource, which RESET the credential. Re-include each resolved write-only value
   // present in the declared model from its template intent.
-  for (const path of schema.writeOnlyPaths) {
+  for (const path of writeOnlyPaths) {
     if (path.includes('*')) continue; // a wildcard (array-element) write-only — no single value to re-include
     // A side-effectful write-only prefix (WRITEONLY_REINCLUDE_SKIP above): re-including
     // it would WRITE (redeploy code), not merely preserve — skip unless the patch itself

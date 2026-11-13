@@ -17,7 +17,7 @@ import {
   toPointer,
   writeOnlyReincludeOps,
 } from '../src/revert/plan.js';
-import { parseSchema } from '../src/schema/schema-strip.js';
+import { exemptOverrideReadable, parseSchema } from '../src/schema/schema-strip.js';
 import type { Finding, SchemaInfo } from '../src/types.js';
 
 const schemaWithWriteOnly = (...names: string[]): SchemaInfo => ({
@@ -3570,6 +3570,41 @@ describe('writeOnlyReincludeOps (Cloud Control read-modify-write contract, cdkd 
       { VolumeConfigurations: [{ Name: 'x', RoleArn: UNRESOLVED }] },
       schema,
       []
+    );
+    expect(ops).toEqual([]);
+  });
+
+  // #1941: production never hands writeOnlyReincludeOps the RAW schema above. getSchemaInfo
+  // runs exemptOverrideReadable, which DROPS VolumeConfigurations from writeOnlyPaths (the
+  // SDK supplement reads it for compare) — so the re-include never fired and a live
+  // DesiredCount revert on a configuredAtLaunch-EBS service failed in ecs:UpdateService.
+  it('re-includes ECS Service VolumeConfigurations even after the override-readable exemption (#1941)', () => {
+    const prod = exemptOverrideReadable(
+      schemaWithWriteOnly('ServiceConnectConfiguration', 'VolumeConfigurations'),
+      'AWS::ECS::Service'
+    );
+    expect(prod.writeOnlyPaths).not.toContain('VolumeConfigurations');
+    const ops = writeOnlyReincludeOps(
+      declared,
+      prod,
+      [{ op: 'add', path: '/DesiredCount', value: 0, human: '' }],
+      'AWS::ECS::Service'
+    );
+    expect(ops.map((o) => [o.op, o.path, 'value' in o ? o.value : undefined])).toEqual([
+      ['add', '/VolumeConfigurations', [{ Name: 'ebs-data' }]],
+    ]);
+  });
+
+  it('does not re-include an override-readable write-only prop for an unlisted type (#1941)', () => {
+    const prod = exemptOverrideReadable(
+      schemaWithWriteOnly('LaunchTemplateData'),
+      'AWS::EC2::LaunchTemplate'
+    );
+    const ops = writeOnlyReincludeOps(
+      { LaunchTemplateData: { ImageId: 'ami-1' } },
+      prod,
+      [],
+      'AWS::EC2::LaunchTemplate'
     );
     expect(ops).toEqual([]);
   });
