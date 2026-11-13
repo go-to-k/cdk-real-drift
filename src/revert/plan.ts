@@ -2202,7 +2202,9 @@ export function writeOnlyReincludeOps(
   // re-included nothing — and a cc revert touching another property sent the parent
   // object (e.g. LoginProfile, which CC returns WITHOUT the write-only Password) to
   // UpdateResource, which RESET the credential. Re-include each resolved write-only value
-  // present in the declared model from its template intent.
+  // present in the declared model from its template intent — except an override-readable
+  // prop (WRITEONLY_REINCLUDE_OVERRIDE_READABLE), which re-includes its LIVE value unless a
+  // selected sdk item reverts it (#1941).
   for (const path of writeOnlyPaths) {
     if (path.includes('*')) continue; // a wildcard (array-element) write-only — no single value to re-include
     // A side-effectful write-only prefix (WRITEONLY_REINCLUDE_SKIP above): re-including
