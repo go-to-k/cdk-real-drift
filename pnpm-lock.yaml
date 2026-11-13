@@ -15,187 +15,187 @@ importers:
         specifier: ^3.0.0
         version: 3.0.0(@aws-cdk/cloud-assembly-schema@55.4.0)
       '@aws-cdk/toolkit-lib':
-        specifier: ^1.45.0
+        specifier: ^1.46.0
         version: 1.46.0(@aws-cdk/cli-plugin-contract@2.182.2)
       '@aws-sdk/client-acm':
-        specifier: ^3.1065.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-api-gateway':
-        specifier: ^3.1069.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-apigatewayv2':
-        specifier: ^3.1069.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-appconfig':
-        specifier: ^3.1069.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-application-auto-scaling':
-        specifier: ^3.1065.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-appsync':
-        specifier: ^3.1066.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-auto-scaling':
-        specifier: ^3.1065.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-budgets':
-        specifier: ^3.1065.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-cloudcontrol':
-        specifier: ^3.1065.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-cloudformation':
-        specifier: ^3.1065.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-cloudfront':
-        specifier: ^3.1073.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-cloudwatch':
-        specifier: ^3.1078.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-cloudwatch-logs':
-        specifier: ^3.1066.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-codebuild':
-        specifier: ^3.1068.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-codedeploy':
-        specifier: ^3.1081.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-cognito-identity-provider':
-        specifier: ^3.1069.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-cognito-sync':
-        specifier: ^3.1075.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-config-service':
-        specifier: ^3.1075.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-database-migration-service':
-        specifier: ^3.1079.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-dax':
-        specifier: ^3.1079.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-dlm':
-        specifier: ^3.1078.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-docdb':
-        specifier: ^3.1073.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-ec2':
-        specifier: ^3.1066.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-ecs':
-        specifier: ^3.1066.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-efs':
-        specifier: ^3.1070.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-elastic-beanstalk':
-        specifier: ^3.1080.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-elastic-load-balancing-v2':
-        specifier: ^3.1068.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-elasticache':
-        specifier: ^3.1075.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-eventbridge':
-        specifier: ^3.1069.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-glue':
-        specifier: ^3.1066.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-guardduty':
-        specifier: ^3.1065.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-iam':
-        specifier: ^3.1065.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-kafka':
-        specifier: ^3.1079.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-kinesis-video':
-        specifier: ^3.1081.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-kms':
-        specifier: ^3.1066.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-lakeformation':
-        specifier: ^3.1079.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-lambda':
-        specifier: ^3.1065.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-lex-models-v2':
-        specifier: ^3.1079.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-mediaconvert':
-        specifier: ^3.1079.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-memorydb':
-        specifier: ^3.1078.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-opensearch':
-        specifier: ^3.1073.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-rds':
-        specifier: ^3.1070.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-redshift-serverless':
-        specifier: ^3.1079.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-route-53':
-        specifier: ^3.1066.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-s3':
-        specifier: ^3.1065.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-sagemaker':
-        specifier: ^3.1084.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-scheduler':
-        specifier: ^3.1067.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-secrets-manager':
-        specifier: ^3.1065.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-servicediscovery':
-        specifier: ^3.1073.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-ses':
-        specifier: ^3.1065.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-sesv2':
-        specifier: ^3.1087.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-sns':
-        specifier: ^3.1065.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-sqs':
-        specifier: ^3.1065.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-ssm':
-        specifier: ^3.1075.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-sts':
-        specifier: ^3.1065.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/client-wafv2':
-        specifier: ^3.1073.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@aws-sdk/credential-providers':
-        specifier: ^3.1065.0
+        specifier: ^3.1163.0
         version: 3.1163.0
       '@clack/core':
-        specifier: ^1.4.1
+        specifier: ^1.5.1
         version: 1.5.1
       '@clack/prompts':
-        specifier: ^1.5.1
+        specifier: ^1.8.1
         version: 1.8.1
       '@smithy/node-http-handler':
-        specifier: ^4.12.0
+        specifier: ^4.14.2
         version: 4.14.2
       agent-base:
         specifier: ^9.0.0
@@ -222,7 +222,7 @@ importers:
         specifier: ^2.1.0
         version: 2.1.0
       yaml:
-        specifier: ^2.9.0
+        specifier: ^2.9.1
         version: 2.9.1
     devDependencies:
       '@types/node':
