@@ -559,12 +559,12 @@ describe('release-pr-not-stale', () => {
       expect(workflow().jobs[STALE_JOB]?.if).toBe(
         "startsWith(github.head_ref, 'release-please--')"
       );
-      // RESIDUAL, stated rather than implied away: this repo has not yet had a
-      // release-please-created PR (batched releases landed recently and no
-      // release has been cut), so the prefix is release-please's documented
-      // default rather than an observed branch name here. The FIRST release PR
-      // must be checked — if its head does not start with `release-please--`,
-      // this job skips on every PR and `ci-ok` stays green over it.
+      // OBSERVED, not just documented: the 0.28.0 release PR (#1901) had head
+      // `release-please--branches--main--components--cdk-real-drift`.
+      //
+      // v5 re-checked: its only breaking change is the node24 runtime, and it
+      // bundles the same release-please library major (17.x, whose
+      // `src/util/branch-name.ts` still builds `release-please--branches`).
       //
       // `branch-prefix` is NOT a release-please config key, so asserting its
       // absence would be a fence over something that can never appear. What can
@@ -580,7 +580,7 @@ describe('release-pr-not-stale', () => {
         'release-please was bumped to a new MAJOR. Its release branch prefix is a property ' +
           `of that major — re-verify that a release PR's head still starts with ` +
           "'release-please--' before updating this expectation."
-      ).toBe('4');
+      ).toBe('5');
     });
   });
 });
