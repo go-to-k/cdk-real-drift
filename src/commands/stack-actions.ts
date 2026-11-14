@@ -52,6 +52,7 @@ import {
   type RevertItem,
   type RevertPlan,
   tagPreservingOps,
+  sdkRevertedOverrideReadablePaths,
   writeOnlyReincludeOps,
 } from '../revert/plan.js';
 import { errorText, type RetryOptions, retryTransient } from '../revert/transient.js';
@@ -1148,7 +1149,10 @@ export function augmentCcItemOps(
   item: RevertItem,
   schemas: Map<string, SchemaInfo>,
   liveByLogical: Map<string, Record<string, unknown>>,
-  declaredByLogical: (logicalId: string) => Record<string, unknown> | undefined
+  declaredByLogical: (logicalId: string) => Record<string, unknown> | undefined,
+  // The plan's items (post-selection) — so a re-include of a prop a sibling sdk item is
+  // reverting carries the declared value that writer sends (#1941 M2). Omitted = none.
+  planItems: readonly RevertItem[] = []
 ): RevertItem {
   if (item.kind !== 'cc') return item;
   const liveRaw = liveByLogical.get(item.logicalId);
@@ -1161,7 +1165,11 @@ export function augmentCcItemOps(
     declaredByLogical(item.logicalId),
     schemas.get(item.resourceType),
     tagged,
-    item.resourceType
+    item.resourceType,
+    // Override-readable props (ECS VolumeConfigurations, #1941) are preserved from LIVE,
+    // unless a selected sdk item of this resource is reverting them (then DECLARED).
+    liveRaw,
+    sdkRevertedOverrideReadablePaths(planItems, item.logicalId, item.resourceType)
   );
   // Drop service-echoed empty arrays the service itself rejects on update
   // (#481 — VpcLattice Rule HeaderMatches []). Live-gated + ancestor-aware.
@@ -1200,7 +1208,7 @@ export function augmentRevertPlan(
   return {
     ...plan,
     items: plan.items.map((item) =>
-      augmentCcItemOps(item, schemas, liveByLogical, declaredByLogical)
+      augmentCcItemOps(item, schemas, liveByLogical, declaredByLogical, plan.items)
     ),
   };
 }
