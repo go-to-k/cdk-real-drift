@@ -2,11 +2,7 @@
 // classifyResource so each fence covers the whole compare pipeline (both sides'
 // canonicalization, the order-significant tables, the KMS-alias call site), not just the
 // helper. Each case is a real change that used to read clean.
-import {
-  GetBucketPolicyCommand,
-  PutBucketPolicyCommand,
-  S3Client,
-} from '@aws-sdk/client-s3';
+import { GetBucketPolicyCommand, PutBucketPolicyCommand, S3Client } from '@aws-sdk/client-s3';
 import { mockClient } from 'aws-sdk-client-mock';
 import { beforeEach, describe, expect, it } from 'vite-plus/test';
 import { classifyResource, KMS_ALIAS_UNRESOLVED_NOTE } from '../src/diff/classify.js';
@@ -259,7 +255,10 @@ describe('#1952 item 2: the revert writer keeps a DECLARED AWSLogDelivery statem
     );
     const put = s3.commandCalls(PutBucketPolicyCommand)[0]!.args[0].input;
     const written = JSON.parse(put.Policy as string) as { Statement: Record<string, unknown>[] };
-    expect(written.Statement.map((s) => s.Sid).sort()).toEqual(['AWSLogDeliveryWrite', 'UserWrite']);
+    expect(written.Statement.map((s) => s.Sid).sort()).toEqual([
+      'AWSLogDeliveryWrite',
+      'UserWrite',
+    ]);
     expect(written.Statement.find((s) => s.Sid === 'UserWrite')?.Resource).toEqual([
       'arn:aws:s3:::b/app/*',
     ]);
