@@ -31,7 +31,8 @@ import { normalizePoliciesDeep } from './policy-canonical.js';
 //
 // `keepLogDeliverySids` (#1952): classify passes the Sids of the `AWSLogDelivery*` statements
 // the TEMPLATE declares, for both sides, so those are compared instead of subtracted as
-// AWS-vended (see policy-canonical.ts). Callers without a declared side omit it.
+// AWS-vended (see policy-canonical.ts). The revert writer's `desiredModel` passes the same
+// set so its indexes match classify's; callers without a declared side omit it.
 export function canonicalizeForCompare(
   v: unknown,
   resourceType?: string,

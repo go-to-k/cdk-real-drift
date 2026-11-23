@@ -5120,6 +5120,7 @@ export function classifyResource(
           resourceType,
           path: d.path,
           note: KMS_ALIAS_UNRESOLVED_NOTE,
+          compareOnly: true,
         });
         continue;
       }

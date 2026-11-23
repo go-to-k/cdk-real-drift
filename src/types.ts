@@ -88,6 +88,10 @@ export interface Finding {
   // any resource declaring a write-only prop (RDS MasterUserPassword, secrets/tokens) can never
   // detect an out-of-band appeared-since-record undeclared value (a false negative).
   writeOnly?: boolean;
+  // readGap tier only (#1952): the value WAS read, only its COMPARISON cannot be verified (an
+  // AWS-managed KMS alias with kms:ListAliases unavailable). Like `writeOnly` it is not a gap
+  // in the readable model, so it must NOT disqualify the resource from `completeResources`.
+  compareOnly?: boolean;
   // declared tier only (R111): set to 'unresolved' on an IAM Role `Policies` finding
   // when the role's sibling AWS::IAM::Policy names could NOT be resolved, so classify
   // left the sibling-managed (DefaultPolicy) entries in the live array. The revert plan

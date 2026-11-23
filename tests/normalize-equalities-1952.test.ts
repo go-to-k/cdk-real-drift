@@ -2,8 +2,16 @@
 // classifyResource so each fence covers the whole compare pipeline (both sides'
 // canonicalization, the order-significant tables, the KMS-alias call site), not just the
 // helper. Each case is a real change that used to read clean.
-import { describe, expect, it } from 'vite-plus/test';
+import {
+  GetBucketPolicyCommand,
+  PutBucketPolicyCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
+import { mockClient } from 'aws-sdk-client-mock';
+import { beforeEach, describe, expect, it } from 'vite-plus/test';
 import { classifyResource, KMS_ALIAS_UNRESOLVED_NOTE } from '../src/diff/classify.js';
+import type { PatchOp } from '../src/revert/plan.js';
+import { SDK_WRITERS } from '../src/revert/writers.js';
 import type { DesiredResource, Finding, SchemaInfo } from '../src/types.js';
 
 const schema = (unorderedObjectArrayPaths: string[] = []): SchemaInfo => ({
@@ -202,5 +210,58 @@ describe('#1952 item 5: an unresolvable managed KMS alias is not comparable', ()
       kmsAliasTargets: { 'alias/aws/sqs': '00000000-1111-2222-3333-444444444444' },
     });
     expect(drift(f)).toContain('KmsMasterKeyId');
+  });
+});
+
+describe('#1952 item 2: the revert writer keeps a DECLARED AWSLogDelivery statement', () => {
+  const s3 = mockClient(S3Client);
+  beforeEach(() => s3.reset());
+
+  const vended = {
+    Sid: 'AWSLogDeliveryWrite',
+    Effect: 'Allow',
+    Principal: { Service: 'delivery.logs.amazonaws.com' },
+    Action: 's3:PutObject',
+    Resource: 'arn:aws:s3:::b/AWSLogs/111122223333/*',
+    Condition: { StringEquals: { 'aws:SourceAccount': '111122223333' } },
+  };
+  const user = (Resource: string) => ({
+    Sid: 'UserWrite',
+    Effect: 'Allow',
+    Principal: { AWS: 'arn:aws:iam::111122223333:role/app' },
+    Action: 's3:PutObjectAcl',
+    Resource,
+  });
+  const bp = (...Statement: unknown[]) => ({
+    Bucket: 'b',
+    PolicyDocument: { Version: '2012-10-17', Statement },
+  });
+
+  it('applies the op at the index classify reported and writes the declared statement back', async () => {
+    const declared = bp(vended, user('arn:aws:s3:::b/app/*'));
+    const live = bp(vended, user('arn:aws:s3:::b/*')); // user statement widened out of band
+    const [f] = classifyResource(mk('AWS::S3::BucketPolicy', declared), live, schema()).filter(
+      (x) => x.tier === 'declared'
+    );
+    expect(f?.path).toMatch(/^PolicyDocument\.Statement\.\d+\.Resource$/);
+    s3.on(GetBucketPolicyCommand).resolves({ Policy: JSON.stringify(live.PolicyDocument) });
+    s3.on(PutBucketPolicyCommand).resolves({});
+    const op: PatchOp = {
+      op: 'add',
+      path: `/${f!.path.split('.').join('/')}`,
+      value: f!.desired,
+      prior: f!.actual,
+      human: 'x',
+    };
+    await SDK_WRITERS['AWS::S3::BucketPolicy']!(
+      { physicalId: 'b', declared, region: 'us-east-1', accountId: '111122223333' },
+      [op]
+    );
+    const put = s3.commandCalls(PutBucketPolicyCommand)[0]!.args[0].input;
+    const written = JSON.parse(put.Policy as string) as { Statement: Record<string, unknown>[] };
+    expect(written.Statement.map((s) => s.Sid).sort()).toEqual(['AWSLogDeliveryWrite', 'UserWrite']);
+    expect(written.Statement.find((s) => s.Sid === 'UserWrite')?.Resource).toEqual([
+      'arn:aws:s3:::b/app/*',
+    ]);
   });
 });
