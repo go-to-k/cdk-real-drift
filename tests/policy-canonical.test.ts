@@ -2,12 +2,13 @@ import { describe, expect, it } from 'vite-plus/test';
 import { deepEqual } from '../src/diff/drift-calculator.js';
 import {
   canonicalizePolicy,
+  collectLogDeliverySids,
   normalizePoliciesDeep,
   rewriteOaiPrincipalsDeep,
 } from '../src/normalize/policy-canonical.js';
 
 describe('policy canonicalization', () => {
-  it('unifies scalar vs array Action; does not fabricate Version when absent', () => {
+  it('unifies scalar vs array Action', () => {
     const a = canonicalizePolicy({
       Version: '2012-10-17',
       Statement: [{ Effect: 'Allow', Action: 's3:Get' }],
@@ -17,7 +18,30 @@ describe('policy canonicalization', () => {
       Statement: [{ Action: ['s3:Get'], Effect: 'Allow' }],
     });
     expect(deepEqual(a, b)).toBe(true);
-    expect(canonicalizePolicy({ Statement: [] })).not.toHaveProperty('Version');
+  });
+
+  // #1952: IAM reads an absent Version as 2008-10-17, under which policy variables are
+  // literal text, so a live "2012-10-17" against a Version-less template is a real change.
+  it('an absent Version is the IAM default 2008-10-17, not "uncompared"', () => {
+    const stmt = [{ Effect: 'Allow', Action: 's3:GetObject', Resource: 'arn:aws:s3:::b/${aws:username}/*' }];
+    const absent = canonicalizePolicy({ Statement: stmt });
+    expect(absent.Version).toBe('2008-10-17');
+    expect(deepEqual(absent, canonicalizePolicy({ Version: '2008-10-17', Statement: stmt }))).toBe(
+      true
+    );
+    expect(deepEqual(absent, canonicalizePolicy({ Version: '2012-10-17', Statement: stmt }))).toBe(
+      false
+    );
+  });
+
+  it('does NOT fill a Version into a resource model that merely carries a Statement key', () => {
+    // AWS::Events::EventBusPolicy's own model has a `Statement` property: not a policy document.
+    const model = canonicalizePolicy({
+      EventBusName: 'bus',
+      StatementId: 'sid',
+      Statement: { Effect: 'Allow', Action: 'events:PutEvents', Principal: '*', Resource: '*' },
+    });
+    expect(model).not.toHaveProperty('Version');
   });
 
   it('preserves a top-level Id (and other top-level keys); policies differing only in Id are NOT equal', () => {
@@ -386,27 +410,97 @@ describe('policy canonicalization: AWS-injected Sid + vended-log-delivery statem
     ...extra,
   });
 
-  it('a statement declared without a Sid equals the same statement AWS returns with a numeric Sid', () => {
+  const sourceCondition = {
+    StringEquals: { 'aws:SourceAccount': '111122223333' },
+    ArnLike: { 'aws:SourceArn': 'arn:aws:logs:us-east-1:111122223333:*' },
+  };
+
+  // #1952: S3 / SQS / SNS were measured returning a Sid-less statement without a Sid, so a
+  // numeric Sid is a deliberate label like any other and is compared.
+  it('a numeric Sid is compared like any other Sid', () => {
     const declared = canonicalizePolicy({ Statement: [stmt()] });
-    const live = canonicalizePolicy({ Statement: [stmt({ Sid: '1' })] });
-    expect(deepEqual(declared, live)).toBe(true);
-    // a MEANINGFUL (non-numeric) Sid is preserved, so a real Sid change still differs
-    const labeled = canonicalizePolicy({ Statement: [stmt({ Sid: 'AllowLogDelivery' })] });
-    expect(deepEqual(declared, labeled)).toBe(false);
+    expect(deepEqual(declared, canonicalizePolicy({ Statement: [stmt({ Sid: '1' })] }))).toBe(
+      false
+    );
+    expect(
+      deepEqual(
+        canonicalizePolicy({ Statement: [stmt({ Sid: '1' })] }),
+        canonicalizePolicy({ Statement: [stmt({ Sid: '2' })] })
+      )
+    ).toBe(false);
   });
 
   it("AWS's vended-log-delivery statement (AWSLogDelivery* + delivery.logs principal) is dropped", () => {
     const withVended = canonicalizePolicy({
       Statement: [
-        stmt({ Sid: '1' }),
+        stmt(),
         stmt({
           Sid: 'AWSLogDeliveryWrite1',
           Resource: 'arn:aws:s3:::bucket/AWSLogs/1/CloudFront/*',
+          Condition: sourceCondition,
         }),
       ],
     });
     const declaredOnly = canonicalizePolicy({ Statement: [stmt()] });
     expect(deepEqual(withVended, declaredOnly)).toBe(true);
+  });
+
+  it('#1952: a vended statement WITHOUT the aws:SourceAccount / aws:SourceArn guard is NOT dropped', () => {
+    const stripped = canonicalizePolicy({
+      Statement: [stmt(), stmt({ Sid: 'AWSLogDeliveryWrite' })],
+    });
+    expect(deepEqual(stripped, canonicalizePolicy({ Statement: [stmt()] }))).toBe(false);
+    // a condition on some OTHER key is not the confused-deputy guard either
+    const otherKey = canonicalizePolicy({
+      Statement: [
+        stmt(),
+        stmt({
+          Sid: 'AWSLogDeliveryWrite',
+          Condition: { StringEquals: { 's3:x-amz-acl': 'bucket-owner-full-control' } },
+        }),
+      ],
+    });
+    expect(deepEqual(otherKey, canonicalizePolicy({ Statement: [stmt()] }))).toBe(false);
+    // the key match is case-insensitive, as IAM condition keys are
+    const lower = canonicalizePolicy({
+      Statement: [
+        stmt(),
+        stmt({
+          Sid: 'AWSLogDeliveryWrite',
+          Condition: { StringEquals: { 'aws:sourceaccount': '111122223333' } },
+        }),
+      ],
+    });
+    expect(deepEqual(lower, canonicalizePolicy({ Statement: [stmt()] }))).toBe(true);
+  });
+
+  it('#1952: a DECLARED log-delivery statement (Sid in keepLogDeliverySids) is compared, not dropped', () => {
+    const vended = stmt({ Sid: 'AWSLogDeliveryWrite', Condition: sourceCondition });
+    const keep = collectLogDeliverySids({ PolicyDocument: { Statement: [stmt(), vended] } });
+    expect([...keep]).toEqual(['AWSLogDeliveryWrite']);
+    const declared = canonicalizePolicy({ Statement: [stmt(), vended] }, keep);
+    // deleted out of band → the live side lacks it → differs
+    expect(deepEqual(declared, canonicalizePolicy({ Statement: [stmt()] }, keep))).toBe(false);
+    // Resource widened out of band → differs
+    const widened = { ...vended, Resource: 'arn:aws:s3:::bucket/*' } as Record<string, unknown>;
+    widened.Resource = '*';
+    expect(deepEqual(declared, canonicalizePolicy({ Statement: [stmt(), widened] }, keep))).toBe(
+      false
+    );
+    // unchanged → equal
+    expect(deepEqual(declared, canonicalizePolicy({ Statement: [stmt(), vended] }, keep))).toBe(
+      true
+    );
+    // a live-only vended statement with a DIFFERENT Sid is still subtracted
+    const extra = stmt({ Sid: 'AWSLogDeliveryAclCheck', Condition: sourceCondition });
+    expect(
+      deepEqual(declared, canonicalizePolicy({ Statement: [stmt(), vended, extra] }, keep))
+    ).toBe(true);
+  });
+
+  it('collectLogDeliverySids reads JSON-string policies too', () => {
+    const doc = JSON.stringify({ Statement: [stmt({ Sid: 'AWSLogDeliveryAclCheck' })] });
+    expect([...collectLogDeliverySids({ Policy: doc })]).toEqual(['AWSLogDeliveryAclCheck']);
   });
 
   it('does NOT drop a user statement that uses the delivery-logs principal WITHOUT an AWSLogDelivery Sid', () => {

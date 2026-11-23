@@ -63,7 +63,13 @@ function arnMatchesName(
   // declared side is the bare `NAME:QUALIFIER`, which the last-colon-segment rule would
   // otherwise truncate to just `QUALIFIER`. Compare the whole colon-joined resource id too.
   const colonId = seg.length >= 7 ? seg.slice(6).join(':') : afterColon;
-  if (name !== afterColon && name !== afterSlash && name !== colonId) return false;
+  // #1952: with a colon INSIDE the resource id (`function:NAME:QUALIFIER`, a versioned state
+  // machine, a log group's `:*`), the final colon-segment is a qualifier, not a name — so
+  // `prod` must not equal `arn:…:function:other-fn:prod` (an alias of ANOTHER function).
+  // Only the whole colon-joined id can match there.
+  if (seg.length >= 8) {
+    if (name !== colonId) return false;
+  } else if (name !== afterColon && name !== afterSlash && name !== colonId) return false;
   const arnRegion = seg[3] ?? '';
   const arnAccount = seg[4] ?? '';
   if (opts?.region && arnRegion && arnRegion !== opts.region) return false;
@@ -80,30 +86,28 @@ function arnMatchesName(
 // key ARN must resolve to that same managed key, else it is reported as real drift —
 // so a customer-managed key swapped in out of band (a security-relevant change the
 // shape-only check would hide) IS caught. When the alias can't be resolved (no
-// `aliasTargets`, or missing kms:ListAliases), it falls back to the conservative
-// shape-based match (any `alias/aws/*` vs any key ARN = equal): biased toward noise,
-// never a false positive.
+// `aliasTargets`, or missing kms:ListAliases) the answer is `unresolved` (#1952): the
+// caller reports the value as not comparable rather than equal, since treating any
+// `alias/aws/*` as any key ARN hid exactly that customer-managed-key swap.
+// `undefined` = not an alias/key-ARN pair at all (let the diff decide).
 const KMS_KEY_ARN_RE = /^arn:aws[a-z-]*:kms:[^:]*:\d*:key\//;
 const keyIdOf = (s: string): string => s.slice(s.lastIndexOf('/') + 1);
-export function isManagedKmsAliasMatch(
+export function managedKmsAliasVerdict(
   desired: unknown,
   actual: unknown,
   aliasTargets?: Record<string, string>
-): boolean {
+): 'match' | 'mismatch' | 'unresolved' | undefined {
   if (
     typeof desired !== 'string' ||
     typeof actual !== 'string' ||
     !desired.startsWith('alias/aws/') ||
     !KMS_KEY_ARN_RE.test(actual)
   )
-    return false;
+    return undefined;
   const target = aliasTargets?.[desired];
-  if (target) {
-    // strict: suppress only when the live key IS the alias's managed key
-    return keyIdOf(actual) === keyIdOf(target);
-  }
-  // unresolved alias → conservative shape-based suppression (today's behavior)
-  return true;
+  if (!target) return 'unresolved';
+  // strict: equal only when the live key IS the alias's managed key
+  return keyIdOf(actual) === keyIdOf(target) ? 'match' : 'mismatch';
 }
 
 // A CloudWatch Logs log-group ARN carries a trailing `:*` wildcard segment

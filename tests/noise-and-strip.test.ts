@@ -1381,9 +1381,15 @@ describe('#649 DynamoDB first-run FPs: ContributorInsights Mode + SSE type/KMS e
   const t = (
     resourceType: string,
     declared: Record<string, unknown>,
-    live: Record<string, unknown>
+    live: Record<string, unknown>,
+    opts?: Parameters<typeof classifyResource>[3]
   ): { atDefault: string[]; generated: string[]; undeclared: string[] } => {
-    const findings: Finding[] = classifyResource(bare(resourceType, declared), live, emptySchema);
+    const findings: Finding[] = classifyResource(
+      bare(resourceType, declared),
+      live,
+      emptySchema,
+      opts
+    );
     const by = (tier: string) =>
       findings
         .filter((f) => f.tier === tier)
@@ -1441,7 +1447,9 @@ describe('#649 DynamoDB first-run FPs: ContributorInsights Mode + SSE type/KMS e
       {
         ContributorInsightsSpecification: { Enabled: true, Mode: 'ACCESSED_AND_THROTTLED_KEYS' },
         SSESpecification: { SSEEnabled: true, SSEType: 'KMS', KMSMasterKeyId: accountKmsArn },
-      }
+      },
+      // the run resolved aws/dynamodb to this key (an unresolved alias surfaces, #1952)
+      { kmsAliasTargets: { 'alias/aws/dynamodb': 'e6ab85f6-1234-5678-9abc-def012345678' } }
     );
     expect(r.undeclared).toEqual([]);
     expect(r.atDefault).toContain('ContributorInsightsSpecification.Mode');

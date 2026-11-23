@@ -13,6 +13,9 @@ function stmtCount(doc: Record<string, unknown>): number {
 
 describe('#715: AWSLogDelivery subtraction is content-gated (Action must be safe)', () => {
   const deliveryPrincipal = { Service: 'delivery.logs.amazonaws.com' } as const;
+  // #1952: a vended statement only folds WITH its confused-deputy guard, so every case here
+  // carries one and the Action / Effect gate stays the thing under test.
+  const sourceGuard = { StringEquals: { 'aws:SourceAccount': '111111111111' } };
 
   it('does NOT drop a rogue AWSLogDelivery statement granting a broader Action (s3:*)', () => {
     // The rogue statement from the issue: AWSLogDelivery* Sid + delivery-logs principal,
@@ -36,6 +39,7 @@ describe('#715: AWSLogDelivery subtraction is content-gated (Action must be safe
       Principal: deliveryPrincipal,
       Action: ['s3:PutObject', 's3:DeleteObject'],
       Resource: 'arn:aws:s3:::bucket/AWSLogs/*',
+      Condition: sourceGuard,
     };
     const doc = canonicalizePolicy({ Statement: [rogue] });
     expect(stmtCount(doc)).toBe(1); // the extra s3:DeleteObject keeps the statement visible
@@ -48,6 +52,7 @@ describe('#715: AWSLogDelivery subtraction is content-gated (Action must be safe
       Principal: deliveryPrincipal,
       Action: 's3:PutObject',
       Resource: 'arn:aws:s3:::bucket/AWSLogs/*',
+      Condition: sourceGuard,
     };
     const doc = canonicalizePolicy({ Statement: [rogue] });
     expect(stmtCount(doc)).toBe(1);
@@ -109,6 +114,7 @@ describe('#715: AWSLogDelivery subtraction is content-gated (Action must be safe
       Principal: deliveryPrincipal,
       Action: ['firehose:PutRecord', 'firehose:PutRecordBatch'],
       Resource: 'arn:aws:firehose:us-east-1:111111111111:deliverystream/x',
+      Condition: sourceGuard,
     };
     const doc = canonicalizePolicy({ Statement: [genuineFirehose] });
     expect(stmtCount(doc)).toBe(0);
@@ -121,6 +127,7 @@ describe('#715: AWSLogDelivery subtraction is content-gated (Action must be safe
       Principal: deliveryPrincipal,
       Action: 'logs:*',
       Resource: 'arn:aws:logs:us-east-1:111111111111:log-group:*',
+      Condition: sourceGuard,
     };
     const doc = canonicalizePolicy({ Statement: [rogue] });
     expect(stmtCount(doc)).toBe(1);
@@ -133,7 +140,12 @@ describe('#715: AWSLogDelivery subtraction is content-gated (Action must be safe
       Principal: deliveryPrincipal,
       Action: 's3:PutObject',
       Resource: 'arn:aws:s3:::bucket/AWSLogs/*',
-      Condition: { StringEquals: { 's3:x-amz-acl': 'bucket-owner-full-control' } },
+      Condition: {
+        StringEquals: {
+          's3:x-amz-acl': 'bucket-owner-full-control',
+          'aws:SourceAccount': '111111111111',
+        },
+      },
     };
     const genuineAclCheck = {
       Sid: 'AWSLogDeliveryAclCheck',
@@ -141,6 +153,7 @@ describe('#715: AWSLogDelivery subtraction is content-gated (Action must be safe
       Principal: deliveryPrincipal,
       Action: 's3:GetBucketAcl',
       Resource: 'arn:aws:s3:::bucket',
+      Condition: sourceGuard,
     };
     const rogue = {
       Sid: 'AWSLogDeliveryWriteRogue',
@@ -148,6 +161,7 @@ describe('#715: AWSLogDelivery subtraction is content-gated (Action must be safe
       Principal: deliveryPrincipal,
       Action: 's3:*',
       Resource: 'arn:aws:s3:::bucket/*',
+      Condition: sourceGuard,
     };
     const doc = canonicalizePolicy({ Statement: [genuineWrite, genuineAclCheck, rogue] });
     expect(stmtCount(doc)).toBe(1); // only the rogue statement survives

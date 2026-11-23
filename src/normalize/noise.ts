@@ -4937,6 +4937,14 @@ export const ORDER_SIGNIFICANT_ARRAY_KEYS: Record<string, ReadonlySet<string>> =
   // wiring (canonicalizeTagLists + sortUnorderedSetProps + the declared object-array loop)
   // keeps it in raw order and a reorder differs positionally (#880).
   'AWS::SSMContacts::Plan': new Set(['Stages']),
+  // Glue table / partition columns are POSITIONAL: a CSV / LazySimpleSerDe / ORC-by-position
+  // reader maps the Nth field to the Nth column, partition keys form the S3 path in order,
+  // and SortColumns are sort priority. Each element carries a `Name`, so identityField would
+  // sort them, and `update-table` swapping two columns (measured: Glue returns the new order
+  // as sent) read clean (#1952). Key names apply at any depth (canonicalizeTagLists); the
+  // schema's nested insertionOrder:false lie is pinned in ORDER_SIGNIFICANT_PATHS below.
+  'AWS::Glue::Table': new Set(['Columns', 'PartitionKeys', 'SortColumns']),
+  'AWS::Glue::Partition': new Set(['Columns', 'SortColumns']),
 };
 // Dotted paths (NESTED object arrays and NESTED scalar sets) whose ORDER is semantically
 // significant even though the registry schema marks the array insertionOrder:false — a
@@ -4949,9 +4957,18 @@ export const ORDER_SIGNIFICANT_ARRAY_KEYS: Record<string, ReadonlySet<string>> =
 //     items `{Type, Field}` with no identity key. Mutable out of band via UpdateSchedule.
 //   - AppSync::Resolver `PipelineConfig.Functions` — pipeline functions EXECUTE IN ARRAY ORDER;
 //     a nested SCALAR array (list of function-id strings). Mutable out of band via UpdateResolver.
+//   - Glue::Table columns, partition keys, sort columns and bucket columns — positional (see
+//     ORDER_SIGNIFICANT_ARRAY_KEYS above; bucket columns feed the bucket hash in order); the
+//     schema marks all four insertionOrder:false. Mutable out of band via UpdateTable (#1952).
 export const ORDER_SIGNIFICANT_PATHS: Record<string, ReadonlySet<string>> = {
   'AWS::Scheduler::Schedule': new Set(['Target.EcsParameters.PlacementStrategy']),
   'AWS::AppSync::Resolver': new Set(['PipelineConfig.Functions']),
+  'AWS::Glue::Table': new Set([
+    'TableInput.StorageDescriptor.Columns',
+    'TableInput.PartitionKeys',
+    'TableInput.StorageDescriptor.SortColumns',
+    'TableInput.StorageDescriptor.BucketColumns',
+  ]),
 };
 export function canonicalizeTagListsDeep(v: unknown, orderSig?: ReadonlySet<string>): unknown {
   return canonicalizeTagLists(v, orderSig, undefined);

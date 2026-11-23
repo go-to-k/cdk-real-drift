@@ -51,11 +51,11 @@ describe('fetchManagedAliasTargets', () => {
 });
 
 describe('kmsListAliasesDeniedWarning', () => {
-  it('names the region, the denied permission, and that a key-swap is NOT detected', () => {
+  it('names the region, the denied permission, and that the key is reported unverified', () => {
     const w = kmsListAliasesDeniedWarning('ap-northeast-1');
     expect(w).toContain('ap-northeast-1');
     expect(w).toContain('kms:ListAliases');
-    expect(w).toContain('will NOT be detected');
+    expect(w).toContain('cannot be verified');
     expect(w).toContain('Grant kms:ListAliases');
   });
 });

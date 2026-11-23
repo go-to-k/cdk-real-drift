@@ -7033,10 +7033,16 @@ describe('Redshift/OpenSearch clean-deploy invariant (all AWS-initial values fol
   const t = (
     resourceType: string,
     declared: Record<string, unknown>,
-    live: Record<string, unknown>
+    live: Record<string, unknown>,
+    opts?: Parameters<typeof classifyResource>[3]
   ) =>
     tiers(
-      classifyResource({ logicalId: 'R', resourceType, physicalId: 'p', declared }, live, bare)
+      classifyResource(
+        { logicalId: 'R', resourceType, physicalId: 'p', declared },
+        live,
+        bare,
+        opts
+      )
     );
 
   it('a fresh RA3 single-node Redshift cluster has ZERO undeclared (every AWS-initial value folds)', () => {
@@ -7083,11 +7089,13 @@ describe('Redshift/OpenSearch clean-deploy invariant (all AWS-initial values fol
           KmsKeyId: 'db99576a-7bcf-4386-a93e-0334efbed006',
           Enabled: true,
         },
-      }
+      },
+      // the run resolved aws/es to this key (an unresolved alias surfaces, #1952)
+      { kmsAliasTargets: { 'alias/aws/es': 'db99576a-7bcf-4386-a93e-0334efbed006' } }
     );
     expect(r.undeclared).toEqual([]);
     expect(r.atDefault).toContain('DeploymentStrategyOptions');
-    // the nested AWS-assigned key folds value-independent (generated tier), whatever its GUID
+    // the nested AWS-managed key folds (generated tier) once it matches the resolved alias
     expect(r.generated).toContain('EncryptionAtRestOptions.KmsKeyId');
     // a non-default deployment strategy surfaces (equality-gated)
     expect(

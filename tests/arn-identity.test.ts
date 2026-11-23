@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
   isArnNameMatch,
   isLogGroupArnWildcardMatch,
-  isManagedKmsAliasMatch,
+  managedKmsAliasVerdict,
 } from '../src/normalize/arn-identity.js';
 
 describe('isArnNameMatch (name <-> ARN identity)', () => {
@@ -28,6 +28,20 @@ describe('isArnNameMatch (name <-> ARN identity)', () => {
   });
   it('does not match a name that is a non-final ARN segment (qualifier present)', () => {
     expect(isArnNameMatch('MyFn', `${fnArn}:PROD`)).toBe(false);
+  });
+
+  // #1952: the final colon-segment of `function:NAME:QUALIFIER` is the qualifier, so a bare
+  // `prod` must not equal an alias of ANOTHER function, in either direction.
+  it('does not take a Lambda qualifier for a function name', () => {
+    const otherAlias = 'arn:aws:lambda:us-east-1:111122223333:function:other-fn:prod';
+    expect(isArnNameMatch('prod', otherAlias)).toBe(false);
+    expect(isArnNameMatch(otherAlias, 'prod')).toBe(false);
+    expect(isArnNameMatch('other-fn', otherAlias)).toBe(false);
+    expect(isArnNameMatch('other-fn:prod', otherAlias)).toBe(true);
+    // same rule for any colon-qualified id (a log group's `:*` is not a name)
+    expect(
+      isArnNameMatch('*', 'arn:aws:logs:us-east-1:111122223333:log-group:/my/group:*')
+    ).toBe(false);
   });
 
   it('matches a QUALIFIED name (NAME:QUALIFIER) against a qualified function ARN', () => {
@@ -95,32 +109,33 @@ describe('isArnNameMatch (name <-> ARN identity)', () => {
   });
 });
 
-describe('isManagedKmsAliasMatch (managed-default KMS alias <-> key ARN)', () => {
+describe('managedKmsAliasVerdict (managed-default KMS alias <-> key ARN)', () => {
   const keyArn = 'arn:aws:kms:us-east-1:111122223333:key/9ee8feba-ae18-445a-bcab-306f7748fb6c';
-  it('matches alias/aws/* against a live key ARN', () => {
-    expect(isManagedKmsAliasMatch('alias/aws/rds', keyArn)).toBe(true);
-    expect(isManagedKmsAliasMatch('alias/aws/secretsmanager', keyArn)).toBe(true);
+  it('is not applicable to a custom alias (a real custom key is preserved as drift)', () => {
+    expect(managedKmsAliasVerdict('alias/my-key', keyArn)).toBeUndefined();
   });
-  it('does NOT match a custom alias (a real custom key is preserved as drift)', () => {
-    expect(isManagedKmsAliasMatch('alias/my-key', keyArn)).toBe(false);
-  });
-  it('does NOT match when actual is not a KMS key ARN', () => {
-    expect(isManagedKmsAliasMatch('alias/aws/rds', 'arn:aws:kms:us-east-1:1:alias/aws/rds')).toBe(
-      false
-    );
+  it('is not applicable when actual is not a KMS key ARN', () => {
+    expect(
+      managedKmsAliasVerdict('alias/aws/rds', 'arn:aws:kms:us-east-1:1:alias/aws/rds')
+    ).toBeUndefined();
   });
 
   describe('strict resolution via aliasTargets (R9)', () => {
     const targets = { 'alias/aws/rds': '9ee8feba-ae18-445a-bcab-306f7748fb6c' };
-    it('suppresses when the live key IS the alias managed key', () => {
-      expect(isManagedKmsAliasMatch('alias/aws/rds', keyArn, targets)).toBe(true);
+    it('matches when the live key IS the alias managed key', () => {
+      expect(managedKmsAliasVerdict('alias/aws/rds', keyArn, targets)).toBe('match');
     });
-    it('reports drift when a DIFFERENT (customer-managed) key was swapped in', () => {
+    it('mismatches when a DIFFERENT (customer-managed) key was swapped in', () => {
       const custom = 'arn:aws:kms:us-east-1:111122223333:key/00000000-1111-2222-3333-444444444444';
-      expect(isManagedKmsAliasMatch('alias/aws/rds', custom, targets)).toBe(false);
+      expect(managedKmsAliasVerdict('alias/aws/rds', custom, targets)).toBe('mismatch');
     });
-    it('falls back to shape-based suppression when the alias is unresolved (no perms)', () => {
-      expect(isManagedKmsAliasMatch('alias/aws/rds', keyArn, {})).toBe(true);
+    // #1952: an unresolvable alias used to match ANY key, hiding a swap to a CMK.
+    it('is unresolved (never a match) when the alias cannot be resolved', () => {
+      expect(managedKmsAliasVerdict('alias/aws/rds', keyArn, {})).toBe('unresolved');
+      expect(managedKmsAliasVerdict('alias/aws/rds', keyArn)).toBe('unresolved');
+      expect(managedKmsAliasVerdict('alias/aws/secretsmanager', keyArn, targets)).toBe(
+        'unresolved'
+      );
     });
   });
 });

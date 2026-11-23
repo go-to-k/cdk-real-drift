@@ -28,10 +28,20 @@ import { normalizePoliciesDeep } from './policy-canonical.js';
 // stays aligned with the raw live model the revert patches. classify passes the type
 // for BOTH its live and declared sides; the type-less callers (baseline/writers) operate
 // on undeclared snapshot values, which never carry an order-significant declared array.
-export function canonicalizeForCompare(v: unknown, resourceType?: string): unknown {
+//
+// `keepLogDeliverySids` (#1952): classify passes the Sids of the `AWSLogDelivery*` statements
+// the TEMPLATE declares, for both sides, so those are compared instead of subtracted as
+// AWS-vended (see policy-canonical.ts). Callers without a declared side omit it.
+export function canonicalizeForCompare(
+  v: unknown,
+  resourceType?: string,
+  keepLogDeliverySids?: ReadonlySet<string>
+): unknown {
   const orderSig = resourceType ? ORDER_SIGNIFICANT_ARRAY_KEYS[resourceType] : undefined;
   const base = canonicalizeIpv6CidrsDeep(
-    canonicalizeIdArraysDeep(canonicalizeTagListsDeep(normalizePoliciesDeep(v), orderSig))
+    canonicalizeIdArraysDeep(
+      canonicalizeTagListsDeep(normalizePoliciesDeep(v, keepLogDeliverySids), orderSig)
+    )
   );
   // A WAFv2 WebACL's ByteMatchStatement search patterns read back base64-encoded; fold both
   // sides to the plain SearchString the template declares so a clean rule is not false drift.
