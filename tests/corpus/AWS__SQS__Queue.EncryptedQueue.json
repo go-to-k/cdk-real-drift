@@ -27,7 +27,9 @@
   "opts": {
     "accountId": "111111111111",
     "region": "us-east-1",
-    "kmsAliasTargets": {}
+    "kmsAliasTargets": {
+      "alias/aws/sqs": "9z8y7x6w-5v4u-3t2s-1r0q-ponmlkjihgfe"
+    }
   },
   "expected": []
 }

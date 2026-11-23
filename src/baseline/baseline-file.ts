@@ -642,7 +642,12 @@ export function computeCompleteResources(
     // must NOT block completeness — otherwise "appeared since record" detection is silently
     // disabled for every resource declaring a write-only prop (a false negative). A GENUINE
     // readGap (Cloud Control could not read a declared prop back) still blocks.
-    if (f.tier === 'skipped' || f.tier === 'deleted' || (f.tier === 'readGap' && !f.writeOnly))
+    // #1952: same for a compare-only readGap (the value was read; only its check is unverifiable).
+    if (
+      f.tier === 'skipped' ||
+      f.tier === 'deleted' ||
+      (f.tier === 'readGap' && !f.writeOnly && !f.compareOnly)
+    )
       blocked.add(f.logicalId);
     if (f.tier === 'undeclared' && !recordedKeys.has(recordedKey(f))) blocked.add(f.logicalId);
     // #1277: only DEMOTE for an ignored value that originated `undeclared`. `record`

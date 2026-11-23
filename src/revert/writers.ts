@@ -248,6 +248,7 @@ import { NESTED_ARRAY_IDENTITY } from '../diff/classify.js';
 import { deepEqual } from '../diff/drift-calculator.js';
 import { identityField } from '../normalize/noise.js';
 import { canonicalizeForCompare } from '../normalize/pipeline.js';
+import { collectLogDeliverySids } from '../normalize/policy-canonical.js';
 import { pageResourceRecordSets, route53RecordSetIdentifier } from '../read/child-enumerators.js';
 import { CLIENT_TIMEOUTS } from '../read/client-config.js';
 import {
@@ -355,7 +356,16 @@ async function desiredModel(
   const aligned =
     current.PolicyDocument === undefined
       ? current
-      : { ...current, PolicyDocument: canonicalizeForCompare(current.PolicyDocument) };
+      : {
+          ...current,
+          // #1952: with the SAME keep-set classify used, so a DECLARED AWSLogDelivery*
+          // statement stays in the aligned doc (indexes match, and the write keeps it).
+          PolicyDocument: canonicalizeForCompare(
+            current.PolicyDocument,
+            undefined,
+            collectLogDeliverySids(ctx.declared)
+          ),
+        };
   // #805: fail-closed if an index-bearing op's target element changed since check.
   assertIndexedPriorsFresh(type, aligned, ops);
   return applyOps(aligned, ops);

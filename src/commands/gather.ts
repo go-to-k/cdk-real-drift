@@ -2194,8 +2194,8 @@ export async function gatherFindings(
   // KMS managed-alias resolution (R9): only if the stack declares any `alias/aws/*`,
   // fetch alias -> target key id once so classify can tell a managed-default key from
   // a customer-managed key swapped in out of band. Missing kms:ListAliases -> empty +
-  // denied (the classifier falls back to the conservative shape-based match) — and we
-  // WARN once per region, because that fallback is BLIND to a customer-key swap (R115).
+  // denied (the classifier then reports alias/aws/* vs key-ARN pairs as not comparable,
+  // #1952) — and we WARN once per region so the user knows why (R115).
   // The type check also fires for resource types whose UNDECLARED managed-key path
   // (e.g. DynamoDB SSESpecification.KMSMasterKeyId, OpenSearch EncryptionAtRestOptions.KmsKeyId)
   // must be gated against the AWS-managed key ARN even when the template declares no

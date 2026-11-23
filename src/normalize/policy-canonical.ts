@@ -95,14 +95,10 @@ function canonicalizeStatement(s: unknown): unknown {
   const out: Record<string, unknown> = {};
   for (const k of Object.keys(s).sort()) {
     const v = s[k];
-    // A statement declared WITHOUT a Sid comes back from AWS (S3 BucketPolicy, SQS/SNS
-    // policies, ...) with an auto-assigned sequential numeric string Sid ("1", "2", …).
-    // The declared side has none → the statement's canonical JSON differs → false
-    // declared drift on the whole Statement array PLUS a false undeclared `Statement[N].Sid`.
-    // Drop a purely-numeric Sid on BOTH sides: it is never author-meaningful (a
-    // deliberate label is a non-numeric string, preserved and still compared), and two
-    // auto-assigned numeric Sids carry no drift signal. See policy-canonical tests.
-    if (k === 'Sid' && typeof v === 'string' && /^\d+$/.test(v)) continue;
+    // Every Sid is compared, a purely numeric one included (#1952). An earlier rule dropped
+    // numeric Sids on the premise that AWS auto-assigns "1", "2", ... to a Sid-less
+    // statement, but S3 (plain API and Cloud Control GetResource), SQS and SNS were measured
+    // returning a Sid-less statement WITHOUT one, so the drop only hid a deliberate Sid edit.
     if (ARRAYISH_KEYS.has(k)) out[k] = toSortedArray(v);
     else if (k === 'Principal' || k === 'NotPrincipal') out[k] = canonicalizePrincipal(v);
     else if (k === 'Condition') out[k] = canonicalizeCondition(v);
@@ -133,11 +129,17 @@ function canonicalizeStatement(s: unknown): unknown {
 // is NOT subtracted, so it SURFACES as drift. Conservative by design: only the exact known-safe
 // Action shapes are dropped; a deviation keeps the statement (no false negative). Genuine AWS
 // statements (S3 bucket policy, Logs LogGroup resource policy, Firehose) still fold (no false
-// positive). We deliberately do NOT additionally gate on Resource/Condition equality — the
-// destination ARN / owning account vary per deployment and are not knowable here, and Action
-// is the axis that actually widens access; the Action gate alone closes the reported hole
-// (an `s3:*` / `logs:*` grant no longer folds) without risking a false positive on the legit
-// shape. Actions per https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/AWS-logs-and-resource-policy.html
+// positive). Resource / Condition EQUALITY is not gated — the destination ARN / owning
+// account vary per deployment and are not knowable here — but the confused-deputy guard
+// must be PRESENT (#1952): AWS vends these statements with an `aws:SourceAccount` /
+// `aws:SourceArn` condition, so a statement whose condition was stripped out of band (any
+// account's delivery can now write) no longer folds and surfaces.
+//
+// #1952: the subtraction is for a LIVE-ONLY statement. A statement the TEMPLATE declares
+// (CDK adds `AWSLogDeliveryWrite` to a flow-log / vended-log bucket policy itself) is the
+// user's, so the caller passes its Sid in `keepLogDeliverySids` and it is compared on both
+// sides like any other statement — removing it, widening its Resource or dropping its
+// condition out of band is drift. Actions per https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/AWS-logs-and-resource-policy.html
 const AWS_LOG_DELIVERY_ALLOWED_ACTIONS = new Set([
   's3:PutObject',
   's3:GetBucketAcl',
@@ -149,7 +151,7 @@ const AWS_LOG_DELIVERY_ALLOWED_ACTIONS = new Set([
 function isAwsManagedLogDeliveryStatement(s: unknown): boolean {
   if (!isObj(s)) return false;
   const sid = s.Sid;
-  if (typeof sid !== 'string' || !/^AWSLogDelivery/.test(sid)) return false;
+  if (typeof sid !== 'string' || !LOG_DELIVERY_SID_RE.test(sid)) return false;
   const principal = s.Principal;
   if (!isObj(principal)) return false;
   const svc = principal.Service;
@@ -161,7 +163,38 @@ function isAwsManagedLogDeliveryStatement(s: unknown): boolean {
   const actionRaw = s.Action;
   const actions = Array.isArray(actionRaw) ? actionRaw : [actionRaw];
   if (actions.length === 0) return false;
-  return actions.every((a) => typeof a === 'string' && AWS_LOG_DELIVERY_ALLOWED_ACTIONS.has(a));
+  if (!actions.every((a) => typeof a === 'string' && AWS_LOG_DELIVERY_ALLOWED_ACTIONS.has(a)))
+    return false;
+  return hasSourceCondition(s.Condition);
+}
+// True when some operator of an IAM `Condition` block carries an `aws:SourceAccount` or
+// `aws:SourceArn` key (condition keys are case-insensitive in IAM).
+const SOURCE_CONDITION_KEYS = new Set(['aws:sourceaccount', 'aws:sourcearn']);
+function hasSourceCondition(cond: unknown): boolean {
+  if (!isObj(cond)) return false;
+  return Object.values(cond).some(
+    (body) =>
+      isObj(body) && Object.keys(body).some((k) => SOURCE_CONDITION_KEYS.has(k.toLowerCase()))
+  );
+}
+
+const LOG_DELIVERY_SID_RE = /^AWSLogDelivery/;
+
+/** #1952: the Sids of every `AWSLogDelivery*` statement a (declared) value carries, at any
+ *  depth and inside JSON-string policies too. Passed back as `keepLogDeliverySids` so a
+ *  DECLARED log-delivery statement is compared instead of subtracted on both sides. */
+export function collectLogDeliverySids(v: unknown, out = new Set<string>()): Set<string> {
+  if (typeof v === 'string') {
+    const p = parsePolicyString(v);
+    if (p) collectLogDeliverySids(p, out);
+  } else if (Array.isArray(v)) {
+    for (const el of v) collectLogDeliverySids(el, out);
+  } else if (isObj(v)) {
+    if ('Effect' in v && typeof v.Sid === 'string' && LOG_DELIVERY_SID_RE.test(v.Sid))
+      out.add(v.Sid);
+    for (const val of Object.values(v)) collectLogDeliverySids(val, out);
+  }
+  return out;
 }
 function canonicalizePrincipal(v: unknown): unknown {
   if (isObj(v)) {
@@ -184,9 +217,23 @@ function normalizeAccountPrincipal(v: unknown): unknown {
   return v;
 }
 
-export function canonicalizePolicy(doc: Record<string, unknown>): Record<string, unknown> {
+// The IAM policy grammar's own top-level keys. A Version default is filled only into a
+// value made of these alone: a resource MODEL that merely carries a `Statement` key
+// (AWS::Events::EventBusPolicy) passes isPolicyDoc but is not a policy document.
+const POLICY_GRAMMAR_KEYS = new Set(['Version', 'Id', 'Statement']);
+// IAM: "If you do not include a Version element, the value defaults to 2008-10-17".
+const IAM_DEFAULT_POLICY_VERSION = '2008-10-17';
+
+export function canonicalizePolicy(
+  doc: Record<string, unknown>,
+  keepLogDeliverySids?: ReadonlySet<string>
+): Record<string, unknown> {
   const rawStatements = Array.isArray(doc.Statement) ? doc.Statement : [doc.Statement];
-  const statements = rawStatements.filter((s) => !isAwsManagedLogDeliveryStatement(s));
+  const statements = rawStatements.filter(
+    (s) =>
+      !isAwsManagedLogDeliveryStatement(s) ||
+      keepLogDeliverySids?.has((s as Record<string, unknown>).Sid as string) === true
+  );
   // Preserve ALL top-level keys (only `Statement` is rewritten). A policy document
   // may carry a doc-level `Id` (IAM/S3 policy grammar) or other top-level fields; a
   // prior whitelist of just `Statement`/`Version` DROPPED them, so two policies that
@@ -196,11 +243,16 @@ export function canonicalizePolicy(doc: Record<string, unknown>): Record<string,
     ...doc,
     Statement: statements.map(canonicalizeStatement).sort(byJson),
   };
-  // Keep Version only if present. Filling a default would create a false
-  // declared-drift when the template omits Version but AWS stored a literal
-  // (e.g. legacy "2008-10-17"); under subset comparison an absent declared
-  // Version simply isn't compared, which is the correct outcome.
-  if (doc.Version === undefined) delete out.Version;
+  // An absent Version IS "2008-10-17" to IAM, and the two versions differ in meaning
+  // (policy variables such as `${aws:username}` are literal text under 2008-10-17). So fill
+  // the default on both sides (#1952): a template omitting Version still equals a live
+  // literal "2008-10-17", while a live "2012-10-17" against it is reported. Dropping the
+  // key instead left an absent declared Version uncompared, hiding that change.
+  if (doc.Version === undefined) {
+    if (Object.keys(doc).every((k) => POLICY_GRAMMAR_KEYS.has(k)))
+      out.Version = IAM_DEFAULT_POLICY_VERSION;
+    else delete out.Version;
+  }
   return out;
 }
 
@@ -300,8 +352,11 @@ function sortDeep(v: unknown): unknown {
  * Walk a value, replacing policy-document subtrees with their canonical form and
  * embedded JSON-text strings with a canonical (sorted, minified) form.
  */
-export function normalizePoliciesDeep(v: unknown): unknown {
-  return normWalk(v, false);
+export function normalizePoliciesDeep(
+  v: unknown,
+  keepLogDeliverySids?: ReadonlySet<string>
+): unknown {
+  return normWalk(v, false, keepLogDeliverySids);
 }
 
 // `freeForm` = this subtree lives under a free-form USER map (Lambda env Variables,
@@ -311,19 +366,19 @@ export function normalizePoliciesDeep(v: unknown): unknown {
 // key-order / statement edit by the user (a false negative) — the same R69 protection
 // cc-api-strip applies, extended to the policy/json-text canonicalizers that run after
 // it. Sticky down the subtree (everything under a user map is user data).
-function normWalk(v: unknown, freeForm: boolean): unknown {
+function normWalk(v: unknown, freeForm: boolean, keep?: ReadonlySet<string>): unknown {
   if (typeof v === 'string') {
     if (freeForm) return v; // opaque user data — never canonicalize
     const p = parsePolicyString(v);
-    if (p) return canonicalizePolicy(p);
+    if (p) return canonicalizePolicy(p, keep);
     return canonicalizeJsonText(v);
   }
-  if (Array.isArray(v)) return v.map((el) => normWalk(el, freeForm));
-  if (!freeForm && isPolicyDoc(v)) return canonicalizePolicy(v);
+  if (Array.isArray(v)) return v.map((el) => normWalk(el, freeForm, keep));
+  if (!freeForm && isPolicyDoc(v)) return canonicalizePolicy(v, keep);
   if (isObj(v)) {
     const out: Record<string, unknown> = {};
     for (const [k, val] of Object.entries(v))
-      out[k] = normWalk(val, freeForm || FREE_FORM_MAP_PARENTS.has(k));
+      out[k] = normWalk(val, freeForm || FREE_FORM_MAP_PARENTS.has(k), keep);
     return out;
   }
   return v;

@@ -3,10 +3,10 @@
 // stored by AWS as the key ARN) apart from a customer-managed key swapped in out of
 // band — the latter is a real, security-relevant drift the shape-only check missed.
 // Listing aliases is account-wide, so one paginated ListAliases per region is enough;
-// cached per region. On error returns `denied: true` with empty targets so the
-// classifier falls back to the conservative shape-based match (noise, not false drift)
-// — but the caller WARNS, because that fallback is blind to a customer-key swap (it
-// suppresses every `alias/aws/*` vs key-ARN pair).
+// cached per region. On error returns `denied: true` with empty targets; the classifier
+// then cannot verify any `alias/aws/*` vs key-ARN pair and reports it as not comparable
+// (#1952 — it used to treat every such pair as equal, blind to a customer-key swap), and
+// the caller WARNS so the user knows why.
 //
 // Only DEFINITIVE outcomes are cached (#789, mirroring gather.ts's post-#754
 // isManagedBySiblingStack): a success, or a definitive access-denial (missing
@@ -63,7 +63,7 @@ export async function fetchManagedAliasTargets(region: string): Promise<ManagedA
   } catch (e) {
     if (isDefinitiveDenial(e)) {
       // definitive: no kms:ListAliases → cache the denial (a denied region is not
-      // re-queried per stack) and fall back to shape-based suppression.
+      // re-queried per stack); the classifier reports the pairs as not comparable.
       const result: ManagedAliasTargets = { targets: {}, denied: true };
       cache.set(region, result);
       return result;
@@ -75,14 +75,14 @@ export async function fetchManagedAliasTargets(region: string): Promise<ManagedA
 }
 
 /** The one-line warning emitted when ListAliases is denied but the stack declares an
- *  AWS-managed alias: the managed-vs-customer key check degrades to shape-only, which
- *  is BLIND to a customer-managed key swapped in for an `alias/aws/*` default. Pure +
+ *  AWS-managed alias: the managed-vs-customer key check cannot run, so every
+ *  `alias/aws/*` vs live-key pair is reported unverified instead of compared. Pure +
  *  exported so the wording is unit-tested. */
 export function kmsListAliasesDeniedWarning(region: string): string {
   return (
     `warning: ${region}: kms:ListAliases denied — managed-KMS-alias drift detection is degraded. ` +
-    `A customer-managed key swapped in for an AWS-managed default (alias/aws/*) will NOT be detected ` +
-    `(every alias/aws/* is treated as matching any live key). Grant kms:ListAliases for full coverage.`
+    `Whether a live key is still the AWS-managed default (alias/aws/*) cannot be verified, so those ` +
+    `values are reported as unreadable / not compared. Grant kms:ListAliases for full coverage.`
   );
 }
 
@@ -138,8 +138,8 @@ export function kmsWarnDecision(
 // This table maps each such (resourceType, nested schema path) to the AWS-managed alias whose
 // resolved key ARN is the fold-eligible default. The classifier gates the value-independent
 // fold against the resolved managed key: it folds ONLY when the live key IS that managed key,
-// and SURFACES any other value (a CMK). Fail OPEN (keep folding) when the alias can't be
-// resolved (no ListAliases / denied / transient) — biased to noise, never a new false positive.
+// and SURFACES any other value (a CMK). When the alias can't be resolved (no ListAliases /
+// denied / transient) it also SURFACES (#1952): an unverifiable key is never folded as managed.
 export const MANAGED_KEY_ALIAS_PATHS: Record<string, Record<string, string>> = {
   // A DynamoDB table with `SSESpecification.SSEEnabled: true` and no explicit KMS key reads
   // back `SSESpecification.KMSMasterKeyId` = the account's AWS-managed `alias/aws/dynamodb`
@@ -162,10 +162,10 @@ const keyIdOf = (s: string): string => s.slice(s.lastIndexOf('/') + 1);
 /** #704 fold decision for an UNDECLARED managed-service-key nested path (DynamoDB SSE,
  *  OpenSearch EncryptionAtRest). Returns whether the value-independent fold should still
  *  apply for this live value:
- *   - `true`  → FOLD (atDefault): the live key IS the account/region AWS-managed key, OR the
- *               alias could not be resolved (fail OPEN — no ListAliases / denied / transient).
+ *   - `true`  → FOLD (atDefault): the live key IS the account/region AWS-managed key.
  *   - `false` → SURFACE (undeclared): the live key is some OTHER key (a customer-managed key
- *               swapped in out of band — a real, security-relevant drift).
+ *               swapped in out of band — a real, security-relevant drift), OR the alias could
+ *               not be resolved (no ListAliases / denied / transient; #1952).
  *  Pure; `aliasTargets` is the resolved alias-name -> target-key-id map (empty when unresolved).*/
 export function shouldFoldManagedServiceKey(
   resourceType: string,
@@ -176,9 +176,11 @@ export function shouldFoldManagedServiceKey(
   const alias = MANAGED_KEY_ALIAS_PATHS[resourceType]?.[schemaPath];
   if (!alias) return false; // not a managed-key path — caller shouldn't gate it here
   const target = aliasTargets?.[alias];
-  // Fail OPEN: alias unresolved (no ListAliases / denied / transient / not in this account) →
-  // keep folding, preserving today's value-independent behavior (no new false positive).
-  if (!target) return true;
+  // #1952: alias unresolved (no ListAliases / denied / transient / not in this account) →
+  // SURFACE. Whether the live key is the managed one is unknown, and folding it would hide
+  // the very customer-managed-key swap this gate exists for; it reads as undeclared
+  // inventory the user can record.
+  if (!target) return false;
   // A non-string live value can't be compared to a key ARN → fold (unchanged behavior).
   if (typeof liveValue !== 'string') return true;
   // Strict: fold ONLY when the live key resolves to the SAME managed key; any other key surfaces.

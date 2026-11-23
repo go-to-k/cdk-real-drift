@@ -12,7 +12,7 @@ import { partitionForRegion } from '../desired/template-adapter.js';
 import {
   isArnNameMatch,
   isLogGroupArnWildcardMatch,
-  isManagedKmsAliasMatch,
+  managedKmsAliasVerdict,
 } from '../normalize/arn-identity.js';
 import { stripCcApiAwsManagedFields } from '../normalize/cc-api-strip.js';
 import {
@@ -115,7 +115,11 @@ import {
 import { MANAGED_KEY_ALIAS_PATHS, shouldFoldManagedServiceKey } from '../read/kms-aliases.js';
 import { deepStripPaths } from '../normalize/path-strip.js';
 import { canonicalizeForCompare } from '../normalize/pipeline.js';
-import { canonicalizePolicy, rewriteOaiPrincipalsDeep } from '../normalize/policy-canonical.js';
+import {
+  canonicalizePolicy,
+  collectLogDeliverySids,
+  rewriteOaiPrincipalsDeep,
+} from '../normalize/policy-canonical.js';
 import { declaredTagKeys, subtractPropagatedStackTags } from '../normalize/stack-tags.js';
 import type { DesiredResource, Finding, SchemaInfo } from '../types.js';
 import { calculateResourceDrift, deepEqual } from './drift-calculator.js';
@@ -2435,12 +2439,17 @@ function sortUnorderedSetProps(
 export function normalizeLiveModel(
   liveRaw: Record<string, unknown>,
   schema: SchemaInfo,
-  opts: { oaiCanonicalIds?: Record<string, string>; resourceType?: string } = {}
+  opts: {
+    oaiCanonicalIds?: Record<string, string>;
+    resourceType?: string;
+    keepLogDeliverySids?: ReadonlySet<string>;
+  } = {}
 ): Record<string, unknown> {
   const oaiMap = opts.oaiCanonicalIds ?? {};
   const live = canonicalizeForCompare(
     rewriteOaiPrincipalsDeep(stripAwsTagsDeep(stripCcApiAwsManagedFields(liveRaw)), oaiMap),
-    opts.resourceType
+    opts.resourceType,
+    opts.keepLogDeliverySids
   ) as Record<string, unknown>;
   deepStripPaths(live, schema.readOnlyPaths);
   deepStripPaths(live, schema.writeOnlyPaths);
@@ -2931,6 +2940,9 @@ function resolveParentObject(root: unknown, dottedPath: string): unknown {
 export const GETTEMPLATE_MASK_NOTE =
   'declared value unverifiable — CloudFormation GetTemplate masks non-ASCII characters as "?"';
 
+export const KMS_ALIAS_UNRESOLVED_NOTE =
+  'AWS-managed KMS alias unresolved (kms:ListAliases unavailable) — cannot confirm the live key is the managed key';
+
 // The SINGLE funnel every `declared`-drift emission must flow through. CloudFormation's
 // GetTemplate masks every non-ASCII character in a stored string literal as `?` (see
 // isCfnTemplateNonAsciiMask), so any compare of a GetTemplate-sourced desired against an
@@ -3302,16 +3314,24 @@ export function classifyResource(
   const liveForCompare = structuredClone(liveRaw);
   const declaredForCompare = cloneDeepWithSymbols(declaredIn) as Record<string, unknown>;
   stripAsymmetricIdentityFields(declaredForCompare, liveForCompare);
+  // #1952: an `AWSLogDelivery*` statement the template DECLARES is the user's, compared on
+  // both sides; only a live-only one is subtracted as AWS-vended.
+  const keepLogDeliverySids = collectLogDeliverySids(declaredForCompare);
   // #683 — subtract CFn stack-level tags (`cdk deploy --tags`) propagated onto this resource's
   // live `Tags`, keeping any key the resource itself declares (compared normally).
   const live = subtractPropagatedStackTags(
-    normalizeLiveModel(liveForCompare, schema, { oaiCanonicalIds: oaiMap, resourceType }),
+    normalizeLiveModel(liveForCompare, schema, {
+      oaiCanonicalIds: oaiMap,
+      resourceType,
+      keepLogDeliverySids,
+    }),
     opts.stackTags ?? {},
     declaredTagKeys(declaredForCompare)
   );
   let declared = canonicalizeForCompare(
     rewriteOaiPrincipalsDeep(declaredForCompare, oaiMap),
-    resourceType
+    resourceType,
+    keepLogDeliverySids
   ) as Record<string, unknown>;
   // #1612: GuardDuty stores a filter's short condition keys (Gte/Eq/...) as their long
   // synonyms (GreaterThanOrEqual/Equals/...), value unchanged — canonicalize the declared
@@ -4137,7 +4157,8 @@ export function classifyResource(
         opts.region !== undefined ? partitionForRegion(opts.region).partition : 'aws';
       const arnPrefix = `arn:${partition}:execute-api:${opts.region ?? ''}:${opts.accountId}:${physicalId}`;
       declared['Policy'] = canonicalizePolicy(
-        expandExecuteApiResources(declared['Policy'], arnPrefix) as Record<string, unknown>
+        expandExecuteApiResources(declared['Policy'], arnPrefix) as Record<string, unknown>,
+        keepLogDeliverySids
       );
     }
   }
@@ -4432,7 +4453,7 @@ export function classifyResource(
           // OpenSearch EncryptionAtRestOptions.KmsKeyId) is value-independent ONLY for the
           // account/region AWS-managed key (`alias/aws/<service>`); a CMK swapped in out of
           // band (a MUTABLE, security-relevant change) must surface. Gate the fold against the
-          // resolved managed key — fail OPEN (keep folding) when the alias can't be resolved.
+          // resolved managed key — an unresolvable alias surfaces too (#1952).
           (generatedNestedPaths?.has(schemaPath) &&
             !(schemaPath in knownDefPaths) &&
             (!(schemaPath in (MANAGED_KEY_ALIAS_PATHS[resourceType] ?? {})) ||
@@ -5088,7 +5109,21 @@ export function classifyResource(
       // (account/region-scoped when opts are provided); likewise an AWS-managed-default
       // KMS alias vs its resolved key ARN
       if (isArnNameMatch(d.stateValue, d.awsValue, opts)) continue;
-      if (isManagedKmsAliasMatch(d.stateValue, d.awsValue, opts.kmsAliasTargets)) continue;
+      const kmsVerdict = managedKmsAliasVerdict(d.stateValue, d.awsValue, opts.kmsAliasTargets);
+      if (kmsVerdict === 'match') continue;
+      // #1952: the alias could not be resolved (kms:ListAliases denied / failed), so whether
+      // the live key IS the managed key is unknown — not comparable, never "equal".
+      if (kmsVerdict === 'unresolved') {
+        findings.push({
+          tier: 'readGap',
+          logicalId,
+          resourceType,
+          path: d.path,
+          note: KMS_ALIAS_UNRESOLVED_NOTE,
+          compareOnly: true,
+        });
+        continue;
+      }
       // a CloudWatch Logs log-group ARN whose only difference is the trailing `:*`
       // wildcard (CDK emits it; API Gateway AccessLogSetting strips it) is not drift
       if (isLogGroupArnWildcardMatch(d.stateValue, d.awsValue)) continue;

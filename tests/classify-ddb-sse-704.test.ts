@@ -5,7 +5,7 @@
 // MUTABLE, security-relevant change (DynamoDB SSE is changeable via `UpdateTable
 // --sse-specification`, unlike RDS's create-only KmsKeyId). Fix: gate the fold against the
 // resolved account/region AWS-managed key ARN — fold ONLY the managed key, surface any CMK.
-// KMS resolution failure/denial → fail OPEN (fold), so no new first-run false positive.
+// KMS resolution failure/denial → SURFACE (#1952: an unverifiable key is never folded).
 import { describe, expect, it } from 'vite-plus/test';
 import { classifyResource } from '../src/diff/classify.js';
 import {
@@ -76,7 +76,8 @@ describe('#704 DynamoDB SSESpecification.KMSMasterKeyId managed-key gate', () =>
     expect(paths(f, 'generated')).not.toContain('SSESpecification.KMSMasterKeyId');
   });
 
-  it('fails OPEN (folds) when KMS alias resolution is unavailable (no targets / denied)', () => {
+  // #1952: an unverifiable key is never folded as the managed one — it surfaces.
+  it('SURFACES when KMS alias resolution is unavailable (no targets / denied)', () => {
     const f = classifyResource(
       mk('AWS::DynamoDB::Table', declared),
       {
@@ -84,10 +85,10 @@ describe('#704 DynamoDB SSESpecification.KMSMasterKeyId managed-key gate', () =>
         SSESpecification: { SSEEnabled: true, SSEType: 'KMS', KMSMasterKeyId: CMK_ARN },
       },
       emptySchema,
-      { kmsAliasTargets: {} } // ListAliases denied/transient → empty map → fail open
+      { kmsAliasTargets: {} } // ListAliases denied/transient → empty map → surface
     );
-    expect(paths(f, 'undeclared')).not.toContain('SSESpecification.KMSMasterKeyId');
-    expect(paths(f, 'generated')).toContain('SSESpecification.KMSMasterKeyId');
+    expect(paths(f, 'undeclared')).toContain('SSESpecification.KMSMasterKeyId');
+    expect(paths(f, 'generated')).not.toContain('SSESpecification.KMSMasterKeyId');
   });
 });
 
@@ -118,7 +119,7 @@ describe('#704 OpenSearch EncryptionAtRestOptions.KmsKeyId rides the same gate',
 });
 
 describe('#704 shouldFoldManagedServiceKey predicate', () => {
-  it('folds the managed key, surfaces a CMK, fails open when unresolved', () => {
+  it('folds the managed key, surfaces a CMK, surfaces when unresolved', () => {
     const p = 'SSESpecification.KMSMasterKeyId';
     // managed key → fold
     expect(
@@ -128,8 +129,9 @@ describe('#704 shouldFoldManagedServiceKey predicate', () => {
     expect(shouldFoldManagedServiceKey('AWS::DynamoDB::Table', p, CMK_ARN, ddbAliasTargets)).toBe(
       false
     );
-    // unresolved alias (empty targets) → fail open (fold)
-    expect(shouldFoldManagedServiceKey('AWS::DynamoDB::Table', p, CMK_ARN, {})).toBe(true);
+    // unresolved alias (empty targets) → surface, even for the managed key (#1952)
+    expect(shouldFoldManagedServiceKey('AWS::DynamoDB::Table', p, CMK_ARN, {})).toBe(false);
+    expect(shouldFoldManagedServiceKey('AWS::DynamoDB::Table', p, MANAGED_KEY_ARN, {})).toBe(false);
     // non-managed path → false (caller must not gate it here)
     expect(shouldFoldManagedServiceKey('AWS::DynamoDB::Table', 'Other.Path', CMK_ARN, {})).toBe(
       false

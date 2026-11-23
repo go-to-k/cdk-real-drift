@@ -165,7 +165,9 @@
   "opts": {
     "accountId": "111111111111",
     "region": "us-east-1",
-    "kmsAliasTargets": {},
+    "kmsAliasTargets": {
+      "alias/aws/es": "db99576a-7bcf-4386-a93e-0334efbed006"
+    },
     "oaiCanonicalIds": {}
   },
   "expected": [

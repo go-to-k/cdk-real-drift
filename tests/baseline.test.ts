@@ -1266,6 +1266,20 @@ describe('baseline', () => {
       ]);
     });
 
+    it('#1952: a COMPARE-ONLY readGap (unresolved KMS alias) does NOT block completeness', () => {
+      const findings: Finding[] = [
+        {
+          tier: 'readGap',
+          logicalId: 'Kms',
+          resourceType: 'AWS::SQS::Queue',
+          path: 'KmsMasterKeyId',
+          compareOnly: true,
+        },
+        { tier: 'readGap', logicalId: 'Genuine', resourceType: 'T', path: 'P' },
+      ];
+      expect(computeCompleteResources(['Kms', 'Genuine'], findings, [])).toEqual(['Kms']);
+    });
+
     it('a resource with one of two values recorded is NOT complete', () => {
       const findings = [undeclared('A', 'P', 1), undeclared('A', 'Q', 2)];
       const recorded = [{ logicalId: 'A', resourceType: 'AWS::X::Y', path: 'P', value: 1 }];

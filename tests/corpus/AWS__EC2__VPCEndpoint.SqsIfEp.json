@@ -171,7 +171,8 @@
             "Principal": "*",
             "Resource": ["*"]
           }
-        ]
+        ],
+        "Version": "2008-10-17"
       },
       "physicalId": "vpce-039d4ef9c1c3675ef",
       "constructPath": "CdkrdHunt0801Elb/SqsIfEp"
