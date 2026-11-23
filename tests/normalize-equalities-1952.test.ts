@@ -143,7 +143,12 @@ describe('#1952 item 2: a DECLARED AWSLogDelivery statement is compared', () => 
 });
 
 describe('#1952 item 1: an absent Version is 2008-10-17', () => {
-  const stmt = { Effect: 'Allow', Principal: { AWS: '*' }, Action: 'sqs:SendMessage', Resource: '*' };
+  const stmt = {
+    Effect: 'Allow',
+    Principal: { AWS: '*' },
+    Action: 'sqs:SendMessage',
+    Resource: '*',
+  };
   const qp = (doc: Record<string, unknown>) => ({ Queues: ['https://q'], PolicyDocument: doc });
 
   it('a Version-less template against a live "2012-10-17" is drift', () => {

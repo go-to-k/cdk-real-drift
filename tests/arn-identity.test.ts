@@ -39,9 +39,9 @@ describe('isArnNameMatch (name <-> ARN identity)', () => {
     expect(isArnNameMatch('other-fn', otherAlias)).toBe(false);
     expect(isArnNameMatch('other-fn:prod', otherAlias)).toBe(true);
     // same rule for any colon-qualified id (a log group's `:*` is not a name)
-    expect(
-      isArnNameMatch('*', 'arn:aws:logs:us-east-1:111122223333:log-group:/my/group:*')
-    ).toBe(false);
+    expect(isArnNameMatch('*', 'arn:aws:logs:us-east-1:111122223333:log-group:/my/group:*')).toBe(
+      false
+    );
   });
 
   it('matches a QUALIFIED name (NAME:QUALIFIER) against a qualified function ARN', () => {

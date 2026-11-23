@@ -23,7 +23,9 @@ describe('policy canonicalization', () => {
   // #1952: IAM reads an absent Version as 2008-10-17, under which policy variables are
   // literal text, so a live "2012-10-17" against a Version-less template is a real change.
   it('an absent Version is the IAM default 2008-10-17, not "uncompared"', () => {
-    const stmt = [{ Effect: 'Allow', Action: 's3:GetObject', Resource: 'arn:aws:s3:::b/${aws:username}/*' }];
+    const stmt = [
+      { Effect: 'Allow', Action: 's3:GetObject', Resource: 'arn:aws:s3:::b/${aws:username}/*' },
+    ];
     const absent = canonicalizePolicy({ Statement: stmt });
     expect(absent.Version).toBe('2008-10-17');
     expect(deepEqual(absent, canonicalizePolicy({ Version: '2008-10-17', Statement: stmt }))).toBe(
