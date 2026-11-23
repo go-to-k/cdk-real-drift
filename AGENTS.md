@@ -120,9 +120,11 @@ node dist/cli.js revert [<stack>...] [--all]   # write the desired value back to
   triggers no pull_request workflows and carries no CI checks, so the ruleset's
   required checks never report and the PR sits at `mergeable_state=blocked`
   (measured; the `pull_request` rule changes nothing for it — it IS a PR, needs
-  no approval, and squash is how it is merged anyway). Releasing needs the
-  maintainer to dispatch the checks or relax the ruleset — not an agent-side
-  action. Changes reach real users, so weigh breaking ones accordingly.
+  no approval, and squash is how it is merged anyway). Once the maintainer has
+  asked for a release, `gh pr close <n> && gh pr reopen <n>` under the
+  maintainer's `gh` auth fires the pull_request workflows, and the PR merges when
+  they are green (go-to-k/cdk-real-drift#1956). Changes reach real users, so weigh
+  breaking ones accordingly.
 - **A standing release PR goes STALE and stays MERGEABLE.** release-please does
   not rebuild a release PR whose computed release is unchanged — it logs
   `PR #N remained the same` and leaves the branch on the base it was cut from.

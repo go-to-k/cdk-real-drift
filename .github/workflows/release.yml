@@ -21,8 +21,9 @@ name: Release
 # PR triggers no pull_request workflows and carries no CI checks. The `main`
 # ruleset requires `ci-ok`, `check` and `English-only (PR title / body)` with
 # zero bypass actors, so those checks never report and the release PR sits at
-# `mergeable_state=blocked` — releasing needs a maintainer to dispatch the
-# checks or relax the ruleset, and is not an agent-side action. Giving the
+# `mergeable_state=blocked` until the checks are fired by a non-GITHUB_TOKEN
+# event: closing and reopening the PR under the maintainer's auth does it
+# (AGENTS.md "State of the Repo"). Giving the
 # release-please step a PAT instead of GITHUB_TOKEN would restore CI on it.
 #
 # The ruleset's `pull_request` rule changes NOTHING here: the release PR is
