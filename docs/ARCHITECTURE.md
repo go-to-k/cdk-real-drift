@@ -176,8 +176,8 @@ lives per stack/account/region; the `ignore` rules live in
 `applyIgnores` reads). The split is data vs policy: the baseline is
 machine-generated, wholesale-rewritten data (JSON); `ignore.yaml` is hand-edited
 policy (YAML, so it can carry `#` comments explaining why a property is ignored).
-A rule scopes on `{ path, stack?, account?, region? }` — the same three identity
-axes as a baseline file — and `addIgnoreRules` is comment-preserving and
+A rule scopes on `{ path, stack?, account?, region?, resourceType? }` — the same
+three identity axes as a baseline file, plus an optional resource-type glob — and `addIgnoreRules` is comment-preserving and
 append-only (it keeps existing comments + order, only appends new rules + dedupes).
 
 In a TTY, `check` offers to resolve the drift **inline** (R28, extended R121/R125):
@@ -215,9 +215,15 @@ then the EC2 IMDS instance region; errors if all absent),
 named; overrides any positional names),
 `--json`, `--fail` (check: exit 1 on drift + never prompt — automation mode, R53;
 without it check REPORTS drift but exits 0),
-`--strict` (check: exit 1 when coverage is INCOMPLETE — any resource skipped/unread
-or a nested stack not recursed into; the coverage warning always prints, `--strict`
-makes it CI-failing — orthogonal to `--fail`),
+`--strict` (check: exit 1 when coverage is INCOMPLETE — any resource skipped/unread,
+a readGap whose read FAILED (`readFailed` — a denied supplement read such as a
+Lambda's environment under a kms:Decrypt deny — or `compareOnly`, an `alias/aws/*`
+key with kms:ListAliases unavailable), or a nested stack not recursed into; by-nature
+readGaps (write-only / not returned / GetTemplate-masked) and `Custom::*` skips stay
+informational. The coverage warning always prints, `--strict` makes it CI-failing —
+orthogonal to `--fail`. A gap an `ignore.yaml` rule matches is ACKNOWLEDGED
+(`acknowledgedBy`, tier unchanged, still listed) and no longer fails; the gate reads
+the gathered findings AFTER `applyIgnores` (#1969/#1970)),
 `--show-all` (inventory mode:
 ignore baseline, show ALL undeclared), `--verbose` (check: expand the informational
 tiers / revert: the not-revertable summary to full per-finding lists),
@@ -357,9 +363,10 @@ checked.
 - **diff/**
   - **classify.ts** — the heart: normalize both sides, then tag each difference into a tier.
   - **drift-calculator.ts** — pure structural diff (`calculateResourceDrift`), copied from cdkd.
+  - **coverage-gap.ts** — `isCoverageReadGap` / `isAcknowledgedGap`: which informational findings are coverage gaps `--strict` fails on (a failed-read readGap) and which an `ignore.yaml` rule acknowledged (#1969/#1970).
   - **hints.ts** — `findingHint` / `annotateHints`: non-classifying, human-facing hints that annotate a finding with the likely EXTERNAL origin of its live value (e.g. CloudWatch Application Signals / Lambda Insights account-level auto-instrumentation) without folding or re-tiering it — the drift stays reported, just self-explaining.
 - **baseline/baseline-file.ts** — git-committed baseline I/O (machine-generated DATA → JSON, `.cdkrd/baselines/<stack>.<accountId>.<region>.json`), `applyBaseline`, `writeBaseline`.
-- **config/config-file.ts** — git-committed ignore-rule file (hand-edited POLICY → YAML so it can carry `#` comments, `.cdkrd/ignore.yaml`): `loadConfig` + `applyIgnores` (R32 path-level ignore rules → `ignored` tier; rule shape `{ path, stack?, account?, region? }`) + `addIgnoreRules` (comment-preserving, append-only).
+- **config/config-file.ts** — git-committed ignore-rule file (hand-edited POLICY → YAML so it can carry `#` comments, `.cdkrd/ignore.yaml`): `loadConfig` + `applyIgnores` (R32 path-level ignore rules → `ignored` tier; a coverage gap is acknowledged instead, #1969; rule shape `{ path, stack?, account?, region?, resourceType? }`) + `addIgnoreRules` (comment-preserving, append-only).
 - **revert/** — the write path (section 7): **plan.ts** (incl. a `delete`-kind item for an out-of-band `added` resource, and `REVERT_SET_DEFAULT_PATHS` — properties whose undeclared "appeared since record" revert must WRITE the known `KNOWN_DEFAULTS` default explicitly (an `add`) instead of an RFC6902 `remove`, because the provider leaves the value UNCHANGED when it is merely absent so a bare `remove` is a silent no-op: IAM Role `MaxSessionDuration` is the proven case — `UpdateRole` ignores an omitted value, so reverting an out-of-band 7200 back toward the 3600 default never converged; Lambda Alias `Description` is the same shape — `UpdateAlias` ignores an omitted description, so revert writes the empty-string default to clear it; Cognito IdentityPool `AllowClassicFlow` likewise — `UpdateIdentityPool` ignores an omitted flag, so a bare `remove` of an out-of-band `true` is a no-op and the `false` default is written explicitly; CodeDeploy DeploymentGroup shares the keep-omitted contract across `DeploymentConfigName` (#1725), `DeploymentStyle`, and `LoadBalancerInfo` (#1736 — the last has no `KNOWN_DEFAULTS` source, so its clearing write, an explicit empty `TargetGroupInfoList`, lives in `REVERT_SET_DEFAULT_VALUES`) (all proven live). Curated, not "every `KNOWN_DEFAULTS` entry": most properties already converge via `remove` (S3 `DeleteBucketOwnershipControls` re-defaults), and `KNOWN_DEFAULTS` holds read-side COMPARE shapes some of which are not valid CC write inputs. #1709 adds the DERIVED-default route on top: tier-2 derived defaults — values classify computes from the declared inputs, never present in the static tables — resolve through `derivedRevertDefaultFor`, backed by the SAME shared helpers in `normalize/derived-defaults.ts` classify uses (Route53 HealthCheck `HealthCheckConfig.Port` 80/443-by-Type, the ELBv2 TargetGroup health-check protocol/port by group Protocol, an RDS read replica's `BackupRetentionPeriod` 0, a DELIVERY-class LogGroup's fixed `RetentionInDays` 2 #1727), consulted BEFORE the static lookups so a derived value both rescues paths the tables miss (the bare `remove` was a live-proven silent no-op) and overrides a static value the derivation shadows (the replica would otherwise revert to the non-replica 1). #1710 adds `REVERT_COMPANION_REMOVES`: an explicit default write that the provider REJECTS while an incompatible sibling echo remains in the read-modify-write model (a TargetGroup health check back to TCP with the L7 `Matcher`/`HealthCheckPath` present; a Volume back to gp2 with the gp3 `Iops`/`Throughput` echoes) carries the sibling `remove`s in the same patch — gated on live-presence and on the sibling being undeclared), **apply.ts** (CC UpdateResource / DeleteResource + poll, plus an SDK-delete wrapper giving `SDK_DELETERS` types the same already-gone / dependency-defer / transient-retry contract as the CC delete path), **apply-ops.ts** (pure RFC6902 apply), **writers.ts** (SDK writers + `SDK_DELETERS` — per-type deletes for `added` types Cloud Control cannot delete, e.g. AppSync ApiKey #1386, Route53 RecordSet #1431 via a ChangeResourceRecordSets Action DELETE that re-reads the zone to match the exact live record, Glue Table #1724 via DeleteTable splitting the enumerator identifier `db|table`; a type with an `SDK_DELETERS` entry is exempt from the `CC_DELETE_UNSUPPORTED_ADDED_TYPES` honest-bar in plan.ts), **transient.ts** (`classifyTransient` + `retryTransient` — bounded backoff on transient "resource is mid-update" errors like RSLVR-00705, then a targeted retry-later hint; issue #467).
 - **synth/** — **synth.ts** (`@aws-cdk/toolkit-lib` synth + `discoverStacks`), **resolve-app.ts**, **io-host.ts** (`QuietIoHost`), **missing-context.ts** (`collectMissingRecursively` / `missingContextKeys` / `missingContextWarning`: detect a synth that filled unresolved context lookups with DUMMY placeholders (`vpc-12345`, …) — a plain warning on discovery, a hard refusal under `--pre-deploy` where those placeholders would become fabricated declared drift; #907).
 - **report/report.ts** — tiered text + JSON + exit code. **report/style.ts** —
@@ -1224,9 +1231,10 @@ ignore:
     region: us-*
 ```
 
-Every rule is a mapping `{ path, stack?, account?, region? }` (one uniform,
-self-labelling shape — no bare-string shorthand); `path` is the pattern, `stack` /
-`account` / `region` are optional scopes (absent = any). The three scope axes are
+Every rule is a mapping `{ path, stack?, account?, region?, resourceType? }` (one
+uniform, self-labelling shape — no bare-string shorthand); `path` is the pattern,
+`stack` / `account` / `region` / `resourceType` are optional scopes (absent = any).
+With an EXACT (glob-free) `resourceType`, an all-wildcard `path` is allowed. The three scope axes are
 exactly the baseline file's identity axes. `account` keeps a `stack: "Prod*"` rule
 from leaking into a same-named stack in ANOTHER account — stack-name uniqueness only
 holds within one account / App — and `region` is independent the same way (the same

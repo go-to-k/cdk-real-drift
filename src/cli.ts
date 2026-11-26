@@ -57,9 +57,12 @@ OPTIONS
                               still prompt and could hang). Non-TTY runs never prompt
                               anyway; with --fail, --fail's exit-1 wins
   --strict                    (check) exit 1 when coverage is INCOMPLETE — any
-                              resource skipped (unread) or a nested stack not
+                              resource skipped (unread), a property whose read
+                              failed (e.g. AccessDenied), or a nested stack not
                               recursed into. A loud coverage warning always prints;
-                              --strict makes it CI-failing. Orthogonal to --fail
+                              --strict makes it CI-failing. A known, intended gap
+                              acknowledged in .cdkrd/ignore.yaml stays listed but
+                              does not fail. Orthogonal to --fail
   --show-all                  (check) inventory mode: show ALL current undeclared
                               state (not just changes since record)
   --verbose                   (check) expand informational tiers / (revert) the

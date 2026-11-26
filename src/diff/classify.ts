@@ -4529,6 +4529,8 @@ export function classifyResource(
         resourceType,
         path: p,
         note: 'supplement read failed — property unverifiable (grant the missing read permission)',
+        // #1970: a FAILED read, not an unreadable-by-nature prop — `--strict` fails on it.
+        readFailed: true,
       });
     }
   }
@@ -4553,6 +4555,7 @@ export function classifyResource(
           resourceType,
           path: k,
           note: 'supplement read failed — property unverifiable (grant the missing read permission)',
+          readFailed: true, // #1970
         });
         continue;
       }

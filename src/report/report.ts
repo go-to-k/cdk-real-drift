@@ -21,6 +21,7 @@
 // "surfaced, never silently dropped" invariant is preserved by the counts.
 import { withinStackPath } from '../construct-path.js';
 import { GETTEMPLATE_MASK_NOTE } from '../diff/classify.js';
+import { isAcknowledgedGap, isCoverageReadGap } from '../diff/coverage-gap.js';
 import { deepEqual } from '../diff/drift-calculator.js';
 import { annotateHints } from '../diff/hints.js';
 import { UNRESOLVED } from '../normalize/intrinsic-resolver.js';
@@ -150,6 +151,9 @@ export function formatFinding(f: Finding, stackName = ''): string {
   const pathDisplay = f.attributeKey ? `${f.path}[${sanitizeForTerminal(f.attributeKey)}]` : f.path;
   let s = `${pathDisplay ? `${id}.${pathDisplay}` : id} (${f.resourceType})`;
   if (f.note) s += ` — ${sanitizeForTerminal(f.note)}`;
+  // #1969/#1970: a coverage gap an ignore.yaml rule acknowledged stays listed, naming the rule.
+  if (f.acknowledgedBy !== undefined)
+    s += ` — acknowledged by ignore rule "${sanitizeForTerminal(f.acknowledgedBy)}" (not a --strict failure)`;
   // #798: mask a secret-bearing VALUE before it is rendered — a Lambda/CodeBuild env var, an
   // EC2 LaunchTemplate UserData blob, an EB env-var OptionSetting. The masking is applied to
   // the DISPLAY value only, AFTER any comparison (so a rotated secret still SURFACES as
@@ -626,13 +630,23 @@ export function report(rawFindings: Finding[], header: string, opts: ReportOptio
     // values cdkrd could not VERIFY because AWS does not return them on read, and split
     // the cause (write-only props are never readable by design vs simply not returned).
     if (t === 'readGap') {
-      const writeOnly = items.filter((f) => (f.note ?? '').includes('write-only')).length;
+      // #1970: a readGap whose read FAILED (denied supplement read / kms:Decrypt / an
+      // unresolvable alias/aws/* alias) is a coverage gap, not a by-nature one — name it
+      // apart (it fails --strict), and an acknowledged one apart again (it does not).
+      const failed = items.filter((f) => isCoverageReadGap(f) && !isAcknowledgedGap(f)).length;
+      const acked = items.filter((f) => isCoverageReadGap(f) && isAcknowledgedGap(f)).length;
+      const byNature = items.filter((f) => !isCoverageReadGap(f));
+      const writeOnly = byNature.filter((f) => (f.note ?? '').includes('write-only')).length;
       // GetTemplate-masked values ARE returned on read — it is the DECLARED side that is
       // unreadable (GetTemplate corrupts non-ASCII to "?") — so break them out instead of
       // miscounting them under "not returned by AWS".
-      const masked = items.filter((f) => f.note === GETTEMPLATE_MASK_NOTE).length;
-      const notReturned = items.length - writeOnly - masked;
+      const masked = byNature.filter((f) => f.note === GETTEMPLATE_MASK_NOTE).length;
+      const notReturned = byNature.length - writeOnly - masked;
       const parts = [
+        ...(failed > 0
+          ? [`${failed} read failed — coverage incomplete (grant the read, or acknowledge it)`]
+          : []),
+        ...(acked > 0 ? [`${acked} read failed, acknowledged in .cdkrd/ignore.yaml`] : []),
         ...(notReturned > 0 ? [`${notReturned} not returned by AWS`] : []),
         ...(writeOnly > 0 ? [`${writeOnly} write-only`] : []),
         ...(masked > 0 ? [`${masked} non-ASCII masked by GetTemplate`] : []),
@@ -664,8 +678,22 @@ export function report(rawFindings: Finding[], header: string, opts: ReportOptio
   // line; any GENUINE gap (CC-unsupported, read error) stays in the "coverage incomplete"
   // skipped line. `pendingSkipSummary` returns null when there are none (non-pre-deploy runs
   // and pre-deploy runs with only genuine gaps are byte-identical to before).
-  const skippedSummaryFor = (items: Finding[]): string[] => {
-    if (!opts.preDeploy) return [summaryFor('skipped', items)];
+  // #1969: an ignore.yaml-ACKNOWLEDGED skip is a known, intended gap — still NOT checked, so
+  // it stays listed, but on its own `acknowledged-skip` line (it does not fail --strict).
+  const skippedSummaryFor = (all: Finding[]): string[] => {
+    // Under --pre-deploy a pending-creation skip is not a gap at all, so it is peeled off
+    // BEFORE the acknowledgement split (an ack on it must not relabel it a gap).
+    const isPending = (f: Finding): boolean => !!opts.preDeploy && isPendingCreationSkip(f);
+    const acked = all.filter((f) => isAcknowledgedGap(f) && !isPending(f));
+    const items = all.filter((f) => !isAcknowledgedGap(f) || isPending(f));
+    const ackLine =
+      acked.length > 0
+        ? [
+            `acknowledged-skip=${acked.length} — NOT checked, acknowledged in .cdkrd/ignore.yaml (${groupReasons(acked)})`,
+          ]
+        : [];
+    if (!opts.preDeploy)
+      return [...(items.length > 0 ? [summaryFor('skipped', items)] : []), ...ackLine];
     const pending = items.filter(isPendingCreationSkip);
     const gaps = items.filter((f) => !isPendingCreationSkip(f));
     const lines: string[] = [];
@@ -674,7 +702,7 @@ export function report(rawFindings: Finding[], header: string, opts: ReportOptio
       lines.push(
         `pending creation=${pending.length} (not yet deployed — the next deploy will create them, not a coverage gap)`
       );
-    return lines;
+    return [...lines, ...ackLine];
   };
   const summaries = INFO_TIERS.filter((t) => !isExpanded(t))
     .flatMap((t) => {

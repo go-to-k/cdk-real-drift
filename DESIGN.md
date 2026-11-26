@@ -120,9 +120,11 @@ NEW (cdkd does NOT have these):
 - **ignore rules** — git-committed `.cdkrd/ignore.yaml` (hand-edited POLICY, so
   YAML to carry `#` comments saying WHY; baseline stays JSON because it is
   machine-generated DATA); the `ignore` verb comment-preservingly appends path
-  rules scoped on `{ path, stack?, account?, region? }` (declared, undeclared, OR
-  an out-of-band `added` resource) that re-tag findings to `ignored` and STOP
-  watching (the `.driftignore` / `ignore_changes` analogue)
+  rules scoped on `{ path, stack?, account?, region?, resourceType? }` (declared,
+  undeclared, OR an out-of-band `added` resource) that re-tag findings to `ignored`
+  and STOP watching (the `.driftignore` / `ignore_changes` analogue). A rule matching
+  a COVERAGE GAP (a `skipped` resource, or a readGap whose read failed) instead
+  ACKNOWLEDGES it: still listed, no longer failing `--strict` (#1969/#1970)
 - **report** — tiered text + JSON. A finding whose live value has a recognizable
   external origin also carries a non-classifying `hint` (diff/hints.ts) — e.g. the
   CloudWatch Application Signals / Lambda Insights auto-instrumentation footprint

@@ -27,6 +27,7 @@ import { annotateDeployedSourceHashes } from '../read/deployed-source-hash.js';
 import { type CommonArgs, isInteractive, parseCommonArgs } from '../cli-args.js';
 import { applyIgnores, loadConfig } from '../config/config-file.js';
 import { withinStackPath } from '../construct-path.js';
+import { isAcknowledgedGap, isCoverageReadGap } from '../diff/coverage-gap.js';
 import {
   buildStackJson,
   deletedStackReport,
@@ -118,11 +119,16 @@ export function preDeployFindings(findings: Finding[]): Finding[] {
 // `cdk drift` / CFn drift detection, so declared findings AND the
 // declared-comparison byproducts (readGap = declared-but-unreadable,
 // unresolved = declared-but-GetAtt) drop out. `deleted` stays — a gone resource
-// has no undeclared values to check, and hiding it would be a lie. Exported
+// has no undeclared values to check, and hiding it would be a lie. A FAILED-read
+// readGap (#1970) stays too: it is a coverage gap (its undeclared sub-values were not
+// read either) that `--strict` fails on, so the report must still show why. Exported
 // (pure) so the contract is unit-tested.
 export function undeclaredOnlyFindings(findings: Finding[]): Finding[] {
   return findings.filter(
-    (f) => f.tier !== 'declared' && f.tier !== 'readGap' && f.tier !== 'unresolved'
+    (f) =>
+      f.tier !== 'declared' &&
+      (f.tier !== 'readGap' || isCoverageReadGap(f)) &&
+      f.tier !== 'unresolved'
   );
 }
 
@@ -188,8 +194,10 @@ export function coverageWarning(
   stackName: string,
   preDeploy = false
 ): string | null {
+  // #1969: an ignore.yaml-ACKNOWLEDGED skip is a known, intended gap — still in the
+  // findings / footer, but not re-warned as an unexpected coverage hole.
   const skipped = findings.filter(
-    (f) => f.tier === 'skipped' && !(preDeploy && isPendingCreationSkip(f))
+    (f) => f.tier === 'skipped' && !(preDeploy && isPendingCreationSkip(f)) && !isAcknowledgedGap(f)
   );
   if (skipped.length === 0) return null;
   const names = skipped
@@ -198,6 +206,24 @@ export function coverageWarning(
   const shown = names.slice(0, 10);
   const more = names.length > shown.length ? `, …(+${names.length - shown.length} more)` : '';
   return `warning: ${stackName}: ${skipped.length} resource(s) were NOT checked (coverage incomplete) — ${shown.join(', ')}${more}; see the skipped breakdown (--verbose)`;
+}
+
+// #1970: the property-level twin of coverageWarning — declared/undeclared properties whose
+// read FAILED (a denied supplement read, kms:Decrypt on a Lambda's environment, an
+// unresolvable alias/aws/* KMS alias). Printed for --json, which has no info: footer.
+// Acknowledged ones are excluded like acknowledged skips. Pure + exported.
+export function readFailureWarning(findings: Finding[], stackName: string): string | null {
+  const gaps = findings.filter((f) => isCoverageReadGap(f) && !isAcknowledgedGap(f));
+  if (gaps.length === 0) return null;
+  const names = gaps
+    .map((f) => {
+      const id = f.constructPath ? withinStackPath(f.constructPath, stackName) : f.logicalId;
+      return `${id}.${f.path}`;
+    })
+    .sort();
+  const shown = names.slice(0, 10);
+  const more = names.length > shown.length ? `, …(+${names.length - shown.length} more)` : '';
+  return `warning: ${stackName}: ${gaps.length} propert(ies) could NOT be read (coverage incomplete — grant the missing read permission, or acknowledge it in .cdkrd/ignore.yaml) — ${shown.join(', ')}${more}`;
 }
 
 // #727: under --pre-deploy, the informational count of local resources that are not yet
@@ -233,7 +259,11 @@ export function hasCoverageGap(
   return (
     findings.some(
       (f) =>
-        f.tier === 'skipped' && !(preDeploy && isPendingCreationSkip(f)) && !isCustomResourceSkip(f)
+        !isAcknowledgedGap(f) &&
+        ((f.tier === 'skipped' &&
+          !(preDeploy && isPendingCreationSkip(f)) &&
+          !isCustomResourceSkip(f)) ||
+          isCoverageReadGap(f))
     ) || resources.some((r) => r.resourceType === 'AWS::CloudFormation::Stack')
   );
 }
@@ -651,6 +681,16 @@ export async function runCheck(args: string[]): Promise<number> {
       // any such gap into a non-zero exit (folded into `worst` after the report).
       const nestedWarn = nestedStackWarning(desired.resources, stackName);
       if (nestedWarn) console.error(nestedWarn);
+      // #1969/#1970: the coverage gate reads the RAW gathered findings (before the scope
+      // flags filter them — a skip / failed read is a gap whatever is reported), but AFTER
+      // ignore.yaml, so a gap an ignore rule ACKNOWLEDGES carries `acknowledgedBy` and no
+      // longer fails --strict nor re-warns. applyIgnores re-tags drift tiers too, which no
+      // coverage predicate reads.
+      const coverageFindings = applyIgnores(
+        gathered.findings,
+        { stackName, accountId: desired.accountId, region },
+        config
+      );
       // Coverage gap (skipped / unread resources): R127 folds this into the report's
       // info: footer for TEXT mode — the `skipped=` line there now carries the "NOT
       // checked (coverage incomplete)" framing, so emitting a separate stderr warning
@@ -658,8 +698,10 @@ export async function runCheck(args: string[]): Promise<number> {
       // complaint that prompted R127) and (b) duplicate the footer. --json has no info:
       // footer, so keep the loud stderr warning there to preserve the invariant.
       if (a.json) {
-        const covWarn = coverageWarning(gathered.findings, stackName, a.preDeploy);
+        const covWarn = coverageWarning(coverageFindings, stackName, a.preDeploy);
         if (covWarn) console.error(covWarn);
+        const readWarn = readFailureWarning(coverageFindings, stackName);
+        if (readWarn) console.error(readWarn);
       }
       // #727: under --pre-deploy, surface not-yet-deployed local resources (a "no physical
       // id" skip) as INFORMATIONAL — they are excluded from the coverage gap / --strict
@@ -741,7 +783,7 @@ export async function runCheck(args: string[]): Promise<number> {
         // a not-yet-deployed local resource (#727) is pending-creation info, not a gap.
         worst = Math.max(
           worst,
-          strictCoverageExit(a.strict, gathered.findings, desired.resources, true)
+          strictCoverageExit(a.strict, coverageFindings, desired.resources, true)
         );
         continue;
       }
@@ -904,7 +946,7 @@ export async function runCheck(args: string[]): Promise<number> {
       // --strict: incomplete coverage (a skipped resource or an un-recursed nested
       // stack) is a non-zero exit, independent of --fail's drift axis. The loud
       // coverage warnings above always print; --strict makes them CI-failing.
-      worst = Math.max(worst, strictCoverageExit(a.strict, gathered.findings, desired.resources));
+      worst = Math.max(worst, strictCoverageExit(a.strict, coverageFindings, desired.resources));
     } catch (e) {
       if (isStackNotDeployed(e)) {
         // #781: "does not exist" alone cannot tell a NEVER-deployed stack from one DELETED
