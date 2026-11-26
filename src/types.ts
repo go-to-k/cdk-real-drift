@@ -72,6 +72,11 @@ export interface Finding {
   // "changed since record" off the degraded snippet (it suppresses a recorded one until
   // a clean read, like a transiently-skipped resource). Self-heals on the next check.
   modelReadFailed?: boolean;
+  // generated tier only (#1958): the hash of the code the template DEPLOYS (Lambda: the
+  // declared S3 asset's SHA-256), set by `annotateDeployedSourceHashes` only on a content
+  // hash whose recorded entry the stale-source void would drop. `applyBaseline` compares it
+  // with `actual` to tell a legit redeploy from an out-of-band swap after one, and strips it.
+  deployedSourceHash?: string;
   // added tier only (#1737): the DECLARED parent this out-of-band child was enumerated
   // under (the CHILD_ENUMERATORS key resource). applyBaseline matches these against the
   // baseline's `enumeratedParents` marker to decide whether a child with no recorded

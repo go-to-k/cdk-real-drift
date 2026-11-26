@@ -13,6 +13,7 @@ import {
   carryForwardUnreadable,
   declaredSourceFingerprint,
   formatSourceRedeployedStaleNote,
+  formatSourceUnverifiedNote,
   constructPathsByLogical,
   physicalIdsByLogical,
   formatAdoptedStaleNote,
@@ -418,7 +419,11 @@ describe('baseline', () => {
         // into nothing, but never a drift tier and never "changed since record"
         expect(out).toHaveLength(1);
         expect(out[0]).toMatchObject({ tier: 'generated', path: 'CodeSha256', actual: SHA_B });
-        expect(warnings).toEqual([formatSourceRedeployedStaleNote(['Fn.CodeSha256'])]);
+        expect(warnings).toEqual([
+          formatSourceRedeployedStaleNote(['Fn.CodeSha256']),
+          // #1958: no deployed-source hash was stamped, so the void is unverified
+          formatSourceUnverifiedNote(['Fn.CodeSha256']),
+        ]);
       });
 
       it('fingerprint CHANGED + hash finding ABSENT this run: no false "removed since record" either', () => {
@@ -428,7 +433,11 @@ describe('baseline', () => {
           warn: (s) => warnings.push(s),
         });
         expect(out).toEqual([]);
-        expect(warnings).toEqual([formatSourceRedeployedStaleNote(['Fn.CodeSha256'])]);
+        expect(warnings).toEqual([
+          formatSourceRedeployedStaleNote(['Fn.CodeSha256']),
+          // #1958: no deployed-source hash was stamped, so the void is unverified
+          formatSourceUnverifiedNote(['Fn.CodeSha256']),
+        ]);
       });
 
       it("old baseline WITHOUT fingerprints keeps today's behavior (surfaces changed since record)", () => {

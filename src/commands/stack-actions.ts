@@ -25,6 +25,7 @@ import {
   splitRecordedByBaseline,
   writeBaseline,
 } from '../baseline/baseline-file.js';
+import { annotateDeployedSourceHashes } from '../read/deployed-source-hash.js';
 import {
   addIgnoreRules,
   applyIgnores,
@@ -281,15 +282,26 @@ export function changedRecordLabel(
  * change out of band (the IaC deploy moved the live hash with the template), so record must
  * label and summarize it as a legit refresh, not "CHANGED out of band". Fail-safe: false when
  * no source fingerprint was stored (an old baseline, or a path with no source mapping) or the
- * current declared source does not resolve — exactly the void's own gates. Pure + exported.
+ * current declared source does not resolve — exactly the void's own gates. #1958: also
+ * false when the entry's live finding carries a `deployedSourceHash` that differs from its
+ * live value — the code was swapped out of band AFTER the redeploy. Pure + exported.
  */
 export function isRecordedSourceRedeployed(
   entry: { logicalId: string; path: string; resourceType: string },
   existing: BaselineFile | undefined,
-  declaredByLogical: Map<string, Record<string, unknown>>
+  declaredByLogical: Map<string, Record<string, unknown>>,
+  findings: Finding[] = []
 ): boolean {
   const storedFp = existing?.recordedSourceFingerprints?.[recordedKey(entry)];
   if (storedFp === undefined) return false;
+  const live = findings.find(
+    (f) =>
+      f.logicalId === entry.logicalId &&
+      f.path === entry.path &&
+      f.resourceType === entry.resourceType
+  );
+  if (live?.deployedSourceHash !== undefined && live.actual !== live.deployedSourceHash)
+    return false;
   const currentFp = declaredSourceFingerprint(
     entry.resourceType,
     entry.path,
@@ -520,9 +532,17 @@ export interface RecordResult {
  * interactive prompt — neither re-gathers.)
  */
 export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
-  const { stackName, region, desired, findings, yes, interactive, preselectedKeys, expandNested } =
-    p;
+  const { stackName, region, desired, yes, interactive, preselectedKeys, expandNested } = p;
   const existing = await loadBaseline(stackName, desired.accountId, region);
+  // #1958: verify a redeploy-voided content hash against the code the template deploys, so
+  // an out-of-band swap after that redeploy is labelled "changed", never a legit refresh.
+  // A no-op when check's interactive flow already stamped the findings.
+  const findings = await annotateDeployedSourceHashes(
+    p.findings,
+    existing,
+    desired.resources,
+    region
+  );
   // Identity guard BEFORE consuming `existing`: record reads the prior baseline
   // (carryForwardUnreadable, completeResources monotonicity, prior physical-id fallback)
   // and then `writeBaseline` re-stamps the CURRENT accountId — so without this a baseline
@@ -575,7 +595,7 @@ export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
     // predicate), so labelling them "CHANGED out of band" cries wolf on every legit code
     // redeploy and dulls the real warning. Report them as a legit refresh instead.
     const redeployedViaCfn = changedExisting.filter((e) =>
-      isRecordedSourceRedeployed(e, existing, declaredModel)
+      isRecordedSourceRedeployed(e, existing, declaredModel, findings)
     );
     const redeployedKeys = new Set(redeployedViaCfn.map((e) => recordedKey(e)));
     const changedOob = changedExisting.filter((e) => !redeployedKeys.has(recordedKey(e)));
@@ -662,7 +682,7 @@ export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
               // #1616: a content hash whose declared source was redeployed via CloudFormation
               // gets the "refreshing watch" label, not "changed since record" (labelling only —
               // the UNSELECTED default is unchanged so the refresh stays an explicit choice).
-              const redeployed = isRecordedSourceRedeployed(e, existing, declaredModel);
+              const redeployed = isRecordedSourceRedeployed(e, existing, declaredModel, findings);
               return {
                 value: recordedKey(e),
                 label: changedRecordLabel(e, rec, redeployed),
@@ -1689,13 +1709,22 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     failedDeleteIds.size === 0
       ? findings
       : [...findings, ...gathered.findings.filter((f) => failedDeleteIds.has(f.logicalId))];
-  let post = readdFailedDeletes(reconcile(await regatherTouched(gathered, touched, region)));
+  // #1958: re-verify a touched function's redeploy-voided CodeSha256, else a detected code
+  // swap folds back into the void and the revert falsely reports convergence.
+  const regather = async (): Promise<Finding[]> =>
+    annotateDeployedSourceHashes(
+      await regatherTouched(gathered, touched, region),
+      baseline,
+      gathered.desired.resources,
+      region
+    );
+  let post = readdFailedDeletes(reconcile(await regather()));
   if (driftCount(post.filter((f) => touched.has(f.logicalId))) > 0) {
     // A touched resource still reads as drifted. SDK-writer paths (IAM etc.) are
     // eventually consistent — the old slow full re-gather granted propagation time
     // for free; the scoped read must wait deliberately. One retry only.
     await sleep(p.convergeRetryDelayMs ?? CONVERGE_RETRY_DELAY_MS);
-    post = readdFailedDeletes(reconcile(await regatherTouched(gathered, touched, region)));
+    post = readdFailedDeletes(reconcile(await regather()));
   }
   const remainingDrift = post.filter(isDrift);
   const remaining = remainingDrift.length;

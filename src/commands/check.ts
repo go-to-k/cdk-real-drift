@@ -23,6 +23,7 @@ import {
   warnBaselineSchemaV1,
   warnTemplateHashDrift,
 } from '../baseline/baseline-file.js';
+import { annotateDeployedSourceHashes } from '../read/deployed-source-hash.js';
 import { type CommonArgs, isInteractive, parseCommonArgs } from '../cli-args.js';
 import { applyIgnores, loadConfig } from '../config/config-file.js';
 import { withinStackPath } from '../construct-path.js';
@@ -758,6 +759,15 @@ export async function runCheck(args: string[]): Promise<number> {
       // `console.error`, so JSON stdout stays pure. The old `!a.json` gate dropped it
       // NOWHERE under --json (#944).
       if (baseline) warnBaselineSchemaV1(baseline, stackName);
+      // #1958: a content hash voided by a legit code redeploy since record is verified
+      // against the code the template deploys, so a swap AFTER that redeploy still surfaces.
+      if (!a.declaredOnly)
+        findings = await annotateDeployedSourceHashes(
+          findings,
+          baseline,
+          desired.resources,
+          region
+        );
       // First run (no baseline): R110 removed the pre-report "Record ALL sight-unseen"
       // prompt (R45/R52). It buried the very values it flagged as possible out-of-band
       // edits — pressing Enter recorded them into the baseline BEFORE the user ever saw

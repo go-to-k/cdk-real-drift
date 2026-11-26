@@ -1103,6 +1103,27 @@ all fold into a one-line stderr nudge (mirroring the promotion note), never drif
   entry cannot fold through a tier — it is SUPPRESSED instead, so it folds
   silently with the same re-record nudge rather than resurfacing as "appeared
   since record".
+- **A swap AFTER a legit code redeploy (#1958).** The void alone cannot tell
+  "redeployed" from "redeployed, then swapped out of band" — both move the
+  recorded hash and the declared source — so until a re-record every redeployed
+  function was unwatched. For Lambda `CodeSha256` only, `check` / `record` /
+  `ignore` / `revert` first run `annotateDeployedSourceHashes`
+  (read/deployed-source-hash.ts): for each entry the void WOULD drop whose declared
+  `Code` is a literal `S3Bucket`/`S3Key` (+ `S3ObjectVersion`), it streams the
+  asset via `s3:GetObject` and stamps its base64 SHA-256 (the encoding Lambda
+  reports) on the live finding as `deployedSourceHash`. `applyBaseline` then folds
+  a live hash EQUAL to it (legit redeploy, nudge as above) and surfaces a
+  DIFFERENT one as `undeclared` drift with the deployed hash as `desired` — no
+  re-record nudge, and `record` labels it "changed since record", not a refresh.
+  Only voided entries are fetched (never every function's package on every
+  check). An unreadable asset (no grant, lifecycle-expired), an inline `ZipFile`
+  or an `ImageUri` keeps today's void plus a "could not verify" coverage note.
+  Fetches run at most 4 at a time on a shared client, and the revert convergence
+  re-read re-verifies touched functions. Known limit: an attacker who can overwrite
+  the asset OBJECT and then push the same zip with `update-function-code` reads
+  verified. Glue `ScriptSha256` and the TrustStore bundle are NOT verifiable this way: the
+  S3 object IS their live artifact, so "expected from S3" and "live" are the
+  same bytes.
 
 **Stale-baseline warning.** `templateHash` (sha256 of the deployed template at
 capture) is verified on load (`warnTemplateHashDrift`): a mismatch prints a non-fatal
