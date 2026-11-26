@@ -20,6 +20,12 @@ vi.mock('../src/commands/resolve-stacks.js', () => ({
   resolveStacks: () =>
     Promise.resolve([{ stackName: 'MyStack', region: 'us-east-1', template: {} }]),
 }));
+vi.mock('../src/synth/resolve-app.js', () => ({ resolveApp: () => 'app' }));
+vi.mock('../src/synth/synth.js', () => ({
+  synthApp: () => Promise.resolve([{ stackName: 'MyStack', region: 'us-east-1', template: {} }]),
+  discoverStacks: () =>
+    Promise.resolve([{ stackName: 'MyStack', region: 'us-east-1', template: {} }]),
+}));
 vi.mock('../src/commands/gather.js', () => ({
   gatherFindings: () =>
     Promise.resolve({
@@ -334,6 +340,15 @@ describe('#1969/#1970 runCheck --strict honours ignore.yaml acknowledgements', (
     await writeIgnore('ignore:\n  - path: ClusterRestorer/Verifier.Environment\n');
     expect(await runCheck(['--strict', '--json', 'MyStack'])).toBe(0);
     expect(err.join('\n')).not.toContain('could NOT be read');
+  });
+
+  it('--pre-deploy: the same acknowledgement clears the --strict gate there too', async () => {
+    gathered = [attachmentSkip(), envReadGap()];
+    expect(await runCheck(['--strict', '--pre-deploy', '--no-prompt', 'MyStack'])).toBe(1);
+    await writeIgnore(
+      'ignore:\n  - path: Database/Cluster/Secret/Attachment\n  - path: ClusterRestorer/Verifier\n'
+    );
+    expect(await runCheck(['--strict', '--pre-deploy', '--no-prompt', 'MyStack'])).toBe(0);
   });
 
   it('a by-nature readGap never fails --strict', async () => {
