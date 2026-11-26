@@ -3,6 +3,7 @@
 // check/record/ignore never write to AWS (record writes only the baseline FILE; ignore
 // writes only .cdkrd/ignore.yaml); revert is the one AWS-mutating command.
 import { readFileSync } from 'node:fs';
+import { topLevelErrorMessage } from './aws-errors.js';
 import { flushAndExit } from './exit.js';
 import { installInterruptGuard } from './interrupt.js';
 import { runRecord } from './commands/record.js';
@@ -40,6 +41,12 @@ OPTIONS
                               An env-agnostic stack with none of these falls back to
                               the active --profile's configured region (~/.aws/config)
   --profile <p>               AWS profile (or $AWS_PROFILE)
+  --assume-role <arn>         assume this IAM role (from the --profile / ambient
+                              credentials) for every AWS call (or $CDKRD_ASSUME_ROLE);
+                              {account} / {region} are filled per stack from the CDK
+                              app, e.g. 'arn:aws:iam::{account}:role/MyReadRole'.
+                              Session name cdkrd-<verb>. Synth still uses the ambient
+                              credentials, as cdk does
   -a, --app <cmd|cdk.out>     CDK app command or pre-synthesized assembly dir
                               (or $CDKRD_APP / cdk.json "app") — enables stack
                               auto-discovery + construct-path output
@@ -164,20 +171,7 @@ const argv = process.argv.slice(2);
 main(argv)
   .then((code) => flushAndExit(code))
   .catch((e: unknown) => {
-    const msg = (e as { message?: string })?.message ?? String(e);
-    if (/credential|could not load cred|security token/i.test(msg)) {
-      console.error(
-        'error: no AWS credentials available. Configure them (aws configure / AWS_PROFILE / env vars) and retry.'
-      );
-    } else if (/stack/i.test(msg) && /(does not exist|ValidationError)/i.test(msg)) {
-      console.error(
-        'error: stack not found in this account/region. Check the stack name and --region.'
-      );
-    } else if (/AccessDenied|not authorized/i.test(msg)) {
-      console.error(`error: access denied — ${msg}`);
-    } else {
-      console.error(`error: ${msg}`);
-    }
+    console.error(topLevelErrorMessage(e));
     // A throw that escapes a verb BEFORE it could emit its JSON — e.g. parseCommonArgs
     // rejecting a bad flag at the top of run*, or check's --pre-deploy second synth — must
     // still leave --json stdout a single JSON.parse-able value (`[]`), never empty bytes.

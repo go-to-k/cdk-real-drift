@@ -1,4 +1,5 @@
 // Tiny shared CLI arg parser (no dependency).
+import { validateAssumeRoleTemplate } from './read/assume-role-arn.js';
 import { DEFAULT_WAIT_MS, parseDurationMs } from './revert/transient.js';
 
 // The complete known-option surface. parseCommonArgs is shared by all three
@@ -6,7 +7,15 @@ import { DEFAULT_WAIT_MS, parseDurationMs } from './revert/transient.js';
 // by the verb. Anything NOT listed is a fail-fast error — a typo'd flag must
 // never silently turn its value into a positional stack name (cdkrd has an
 // AWS-mutating verb, so a misparse can target the wrong stacks).
-const VALUE_FLAGS = new Set(['--region', '--profile', '--app', '-a', '-c', '--context']);
+const VALUE_FLAGS = new Set([
+  '--region',
+  '--profile',
+  '--assume-role',
+  '--app',
+  '-a',
+  '-c',
+  '--context',
+]);
 const BOOLEAN_FLAGS = new Set([
   '--json',
   '--fail',
@@ -42,7 +51,16 @@ const canonicalFlag = (flag: string): string => CANONICAL_FLAG[flag] ?? flag;
 // gather + report layers regardless of verb). `--json` suppresses the gather spinner and
 // selects JSON output where a verb emits it; `--yes` skips a confirm on every verb that
 // has one (check's inline actions included).
-const GLOBAL_FLAGS = ['--region', '--profile', '--app', '--context', '--all', '--json', '--yes'];
+const GLOBAL_FLAGS = [
+  '--region',
+  '--profile',
+  '--assume-role',
+  '--app',
+  '--context',
+  '--all',
+  '--json',
+  '--yes',
+];
 
 // Per-verb allowed flag surface (canonical names), so a verb-INAPPLICABLE flag fails fast
 // with the same loud exit-2 as an unknown flag instead of being silently accepted — the
@@ -140,6 +158,11 @@ export interface CommonArgs {
   // the short default backoff. undefined = not requested (default short backoff → hint);
   // a number = the wait budget in ms (bare `--wait` = DEFAULT_WAIT_MS). Issue #467.
   waitMs: number | undefined;
+  // #1971: `--assume-role <arn>` (else $CDKRD_ASSUME_ROLE): an IAM role ARN template —
+  // `{account}` / `{region}` resolved per stack — that every AWS call for a stack is made
+  // as, assumed from the ambient credentials (read/assume-role.ts). undefined = not set.
+  // Validated at parse. POST-ASSIGNED like noPrompt (the #683 literal-size reason).
+  assumeRole?: string;
 }
 
 /**
@@ -300,5 +323,12 @@ export function parseCommonArgs(args: string[], verb?: Verb): CommonArgs {
     waitMs,
   };
   parsed.noPrompt = has('--no-prompt');
+  // An EMPTY $CDKRD_ASSUME_ROLE is unset (a CI template that exports the variable with no
+  // value must not fail every run); the flag itself already rejects an empty value above.
+  const assumeRole = values['--assume-role'] ?? (process.env.CDKRD_ASSUME_ROLE || undefined);
+  if (assumeRole !== undefined) {
+    validateAssumeRoleTemplate(assumeRole);
+    parsed.assumeRole = assumeRole;
+  }
   return parsed;
 }

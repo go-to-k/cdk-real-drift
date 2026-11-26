@@ -2,6 +2,7 @@
 // readOnly / writeOnly / default sets used for noise suppression — both as
 // top-level name sets (fast checks) and as full dotted paths (nested strip).
 import { type CloudFormationClient, DescribeTypeCommand } from '@aws-sdk/client-cloudformation';
+import { credentialScopeKey } from '../read/client-config.js';
 import type { SchemaInfo } from '../types.js';
 
 // DescribeType is a REGIONAL call (the CloudFormationClient is per-region), and
@@ -67,7 +68,9 @@ export async function getSchemaInfoResult(
   resourceType: string
 ): Promise<SchemaInfoResult> {
   const region = await client.config.region();
-  const cacheKey = `${region}\0${resourceType}`;
+  // #1971: a private / third-party registry type's schema is per ACCOUNT, and one
+  // `--assume-role '...{account}...'` run spans accounts — key on the credential scope too.
+  const cacheKey = `${credentialScopeKey()}\0${region}\0${resourceType}`;
   const cached = cache.get(cacheKey);
   if (cached) return { info: cached, failed: false };
   const result = await fetch(client, resourceType);

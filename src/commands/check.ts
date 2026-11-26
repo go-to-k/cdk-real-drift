@@ -25,6 +25,8 @@ import {
 } from '../baseline/baseline-file.js';
 import { annotateDeployedSourceHashes } from '../read/deployed-source-hash.js';
 import { type CommonArgs, isInteractive, parseCommonArgs } from '../cli-args.js';
+import { enterRoleScope, stackRoleScope } from '../read/assume-role.js';
+import { credentialScopeKey } from '../read/client-config.js';
 import { applyIgnores, loadConfig } from '../config/config-file.js';
 import { withinStackPath } from '../construct-path.js';
 import { isAcknowledgedGap, isCoverageReadGap } from '../diff/coverage-gap.js';
@@ -586,19 +588,18 @@ export async function runCheck(args: string[]): Promise<number> {
   // #1046: the CURRENT account, resolved AT MOST ONCE per run (lazily, only when a
   // not-deployed stack is hit) and cached — used to pin the deleted-out-of-band detector's
   // baseline account segment so a shared-account baseline does not false-flag a stack never
-  // deployed in THIS account. `callerAccountResolved` guards the one-shot resolution; an
-  // `undefined` `callerAccount` afterwards means STS could not answer → wildcard fallback.
-  let callerAccount: string | undefined;
-  let callerAccountResolved = false;
+  // deployed in THIS account. A cached `undefined` means STS could not answer → wildcard
+  // fallback.
   // #740: resolve the caller account AT MOST ONCE (region-free `sts:GetCallerIdentity` — the
   // account is the same across regions) and cache it, so both the pre-read account-mismatch
-  // gate below AND the not-deployed catch reuse the same one-shot resolution.
+  // gate below AND the not-deployed catch reuse the same one-shot resolution. #1971: once
+  // per CREDENTIAL SCOPE — under `--assume-role '...{account}...'` each account's role is a
+  // different caller, so a single per-run answer would gate stack 2 against stack 1's account.
+  const callerAccounts = new Map<string, string | undefined>();
   const ensureCallerAccount = async (region: string): Promise<string | undefined> => {
-    if (!callerAccountResolved) {
-      callerAccount = await resolveCallerAccount(region);
-      callerAccountResolved = true;
-    }
-    return callerAccount;
+    const key = credentialScopeKey();
+    if (!callerAccounts.has(key)) callerAccounts.set(key, await resolveCallerAccount(region));
+    return callerAccounts.get(key);
   };
   for (const [
     idx,
@@ -618,6 +619,11 @@ export async function runCheck(args: string[]): Promise<number> {
     // not only on the scrolled-away spinner line.
     const posPrefix = a.json ? '' : positionPrefix(idx, stacks.length);
     try {
+      // #1971: from here on this stack's AWS calls run as the --assume-role role (no-op
+      // without the flag); a role that cannot be assumed fails the stack here, naming it.
+      // The scope persists until the next stack enters its own, so an AWS call added ABOVE
+      // this line (or after the loop) would run as the PREVIOUS stack's role.
+      enterRoleScope(await stackRoleScope(a.assumeRole, { account, region }, 'check'));
       // #740: if this stack is pinned (via env.account) to an account the active credentials
       // are NOT for, SKIP it accurately here — BEFORE any live read — instead of reading the
       // wrong account. A multi-account CDK app (dev+prod in different accounts, the Pipelines
@@ -957,7 +963,7 @@ export async function runCheck(args: string[]): Promise<number> {
         // #1046: resolve the current account (once per run, cached) and pin the baseline's
         // account segment — else another account's committed baseline false-flags a stack
         // never deployed in THIS account as "deleted out of band" (multi-account CI red).
-        await ensureCallerAccount(region);
+        const callerAccount = await ensureCallerAccount(region);
         if (hasBaselineForStack(stackName, region, callerAccount)) {
           const msg = 'deployed baseline exists but the stack is gone — deleted out of band';
           const label = `${stackName} (${region})`;

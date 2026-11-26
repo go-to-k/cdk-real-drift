@@ -17,7 +17,7 @@
 // detection for every subsequent stack in the region for the whole run AND misreport
 // the blip as "kms:ListAliases denied", sending the user to fix IAM that isn't broken.
 import { KMSClient, ListAliasesCommand } from '@aws-sdk/client-kms';
-import { READ_RETRY } from './client-config.js';
+import { credentialScopeKey, READ_RETRY } from './client-config.js';
 
 export interface ManagedAliasTargets {
   targets: Record<string, string>; // alias/aws/<svc> -> target key id
@@ -43,7 +43,10 @@ export function isDefinitiveDenial(err: unknown): boolean {
 }
 
 export async function fetchManagedAliasTargets(region: string): Promise<ManagedAliasTargets> {
-  const cached = cache.get(region);
+  // #1971: alias targets are per ACCOUNT — key on the credential scope too, so one
+  // `--assume-role '...{account}...'` run over several accounts never shares an entry.
+  const key = `${credentialScopeKey()}|${region}`;
+  const cached = cache.get(key);
   if (cached) return cached;
   const targets: Record<string, string> = {};
   try {
@@ -58,14 +61,14 @@ export async function fetchManagedAliasTargets(region: string): Promise<ManagedA
       marker = r.Truncated ? r.NextMarker : undefined;
     } while (marker);
     const result: ManagedAliasTargets = { targets, denied: false };
-    cache.set(region, result);
+    cache.set(key, result);
     return result;
   } catch (e) {
     if (isDefinitiveDenial(e)) {
       // definitive: no kms:ListAliases → cache the denial (a denied region is not
       // re-queried per stack); the classifier reports the pairs as not comparable.
       const result: ManagedAliasTargets = { targets: {}, denied: true };
-      cache.set(region, result);
+      cache.set(key, result);
       return result;
     }
     // transient (throttle / network / 5xx / timeout): degrade THIS call gracefully but
