@@ -14,6 +14,7 @@ import {
   loadBaseline,
   physicalIdsByLogical,
 } from '../baseline/baseline-file.js';
+import { annotateDeployedSourceHashes } from '../read/deployed-source-hash.js';
 import type { Desired } from '../desired/template-adapter.js';
 import { isInteractive, parseCommonArgs } from '../cli-args.js';
 import { applyIgnores, loadConfig } from '../config/config-file.js';
@@ -133,8 +134,15 @@ export async function runIgnore(args: string[]): Promise<number> {
       // out (they are already `ignored`, so ignoreStack never re-offers them).
       const baseline = await loadBaseline(stackName, desired.accountId, region);
       if (baseline) checkBaselineAccount(baseline, desired.accountId, stackName);
+      // #1958: verify a redeploy-voided content hash exactly as check does.
+      const verified = await annotateDeployedSourceHashes(
+        findings,
+        baseline,
+        desired.resources,
+        region
+      );
       const reconciled = applyIgnores(
-        applyBaseline(findings, baseline, ignoreApplyBaselineOpts(desired)),
+        applyBaseline(verified, baseline, ignoreApplyBaselineOpts(desired)),
         { stackName, accountId: desired.accountId, region },
         config
       );

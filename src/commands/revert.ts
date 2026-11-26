@@ -11,6 +11,7 @@ import {
   checkBaselineAccount,
   loadBaseline,
 } from '../baseline/baseline-file.js';
+import { annotateDeployedSourceHashes } from '../read/deployed-source-hash.js';
 import { isInteractive, parseCommonArgs } from '../cli-args.js';
 import { loadConfig } from '../config/config-file.js';
 import { createAccountGate } from './account-gate.js';
@@ -100,7 +101,7 @@ export async function runRevert(args: string[]): Promise<number> {
       // gather (DescribeStackResources) resolves. (R21 — was load-then-gather.)
       // `template` (synth) recovers GetTemplate's `?`-masked non-ASCII literals so a
       // revert writes the REAL declared value, never a `?????` mask.
-      const gathered = await gatherWithProgress(
+      let gathered = await gatherWithProgress(
         showProgress,
         progressLabel(idx, stacks.length, stackName, region),
         () => gatherFindings(stackName, region, undefined, template)
@@ -130,6 +131,16 @@ export async function runRevert(args: string[]): Promise<number> {
         region
       );
       if (baseline) checkBaselineAccount(baseline, gathered.desired.accountId, stackName);
+      // #1958: verify a redeploy-voided content hash exactly as check does.
+      gathered = {
+        ...gathered,
+        findings: await annotateDeployedSourceHashes(
+          gathered.findings,
+          baseline,
+          gathered.desired.resources,
+          region
+        ),
+      };
       // #786: surface the mid-operation / failed-state warning the same way check does —
       // a revert on an in-flux stack is risky (revertStack additionally re-reads the state
       // right before the write and refuses on a mid-operation stack).

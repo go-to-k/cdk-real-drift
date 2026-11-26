@@ -966,6 +966,40 @@ export function declaredSourceFingerprint(
 }
 
 /**
+ * The recorded keys whose content hash is VOID because its declared source was redeployed
+ * through CloudFormation since record (the #1606 stale-source void): a stored fingerprint
+ * EXISTS and the current declared source RESOLVES to a different one. Shared by
+ * `applyBaseline` and the #1958 deployed-source verifier, which fetches only these.
+ */
+export function sourceRedeployedKeys(
+  baseline: BaselineFile,
+  declaredByLogical: Map<string, Record<string, unknown>> | undefined
+): Set<string> {
+  const out = new Set<string>();
+  const stored = baseline.recordedSourceFingerprints ?? {};
+  for (const e of baseline.recorded) {
+    const storedFp = stored[recordedKey(e)];
+    if (storedFp === undefined) continue;
+    const currentFp = declaredSourceFingerprint(
+      e.resourceType,
+      e.path,
+      declaredByLogical?.get(e.logicalId)
+    );
+    if (currentFp !== undefined && currentFp !== storedFp) out.add(recordedKey(e));
+  }
+  return out;
+}
+
+// #1958: the recordable-generated hashes a voided entry can be VERIFIED for, by hashing the
+// content the template deploys. Only Lambda: its running code lives in Lambda, independent
+// of the S3 asset, so the asset's hash is an independent "expected". For Glue ScriptSha256
+// and the TrustStore bundle the S3 object IS the live artifact (the swap vector is
+// overwriting it), so hashing it would read the same bytes as live — not a verifier.
+export const DEPLOYED_SOURCE_VERIFIABLE: Readonly<Record<string, string>> = {
+  'AWS::Lambda::Function': 'CodeSha256',
+};
+
+/**
  * Build the `recordedSourceFingerprints` map for the entries being written. For each entry
  * with a source mapping: prefer the PREVIOUS baseline's fingerprint when the entry's VALUE
  * was carried forward unchanged from it (a resource unread this run — e.g. skipped — must
@@ -1638,18 +1672,13 @@ export function applyBaseline(
   // recorded fingerprint EXISTS (old baselines have none) and the current declared source
   // RESOLVES and differs — an out-of-band swap never touches the template, so its
   // fingerprint matches and the record-keeps-watching contract is fully preserved.
-  const sourceRedeployedVoid = new Set<string>();
-  const recordedSourceFps = baseline.recordedSourceFingerprints ?? {};
-  for (const e of recorded) {
-    const storedFp = recordedSourceFps[recordedKey(e)];
-    if (storedFp === undefined) continue;
-    const currentFp = declaredSourceFingerprint(
-      e.resourceType,
-      e.path,
-      opts.declaredByLogical?.get(e.logicalId)
-    );
-    if (currentFp !== undefined && currentFp !== storedFp) sourceRedeployedVoid.add(recordedKey(e));
-  }
+  const sourceRedeployedVoid = sourceRedeployedKeys(baseline, opts.declaredByLogical);
+  // #1958: voided entries whose live hash was VERIFIED against the content the template
+  // deploys (`Finding.deployedSourceHash`) — `swapped` surfaces as drift, `verified` folds
+  // with a nudge that says so. A voided entry in neither set could not be verified and keeps
+  // today's void plus a coverage note.
+  const sourceSwapped = new Set<string>();
+  const sourceVerified = new Set<string>();
   // #793: a logicalId's CURRENT resource type (from the live findings). A recorded entry
   // whose `resourceType` differs from the live type belongs to an OLD resource that was
   // deleted and re-added under the SAME logicalId as a DIFFERENT type (a template refactor
@@ -1749,6 +1778,28 @@ export function applyBaseline(
       : recorded.find((a) => entryMatches(a, f));
     const sourceRedeployVoided =
       matched !== undefined && sourceRedeployedVoid.has(recordedKey(matched));
+    // #1958: the void alone cannot tell "legit redeploy" from "legit redeploy, THEN an
+    // out-of-band swap" — both move the recorded hash and the declared source. When the
+    // hash of the content the template deploys is known, compare the live hash against it:
+    // equal = the redeploy explains the live code (fold, nudge below); different = the live
+    // code is NOT what the template deployed, so it was swapped out of band — drift, with
+    // the deployed-source hash as `desired` (the recorded one is stale either way).
+    if (matched !== undefined && sourceRedeployVoided && f.deployedSourceHash !== undefined) {
+      const { deployedSourceHash, ...rest } = f;
+      if (f.actual === deployedSourceHash) {
+        sourceVerified.add(recordedKey(matched));
+        kept.push(rest);
+      } else {
+        sourceSwapped.add(recordedKey(matched));
+        kept.push({
+          ...rest,
+          tier: 'undeclared',
+          desired: deployedSourceHash,
+          note: 'differs from the code the template deploys (changed out of band since the last code deploy)',
+        });
+      }
+      continue;
+    }
     // #1615: a `generated`-tier voided hash (Lambda CodeSha256, Glue ScriptSha256) folds
     // through its own tier below once treated as absent. But a synthetic `undeclared` hash
     // (ELBv2 TrustStore CaCertificatesBundleSha256 — not a `generated` tier) has no such fold:
@@ -1894,6 +1945,7 @@ export function applyBaseline(
   const adoptedStale: string[] = []; // #1279
   const nameStrippedStale: string[] = []; // #1274
   const sourceRedeployedStale: string[] = []; // stale-source void (legit code redeploy)
+  const sourceUnverified: string[] = []; // #1958: void that could not be verified
   for (const a of recorded) {
     // #791: an `added`-resource entry has an empty path (the WHOLE resource is the value)
     // and is reconciled in the loop above when its live child is still enumerated. When it
@@ -1964,7 +2016,14 @@ export function applyBaseline(
     // still fires) or absent (the hash supplement failed this run — must not read as
     // "removed since record" either).
     if (sourceRedeployedVoid.has(recordedKey(a))) {
+      // #1958: a detected swap is drift (surfaced above) — never nudge to re-record it.
+      if (sourceSwapped.has(recordedKey(a))) continue;
       sourceRedeployedStale.push(`${a.logicalId}.${a.path}`);
+      if (
+        !sourceVerified.has(recordedKey(a)) &&
+        DEPLOYED_SOURCE_VERIFIABLE[a.resourceType] === a.path
+      )
+        sourceUnverified.push(`${a.logicalId}.${a.path}`);
       continue;
     }
     if (currentPaths.has(`${a.logicalId}.${a.path}`)) continue;
@@ -2082,6 +2141,7 @@ export function applyBaseline(
   if (nameStrippedStale.length > 0) opts.warn?.(formatNameStrippedStaleNote(nameStrippedStale));
   if (sourceRedeployedStale.length > 0)
     opts.warn?.(formatSourceRedeployedStaleNote(sourceRedeployedStale));
+  if (sourceUnverified.length > 0) opts.warn?.(formatSourceUnverifiedNote(sourceUnverified));
   return kept;
 }
 
@@ -2099,6 +2159,16 @@ export function formatSourceRedeployedStaleNote(paths: string[]): string {
       ? `baseline entry (${paths[0]}) is a content hash whose`
       : `${n} baseline entries are content hashes whose`;
   return `note: ${subject} declared code was redeployed via CloudFormation since record — re-run \`cdkrd record\` to watch the new code.`;
+}
+
+/**
+ * #1958: the coverage note for stale-source voids whose live hash could NOT be verified
+ * against the deployed source (the asset object was unreadable, or the source is not an S3
+ * object) — an out-of-band swap since that redeploy goes unseen until a re-record, and the
+ * user must know the CLEAN verdict does not cover it. Pure + exported for unit tests.
+ */
+export function formatSourceUnverifiedNote(paths: string[]): string {
+  return `note: could not verify ${paths.join(', ')} against the code the template deploys (S3 asset unreadable, or not an S3 source) — an out-of-band code swap since that deploy is not detected until \`cdkrd record\` re-runs.`;
 }
 
 /**
