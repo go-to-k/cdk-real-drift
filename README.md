@@ -1069,6 +1069,13 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   code bytes are gone, so it is detect-only (not revertable — redeploy with a
   forced code update). Without the permission the signal is skipped, never
   false-flagged.
+- `kms:Decrypt` on a function's environment key (the AWS-managed `aws/lambda`
+  key by default) lets cdkrd read `AWS::Lambda::Function` environment variables.
+  A caller denied it — notably the CDK bootstrap **lookup role**, whose policy
+  explicitly denies `kms:Decrypt` — gets an `Environment.Error` instead of the
+  variables, so cdkrd reports `Environment` as an unverifiable `readGap`
+  (`--strict` counts it as incomplete coverage) with a stderr warning, never as
+  declared drift.
 - Optional: `glue:GetJob` + `s3:GetObject` (on the script bucket) record a content
   hash of an `AWS::Glue::Job`'s ETL script (`ScriptSha256`, fetched from
   `Command.ScriptLocation`) so an out-of-band script swap at the **same S3 key**

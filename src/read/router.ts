@@ -610,6 +610,16 @@ export async function readLive(
           region,
           accountId,
         });
+        // A supplement that READ fine but learned that part of the CC model is unverifiable
+        // (#1964: Lambda `Environment.Error` — the caller cannot kms:Decrypt the variables, and
+        // CC then echoes an EMPTY `Environment.Variables`) returns the branded read-gap variant:
+        // drop those top-level props from the CC model (an empty husk would false-flag every
+        // declared entry as removed) and surface them as counted readGaps, like a failed read.
+        if (isOverrideReadResult(extra)) {
+          Object.assign(live, extra.model);
+          for (const p of extra.readGapPaths) delete live[p];
+          return { live, readGapPaths: extra.readGapPaths };
+        }
         if (extra) Object.assign(live, extra);
       } catch (e) {
         // The supplement read FAILED (a missing narrow IAM permission like

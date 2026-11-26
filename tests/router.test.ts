@@ -26,8 +26,9 @@ import { GetWorkgroupCommand, RedshiftServerlessClient } from '@aws-sdk/client-r
 import { GetFunctionCommand, LambdaClient } from '@aws-sdk/client-lambda';
 import { mockClient } from 'aws-sdk-client-mock';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
+import { classifyResource } from '../src/diff/classify.js';
 import { readLive } from '../src/read/router.js';
-import type { DesiredResource } from '../src/types.js';
+import type { DesiredResource, SchemaInfo } from '../src/types.js';
 
 const cc = mockClient(CloudControlClient);
 const s3 = mockClient(S3Client);
@@ -1926,6 +1927,82 @@ describe('readLive (SDK supplement path — Lambda::Function code hash, #646)', 
     lambda.on(GetFunctionCommand).rejects(named('AccessDeniedException'));
     const r = await readLive(cc as unknown as CloudControlClient, fn(), 'us-east-1', '1');
     expect(r.live).toEqual({ FunctionName: 'my-fn', Runtime: 'nodejs20.x' });
+  });
+
+  // #1964 — live shape read as the CDK bootstrap lookup role (explicit Deny kms:Decrypt):
+  // GetFunction returns Environment.Error with no Variables; CC echoes an EMPTY Variables map.
+  const envErrorShapes = () => {
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: {
+        Properties:
+          '{"FunctionName":"my-fn","Runtime":"nodejs20.x","Environment":{"Variables":{}}}',
+      },
+    });
+    lambda.on(GetFunctionCommand).resolves({
+      Configuration: {
+        CodeSha256: SHA,
+        Environment: {
+          Error: {
+            ErrorCode: 'AccessDeniedException',
+            Message:
+              'Lambda was unable to decrypt your environment variables because the KMS access was denied.',
+          },
+        },
+      },
+    });
+  };
+
+  it('Environment.Error (kms:Decrypt denied) → Environment is a read-gap, CC empty husk dropped', async () => {
+    envErrorShapes();
+    const r = await readLive(cc as unknown as CloudControlClient, fn(), 'us-east-1', '1');
+    expect(r.live).toEqual({ FunctionName: 'my-fn', Runtime: 'nodejs20.x', CodeSha256: SHA });
+    expect(r.readGapPaths).toEqual(['Environment']);
+  });
+
+  it('Environment.Error end to end: declared variables surface as ONE readGap, not declared drift', async () => {
+    envErrorShapes();
+    const desired = res({
+      resourceType: 'AWS::Lambda::Function',
+      physicalId: 'my-fn',
+      declared: {
+        FunctionName: 'my-fn',
+        Runtime: 'nodejs20.x',
+        Environment: { Variables: { SECRET_ARN: 'arn:x', EXPECTED_BACKUP_RETENTION_DAYS: '7' } },
+      },
+    });
+    const r = await readLive(cc as unknown as CloudControlClient, desired, 'us-east-1', '1');
+    const emptySchema: SchemaInfo = {
+      readOnly: new Set(),
+      writeOnly: new Set(),
+      createOnly: new Set(),
+      readOnlyPaths: [],
+      writeOnlyPaths: [],
+      createOnlyPaths: [],
+      defaults: {},
+      defaultPaths: {},
+    };
+    const findings = classifyResource(desired, r.live ?? {}, emptySchema, {
+      supplementReadGapPaths: r.readGapPaths,
+    });
+    // No `declared` finding on any Environment.Variables.* leaf (the #1964 false positive).
+    expect(findings.map((f) => `${f.tier}:${f.path}`)).toEqual([
+      'readGap:Environment',
+      'generated:CodeSha256',
+    ]);
+  });
+
+  it('a readable Environment (no Error) is left to CC untouched', async () => {
+    cc.on(GetResourceCommand).resolves({
+      ResourceDescription: {
+        Properties: '{"FunctionName":"my-fn","Environment":{"Variables":{"A":"1"}}}',
+      },
+    });
+    lambda.on(GetFunctionCommand).resolves({
+      Configuration: { CodeSha256: SHA, Environment: { Variables: { A: '1' } } },
+    });
+    const r = await readLive(cc as unknown as CloudControlClient, fn(), 'us-east-1', '1');
+    expect(r.live?.Environment).toEqual({ Variables: { A: '1' } });
+    expect(r.readGapPaths).toBeUndefined();
   });
 });
 

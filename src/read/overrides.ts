@@ -4154,13 +4154,27 @@ async function fetchPresignedText(url: string): Promise<string | undefined> {
 // A GetFunction failure (a missing lambda:GetFunction permission, a throttle)
 // PROPAGATES to the router's supplement-failure degrade rather than being swallowed,
 // so a transient read gap never mis-reads as a code swap.
+//
+// #1964: a caller that cannot kms:Decrypt the function's environment (notably the CDK
+// bootstrap LOOKUP role, whose policy explicitly denies kms:Decrypt) gets
+// `Environment: { Error: { ErrorCode, Message } }` with no Variables from GetFunction, while
+// Cloud Control echoes an EMPTY `Environment.Variables` — so every declared variable
+// false-flagged as declared drift. On `Environment.Error` the supplement reports `Environment`
+// as a read-gap (the router drops CC's empty husk; classify emits a counted readGap), naming
+// the cause on stderr.
 const supplementLambdaFunction: SupplementReader = async ({ physicalId, region }) => {
   const name = str(physicalId);
   if (!name) return undefined;
   const c = new LambdaClient({ region, ...READ_RETRY });
   const r = await c.send(new GetFunctionCommand({ FunctionName: name }));
   const sha = str(r.Configuration?.CodeSha256);
-  return sha !== undefined ? { CodeSha256: sha } : undefined;
+  const extra = sha !== undefined ? { CodeSha256: sha } : undefined;
+  const envError = r.Configuration?.Environment?.Error;
+  if (envError === undefined) return extra;
+  process.stderr.write(
+    `[cdkrd] warning: AWS::Lambda::Function ${name}: environment variables unreadable (${envError.ErrorCode ?? 'unknown error'} — the caller likely lacks kms:Decrypt on the function's key) — treating Environment as an unverifiable read-gap\n`
+  );
+  return overrideReadGap(extra ?? {}, ['Environment']);
 };
 
 // AWS::Glue::Job — `Command.ScriptLocation` is an S3 pointer (`s3://bucket/key`) to the
