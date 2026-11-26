@@ -193,7 +193,7 @@ importers:
         version: 1.6.0
       '@clack/prompts':
         specifier: ^1.8.1
-        version: 1.8.1
+        version: 1.9.0
       '@smithy/node-http-handler':
         specifier: ^4.14.2
         version: 4.14.2
@@ -674,16 +674,12 @@ packages:
   '@cdklabs/tskb@0.0.4':
     resolution: {integrity: sha512-NFx1X0l7p5DyHtLLEyNeh1hPN4UN9hTkZkzFs/Mp+kFk7dpdINGmGVpCfRDjJ2DrcNSNENUmT+w8g73TvmBbTw==}
 
-  '@clack/core@1.5.1':
-    resolution: {integrity: sha512-iHTrHA8MtVuLl2TfZySmcKv1qO2PoyC9Z7pfSDozEuV5vtY3/wcOPKJXlqJ5Oq2Cx5DDGQGAMVx6HZfRRoVEbQ==}
-    engines: {node: '>= 20.12.0'}
-
   '@clack/core@1.6.0':
     resolution: {integrity: sha512-4GZynIB2IIe431odxesswvWTCP6orvqd6e2b07b3VFWBQRqUqIHc/EPIZwFoKS692QBp+ooPuXKaJV8g4kXuYA==}
     engines: {node: '>= 20.12.0'}
 
-  '@clack/prompts@1.8.1':
-    resolution: {integrity: sha512-dlT1m5e/0yUL0kRNcQn7yGLVThkgbB0Ga/1AmfDDC/8ik6AIiSf2QLQO2zPYvefsHP0aFgxO93cVLCCfDp7kzQ==}
+  '@clack/prompts@1.9.0':
+    resolution: {integrity: sha512-tEj8X2No2A1c9NDnZECxiiJ8TP3vmFlN9tLlLeSaMqVW4tUmVG2R4qpv/eP4zymWxnymYLkLcIYVV0VcWj3RCQ==}
     engines: {node: '>= 20.12.0'}
 
   '@emnapi/core@2.0.0-beta.2':
@@ -2183,9 +2179,6 @@ packages:
     resolution: {integrity: sha512-2wcC/oGxHis/BoHkkPwldgiPSYcpZK3JU28WoMVv55yHJgcZ8rlXvuG9iZggz+sU1d4bRgIGASwyWqjxu3FM0g==}
     engines: {node: '>=18'}
 
-  sisteransi@1.0.5:
-    resolution: {integrity: sha512-bLGGlR1QxBcynn2d5YmDX4MGjlZvy2MRBDRNHLJ8VI6l6+9FUiyTFNJ0IveOSP0bcXgVDPRcfGqA0pjaqUpfVg==}
-
   sisteransi@2.0.0:
     resolution: {integrity: sha512-2WCqLdt12eN6ehLI50S2/ZxoowXU3DD1KVPRyVP0WEsFahrGZZmCdq1K59qjJljMRIDTwx1D9YaRK+hDneBUMg==}
     engines: {node: '>=20'}
@@ -2422,10 +2415,12 @@ packages:
   yuku-core@0.19.0:
     resolution: {integrity: sha512-kYK9e1XdfirNhkipzW0wmMcSWcVF/CWnuugodfVYRCUwvoBefweL9HzB96OiKEhsx78V5WbUxbJqlizMX869Qg==}
     engines: {node: '>=14.18.0'}
+    deprecated: 'Yuku is now one package with one core. Use "yuku" instead: https://yuku.fyi/javascript/. Existing installs keep working but get no more fixes.'
 
   yuku-parser@0.19.0:
     resolution: {integrity: sha512-XrBh9ZiQK5mJVRxZBAvD6LwRyAYrK3MFtH3+onyuxFL5hFD44EC3QOmIC1FjTj6H2MMwq46/NAI+NZxLZPZgxg==}
     engines: {node: '>=14.18.0'}
+    deprecated: 'Yuku is now one package with one core. Use "yuku" instead: https://yuku.fyi/javascript/. Existing installs keep working but get no more fixes.'
 
   yuku@0.27.0:
     resolution: {integrity: sha512-YmSD4xYlESRi8egxzC4guegQdMhAcz1G9NUsMNrTABAIV9dQxoBzDC7ZyAG/dSG18o1Oxt4xDok2irvPy9FSJQ==}
@@ -3471,23 +3466,18 @@ snapshots:
 
   '@cdklabs/tskb@0.0.4': {}
 
-  '@clack/core@1.5.1':
-    dependencies:
-      fast-wrap-ansi: 0.2.2
-      sisteransi: 1.0.5
-
   '@clack/core@1.6.0':
     dependencies:
       fast-string-width: 3.0.2
       fast-wrap-ansi: 0.2.2
       sisteransi: 2.0.0
 
-  '@clack/prompts@1.8.1':
+  '@clack/prompts@1.9.0':
     dependencies:
-      '@clack/core': 1.5.1
+      '@clack/core': 1.6.0
       fast-string-width: 3.0.2
       fast-wrap-ansi: 0.2.2
-      sisteransi: 1.0.5
+      sisteransi: 2.0.0
 
   '@emnapi/core@2.0.0-beta.2':
     dependencies:
@@ -4591,8 +4581,6 @@ snapshots:
       '@polka/url': 1.0.0-next.29
       mrmime: 2.0.1
       totalist: 3.0.1
-
-  sisteransi@1.0.5: {}
 
   sisteransi@2.0.0: {}
 
