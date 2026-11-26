@@ -1106,7 +1106,8 @@ all fold into a one-line stderr nudge (mirroring the promotion note), never drif
 - **A swap AFTER a legit code redeploy (#1958).** The void alone cannot tell
   "redeployed" from "redeployed, then swapped out of band" — both move the
   recorded hash and the declared source — so until a re-record every redeployed
-  function was unwatched. For Lambda `CodeSha256` (Glue / TrustStore: #1960 below), `check` / `record` /
+  function was unwatched. For Lambda `CodeSha256` (Glue / TrustStore: #1960
+  below), `check` / `record` /
   `ignore` / `revert` first run `annotateDeployedSourceHashes`
   (read/deployed-source-hash.ts): for each entry the void WOULD drop whose declared
   `Code` is a literal `S3Bucket`/`S3Key` (+ `S3ObjectVersion`), it streams the
