@@ -1061,7 +1061,11 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   "changed since record". A **legitimate** `cdk deploy` that updates the code
   does NOT re-surface it: `record` also fingerprints the declared `Code`, so a
   hash that moved because the template's code changed folds into a re-record
-  nudge instead of false drift (same for the Glue script hash below). The old
+  nudge instead of false drift (same for the Glue script hash below). With
+  `s3:GetObject` on the CDK asset bucket, cdkrd also hashes the asset the template
+  now deploys, so an out-of-band swap made AFTER such a redeploy still surfaces
+  before the re-record (without it, a note says the new code could not be
+  verified). The old
   code bytes are gone, so it is detect-only (not revertable — redeploy with a
   forced code update). Without the permission the signal is skipped, never
   false-flagged.

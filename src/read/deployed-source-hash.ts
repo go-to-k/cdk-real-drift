@@ -64,7 +64,7 @@ export async function annotateDeployedSourceHashes(
   region: string,
   fetch: S3Sha256Fetcher = fetchS3Sha256Base64
 ): Promise<Finding[]> {
-  if (baseline === undefined) return findings;
+  if (!baseline) return findings;
   const declaredByLogical = new Map(resources.map((r) => [r.logicalId, r.declared]));
   const voided = sourceRedeployedKeys(baseline, declaredByLogical);
   if (voided.size === 0) return findings;
