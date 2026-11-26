@@ -1123,7 +1123,16 @@ all fold into a one-line stderr nudge (mirroring the promotion note), never drif
   the asset OBJECT and then push the same zip with `update-function-code` reads
   verified. Glue `ScriptSha256` and the TrustStore bundle are NOT verifiable this way: the
   S3 object IS their live artifact, so "expected from S3" and "live" are the
-  same bytes.
+  same bytes. **#1960** verifies them against the LOCAL synthesized asset instead:
+  `synthApp` hashes every `file`-packaged asset of each stack's asset manifest
+  (synth/local-assets.ts, before the assembly is disposed; >16 MiB skipped) into
+  `localAssetHashes` keyed by published S3 object key, carried on the resolved
+  stack. CDK asset keys are content-addressed, so a deployed `ScriptLocation` /
+  `CaCertificatesBundleS3Key` whose key is in that map was built from exactly
+  those bytes (sha256 hex for Glue, `hashCaBundle` for the TrustStore). A key not
+  in the local assembly (a newer local script, a stale or foreign `--app` dir)
+  stays unverified with the coverage note. A verified TrustStore hash is
+  suppressed, not kept, because its `undeclared` tier cannot fold.
 
 **Stale-baseline warning.** `templateHash` (sha256 of the deployed template at
 capture) is verified on load (`warnTemplateHashDrift`): a mismatch prints a non-fatal

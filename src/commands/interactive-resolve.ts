@@ -24,6 +24,7 @@ import {
 import { applyIgnores, type CdkrdConfig, loadConfig } from '../config/config-file.js';
 import { withinStackPath } from '../construct-path.js';
 import type { Desired } from '../desired/template-adapter.js';
+import type { LocalAssetHashes } from '../synth/local-assets.js';
 import type { Finding, SchemaInfo } from '../types.js';
 import {
   actionPicker,
@@ -45,6 +46,7 @@ export interface ResolveParams {
   stackName: string;
   region: string;
   desired: Desired;
+  localAssets?: LocalAssetHashes | undefined; // #1960: threaded to record / revert
   findings: Finding[]; // RAW gather findings (pre-baseline) — what the stack-actions expect
   reconciled: Finding[]; // baseline + ignore applied (exactly what the report showed)
   baseline: BaselineFile | undefined;
@@ -406,6 +408,7 @@ export async function resolveInteractively(p: ResolveParams): Promise<number> {
 // consistently with `cdkrd record`.
 async function recordAll(p: ResolveParams): Promise<SubResult | null> {
   const result = await recordStack({
+    localAssets: p.localAssets,
     stackName: p.stackName,
     region: p.region,
     desired: p.desired,
@@ -477,6 +480,7 @@ async function ignoreAll(p: ResolveParams): Promise<SubResult | null> {
 
 async function revertAll(p: ResolveParams): Promise<SubResult | null> {
   const outcome = await revertStack({
+    localAssets: p.localAssets,
     stackName: p.stackName,
     region: p.region,
     gathered: {
@@ -558,6 +562,7 @@ async function perFinding(p: ResolveParams, decidable: Finding[]): Promise<SubRe
     // config here, so skip the reload when nothing was ignored (no change to observe).
     const recordConfig = groups.ignore.length > 0 ? await loadConfig() : p.config;
     await recordStack({
+      localAssets: p.localAssets,
       stackName: p.stackName,
       region: p.region,
       desired: p.desired,
@@ -583,6 +588,7 @@ async function perFinding(p: ResolveParams, decidable: Finding[]): Promise<SubRe
   if (groups.revert.length > 0) {
     const revertKeys = new Set(groups.revert.map(keyOf));
     const outcome = await revertStack({
+      localAssets: p.localAssets,
       stackName: p.stackName,
       region: p.region,
       gathered: {

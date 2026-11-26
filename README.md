@@ -1078,6 +1078,11 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   deploy, `record` snapshots it, a swap re-surfaces as "changed since record",
   detect-only (re-upload the intended script). Without the permission (or on any S3
   read failure / a non-`s3://` location) the signal is skipped, never false-flagged.
+  After a legitimate `cdk deploy` of a NEW script (and likewise a new TrustStore CA
+  bundle), the deployed object is checked against the matching asset in the locally
+  synthesized app, so an overwrite after that deploy still surfaces before the
+  re-record; when the local app no longer contains that asset, a note says it could
+  not be verified.
 - Optional: `kms:ListAliases` enables strict verification that a declared
   `alias/aws/*` key was not swapped for a customer-managed key. Without it that case
   is conservatively suppressed AND cdkrd prints a one-line warning per region (the

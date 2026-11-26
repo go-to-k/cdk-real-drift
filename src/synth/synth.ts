@@ -15,6 +15,11 @@ import { isProxyConfigured } from '../read/client-config.js';
 import { ProxyRoutingAgent } from '../read/proxy-routing-agent.js';
 import { QuietIoHost } from './io-host.js';
 import {
+  assetManifestFilesOf,
+  localFileAssetHashes,
+  type LocalAssetHashes,
+} from './local-assets.js';
+import {
   collectMissingRecursively,
   missingContextKeys,
   missingContextWarning,
@@ -95,6 +100,8 @@ export interface SynthStack {
   // re-checks these for the SELECTED stacks and aborts, restoring the no-args abort behavior.
   errorMessages: string[];
   template: Record<string, unknown>;
+  // #1960: content hashes of the stack's local file assets, by published S3 object key.
+  localAssetHashes?: LocalAssetHashes;
 }
 
 // A concrete AWS region pin. Allows the multi-part infixes of GovCloud / ISO partitions
@@ -369,6 +376,7 @@ export async function synthApp(app: string, opts: SynthOptions = {}): Promise<Sy
       // stack whose validation toolkit.synth's hierarchicalId-scoped selector skipped.
       errorMessages: stackErrorMessages(s.messages),
       template: s.template as Record<string, unknown>,
+      localAssetHashes: localFileAssetHashes(assetManifestFilesOf(s)),
     }));
   } finally {
     await cached.dispose();
@@ -389,6 +397,7 @@ export interface DiscoveredStack {
   // the synthesized template — carried through so the check path can recover GetTemplate's
   // `?`-masked non-ASCII literals from it without re-synthesizing (synthApp already built it).
   template: Record<string, unknown>;
+  localAssetHashes?: LocalAssetHashes; // #1960 (see SynthStack)
 }
 
 /**
@@ -407,5 +416,6 @@ export async function discoverStacks(
     account: s.account,
     errorMessages: s.errorMessages,
     template: s.template,
+    ...(s.localAssetHashes !== undefined && { localAssetHashes: s.localAssetHashes }),
   }));
 }

@@ -26,6 +26,7 @@ import {
   writeBaseline,
 } from '../baseline/baseline-file.js';
 import { annotateDeployedSourceHashes } from '../read/deployed-source-hash.js';
+import type { LocalAssetHashes } from '../synth/local-assets.js';
 import {
   addIgnoreRules,
   applyIgnores,
@@ -483,6 +484,8 @@ export interface RecordStackParams {
   stackName: string;
   region: string;
   desired: Desired;
+  // #1960: the stack's synthesized file-asset hashes, for the deployed-source verifier.
+  localAssets?: LocalAssetHashes | undefined;
   findings: Finding[]; // the gather's findings (undeclared still present, pre-baseline)
   yes: boolean;
   interactive: boolean; // whether the multiselect decision prompt may be shown (TTY only)
@@ -541,7 +544,8 @@ export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
     p.findings,
     existing,
     desired.resources,
-    region
+    region,
+    { localAssets: p.localAssets }
   );
   // Identity guard BEFORE consuming `existing`: record reads the prior baseline
   // (carryForwardUnreadable, completeResources monotonicity, prior physical-id fallback)
@@ -1057,6 +1061,8 @@ export interface RevertStackParams {
   stackName: string;
   region: string;
   gathered: GatherResult; // the check/revert gather (findings + desired + schemas)
+  // #1960: the stack's synthesized file-asset hashes, for the convergence re-verify.
+  localAssets?: LocalAssetHashes | undefined;
   baseline: BaselineFile | undefined;
   config: CdkrdConfig; // .cdkrd/ignore.yaml ignore rules (ignored findings drop out of the plan)
   dryRun: boolean;
@@ -1716,7 +1722,8 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
       await regatherTouched(gathered, touched, region),
       baseline,
       gathered.desired.resources,
-      region
+      region,
+      { localAssets: p.localAssets }
     );
   let post = readdFailedDeletes(reconcile(await regather()));
   if (driftCount(post.filter((f) => touched.has(f.logicalId))) > 0) {

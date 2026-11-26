@@ -58,7 +58,10 @@ export async function runRecord(args: string[]): Promise<number> {
   // intent. Skip (not error), mirroring check: a multi-account app is recorded one
   // account at a time.
   const accountGate = createAccountGate('record');
-  for (const [idx, { stackName, region, account, template }] of stacks.entries()) {
+  for (const [
+    idx,
+    { stackName, region, account, template, localAssetHashes },
+  ] of stacks.entries()) {
     if (!region) {
       const msg =
         'no region — set env on the stack, pass --region, or set a region for the AWS profile';
@@ -113,6 +116,7 @@ export async function runRecord(args: string[]): Promise<number> {
       // ignore rules re-tag matching undeclared findings out of the record set, so an
       // externally-managed property is never recorded (and never re-detected).
       const result = await recordStack({
+        localAssets: localAssetHashes,
         stackName,
         region,
         desired,

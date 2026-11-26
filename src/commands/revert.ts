@@ -62,7 +62,10 @@ export async function runRevert(args: string[]): Promise<number> {
   // per-stack ERROR (exit 2), not a skip — the user explicitly asked to MUTATE this stack,
   // so silently doing nothing would read as "nothing to revert".
   const accountGate = createAccountGate('revert');
-  for (const [idx, { stackName, region, account, template }] of stacks.entries()) {
+  for (const [
+    idx,
+    { stackName, region, account, template, localAssetHashes },
+  ] of stacks.entries()) {
     if (!region) {
       const msg =
         'no region — set env on the stack, pass --region, or set a region for the AWS profile';
@@ -138,7 +141,8 @@ export async function runRevert(args: string[]): Promise<number> {
           gathered.findings,
           baseline,
           gathered.desired.resources,
-          region
+          region,
+          { localAssets: localAssetHashes }
         ),
       };
       // #786: surface the mid-operation / failed-state warning the same way check does —
@@ -148,6 +152,7 @@ export async function runRevert(args: string[]): Promise<number> {
       // standalone revert: an aborted confirm means nothing changed → exit 0 (the
       // outcome's `exit` already encodes that; `aborted` is only consulted by check).
       const outcome = await revertStack({
+        localAssets: localAssetHashes,
         stackName,
         region,
         gathered,

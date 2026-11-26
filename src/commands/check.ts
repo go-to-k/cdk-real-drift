@@ -570,7 +570,10 @@ export async function runCheck(args: string[]): Promise<number> {
     }
     return callerAccount;
   };
-  for (const [idx, { stackName, region, account, template }] of stacks.entries()) {
+  for (const [
+    idx,
+    { stackName, region, account, template, localAssetHashes },
+  ] of stacks.entries()) {
     if (!region) {
       const msg =
         'no region — set env on the stack, pass --region, or set a region for the AWS profile';
@@ -766,7 +769,10 @@ export async function runCheck(args: string[]): Promise<number> {
           findings,
           baseline,
           desired.resources,
-          region
+          region,
+          {
+            localAssets: localAssetHashes,
+          }
         );
       // First run (no baseline): R110 removed the pre-report "Record ALL sight-unseen"
       // prompt (R45/R52). It buried the very values it flagged as possible out-of-band
@@ -861,6 +867,7 @@ export async function runCheck(args: string[]): Promise<number> {
         })
       ) {
         code = await resolveInteractively({
+          localAssets: localAssetHashes,
           stackName,
           region,
           desired,

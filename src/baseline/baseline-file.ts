@@ -990,13 +990,15 @@ export function sourceRedeployedKeys(
   return out;
 }
 
-// #1958: the recordable-generated hashes a voided entry can be VERIFIED for, by hashing the
-// content the template deploys. Only Lambda: its running code lives in Lambda, independent
-// of the S3 asset, so the asset's hash is an independent "expected". For Glue ScriptSha256
-// and the TrustStore bundle the S3 object IS the live artifact (the swap vector is
-// overwriting it), so hashing it would read the same bytes as live — not a verifier.
+// #1958: the content hashes a voided entry can be VERIFIED for, by hashing the content the
+// template deploys. Lambda: its running code lives in Lambda, independent of the S3 asset,
+// so the asset object's hash is an independent "expected". #1960: for Glue ScriptSha256 and
+// the TrustStore bundle the S3 object IS the live artifact (the swap vector is overwriting
+// it), so the expected hash comes from the LOCAL synthesized asset instead.
 export const DEPLOYED_SOURCE_VERIFIABLE: Readonly<Record<string, string>> = {
   'AWS::Lambda::Function': 'CodeSha256',
+  'AWS::Glue::Job': 'ScriptSha256',
+  'AWS::ElasticLoadBalancingV2::TrustStore': 'CaCertificatesBundleSha256',
 };
 
 /**
@@ -1795,7 +1797,9 @@ export function applyBaseline(
     if (matched !== undefined && sourceRedeployVoided && deployedSourceHash !== undefined) {
       if (f.actual === deployedSourceHash) {
         sourceVerified.add(recordedKey(matched));
-        kept.push(f);
+        // #1615: a voided `undeclared` hash (TrustStore) is suppressed, not kept — it has no
+        // tier to fold through, exactly as in the unverified case below.
+        if (f.tier !== 'undeclared') kept.push(f);
       } else {
         sourceSwapped.add(recordedKey(matched));
         kept.push({
@@ -2175,7 +2179,7 @@ export function formatSourceRedeployedStaleNote(paths: string[]): string {
  * user must know the CLEAN verdict does not cover it. Pure + exported for unit tests.
  */
 export function formatSourceUnverifiedNote(paths: string[]): string {
-  return `note: could not verify ${paths.join(', ')} against the code the template deploys (the S3 asset or the live hash could not be read, or the code is not an S3 asset) — an out-of-band code swap since that deploy is not detected until \`cdkrd record\` re-runs.`;
+  return `note: could not verify ${paths.join(', ')} against the code the template deploys (the deployed asset could not be read or matched to a local synthesized asset, or the live hash was not read) — an out-of-band code swap since that deploy is not detected until \`cdkrd record\` re-runs.`;
 }
 
 /**
