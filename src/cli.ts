@@ -101,7 +101,8 @@ OPTIONS
   --yes, -y                   skip the write confirm AND the op multiselect — apply the
                               FULL plan (revert) / skip the selection multiselect +
                               overwrite notice, record ALL (record) / ignore ALL shown
-                              drift without the multiselect (ignore)
+                              drift without the multiselect (ignore; a --strict coverage
+                              gap is acknowledged only from the interactive picker)
   --help, -h    --version, -v   (bare \`cdkrd -v\` prints the version; inside a verb,
                               \`-v\` is the short alias for --verbose, e.g. check -v)
 

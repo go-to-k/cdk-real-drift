@@ -1,8 +1,9 @@
 // `cdkrd ignore [<stack>...] [--app ...] [--region r] [--profile p] [--yes]`
 // Append ignore rules to .cdkrd/ignore.yaml for the chosen declared/undeclared drift —
 // it stops being reported entirely (the "stop watching" counterpart to `record`, which
-// keeps watching). Writes ONLY the git-committed config file; no AWS writes. The
-// per-stack ignore flow lives in stack-actions.ts (shared with check's interactive
+// keeps watching). The interactive picker also offers the `--strict`-failing coverage
+// gaps (skipped resources, failed-read readGaps) to acknowledge (#1976). Writes ONLY the
+// git-committed config file; no AWS writes. The per-stack ignore flow lives in stack-actions.ts (shared with check's interactive
 // prompt in PR-B2).
 import { isStackNotDeployed, StackNotCheckableError } from '../aws-errors.js';
 import {
