@@ -6,6 +6,7 @@ import {
   sourceRedeployedKeys,
   type BaselineFile,
 } from '../baseline/baseline-file.js';
+import type { LocalAssetHashes } from '../synth/local-assets.js';
 import type { Finding } from '../types.js';
 import { READ_RETRY } from './client-config.js';
 
@@ -56,6 +57,35 @@ export function lambdaCodeS3Ref(
   return { bucket: S3Bucket, key: S3Key, versionId: S3ObjectVersion };
 }
 
+// #1960: the expected hash for a content hash whose S3 object IS the live artifact, from the
+// LOCAL synthesized asset the deployed template's S3 key was built from (content-addressed
+// keys: a matching key means these exact bytes). Undefined when no local asset matches —
+// e.g. a pre-deploy synth of newer code, or a check run against a stale assembly. Known
+// limit: a CUSTOM `assetHash` is not content-addressed, so a local edit that keeps it reads
+// as an out-of-band change (the asset manifest does not record the hash type).
+function localAssetHash(
+  f: Finding,
+  declared: Record<string, unknown> | undefined,
+  localAssets: LocalAssetHashes | undefined
+): string | undefined {
+  if (localAssets === undefined || declared === undefined) return undefined;
+  if (f.resourceType === 'AWS::Glue::Job') {
+    const loc = (declared['Command'] as Record<string, unknown> | undefined)?.['ScriptLocation'];
+    const m = typeof loc === 'string' ? /^s3:\/\/[^/]+\/(.+)$/.exec(loc) : null;
+    return m === null ? undefined : localAssets[m[1]!]?.sha256Hex;
+  }
+  if (f.resourceType === 'AWS::ElasticLoadBalancingV2::TrustStore') {
+    const key = declared['CaCertificatesBundleS3Key'];
+    return typeof key === 'string' ? localAssets[key]?.caBundleSha256 : undefined;
+  }
+  return undefined;
+}
+
+export interface AnnotateDeployedSourceOptions {
+  localAssets?: LocalAssetHashes | undefined; // #1960: the stack's synthesized file assets
+  fetch?: S3Sha256Fetcher; // injectable for tests
+}
+
 /**
  * #1958: stamp `deployedSourceHash` on each live content-hash finding whose recorded entry
  * the stale-source void (#1606) would drop — a legit code redeploy since record — so
@@ -63,30 +93,38 @@ export function lambdaCodeS3Ref(
  * reading CLEAN until the next `record`. Only the voided entries are fetched (an S3 read of
  * every function's package on every check would be the wrong cost). Fail-safe: any read
  * failure (no s3:GetObject on the asset bucket, a lifecycle-expired asset) or a non-S3 source
- * leaves the finding unstamped, which keeps today's void plus a coverage note.
+ * leaves the finding unstamped, which keeps today's void plus a coverage note. #1960: Glue
+ * ScriptSha256 / TrustStore CaCertificatesBundleSha256 take their expected hash from the
+ * local synthesized asset instead (no fetch).
  */
 export async function annotateDeployedSourceHashes(
   findings: Finding[],
   baseline: BaselineFile | undefined,
   resources: { logicalId: string; declared: Record<string, unknown> }[],
   region: string,
-  fetch: S3Sha256Fetcher = fetchS3Sha256Base64
+  opts: AnnotateDeployedSourceOptions = {}
 ): Promise<Finding[]> {
+  const fetch = opts.fetch ?? fetchS3Sha256Base64;
   if (!baseline) return findings;
   const declaredByLogical = new Map(resources.map((r) => [r.logicalId, r.declared]));
   const voided = sourceRedeployedKeys(baseline, declaredByLogical);
   if (voided.size === 0) return findings;
   const jobs: { i: number; ref: S3ObjectRef }[] = [];
+  const hashes = new Map<number, string>();
   findings.forEach((f, i) => {
     if (f.deployedSourceHash !== undefined) return;
     if (DEPLOYED_SOURCE_VERIFIABLE[f.resourceType] !== f.path) return;
     if (!voided.has(recordedKey(f))) return;
-    const ref = lambdaCodeS3Ref(declaredByLogical.get(f.logicalId));
+    const declared = declaredByLogical.get(f.logicalId);
+    if (f.resourceType !== 'AWS::Lambda::Function') {
+      const h = localAssetHash(f, declared, opts.localAssets);
+      if (h !== undefined) hashes.set(i, h);
+      return;
+    }
+    const ref = lambdaCodeS3Ref(declared);
     if (ref !== undefined) jobs.push({ i, ref });
   });
-  if (jobs.length === 0) return findings;
   // Bounded concurrency: every package download streams a whole zip.
-  const hashes = new Map<number, string>();
   let next = 0;
   const worker = async (): Promise<void> => {
     while (next < jobs.length) {
@@ -98,7 +136,8 @@ export async function annotateDeployedSourceHashes(
       }
     }
   };
-  await Promise.all(Array.from({ length: Math.min(FETCH_CONCURRENCY, jobs.length) }, worker));
+  if (jobs.length > 0)
+    await Promise.all(Array.from({ length: Math.min(FETCH_CONCURRENCY, jobs.length) }, worker));
   if (hashes.size === 0) return findings;
   return findings.map((f, i) => {
     const h = hashes.get(i);

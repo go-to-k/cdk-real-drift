@@ -642,6 +642,8 @@ describe('baseline', () => {
         expect(out).toEqual([]);
         expect(warnings).toEqual([
           formatSourceRedeployedStaleNote(['Ts.CaCertificatesBundleSha256']),
+          // #1960: no local asset was matched, so the void is unverified
+          formatSourceUnverifiedNote(['Ts.CaCertificatesBundleSha256']),
         ]);
       });
 
@@ -654,6 +656,8 @@ describe('baseline', () => {
         expect(out).toEqual([]);
         expect(warnings).toEqual([
           formatSourceRedeployedStaleNote(['Ts.CaCertificatesBundleSha256']),
+          // #1960: no local asset was matched, so the void is unverified
+          formatSourceUnverifiedNote(['Ts.CaCertificatesBundleSha256']),
         ]);
       });
 

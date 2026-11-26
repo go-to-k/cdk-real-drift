@@ -80,7 +80,10 @@ export async function runIgnore(args: string[]): Promise<number> {
   // WRONG accountId (and offered the wrong account's drift to pick from). Skip (not
   // error), mirroring check: a multi-account app is operated one account at a time.
   const accountGate = createAccountGate('ignore');
-  for (const [idx, { stackName, region, account, template }] of stacks.entries()) {
+  for (const [
+    idx,
+    { stackName, region, account, template, localAssetHashes },
+  ] of stacks.entries()) {
     if (!region) {
       const msg =
         'no region — set env on the stack, pass --region, or set a region for the AWS profile';
@@ -139,7 +142,10 @@ export async function runIgnore(args: string[]): Promise<number> {
         findings,
         baseline,
         desired.resources,
-        region
+        region,
+        {
+          localAssets: localAssetHashes,
+        }
       );
       const reconciled = applyIgnores(
         applyBaseline(verified, baseline, ignoreApplyBaselineOpts(desired)),

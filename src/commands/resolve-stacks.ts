@@ -17,6 +17,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { CommonArgs } from '../cli-args.js';
 import { resolveApp } from '../synth/resolve-app.js';
+import type { LocalAssetHashes } from '../synth/local-assets.js';
 import type { DiscoveredStack } from '../synth/synth.js';
 import { discoverStacks } from '../synth/synth.js';
 import { isGlob, matchesGlob } from './glob-match.js';
@@ -140,6 +141,8 @@ export interface ResolvedStack {
   // the synthesized template for this stack — used by check to recover GetTemplate's
   // `?`-masked non-ASCII literals. Carried from the same synth that discovered the stack.
   template: Record<string, unknown>;
+  // #1960: content hashes of the stack's local file assets (see SynthStack.localAssetHashes).
+  localAssetHashes?: LocalAssetHashes;
 }
 
 /**
@@ -264,6 +267,7 @@ export async function resolveStacks(a: CommonArgs): Promise<ResolvedStack[]> {
       region: s.region ?? fallbackRegion,
       account: s.account, // #740: carry env.account through so check can gate on it
       template: s.template,
+      ...(s.localAssetHashes !== undefined && { localAssetHashes: s.localAssetHashes }),
     }));
   }
 
@@ -279,7 +283,8 @@ export async function resolveStacks(a: CommonArgs): Promise<ResolvedStack[]> {
     stackName: string,
     region: string | undefined,
     account: string | undefined, // #740: the stack's own env.account (concrete, else undefined)
-    template: Record<string, unknown>
+    template: Record<string, unknown>,
+    localAssetHashes?: LocalAssetHashes
   ): void => {
     // #1320: dedup on name + region + ACCOUNT. #884 added the region axis but not
     // the account axis, so a #740 multi-account app that defines the SAME stackName
@@ -292,7 +297,13 @@ export async function resolveStacks(a: CommonArgs): Promise<ResolvedStack[]> {
     const key = `${stackName}\0${region ?? ''}\0${account ?? ''}`;
     if (seen.has(key)) return;
     seen.add(key);
-    out.push({ stackName, region, account, template });
+    out.push({
+      stackName,
+      region,
+      account,
+      template,
+      ...(localAssetHashes !== undefined && { localAssetHashes }),
+    });
   };
   // The known-stacks hint lists BOTH identifier forms when they differ (`Stage/Stack (Stage-Stack)`,
   // mirroring `cdk ls`), so a user who mistyped one form sees the other they could have used (#1316).
@@ -304,7 +315,7 @@ export async function resolveStacks(a: CommonArgs): Promise<ResolvedStack[]> {
       .join(', ') || 'none';
   // Record a positional-selected discovered stack for the post-selection error check (#1316).
   const select = (s: DiscoveredStack): void => {
-    add(s.stackName, s.region ?? fallbackRegion, s.account, s.template);
+    add(s.stackName, s.region ?? fallbackRegion, s.account, s.template, s.localAssetHashes);
     selectedByKey.set(`${s.stackName}\0${s.region ?? ''}\0${s.account ?? ''}`, s);
   };
   for (const name of a.stackNames) {

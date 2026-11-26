@@ -95,7 +95,7 @@ describe('#1958 applyBaseline verifies a redeploy-voided CodeSha256', () => {
     expect(notes.some((n) => n.includes('could not verify Fn.CodeSha256'))).toBe(true);
   });
 
-  it('no coverage note for a type with no deployed-source verifier (Glue ScriptSha256)', () => {
+  it('#1960: an unverified Glue ScriptSha256 void now gets the coverage note too', () => {
     const b = baseline({
       recorded: [{ logicalId: 'Job', path: 'ScriptSha256', resourceType: GLUE, value: 'x' }],
       recordedSourceFingerprints: {
@@ -121,8 +121,8 @@ describe('#1958 applyBaseline verifies a redeploy-voided CodeSha256', () => {
         warn,
       }
     );
-    expect(warn.mock.calls.map((c) => c[0])).toHaveLength(1);
-    expect(warn.mock.calls[0]![0]).not.toContain('could not verify');
+    expect(warn.mock.calls.map((c) => c[0])).toHaveLength(2);
+    expect(warn.mock.calls[1]![0]).toContain('could not verify Job.ScriptSha256');
   });
 
   it('a deployed hash on an entry the void does NOT drop is ignored (fingerprint unchanged)', () => {
@@ -153,7 +153,7 @@ describe('#1958 annotateDeployedSourceHashes', () => {
       baseline(),
       [...resources({ ...CODE_V2, S3ObjectVersion: 'v9' }), { logicalId: 'Other', declared: {} }],
       'us-east-1',
-      fetch
+      { fetch }
     );
     expect(fetch).toHaveBeenCalledTimes(1);
     expect(fetch).toHaveBeenCalledWith(
@@ -193,7 +193,7 @@ describe('#1958 annotateDeployedSourceHashes', () => {
       b,
       ids.map((id) => ({ logicalId: id, declared: { Code: { ...CODE_V2, S3Key: `${id}.zip` } } })),
       'r',
-      fetch
+      { fetch }
     );
     expect(out.map((f) => f.deployedSourceHash)).toEqual(ids.map((id) => `${id}.zip`));
     expect(peak).toBeLessThanOrEqual(4);
@@ -202,13 +202,9 @@ describe('#1958 annotateDeployedSourceHashes', () => {
   it('does not fetch when the declared source is unchanged since record', async () => {
     const fetch = vi.fn<S3Sha256Fetcher>(async () => SHA_DEPLOYED);
     const findings = [liveHash(SHA_RECORDED)];
-    const out = await annotateDeployedSourceHashes(
-      findings,
-      baseline(),
-      resources(CODE_V1),
-      'r',
-      fetch
-    );
+    const out = await annotateDeployedSourceHashes(findings, baseline(), resources(CODE_V1), 'r', {
+      fetch,
+    });
     expect(fetch).not.toHaveBeenCalled();
     expect(out).toBe(findings);
   });
@@ -222,7 +218,7 @@ describe('#1958 annotateDeployedSourceHashes', () => {
       baseline(),
       resources(CODE_V2),
       'r',
-      fetch
+      { fetch }
     );
     expect(out[0]!.deployedSourceHash).toBeUndefined();
   });
@@ -230,7 +226,9 @@ describe('#1958 annotateDeployedSourceHashes', () => {
   it('no baseline: returns the findings untouched without fetching', async () => {
     const fetch = vi.fn<S3Sha256Fetcher>();
     const findings = [liveHash(SHA_SWAPPED)];
-    expect(await annotateDeployedSourceHashes(findings, undefined, [], 'r', fetch)).toBe(findings);
+    expect(await annotateDeployedSourceHashes(findings, undefined, [], 'r', { fetch })).toBe(
+      findings
+    );
     expect(fetch).not.toHaveBeenCalled();
   });
 });
