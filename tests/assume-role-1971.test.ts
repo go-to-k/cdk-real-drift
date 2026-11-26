@@ -345,6 +345,15 @@ describe('#1971 end to end: which identity signs each request', () => {
     expect(msg).toContain('trust policy');
     // a verb's catch must not mistake it for "not deployed yet — skipped"
     expect(isStackNotDeployed(thrown)).toBe(false);
+    // ...even when the STS text happens to match that classifier's patterns (a role
+    // named after a stack, an STS ValidationError)
+    expect(
+      isStackNotDeployed(
+        new AssumeRoleError(
+          'cannot assume role arn:aws:iam::1:role/stack-reader (--assume-role): ValidationError: role does not exist'
+        )
+      )
+    ).toBe(false);
     expect(seen.filter((s) => s.action === 'DescribeStacks')).toEqual([]);
   });
 
