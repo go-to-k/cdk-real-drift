@@ -38,6 +38,7 @@ new CfnJob(stack, "Job", {
 
 const ca = new Asset(stack, "CaBundle", { path: caPem });
 new CfnTrustStore(stack, "TrustStore", {
+  name: "cdkrd-integ-1960",
   caCertificatesBundleS3Bucket: ca.s3BucketName,
   caCertificatesBundleS3Key: ca.s3ObjectKey,
 });
