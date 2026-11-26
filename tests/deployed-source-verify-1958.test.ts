@@ -3,6 +3,9 @@
 // THEN an out-of-band `update-function-code`" look the same from the baseline, so the swap
 // read CLEAN until the next `record`. The fix hashes the S3 asset the template deploys and
 // compares the live hash against it.
+import { createHash } from 'node:crypto';
+import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { mockClient } from 'aws-sdk-client-mock';
 import { describe, expect, it, vi } from 'vite-plus/test';
 import {
   applyBaseline,
@@ -12,6 +15,7 @@ import {
 import { isRecordedSourceRedeployed } from '../src/commands/stack-actions.js';
 import {
   annotateDeployedSourceHashes,
+  fetchS3Sha256Base64,
   lambdaCodeS3Ref,
   type S3Sha256Fetcher,
 } from '../src/read/deployed-source-hash.js';
@@ -129,6 +133,13 @@ describe('#1958 applyBaseline verifies a redeploy-voided CodeSha256', () => {
     });
     expect(out).toEqual([]); // recorded value matches → suppressed, as before
   });
+
+  it('the stamp never leaves applyBaseline, on any branch', () => {
+    const other: Finding = { ...liveHash('x', SHA_DEPLOYED), logicalId: 'Other', tier: 'declared' };
+    const { out } = run([other]);
+    expect(out).toHaveLength(1);
+    expect(out[0]).not.toHaveProperty('deployedSourceHash');
+  });
 });
 
 describe('#1958 annotateDeployedSourceHashes', () => {
@@ -151,6 +162,41 @@ describe('#1958 annotateDeployedSourceHashes', () => {
     );
     expect(out[0]!.deployedSourceHash).toBe(SHA_DEPLOYED);
     expect(out[1]).toBe(other);
+  });
+
+  it('verifies every voided function under the bounded concurrency', async () => {
+    const ids = ['A', 'B', 'C', 'D', 'E', 'F'];
+    const b = baseline({
+      recorded: ids.map((id) => ({
+        logicalId: id,
+        path: 'CodeSha256',
+        resourceType: LAMBDA,
+        value: SHA_RECORDED,
+      })),
+      recordedSourceFingerprints: Object.fromEntries(
+        ids.map((id) => [
+          `${id}::CodeSha256`,
+          declaredSourceFingerprint(LAMBDA, 'CodeSha256', { Code: CODE_V1 })!,
+        ])
+      ),
+    });
+    let inFlight = 0;
+    let peak = 0;
+    const fetch = vi.fn<S3Sha256Fetcher>(async (ref) => {
+      peak = Math.max(peak, ++inFlight);
+      await new Promise((r) => setTimeout(r, 5));
+      inFlight--;
+      return ref.key;
+    });
+    const out = await annotateDeployedSourceHashes(
+      ids.map((id) => ({ ...liveHash('x'), logicalId: id })),
+      b,
+      ids.map((id) => ({ logicalId: id, declared: { Code: { ...CODE_V2, S3Key: `${id}.zip` } } })),
+      'r',
+      fetch
+    );
+    expect(out.map((f) => f.deployedSourceHash)).toEqual(ids.map((id) => `${id}.zip`));
+    expect(peak).toBeLessThanOrEqual(4);
   });
 
   it('does not fetch when the declared source is unchanged since record', async () => {
@@ -221,5 +267,29 @@ describe('#1958 record labels a swap after a redeploy as changed, not a refresh'
       ])
     ).toBe(true);
     expect(isRecordedSourceRedeployed(entry, baseline(), declaredV2, [liveHash('x')])).toBe(true);
+  });
+});
+
+describe('#1958 fetchS3Sha256Base64', () => {
+  it('hashes the streamed object as base64 SHA-256 (Lambda CodeSha256 encoding), passing VersionId', async () => {
+    const s3 = mockClient(S3Client);
+    const bytes = new TextEncoder().encode('PK fake zip bytes');
+    s3.on(GetObjectCommand).resolves({
+      Body: (async function* () {
+        yield bytes.slice(0, 5);
+        yield bytes.slice(5);
+      })() as never,
+    });
+    const got = await fetchS3Sha256Base64(
+      { bucket: 'b', key: 'k.zip', versionId: 'v1' },
+      'us-east-1'
+    );
+    expect(got).toBe(createHash('sha256').update(bytes).digest('base64'));
+    expect(s3.commandCalls(GetObjectCommand)[0]!.args[0].input).toEqual({
+      Bucket: 'b',
+      Key: 'k.zip',
+      VersionId: 'v1',
+    });
+    s3.restore();
   });
 });

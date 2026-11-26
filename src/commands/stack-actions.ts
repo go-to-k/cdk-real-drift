@@ -1709,13 +1709,22 @@ export async function revertStack(p: RevertStackParams): Promise<RevertOutcome> 
     failedDeleteIds.size === 0
       ? findings
       : [...findings, ...gathered.findings.filter((f) => failedDeleteIds.has(f.logicalId))];
-  let post = readdFailedDeletes(reconcile(await regatherTouched(gathered, touched, region)));
+  // #1958: re-verify a touched function's redeploy-voided CodeSha256, else a detected code
+  // swap folds back into the void and the revert falsely reports convergence.
+  const regather = async (): Promise<Finding[]> =>
+    annotateDeployedSourceHashes(
+      await regatherTouched(gathered, touched, region),
+      baseline,
+      gathered.desired.resources,
+      region
+    );
+  let post = readdFailedDeletes(reconcile(await regather()));
   if (driftCount(post.filter((f) => touched.has(f.logicalId))) > 0) {
     // A touched resource still reads as drifted. SDK-writer paths (IAM etc.) are
     // eventually consistent — the old slow full re-gather granted propagation time
     // for free; the scoped read must wait deliberately. One retry only.
     await sleep(p.convergeRetryDelayMs ?? CONVERGE_RETRY_DELAY_MS);
-    post = readdFailedDeletes(reconcile(await regatherTouched(gathered, touched, region)));
+    post = readdFailedDeletes(reconcile(await regather()));
   }
   const remainingDrift = post.filter(isDrift);
   const remaining = remainingDrift.length;

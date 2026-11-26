@@ -1118,7 +1118,10 @@ all fold into a one-line stderr nudge (mirroring the promotion note), never drif
   Only voided entries are fetched (never every function's package on every
   check). An unreadable asset (no grant, lifecycle-expired), an inline `ZipFile`
   or an `ImageUri` keeps today's void plus a "could not verify" coverage note.
-  Glue `ScriptSha256` and the TrustStore bundle are NOT verifiable this way: the
+  Fetches run at most 4 at a time on a shared client, and the revert convergence
+  re-read re-verifies touched functions. Known limit: an attacker who can overwrite
+  the asset OBJECT and then push the same zip with `update-function-code` reads
+  verified. Glue `ScriptSha256` and the TrustStore bundle are NOT verifiable this way: the
   S3 object IS their live artifact, so "expected from S3" and "live" are the
   same bytes.
 

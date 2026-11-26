@@ -19,8 +19,14 @@ export interface S3ObjectRef {
 // `CodeSha256` in for a zip package. Streams the body so a large package is never buffered.
 export type S3Sha256Fetcher = (ref: S3ObjectRef, region: string) => Promise<string>;
 
+const s3Clients = new Map<string, S3Client>();
+
 export const fetchS3Sha256Base64: S3Sha256Fetcher = async (ref, region) => {
-  const s3 = new S3Client({ region, followRegionRedirects: true, ...READ_RETRY });
+  let s3 = s3Clients.get(region);
+  if (s3 === undefined) {
+    s3 = new S3Client({ region, followRegionRedirects: true, ...READ_RETRY });
+    s3Clients.set(region, s3);
+  }
   const obj = await s3.send(
     new GetObjectCommand({
       Bucket: ref.bucket,
@@ -34,6 +40,8 @@ export const fetchS3Sha256Base64: S3Sha256Fetcher = async (ref, region) => {
   for await (const chunk of body) h.update(chunk);
   return h.digest('base64');
 };
+
+const FETCH_CONCURRENCY = 4;
 
 // The S3 object a Lambda function's declared `Code` deploys, or undefined for an inline
 // `ZipFile`, an `ImageUri`, or a bucket/key that did not resolve to a literal string.
@@ -68,21 +76,29 @@ export async function annotateDeployedSourceHashes(
   const declaredByLogical = new Map(resources.map((r) => [r.logicalId, r.declared]));
   const voided = sourceRedeployedKeys(baseline, declaredByLogical);
   if (voided.size === 0) return findings;
+  const jobs: { i: number; ref: S3ObjectRef }[] = [];
+  findings.forEach((f, i) => {
+    if (f.deployedSourceHash !== undefined) return;
+    if (DEPLOYED_SOURCE_VERIFIABLE[f.resourceType] !== f.path) return;
+    if (!voided.has(recordedKey(f))) return;
+    const ref = lambdaCodeS3Ref(declaredByLogical.get(f.logicalId));
+    if (ref !== undefined) jobs.push({ i, ref });
+  });
+  if (jobs.length === 0) return findings;
+  // Bounded concurrency: every package download streams a whole zip.
   const hashes = new Map<number, string>();
-  await Promise.all(
-    findings.map(async (f, i) => {
-      if (f.deployedSourceHash !== undefined) return;
-      if (DEPLOYED_SOURCE_VERIFIABLE[f.resourceType] !== f.path) return;
-      if (!voided.has(recordedKey(f))) return;
-      const ref = lambdaCodeS3Ref(declaredByLogical.get(f.logicalId));
-      if (ref === undefined) return;
+  let next = 0;
+  const worker = async (): Promise<void> => {
+    while (next < jobs.length) {
+      const { i, ref } = jobs[next++]!;
       try {
         hashes.set(i, await fetch(ref, region));
       } catch {
         // unverifiable — keep today's void (applyBaseline emits the coverage note)
       }
-    })
-  );
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(FETCH_CONCURRENCY, jobs.length) }, worker));
   if (hashes.size === 0) return findings;
   return findings.map((f, i) => {
     const h = hashes.get(i);

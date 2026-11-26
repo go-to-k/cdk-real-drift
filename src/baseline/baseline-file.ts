@@ -1701,7 +1701,15 @@ export function applyBaseline(
   // logicalId reused for a different type never matches old-type entries.
   const entryMatches = (a: RecordedEntry, f: Finding): boolean =>
     a.logicalId === f.logicalId && a.path === f.path && a.resourceType === f.resourceType;
-  for (const f of findings) {
+  for (const stamped of findings) {
+    // #1958: the verifier's stamp is consumed here and never leaves applyBaseline (--json).
+    // Unstamped findings pass through by identity.
+    const deployedSourceHash = stamped.deployedSourceHash;
+    let f = stamped;
+    if (deployedSourceHash !== undefined) {
+      f = { ...stamped };
+      delete f.deployedSourceHash;
+    }
     // PR4: reconcile `added` against the baseline as a full mirror of undeclared — but on
     // the WHOLE resource (path ''), not a property. A matching entry whose value is equal
     // is suppressed; a recorded value that CHANGED stays `added` drift with a "changed
@@ -1784,15 +1792,14 @@ export function applyBaseline(
     // equal = the redeploy explains the live code (fold, nudge below); different = the live
     // code is NOT what the template deployed, so it was swapped out of band — drift, with
     // the deployed-source hash as `desired` (the recorded one is stale either way).
-    if (matched !== undefined && sourceRedeployVoided && f.deployedSourceHash !== undefined) {
-      const { deployedSourceHash, ...rest } = f;
+    if (matched !== undefined && sourceRedeployVoided && deployedSourceHash !== undefined) {
       if (f.actual === deployedSourceHash) {
         sourceVerified.add(recordedKey(matched));
-        kept.push(rest);
+        kept.push(f);
       } else {
         sourceSwapped.add(recordedKey(matched));
         kept.push({
-          ...rest,
+          ...f,
           tier: 'undeclared',
           desired: deployedSourceHash,
           note: 'differs from the code the template deploys (changed out of band since the last code deploy)',
@@ -2168,7 +2175,7 @@ export function formatSourceRedeployedStaleNote(paths: string[]): string {
  * user must know the CLEAN verdict does not cover it. Pure + exported for unit tests.
  */
 export function formatSourceUnverifiedNote(paths: string[]): string {
-  return `note: could not verify ${paths.join(', ')} against the code the template deploys (S3 asset unreadable, or not an S3 source) — an out-of-band code swap since that deploy is not detected until \`cdkrd record\` re-runs.`;
+  return `note: could not verify ${paths.join(', ')} against the code the template deploys (the S3 asset or the live hash could not be read, or the code is not an S3 asset) — an out-of-band code swap since that deploy is not detected until \`cdkrd record\` re-runs.`;
 }
 
 /**
