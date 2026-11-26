@@ -363,6 +363,7 @@ checked.
 - **diff/**
   - **classify.ts** — the heart: normalize both sides, then tag each difference into a tier.
   - **drift-calculator.ts** — pure structural diff (`calculateResourceDrift`), copied from cdkd.
+  - **coverage-gap.ts** — `isCoverageReadGap` / `isAcknowledgedGap`: which informational findings are coverage gaps `--strict` fails on (a failed-read readGap) and which an `ignore.yaml` rule acknowledged (#1969/#1970).
   - **hints.ts** — `findingHint` / `annotateHints`: non-classifying, human-facing hints that annotate a finding with the likely EXTERNAL origin of its live value (e.g. CloudWatch Application Signals / Lambda Insights account-level auto-instrumentation) without folding or re-tiering it — the drift stays reported, just self-explaining.
 - **baseline/baseline-file.ts** — git-committed baseline I/O (machine-generated DATA → JSON, `.cdkrd/baselines/<stack>.<accountId>.<region>.json`), `applyBaseline`, `writeBaseline`.
 - **config/config-file.ts** — git-committed ignore-rule file (hand-edited POLICY → YAML so it can carry `#` comments, `.cdkrd/ignore.yaml`): `loadConfig` + `applyIgnores` (R32 path-level ignore rules → `ignored` tier; a coverage gap is acknowledged instead, #1969; rule shape `{ path, stack?, account?, region?, resourceType? }`) + `addIgnoreRules` (comment-preserving, append-only).
