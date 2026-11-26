@@ -49,7 +49,7 @@ import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { pid } from 'node:process';
 import { type Document, isSeq, parseDocument, YAMLSeq } from 'yaml';
-import { matchesGlob, matchesPathGlob } from '../commands/glob-match.js';
+import { isGlob, matchesGlob, matchesPathGlob } from '../commands/glob-match.js';
 import { withinStackPath } from '../construct-path.js';
 import { isCoverageReadGap } from '../diff/coverage-gap.js';
 import type { Finding } from '../types.js';
@@ -255,7 +255,7 @@ function validateIgnoreEntry(entry: unknown, index: number): void {
   // #1969: an EXACT (glob-free) `resourceType` is itself a literal scope, so with it an
   // all-wildcard `path` ("every resource of THIS type") is not the every-finding foot-gun
   // below. A globbed type (`AWS::*`) does not earn the exemption.
-  const exactType = typeof obj.resourceType === 'string' && !/[*?]/.test(obj.resourceType);
+  const exactType = typeof obj.resourceType === 'string' && !isGlob(obj.resourceType);
   if (isUniversalPath(obj.path) && !exactType)
     // The mirror-image catastrophe of the empty path: a path made ONLY of wildcards and
     // segment separators (`*`, `**`, `*.*`, `?`, `*/*`, `*.*[*]`, …) has no literal

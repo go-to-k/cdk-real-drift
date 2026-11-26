@@ -119,11 +119,16 @@ export function preDeployFindings(findings: Finding[]): Finding[] {
 // `cdk drift` / CFn drift detection, so declared findings AND the
 // declared-comparison byproducts (readGap = declared-but-unreadable,
 // unresolved = declared-but-GetAtt) drop out. `deleted` stays — a gone resource
-// has no undeclared values to check, and hiding it would be a lie. Exported
+// has no undeclared values to check, and hiding it would be a lie. A FAILED-read
+// readGap (#1970) stays too: it is a coverage gap (its undeclared sub-values were not
+// read either) that `--strict` fails on, so the report must still show why. Exported
 // (pure) so the contract is unit-tested.
 export function undeclaredOnlyFindings(findings: Finding[]): Finding[] {
   return findings.filter(
-    (f) => f.tier !== 'declared' && f.tier !== 'readGap' && f.tier !== 'unresolved'
+    (f) =>
+      f.tier !== 'declared' &&
+      (f.tier !== 'readGap' || isCoverageReadGap(f)) &&
+      f.tier !== 'unresolved'
   );
 }
 

@@ -644,7 +644,7 @@ export function report(rawFindings: Finding[], header: string, opts: ReportOptio
       const notReturned = byNature.length - writeOnly - masked;
       const parts = [
         ...(failed > 0
-          ? [`${failed} read failed — coverage incomplete, grant the missing read permission`]
+          ? [`${failed} read failed — coverage incomplete (grant the read, or acknowledge it)`]
           : []),
         ...(acked > 0 ? [`${acked} read failed, acknowledged in .cdkrd/ignore.yaml`] : []),
         ...(notReturned > 0 ? [`${notReturned} not returned by AWS`] : []),
@@ -681,8 +681,11 @@ export function report(rawFindings: Finding[], header: string, opts: ReportOptio
   // #1969: an ignore.yaml-ACKNOWLEDGED skip is a known, intended gap — still NOT checked, so
   // it stays listed, but on its own `acknowledged-skip` line (it does not fail --strict).
   const skippedSummaryFor = (all: Finding[]): string[] => {
-    const acked = all.filter(isAcknowledgedGap);
-    const items = all.filter((f) => !isAcknowledgedGap(f));
+    // Under --pre-deploy a pending-creation skip is not a gap at all, so it is peeled off
+    // BEFORE the acknowledgement split (an ack on it must not relabel it a gap).
+    const isPending = (f: Finding): boolean => !!opts.preDeploy && isPendingCreationSkip(f);
+    const acked = all.filter((f) => isAcknowledgedGap(f) && !isPending(f));
+    const items = all.filter((f) => !isAcknowledgedGap(f) || isPending(f));
     const ackLine =
       acked.length > 0
         ? [

@@ -275,6 +275,18 @@ describe('#1969/#1970 report footer keeps acknowledged gaps listed, split from t
     expect(out).toContain('acknowledged-skip=1');
   });
 
+  it('--pre-deploy: an acknowledged pending-creation skip stays on the pending-creation line', () => {
+    const lines: string[] = [];
+    report(
+      [{ ...attachmentSkip(), note: 'no physical id', acknowledgedBy: 'r' }],
+      'MyStack (us-east-1)',
+      { log: (l) => lines.push(l), preDeploy: true }
+    );
+    const out = lines.join('\n');
+    expect(out).toContain('pending creation=1');
+    expect(out).not.toContain('acknowledged-skip');
+  });
+
   it('--verbose names the acknowledging rule on the row', () => {
     const out = footer(
       [{ ...attachmentSkip(), acknowledgedBy: 'Database/Cluster/Secret/Attachment' }],
@@ -291,7 +303,7 @@ describe('#1969/#1970 report footer keeps acknowledged gaps listed, split from t
       notReturnedGap(),
     ]);
     expect(out).toContain(
-      'readGap=4 (declared but unverifiable — not drift: 1 read failed — coverage incomplete, grant the missing read permission, 1 read failed, acknowledged in .cdkrd/ignore.yaml, 1 not returned by AWS, 1 write-only)'
+      'readGap=4 (declared but unverifiable — not drift: 1 read failed — coverage incomplete (grant the read, or acknowledge it), 1 read failed, acknowledged in .cdkrd/ignore.yaml, 1 not returned by AWS, 1 write-only)'
     );
   });
 });
@@ -351,6 +363,18 @@ describe('#1969/#1970 runCheck --strict honours ignore.yaml acknowledgements', (
     expect(await runCheck(['--strict', '--pre-deploy', '--no-prompt', 'MyStack'])).toBe(0);
   });
 
+  it('--undeclared-only keeps a failed-read readGap in the report, so the strict failure is explained', async () => {
+    const lines: string[] = [];
+    vi.spyOn(console, 'log').mockImplementation((m?: unknown) => {
+      lines.push(String(m));
+    });
+    gathered = [envReadGap(), writeOnlyGap()];
+    expect(await runCheck(['--strict', '--undeclared-only', '--no-prompt', 'MyStack'])).toBe(1);
+    expect(lines.join('\n')).toContain(
+      'readGap=1 (declared but unverifiable — not drift: 1 read failed'
+    );
+  });
+
   it('a by-nature readGap never fails --strict', async () => {
     gathered = [writeOnlyGap(), notReturnedGap()];
     expect(await runCheck(['--strict', '--no-prompt', 'MyStack'])).toBe(0);
@@ -363,6 +387,9 @@ describe('#1969 config validation of resourceType', () => {
       '"resourceType" must be a string'
     );
     expect(() => cfg('ignore:\n  - path: X\n    resourceType: ""\n')).toThrow('must not be empty');
+  });
+  it('an escaped metachar is a literal, so the type still counts as exact', () => {
+    expect(() => cfg('ignore:\n  - path: "*"\n    resourceType: "AWS::X::Y\\\\*"\n')).not.toThrow();
   });
   it('still rejects an all-wildcard path with a GLOBBED resourceType', () => {
     expect(() => cfg('ignore:\n  - path: "*"\n    resourceType: "AWS::*"\n')).toThrow(
