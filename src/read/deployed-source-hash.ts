@@ -8,7 +8,7 @@ import {
 } from '../baseline/baseline-file.js';
 import type { LocalAssetHashes } from '../synth/local-assets.js';
 import type { Finding } from '../types.js';
-import { READ_RETRY } from './client-config.js';
+import { credentialScopeKey, READ_RETRY } from './client-config.js';
 
 export interface S3ObjectRef {
   bucket: string;
@@ -23,10 +23,13 @@ export type S3Sha256Fetcher = (ref: S3ObjectRef, region: string) => Promise<stri
 const s3Clients = new Map<string, S3Client>();
 
 export const fetchS3Sha256Base64: S3Sha256Fetcher = async (ref, region) => {
-  let s3 = s3Clients.get(region);
+  // #1971: an SDK client memoizes the identity it first resolves, so a client reused across
+  // stacks would keep the FIRST stack's `--assume-role` session — key on the scope too.
+  const key = `${credentialScopeKey()}|${region}`;
+  let s3 = s3Clients.get(key);
   if (s3 === undefined) {
     s3 = new S3Client({ region, followRegionRedirects: true, ...READ_RETRY });
-    s3Clients.set(region, s3);
+    s3Clients.set(key, s3);
   }
   const obj = await s3.send(
     new GetObjectCommand({

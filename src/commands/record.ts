@@ -4,6 +4,7 @@
 // stack-actions.ts (shared with check's interactive prompt, R28).
 import { isStackNotDeployed, StackNotCheckableError } from '../aws-errors.js';
 import { isInteractive, parseCommonArgs } from '../cli-args.js';
+import { enterRoleScope, stackRoleScope } from '../read/assume-role.js';
 import { applyIgnores, loadConfig } from '../config/config-file.js';
 import { createAccountGate } from './account-gate.js';
 import { resolveStacks } from './resolve-stacks.js';
@@ -71,6 +72,9 @@ export async function runRecord(args: string[]): Promise<number> {
       continue;
     }
     try {
+      // #1971: from here on this stack's AWS calls run as the --assume-role role (no-op
+      // without the flag); a role that cannot be assumed fails the stack here, naming it.
+      enterRoleScope(await stackRoleScope(a.assumeRole, { account, region }, 'record'));
       // #1309 pre-read gate: a proven mismatch skips BEFORE any live read, so the wrong
       // account is never even queried (same placement as check's gate).
       const mismatch = await accountGate.preRead(account, region);

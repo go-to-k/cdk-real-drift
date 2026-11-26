@@ -19,6 +19,7 @@
 // object, which every AWS v3 client accepts and wraps. Applied to the READ clients via
 // READ_RETRY below and spread directly into the revert WRITE clients (which must NOT inherit
 // the read-path adaptive retry — a write is not idempotent).
+import { AsyncLocalStorage } from 'node:async_hooks';
 import {
   createCredentialChain,
   fromEnv,
@@ -206,7 +207,13 @@ export function clientRequestHandler(): typeof CLIENT_REQUEST_HANDLER | NodeHttp
 // container credentials call node:http / build their own handler; they are link-local /
 // in-VPC and correctly bypass a proxy, so they need no casing. Evaluated per invocation
 // (this is already a lazy provider — see above), so the handler is fresh per resolution.
-export const CLIENT_CREDENTIALS = (awsIdentityProperties?: Record<string, unknown>) => {
+//
+// AMBIENT_CREDENTIALS is that chain ALONE — the identity the process was started with. It is
+// what CLIENT_CREDENTIALS resolves outside a #1971 `--assume-role` scope, and it is the SOURCE
+// identity the assume-role provider calls sts:AssumeRole with (read/assume-role.ts) — never
+// CLIENT_CREDENTIALS itself, which inside a scope would hand the STS client the very role it
+// is trying to assume (a refresh would then recurse into itself).
+export const AMBIENT_CREDENTIALS = (awsIdentityProperties?: Record<string, unknown>) => {
   const requestHandler = clientRequestHandler();
   return (
     shouldPrioritizeEnv()
@@ -216,6 +223,41 @@ export const CLIENT_CREDENTIALS = (awsIdentityProperties?: Record<string, unknow
         )
       : fromNodeProviderChain({ clientConfig: { requestHandler } })
   )(awsIdentityProperties);
+};
+
+type CredentialProvider = typeof AMBIENT_CREDENTIALS;
+
+// #1971: the per-stack `--assume-role` scope. Each verb's stack loop enters one (via
+// read/assume-role.ts `enterRoleScope`) before that stack's first AWS call; every client the
+// stack's work constructs then resolves the scope's assumed-role provider through
+// CLIENT_CREDENTIALS. AsyncLocalStorage rather than a module variable, so the scope is bound
+// to the stack's own async chain and cannot leak into work that did not start under it.
+// SDK clients memoize the identity they first resolve, so a client cached ACROSS stacks
+// would keep the first stack's role — the cross-stack caches key on credentialScopeKey().
+export interface RoleScope {
+  /** The resolved role ARN this stack's AWS calls run as. */
+  roleArn: string;
+  /** Resolves the assumed-role credentials (memoized per ARN in read/assume-role.ts). */
+  provider: CredentialProvider;
+  /** Set when the role could not be assumed: `enterRoleScope` throws it after entering. */
+  error?: Error;
+}
+
+export const roleScope = new AsyncLocalStorage<RoleScope>();
+
+/**
+ * Key prefix for a cache that outlives one stack and holds account- or credential-bound
+ * state (a client, an account-level default): '' outside an `--assume-role` scope, else the
+ * resolved role ARN — which embeds the account, so two stacks in one region but different
+ * accounts never share an entry.
+ */
+export function credentialScopeKey(): string {
+  return roleScope.getStore()?.roleArn ?? '';
+}
+
+export const CLIENT_CREDENTIALS = (awsIdentityProperties?: Record<string, unknown>) => {
+  const scope = roleScope.getStore();
+  return scope ? scope.provider(awsIdentityProperties) : AMBIENT_CREDENTIALS(awsIdentityProperties);
 };
 
 // `requestHandler` is a GETTER on both bags, so every `...CLIENT_TIMEOUTS` /

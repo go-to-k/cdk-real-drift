@@ -24,7 +24,7 @@
 // the user explicitly asked to MUTATE that stack, so silently not doing so would read
 // as "nothing to revert".
 import { GetCallerIdentityCommand, STSClient } from '@aws-sdk/client-sts';
-import { CLIENT_TIMEOUTS } from '../read/client-config.js';
+import { CLIENT_TIMEOUTS, credentialScopeKey } from '../read/client-config.js';
 
 export interface AccountMismatch {
   skip: boolean;
@@ -144,17 +144,16 @@ export interface AccountGate {
  * is the backstop for that case, exactly as in check.
  */
 export function createAccountGate(verb: AccountGateVerb): AccountGate {
-  let callerAccount: string | undefined;
-  let callerAccountResolved = false;
+  // #1971: one answer per CREDENTIAL SCOPE (credentialScopeKey), not per run — under
+  // `--assume-role` each stack's role may be a different caller (one role per account).
+  const callerAccounts = new Map<string, string | undefined>();
   return {
     preRead: async (declaredAccount, region) => {
       // No env.account pin → no mismatch can be proven; skip the STS call entirely.
       if (!declaredAccount) return { skip: false, message: '' };
-      if (!callerAccountResolved) {
-        callerAccount = await resolveCallerAccount(region);
-        callerAccountResolved = true;
-      }
-      return classifyAccountMismatch(declaredAccount, callerAccount, verb);
+      const key = credentialScopeKey();
+      if (!callerAccounts.has(key)) callerAccounts.set(key, await resolveCallerAccount(region));
+      return classifyAccountMismatch(declaredAccount, callerAccounts.get(key), verb);
     },
     postRead: (declaredAccount, readAccountId) =>
       classifyReadAccountMismatch(declaredAccount, readAccountId, verb),

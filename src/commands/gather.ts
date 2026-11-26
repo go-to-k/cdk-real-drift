@@ -37,7 +37,7 @@ import {
   normalizeLiveModel,
 } from '../diff/classify.js';
 import { resolveProperties } from '../normalize/intrinsic-resolver.js';
-import { READ_RETRY } from '../read/client-config.js';
+import { credentialScopeKey, READ_RETRY } from '../read/client-config.js';
 import {
   fetchManagedAliasTargets,
   kmsWarnDecision,
@@ -212,9 +212,15 @@ async function fetchSgNamesByIds(
   }
 }
 
+// #1971: these per-region caches hold ACCOUNT-level answers (default VPC ids, account
+// defaults) and live for the whole run, while one `--assume-role '...{account}...'` run spans
+// several accounts — so every key carries the credential scope (the role ARN, '' without the
+// flag). Keyed by region alone, stack 2 would fold against stack 1's account.
+const scopedKey = (key: string): string => `${credentialScopeKey()}|${key}`;
+
 const defaultSgIdsCache = new Map<string, Set<string>>();
 async function fetchDefaultSgIds(region: string): Promise<Set<string>> {
-  const cached = defaultSgIdsCache.get(region);
+  const cached = defaultSgIdsCache.get(scopedKey(region));
   if (cached) return cached;
   const ids = new Set<string>();
   try {
@@ -236,7 +242,7 @@ async function fetchDefaultSgIds(region: string): Promise<Set<string>> {
     // Not cached on error, so the next stack in the region retries (mirrors the transient path).
     return ids;
   }
-  defaultSgIdsCache.set(region, ids);
+  defaultSgIdsCache.set(scopedKey(region), ids);
   return ids;
 }
 
@@ -247,7 +253,7 @@ async function fetchDefaultSgIds(region: string): Promise<Set<string>> {
 // folding the undeclared subnet list and a clean deploy never gains a first-run false positive.
 const defaultSubnetIdsCache = new Map<string, Set<string>>();
 async function fetchDefaultVpcSubnetIds(region: string): Promise<Set<string>> {
-  const cached = defaultSubnetIdsCache.get(region);
+  const cached = defaultSubnetIdsCache.get(scopedKey(region));
   if (cached) return cached;
   const ids = new Set<string>();
   try {
@@ -269,7 +275,7 @@ async function fetchDefaultVpcSubnetIds(region: string): Promise<Set<string>> {
     // Not cached on error, so the next stack in the region retries (mirrors the transient path).
     return ids;
   }
-  defaultSubnetIdsCache.set(region, ids);
+  defaultSubnetIdsCache.set(scopedKey(region), ids);
   return ids;
 }
 
@@ -284,14 +290,15 @@ async function fetchDefaultVpcSubnetIds(region: string): Promise<Set<string>> {
 // ecs:ListAccountSettings effective `containerInsights` — AWS::ECS::Cluster.ClusterSettings default.
 const ecsContainerInsightsCache = new Map<string, string | undefined>();
 async function fetchEcsContainerInsightsDefault(region: string): Promise<string | undefined> {
-  if (ecsContainerInsightsCache.has(region)) return ecsContainerInsightsCache.get(region);
+  if (ecsContainerInsightsCache.has(scopedKey(region)))
+    return ecsContainerInsightsCache.get(scopedKey(region));
   try {
     const c = new ECSClient({ region, ...READ_RETRY });
     const r = await c.send(
       new ListAccountSettingsCommand({ name: 'containerInsights', effectiveSettings: true })
     );
     const value = r.settings?.find((s) => s.name === 'containerInsights')?.value;
-    ecsContainerInsightsCache.set(region, value);
+    ecsContainerInsightsCache.set(scopedKey(region), value);
     return value;
   } catch {
     return undefined;
@@ -301,14 +308,15 @@ async function fetchEcsContainerInsightsDefault(region: string): Promise<string 
 // ssm:GetServiceSetting `/ssm/parameter-store/default-parameter-tier` — AWS::SSM::Parameter.Tier default.
 const ssmParameterTierCache = new Map<string, string | undefined>();
 async function fetchSsmDefaultParameterTier(region: string): Promise<string | undefined> {
-  if (ssmParameterTierCache.has(region)) return ssmParameterTierCache.get(region);
+  if (ssmParameterTierCache.has(scopedKey(region)))
+    return ssmParameterTierCache.get(scopedKey(region));
   try {
     const c = new SSMClient({ region, ...READ_RETRY });
     const r = await c.send(
       new GetServiceSettingCommand({ SettingId: '/ssm/parameter-store/default-parameter-tier' })
     );
     const value = r.ServiceSetting?.SettingValue;
-    ssmParameterTierCache.set(region, value);
+    ssmParameterTierCache.set(scopedKey(region), value);
     return value;
   } catch {
     return undefined;
@@ -318,12 +326,13 @@ async function fetchSsmDefaultParameterTier(region: string): Promise<string | un
 // ec2:GetEbsEncryptionByDefault — AWS::EC2::Volume.Encrypted reads back `true` undeclared when on.
 const ebsEncryptionByDefaultCache = new Map<string, boolean | undefined>();
 async function fetchEbsEncryptionByDefault(region: string): Promise<boolean | undefined> {
-  if (ebsEncryptionByDefaultCache.has(region)) return ebsEncryptionByDefaultCache.get(region);
+  if (ebsEncryptionByDefaultCache.has(scopedKey(region)))
+    return ebsEncryptionByDefaultCache.get(scopedKey(region));
   try {
     const c = new EC2Client({ region, ...READ_RETRY });
     const r = await c.send(new GetEbsEncryptionByDefaultCommand({}));
     const value = r.EbsEncryptionByDefault;
-    ebsEncryptionByDefaultCache.set(region, value);
+    ebsEncryptionByDefaultCache.set(scopedKey(region), value);
     return value;
   } catch {
     return undefined;
@@ -338,7 +347,7 @@ async function fetchEc2FamilyCreditDefault(
   region: string,
   family: string
 ): Promise<string | undefined> {
-  const cacheKey = `${region}|${family}`;
+  const cacheKey = scopedKey(`${region}|${family}`);
   if (ec2CreditDefaultCache.has(cacheKey)) return ec2CreditDefaultCache.get(cacheKey);
   try {
     const c = new EC2Client({ region, ...READ_RETRY });
@@ -363,13 +372,13 @@ async function fetchEc2FamilyCreditDefault(
 // system default) → classify falls back to the KNOWN_DEFAULTS constant. Cached per region, fail-open.
 const rdsDefaultCaCache = new Map<string, string | undefined>();
 async function fetchRdsDefaultCaIdentifier(region: string): Promise<string | undefined> {
-  if (rdsDefaultCaCache.has(region)) return rdsDefaultCaCache.get(region);
+  if (rdsDefaultCaCache.has(scopedKey(region))) return rdsDefaultCaCache.get(scopedKey(region));
   try {
     const c = new RDSClient({ region, ...READ_RETRY });
     const r = await c.send(new DescribeCertificatesCommand({}));
     const override = (r.Certificates ?? []).find((cert) => cert.CustomerOverride === true);
     const value = override?.CertificateIdentifier;
-    rdsDefaultCaCache.set(region, value);
+    rdsDefaultCaCache.set(scopedKey(region), value);
     return value;
   } catch {
     return undefined;
@@ -387,7 +396,7 @@ const dmsAllocatedStorageDefaultsCache = new Map<string, Record<string, number>>
 export async function fetchDmsAllocatedStorageDefaults(
   region: string
 ): Promise<Record<string, number>> {
-  const cached = dmsAllocatedStorageDefaultsCache.get(region);
+  const cached = dmsAllocatedStorageDefaultsCache.get(scopedKey(region));
   if (cached) return cached;
   const map: Record<string, number> = {};
   try {
@@ -410,7 +419,7 @@ export async function fetchDmsAllocatedStorageDefaults(
   } catch {
     // fail open — leave whatever was collected (possibly empty)
   }
-  dmsAllocatedStorageDefaultsCache.set(region, map);
+  dmsAllocatedStorageDefaultsCache.set(scopedKey(region), map);
   return map;
 }
 
@@ -427,7 +436,8 @@ const instanceMetadataDefaultsCache = new Map<
 async function fetchInstanceMetadataDefaults(
   region: string
 ): Promise<Record<string, string | number> | undefined> {
-  if (instanceMetadataDefaultsCache.has(region)) return instanceMetadataDefaultsCache.get(region);
+  if (instanceMetadataDefaultsCache.has(scopedKey(region)))
+    return instanceMetadataDefaultsCache.get(scopedKey(region));
   try {
     const c = new EC2Client({ region, ...READ_RETRY });
     const r = await c.send(new GetInstanceMetadataDefaultsCommand({}));
@@ -439,7 +449,7 @@ async function fetchInstanceMetadataDefaults(
     if (al?.HttpEndpoint != null) out.HttpEndpoint = al.HttpEndpoint;
     if (al?.InstanceMetadataTags != null) out.InstanceMetadataTags = al.InstanceMetadataTags;
     const value = Object.keys(out).length > 0 ? out : undefined;
-    instanceMetadataDefaultsCache.set(region, value);
+    instanceMetadataDefaultsCache.set(scopedKey(region), value);
     return value;
   } catch {
     return undefined;
@@ -2216,11 +2226,11 @@ export async function gatherFindings(
     const decision = kmsWarnDecision(
       region,
       resolved,
-      kmsDeniedWarned.has(region),
-      kmsTransientWarned.has(region)
+      kmsDeniedWarned.has(scopedKey(region)),
+      kmsTransientWarned.has(scopedKey(region))
     );
-    if (decision.stampDenied) kmsDeniedWarned.add(region);
-    if (decision.stampTransient) kmsTransientWarned.add(region);
+    if (decision.stampDenied) kmsDeniedWarned.add(scopedKey(region));
+    if (decision.stampTransient) kmsTransientWarned.add(scopedKey(region));
     if (decision.warning) console.error(decision.warning);
   }
   // #889: prefetch the VPC-default security-group ids once (per region) when the stack declares an
