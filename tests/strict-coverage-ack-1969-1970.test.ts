@@ -227,7 +227,8 @@ describe('#1970 classify marks a supplement read-gap as readFailed', () => {
       }
     );
     const gaps = findings.filter((f) => f.tier === 'readGap');
-    expect(gaps.map((f) => [f.path, f.readFailed]).sort()).toEqual([
+    const byPath = [...gaps].sort((a, b) => a.path.localeCompare(b.path));
+    expect(byPath.map((f) => [f.path, f.readFailed])).toEqual([
       ['CognitoEvents', true],
       ['Environment', true],
     ]);
