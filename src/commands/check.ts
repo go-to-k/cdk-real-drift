@@ -621,6 +621,8 @@ export async function runCheck(args: string[]): Promise<number> {
     try {
       // #1971: from here on this stack's AWS calls run as the --assume-role role (no-op
       // without the flag); a role that cannot be assumed fails the stack here, naming it.
+      // The scope persists until the next stack enters its own, so an AWS call added ABOVE
+      // this line (or after the loop) would run as the PREVIOUS stack's role.
       enterRoleScope(await stackRoleScope(a.assumeRole, { account, region }, 'check'));
       // #740: if this stack is pinned (via env.account) to an account the active credentials
       // are NOT for, SKIP it accurately here — BEFORE any live read — instead of reading the

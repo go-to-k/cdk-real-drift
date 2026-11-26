@@ -40,6 +40,11 @@ export function validateAssumeRoleTemplate(template: string): void {
   }
 }
 
+/** Whether a RESOLVED value is an IAM role ARN. */
+export function isRoleArn(arn: string): boolean {
+  return ROLE_ARN_RE.test(arn);
+}
+
 /** Whether the template needs the stack's account to resolve. */
 export function needsAccount(template: string): boolean {
   return template.includes('{account}');

@@ -234,7 +234,7 @@ ambient credentials before each stack's first AWS call; `{account}` and
 npx cdkrd check --fail --assume-role 'arn:aws:iam::{account}:role/MyReadRole'
 ```
 
-The session is named `cdkrd-<verb>` (visible in CloudTrail). Synthesis still
+The session is named `cdkrd-<verb>` after the verb you ran (visible in CloudTrail) — a revert / record / ignore picked from `check`'s prompt runs in the `cdkrd-check` session. Synthesis still
 runs with the ambient credentials, as `cdk synth` does. A role that cannot be
 assumed fails that stack (exit 2) with the role ARN in the error. Not named
 `--role-arn`, which in the CDK CLI means the CloudFormation execution role.

@@ -96,6 +96,8 @@ export async function runIgnore(args: string[]): Promise<number> {
     try {
       // #1971: from here on this stack's AWS calls run as the --assume-role role (no-op
       // without the flag); a role that cannot be assumed fails the stack here, naming it.
+      // The scope persists until the next stack enters its own, so an AWS call added ABOVE
+      // this line (or after the loop) would run as the PREVIOUS stack's role.
       enterRoleScope(await stackRoleScope(a.assumeRole, { account, region }, 'ignore'));
       // #1309 pre-read gate: a proven mismatch skips BEFORE any live read, so the wrong
       // account is never even queried (same placement as check's gate).

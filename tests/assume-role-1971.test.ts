@@ -22,7 +22,11 @@ import {
   resetAssumeRoleState,
   stackRoleScope,
 } from '../src/read/assume-role.js';
-import { resolveAssumeRoleArn, validateAssumeRoleTemplate } from '../src/read/assume-role-arn.js';
+import {
+  isRoleArn,
+  resolveAssumeRoleArn,
+  validateAssumeRoleTemplate,
+} from '../src/read/assume-role-arn.js';
 import {
   CLIENT_CREDENTIALS,
   CLIENT_TIMEOUTS,
@@ -98,6 +102,8 @@ describe('#1971 ARN template', () => {
         'us-east-1'
       )
     ).toBe('arn:aws:iam::111111111111:role/cdk-hnb659fds-lookup-role-111111111111-us-east-1');
+    expect(isRoleArn('arn:aws:iam::123456789012:role/R')).toBe(true);
+    expect(isRoleArn('arn:aws:iam::12345:role/R')).toBe(false);
     expect(resolveAssumeRoleArn('arn:aws:iam::123456789012:role/R', '9'.repeat(12), 'x')).toBe(
       'arn:aws:iam::123456789012:role/R'
     );

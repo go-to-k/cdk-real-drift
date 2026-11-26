@@ -18,7 +18,7 @@ import { GetCallerIdentityCommand, STSClient } from '@aws-sdk/client-sts';
 import { fromTemporaryCredentials } from '@aws-sdk/credential-providers';
 import { AssumeRoleError } from '../aws-errors.js';
 import type { Verb } from '../cli-args.js';
-import { needsAccount, resolveAssumeRoleArn } from './assume-role-arn.js';
+import { isRoleArn, needsAccount, resolveAssumeRoleArn } from './assume-role-arn.js';
 import {
   AMBIENT_CREDENTIALS,
   CLIENT_TIMEOUTS,
@@ -158,6 +158,14 @@ export async function stackRoleScope(
     }
   }
   const roleArn = resolveAssumeRoleArn(template, account ?? '', stack.region);
+  // Re-check the RESOLVED ARN here rather than trusting that every account / region
+  // reaching this point is well-formed (synth gates them today; this keeps it local).
+  if (!isRoleArn(roleArn)) {
+    return failing(
+      roleArn,
+      new AssumeRoleError(`--assume-role resolved to ${roleArn}, which is not an IAM role ARN`)
+    );
+  }
   const provider = providerFor(roleArn, stack.region, verb);
   try {
     await provider();

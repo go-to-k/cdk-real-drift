@@ -86,6 +86,8 @@ export async function runRevert(args: string[]): Promise<number> {
     try {
       // #1971: from here on this stack's AWS calls run as the --assume-role role (no-op
       // without the flag); a role that cannot be assumed fails the stack here, naming it.
+      // The scope persists until the next stack enters its own, so an AWS call added ABOVE
+      // this line (or after the loop) would run as the PREVIOUS stack's role.
       enterRoleScope(await stackRoleScope(a.assumeRole, { account, region }, 'revert'));
       // #1309 pre-read gate: a proven mismatch refuses BEFORE any live read, so the wrong
       // account is never even queried — let alone written to.
