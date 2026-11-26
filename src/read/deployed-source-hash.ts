@@ -60,7 +60,9 @@ export function lambdaCodeS3Ref(
 // #1960: the expected hash for a content hash whose S3 object IS the live artifact, from the
 // LOCAL synthesized asset the deployed template's S3 key was built from (content-addressed
 // keys: a matching key means these exact bytes). Undefined when no local asset matches —
-// e.g. a pre-deploy synth of newer code, or a check run against a stale assembly.
+// e.g. a pre-deploy synth of newer code, or a check run against a stale assembly. Known
+// limit: a CUSTOM `assetHash` is not content-addressed, so a local edit that keeps it reads
+// as an out-of-band change (the asset manifest does not record the hash type).
 function localAssetHash(
   f: Finding,
   declared: Record<string, unknown> | undefined,

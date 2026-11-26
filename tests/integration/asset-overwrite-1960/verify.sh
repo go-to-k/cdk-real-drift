@@ -25,7 +25,7 @@ OUT="$(mktemp -d)"
 cleanup() {
   echo "--- cleanup ---"
   CODE_VERSION=v2 CDKRD_1960_CA="$OUT/ca-v2.pem" npx cdk destroy -f "$STACK" >/dev/null 2>&1 || true
-  rm -rf .cdkrd cdk.out "$OUT"
+  rm -rf .cdkrd cdk.out "$OUT" "${TMPDIR:-/tmp}/cdkrd-integ-1960"
 }
 trap cleanup EXIT
 
@@ -80,9 +80,15 @@ LOC="$(aws glue get-job --job-name "$JOB" --region "$REGION" --query Job.Command
 echo 'print("swapped out of band")' >"$OUT/swapped.py"
 aws s3 cp "$OUT/swapped.py" "$LOC" --region "$REGION" >/dev/null || fail "overwrite script"
 TPL="$(aws cloudformation get-template --stack-name "$STACK" --region "$REGION" --query TemplateBody --output json)"
-CA_KEY="$(node -e 'const t=JSON.parse(JSON.parse(process.argv[1]));for(const r of Object.values(t.Resources))if(r.Type==="AWS::ElasticLoadBalancingV2::TrustStore")console.log(r.Properties.CaCertificatesBundleS3Key)' "$TPL")"
+# TemplateBody is a JSON object (or, for a YAML/string body, a JSON string) — handle both.
+ts_prop() {
+  node -e 'let t=JSON.parse(process.argv[1]);if(typeof t==="string")t=JSON.parse(t);for(const r of Object.values(t.Resources))if(r.Type==="AWS::ElasticLoadBalancingV2::TrustStore")console.log(r.Properties[process.argv[2]])' "$TPL" "$1"
+}
+CA_KEY="$(ts_prop CaCertificatesBundleS3Key)"
+# The bundle bucket is an Fn::Sub in the template; both assets live in the bootstrap bucket.
 CA_BUCKET="${LOC#s3://}"; CA_BUCKET="${CA_BUCKET%%/*}"
 [ -n "$CA_KEY" ] || fail "could not resolve CA key"
+
 aws s3 cp "$OUT/ca-v3.pem" "s3://$CA_BUCKET/$CA_KEY" --region "$REGION" >/dev/null || fail "overwrite CA"
 aws elbv2 modify-trust-store --trust-store-arn "$TS_ARN" --region "$REGION" \
   --ca-certificates-bundle-s3-bucket "$CA_BUCKET" --ca-certificates-bundle-s3-key "$CA_KEY" \
@@ -96,5 +102,9 @@ cat "$OUT/v3.out"
 [ $rc -eq 1 ] || fail "expected drift (exit 1) after the overwrites (rc=$rc)"
 grep -q "ScriptSha256" "$OUT/v3.out" || fail "ScriptSha256 not reported"
 grep -q "CaCertificatesBundleSha256" "$OUT/v3.out" || fail "CaCertificatesBundleSha256 not reported"
+# Both must be DETECTED (verified + differing), not one detected and the other unverified.
+if grep -q "could not verify" "$OUT/v3.out"; then fail "a hash was not verified after the overwrite"; fi
+[ "$(grep -c "differs from the content the template deploys" "$OUT/v3.out")" -eq 2 ] ||
+  fail "expected both hashes reported as differing from the deployed content"
 
 echo "INTEG PASS"

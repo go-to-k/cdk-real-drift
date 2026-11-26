@@ -537,7 +537,7 @@ export interface RecordResult {
 export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
   const { stackName, region, desired, yes, interactive, preselectedKeys, expandNested } = p;
   const existing = await loadBaseline(stackName, desired.accountId, region);
-  // #1958: verify a redeploy-voided content hash against the code the template deploys, so
+  // #1958: verify a redeploy-voided content hash against the content the template deploys, so
   // an out-of-band swap after that redeploy is labelled "changed", never a legit refresh.
   // A no-op when check's interactive flow already stamped the findings.
   const findings = await annotateDeployedSourceHashes(

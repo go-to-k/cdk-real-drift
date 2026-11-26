@@ -25,6 +25,7 @@ function assembly(): string {
   const dir = mkdtempSync(join(tmpdir(), 'cdkrd-1960-'));
   writeFileSync(join(dir, 'asset.s.py'), SCRIPT);
   writeFileSync(join(dir, 'asset.c.pem'), PEM);
+  writeFileSync(join(dir, 'asset.dir'), 'a readable file, but zip-packaged: must be skipped');
   const manifest = join(dir, 'Stack.assets.json');
   writeFileSync(
     manifest,

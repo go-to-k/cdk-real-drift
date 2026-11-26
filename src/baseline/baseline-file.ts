@@ -1806,7 +1806,7 @@ export function applyBaseline(
           ...f,
           tier: 'undeclared',
           desired: deployedSourceHash,
-          note: 'differs from the code the template deploys (changed out of band since the last code deploy)',
+          note: 'differs from the content the template deploys (changed out of band since the last deploy of it)',
         });
       }
       continue;
@@ -2179,7 +2179,7 @@ export function formatSourceRedeployedStaleNote(paths: string[]): string {
  * user must know the CLEAN verdict does not cover it. Pure + exported for unit tests.
  */
 export function formatSourceUnverifiedNote(paths: string[]): string {
-  return `note: could not verify ${paths.join(', ')} against the code the template deploys (the deployed asset could not be read or matched to a local synthesized asset, or the live hash was not read) — an out-of-band code swap since that deploy is not detected until \`cdkrd record\` re-runs.`;
+  return `note: could not verify ${paths.join(', ')} against the content the template deploys (the deployed asset could not be read or matched to a local synthesized asset, or the live hash was not read) — an out-of-band change since that deploy is not detected until \`cdkrd record\` re-runs.`;
 }
 
 /**

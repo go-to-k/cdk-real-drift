@@ -1106,7 +1106,7 @@ all fold into a one-line stderr nudge (mirroring the promotion note), never drif
 - **A swap AFTER a legit code redeploy (#1958).** The void alone cannot tell
   "redeployed" from "redeployed, then swapped out of band" — both move the
   recorded hash and the declared source — so until a re-record every redeployed
-  function was unwatched. For Lambda `CodeSha256` only, `check` / `record` /
+  function was unwatched. For Lambda `CodeSha256` (Glue / TrustStore: #1960 below), `check` / `record` /
   `ignore` / `revert` first run `annotateDeployedSourceHashes`
   (read/deployed-source-hash.ts): for each entry the void WOULD drop whose declared
   `Code` is a literal `S3Bucket`/`S3Key` (+ `S3ObjectVersion`), it streams the
@@ -1132,7 +1132,12 @@ all fold into a one-line stderr nudge (mirroring the promotion note), never drif
   those bytes (sha256 hex for Glue, `hashCaBundle` for the TrustStore). A key not
   in the local assembly (a newer local script, a stale or foreign `--app` dir)
   stays unverified with the coverage note. A verified TrustStore hash is
-  suppressed, not kept, because its `undeclared` tier cannot fold.
+  suppressed, not kept, because its `undeclared` tier cannot fold. Known limit: an
+  asset with a CUSTOM `assetHash` is NOT content-addressed — editing the local file
+  without changing that hash keeps the deployed key, so the edited local bytes read
+  as an out-of-band change (the asset manifest does not record the hash type, so this
+  cannot be told apart). Every `file` asset is hashed on every synth (cheap next to the
+  synth itself); the match is on object key only, never bucket.
 
 **Stale-baseline warning.** `templateHash` (sha256 of the deployed template at
 capture) is verified on load (`warnTemplateHashDrift`): a mismatch prints a non-fatal

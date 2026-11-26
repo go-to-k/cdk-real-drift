@@ -763,7 +763,7 @@ export async function runCheck(args: string[]): Promise<number> {
       // NOWHERE under --json (#944).
       if (baseline) warnBaselineSchemaV1(baseline, stackName);
       // #1958: a content hash voided by a legit code redeploy since record is verified
-      // against the code the template deploys, so a swap AFTER that redeploy still surfaces.
+      // against the content the template deploys, so a swap AFTER that redeploy still surfaces.
       if (!a.declaredOnly)
         findings = await annotateDeployedSourceHashes(
           findings,
