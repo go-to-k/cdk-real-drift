@@ -515,7 +515,7 @@ treated as non-interactive: the report is written cleanly with no prompt (which
 would otherwise deadlock, waiting on stdin for a prompt written into the file) and
 no spinner frames leaking into the text. `--yes` in a TTY skips the write
 confirmation AND each verb's selection
-multiselect — `record` records ALL, `ignore` ignores ALL, `revert` applies the full
+multiselect — `record` records ALL, `ignore` ignores ALL drift (never a coverage gap), `revert` applies the full
 plan. `check --yes` never opens the action menu (Record / Revert / Ignore / …) —
 it just reports (#1054/#1185); use the standalone `record --yes` / `ignore --yes`
 / `revert --yes` verbs for scripted, non-interactive decisions.
@@ -696,6 +696,14 @@ ignore:
   does not); a
   failed-read readGap matches at the resource or the property
   (`ClusterRestorer/Verifier.Environment`). A gap no rule matches keeps failing.
+  You need not hand-write the key: the interactive **`cdkrd ignore`** picker lists
+  every gap that fails `--strict` as a `[coverage gap — …]` row beside the drift,
+  and picking one writes exactly the key form that matches it (the construct path
+  on a CDK-synthesized app, the logicalId — `Fn9270CBC0.Environment` — on an
+  assembly without `aws:cdk:path` metadata). By-nature readGaps, `Custom::*` skips
+  and already-acknowledged gaps are not offered, and `ignore --yes` (or any
+  non-interactive run) never acknowledges a gap — it ignores the drift only and
+  notes how many gaps it left.
 
   ```yaml
   ignore:
