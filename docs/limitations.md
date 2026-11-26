@@ -64,7 +64,8 @@ the full design.
   property isn't compared. Coverage is widened as needed.
 - **Unsupported / unreadable types.** A type Cloud Control can't read (no CC
   support, or a CC handler error with no SDK override) is `skipped`, surfaced in the
-  `skipped=N` line and never silently CLEAN; `--strict` makes such a gap CI-failing.
+  `skipped=N` line and never silently CLEAN; `--strict` makes such a gap CI-failing
+  (unless an `ignore.yaml` rule acknowledges it as intended, #1969).
   Known CC-unreadable common types with no SDK override yet (all surface as
   `skipped`, never false drift): ACM `Certificate` and ELBv2
   `ListenerCertificate` (also impractical to live-test — ACM validation blocks

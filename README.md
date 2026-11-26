@@ -419,9 +419,19 @@ CI (with `--yes`).
   `Custom::LogRetention`) has no cloud-side model to read, so it is a
   permanent-by-nature gap that no `record` / `ignore` could clear — it is
   **informational** and does NOT fail `--strict` (otherwise the flag would exit `1`
-  forever on nearly every real CDK app). The gap is always surfaced regardless (as
-  the `skipped=N` footer line or a loud `warning:`); `--strict` only decides whether
-  an actionable gap fails the build.
+  forever on nearly every real CDK app). A **property whose read failed** — a
+  supplement read denied (`AccessDenied`), a Lambda's environment unreadable under a
+  `kms:Decrypt` deny, an `alias/aws/*` KMS key that cannot be confirmed without
+  `kms:ListAliases` — is a coverage gap too and fails `--strict` (`readGap=N (… read
+  failed — coverage incomplete …)` in the footer), while a property unreadable **by
+  nature** (write-only like `MasterUserPassword`, or not returned by AWS) stays
+  informational. The gap is always surfaced regardless (as the `skipped=N` /
+  `readGap=N` footer line or a loud `warning:`); `--strict` only decides whether an
+  actionable gap fails the build. A gap you **intend** — a role deliberately not
+  granted `secretsmanager:GetSecretValue`, so a `SecretTargetAttachment` is skipped —
+  can be **acknowledged** in `.cdkrd/ignore.yaml` (see below): it stays listed
+  (`acknowledged-skip=N`, or `read failed, acknowledged` on the `readGap` line) but
+  no longer fails `--strict`, and the committed rule's comment records why.
 - Errors always exit `2`; `revert` exits `1` when drift remains after it.
 - Interrupting a run with **Ctrl-C** (or **ESC** / SIGINT) during the gather/read
   phase exits `130` (128 + SIGINT) for every verb, and a **SIGTERM** (CI
@@ -617,7 +627,7 @@ ignore:
     region: ap-northeast-1
 ```
 
-- Every rule is a mapping `{ path, stack?, account?, region? }`. `cdkrd ignore`
+- Every rule is a mapping `{ path, stack?, account?, region?, resourceType? }`. `cdkrd ignore`
   stamps the current **stack / account / region** onto each rule it writes (the same
   three identity axes a baseline file is keyed on), so ignoring a within-stack path on
   one stack never leaks to a same-named twin stack in another account/region — an
@@ -658,6 +668,29 @@ ignore:
   leaking into a same-named stack in another account (stack-name uniqueness only
   holds within one account / App); **region** is independent the same way — the same
   stack in several accounts or regions may drift in only one.
+- **`resourceType`** (optional, glob) narrows a rule to findings on resources of a
+  matching CloudFormation type. With an EXACT type (no `*` / `?`) an all-wildcard
+  `path` is allowed — `path: "*"` + `resourceType: AWS::SecretsManager::SecretTargetAttachment`
+  matches every resource of that type (every finding on it, not only its gaps).
+- **Acknowledging a known coverage gap** (#1969/#1970). A rule that matches a
+  `skipped` resource — or a `readGap` whose read failed — does not hide it: the
+  finding keeps its tier and stays listed, gains `acknowledgedBy` (the rule) in
+  `--json`, and no longer fails `--strict`. A skipped resource has no property, so
+  only a **resource-level** rule matches it (`<constructPath>` / `<logicalId>`, or a
+  construct-path ancestor; a property glob like `Database/Cluster/Secret/Attachment.*`
+  does not); a
+  failed-read readGap matches at the resource or the property
+  (`ClusterRestorer/Verifier.Environment`). A gap no rule matches keeps failing.
+
+  ```yaml
+  ignore:
+    # the CI read role is deliberately not granted secretsmanager:GetSecretValue
+    - path: Database/Cluster/Secret/Attachment
+      resourceType: AWS::SecretsManager::SecretTargetAttachment
+    # the CDK lookup role denies kms:Decrypt, so this function's env is unreadable
+    - path: ClusterRestorer/Verifier.Environment
+  ```
+
 - Matching findings move to the informational `ignored` tier: visible under
   `--verbose`, never exit-affecting, excluded from `revert` and `record`. A
   **deleted resource is never ignorable**.
@@ -759,6 +792,12 @@ only the value is hidden. The same protection covers persistence: `record` write
 the secret never lands in a committed file while a later change still re-surfaces as
 drift (an unchanged one stays recorded). Older baselines holding a plaintext value keep
 comparing correctly and migrate to the hashed form on the next `record` (#798).
+
+**Coverage-gap fields.** A `readGap` finding whose read FAILED carries `"readFailed": true`
+(a by-nature one — write-only, not returned — never does; an unconfirmable `alias/aws/*`
+KMS key carries `"compareOnly": true`); both, like a `skipped` finding, fail `--strict`. A
+`skipped` / failed-read finding an `ignore.yaml` rule acknowledged keeps its tier and
+carries `"acknowledgedBy": "<rule>"` — it no longer fails `--strict` (#1969/#1970).
 
 A **stack that errored or was skipped** before it could be checked still appears as an
 element so a consumer sees which stacks ran: it carries `"error": "<reason>"` alongside
@@ -1095,9 +1134,10 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   really differ there (`cdk deploy` skips the upload because the key already exists),
   but the cause is the unchanged hash, not an edit made out of band.
 - Optional: `kms:ListAliases` enables strict verification that a declared
-  `alias/aws/*` key was not swapped for a customer-managed key. Without it that case
-  is conservatively suppressed AND cdkrd prints a one-line warning per region (the
-  swap would otherwise go undetected), so the reduced coverage is never silent.
+  `alias/aws/*` key was not swapped for a customer-managed key. Without it that
+  comparison is reported as a `readGap` (and cdkrd prints a one-line warning per
+  region), which `--strict` counts as incomplete coverage, so the reduced coverage is
+  never silent.
 - **`added` tier (out-of-band resource detection).** The `added` tier — cdkrd's
   detection of live child resources that exist in AWS but were never declared in
   your template (a headline differentiator) — enumerates each declared parent's
