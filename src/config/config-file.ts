@@ -51,6 +51,7 @@ import { pid } from 'node:process';
 import { type Document, isSeq, parseDocument, YAMLSeq } from 'yaml';
 import { matchesGlob, matchesPathGlob } from '../commands/glob-match.js';
 import { withinStackPath } from '../construct-path.js';
+import { isCoverageReadGap } from '../diff/coverage-gap.js';
 import type { Finding } from '../types.js';
 
 // An ignore rule. `path` is the glob against "<logicalId>.<path>" /
@@ -61,6 +62,9 @@ export interface IgnoreRuleObject {
   stack?: string;
   account?: string;
   region?: string;
+  // #1969: optional CloudFormation resource-type glob; the rule then applies only to findings
+  // on resources of a matching type (e.g. `AWS::SecretsManager::SecretTargetAttachment`).
+  resourceType?: string;
 }
 
 export interface CdkrdConfig {
@@ -69,13 +73,13 @@ export interface CdkrdConfig {
 
 const CONFIG_PATH = '.cdkrd/ignore.yaml';
 const KNOWN_KEYS = new Set(['ignore']);
-const RULE_OBJECT_KEYS = new Set(['path', 'stack', 'account', 'region']);
+const RULE_OBJECT_KEYS = new Set(['path', 'stack', 'account', 'region', 'resourceType']);
 
 // Header written above a freshly-created ignore.yaml so a hand-editor immediately sees the
 // shape and the comment convention. Existing files keep their own comments (append-only).
 const FILE_HEADER =
   '# cdkrd ignore rules — properties cdkrd should stop reporting as drift.\n' +
-  '# Each rule: { path, stack?, account?, region? }; `path` is a\n' +
+  '# Each rule: { path, stack?, account?, region?, resourceType? }; `path` is a\n' +
   '# "<constructPath|logicalId>.<property>" glob, the scopes narrow WHERE it applies.\n' +
   '# Add a comment above a rule to record WHY it is ignored.\n';
 
@@ -230,12 +234,12 @@ export function isUniversalPath(path: string): boolean {
 function validateIgnoreEntry(entry: unknown, index: number): void {
   const at = `${CONFIG_PATH}: "ignore"[${index}]`;
   if (typeof entry !== 'object' || entry === null || Array.isArray(entry))
-    throw new Error(`${at} must be a mapping { path, stack?, account?, region? }`);
+    throw new Error(`${at} must be a mapping { path, stack?, account?, region?, resourceType? }`);
   const obj = entry as Record<string, unknown>;
   const unknown = Object.keys(obj).filter((k) => !RULE_OBJECT_KEYS.has(k));
   if (unknown.length > 0)
     throw new Error(
-      `${at}: unknown key(s) ${unknown.map((k) => `"${k}"`).join(', ')} — known keys: "path", "stack", "account", "region"`
+      `${at}: unknown key(s) ${unknown.map((k) => `"${k}"`).join(', ')} — known keys: "path", "stack", "account", "region", "resourceType"`
     );
   if (typeof obj.path !== 'string')
     throw new Error(`${at}: "path" is required and must be a string`);
@@ -244,7 +248,15 @@ function validateIgnoreEntry(entry: unknown, index: number): void {
     // and the ancestor walk never reaches empty) — a silent no-op rule the user believes
     // is suppressing a property. Reject it loudly so the no-op can't masquerade as active.
     throw new Error(`${at}: "path" must not be empty`);
-  if (isUniversalPath(obj.path))
+  if (typeof obj.resourceType !== 'undefined' && typeof obj.resourceType !== 'string')
+    throw new Error(`${at}: "resourceType" must be a string`);
+  if (obj.resourceType === '')
+    throw new Error(`${at}: "resourceType" must not be empty (omit it to match any type)`);
+  // #1969: an EXACT (glob-free) `resourceType` is itself a literal scope, so with it an
+  // all-wildcard `path` ("every resource of THIS type") is not the every-finding foot-gun
+  // below. A globbed type (`AWS::*`) does not earn the exemption.
+  const exactType = typeof obj.resourceType === 'string' && !/[*?]/.test(obj.resourceType);
+  if (isUniversalPath(obj.path) && !exactType)
     // The mirror-image catastrophe of the empty path: a path made ONLY of wildcards and
     // segment separators (`*`, `**`, `*.*`, `?`, `*/*`, `*.*[*]`, …) has no literal
     // content, so — via `pathMatches`'s per-segment glob AND its ancestor walk — it
@@ -253,7 +265,7 @@ function validateIgnoreEntry(entry: unknown, index: number): void {
     // report, so reject it as loudly as the empty path; a real rule must name at least
     // one literal path segment to scope what it ignores.
     throw new Error(
-      `${at}: "path" must not be an all-wildcard pattern ("${obj.path}") — it would ignore every finding; name at least one literal path segment`
+      `${at}: "path" must not be an all-wildcard pattern ("${obj.path}") — it would ignore every finding; name at least one literal path segment (or scope it with an exact "resourceType")`
     );
   for (const k of ['stack', 'account', 'region'] as const) {
     if (obj[k] !== undefined && typeof obj[k] !== 'string')
@@ -343,7 +355,13 @@ export function escapeGlobLiterals(literal: string): string {
 
 /** Canonical identity of a rule (path + the three optional scopes), for dedupe. */
 function ruleKey(r: IgnoreRuleObject): string {
-  return JSON.stringify([r.path, r.stack ?? null, r.account ?? null, r.region ?? null]);
+  return JSON.stringify([
+    r.path,
+    r.stack ?? null,
+    r.account ?? null,
+    r.region ?? null,
+    r.resourceType ?? null,
+  ]);
 }
 
 /** A rule as a plain object with keys in canonical order (path, stack, account, region),
@@ -353,6 +371,7 @@ function orderedRule(r: IgnoreRuleObject): Record<string, string> {
   if (r.stack !== undefined) o.stack = r.stack;
   if (r.account !== undefined) o.account = r.account;
   if (r.region !== undefined) o.region = r.region;
+  if (r.resourceType !== undefined) o.resourceType = r.resourceType;
   return o;
 }
 
@@ -510,6 +529,7 @@ interface IgnoreRule {
   stackGlob?: string | undefined; // when set, the rule applies only to stacks whose name matches it
   accountGlob?: string | undefined; // when set, the rule applies only in accounts matching it
   regionGlob?: string | undefined; // when set, the rule applies only in regions matching it
+  resourceTypeGlob?: string | undefined; // when set, only findings on a matching resource type
 }
 
 /**
@@ -523,6 +543,7 @@ export function parseIgnoreRule(entry: IgnoreRuleObject): IgnoreRule {
     entry.stack !== undefined ? `stack:${entry.stack}` : undefined,
     entry.account !== undefined ? `account:${entry.account}` : undefined,
     entry.region !== undefined ? `region:${entry.region}` : undefined,
+    entry.resourceType !== undefined ? `resourceType:${entry.resourceType}` : undefined,
   ].filter((s): s is string => s !== undefined);
   return {
     raw: scope.length > 0 ? `${entry.path} (${scope.join(', ')})` : entry.path,
@@ -530,6 +551,7 @@ export function parseIgnoreRule(entry: IgnoreRuleObject): IgnoreRule {
     stackGlob: entry.stack,
     accountGlob: entry.account,
     regionGlob: entry.region,
+    resourceTypeGlob: entry.resourceType,
   };
 }
 
@@ -594,8 +616,16 @@ function pathMatches(pattern: string, target: string, wholeResource = false): bo
  * preserving the "everything is reported" invariant. `added` (a whole out-of-band
  * resource) is ignorable like declared/undeclared — accepting it is a deliberate
  * decision, symmetric with revert. `deleted` is never ignorable (a path rule must
- * not silence a resource deletion); readGap/unresolved/skipped are already
- * informational and left untouched. Pure: no IO.
+ * not silence a resource deletion); unresolved is informational and left untouched.
+ *
+ * A COVERAGE GAP — a `skipped` resource, or a readGap whose read FAILED
+ * (`isCoverageReadGap`, #1970) — is never re-tagged (it is still unread, and the report
+ * keeps listing it) but a matching rule ACKNOWLEDGES it (#1969): `acknowledgedBy` is
+ * stamped, and `--strict` no longer fails on it. A skipped resource has no property path,
+ * so only a RESOURCE-level rule (`<constructPath|logicalId>`, optionally `resourceType`)
+ * can match it; a readGap matches like a declared value (the resource, or the property).
+ * By-nature readGaps (write-only / not echoed) are not gaps and are left untouched.
+ * Pure: no IO.
  *
  * A rule matches against EITHER `<logicalId>.<path>` OR (when present)
  * `<constructPath>.<path>`, so both styles work:
@@ -635,7 +665,8 @@ export function applyIgnores(
   const { stackName, accountId, region } = scope;
   const rules = config.ignore.map(parseIgnoreRule);
   return findings.map((f) => {
-    if (f.tier !== 'declared' && f.tier !== 'undeclared' && f.tier !== 'added') return f;
+    const gap = f.tier === 'skipped' || isCoverageReadGap(f);
+    if (f.tier !== 'declared' && f.tier !== 'undeclared' && f.tier !== 'added' && !gap) return f;
     // A whole-resource `added` finding has an empty path, so omit the `.<path>` suffix:
     // the rule target is then just the id, matching ignoreRuleFor's empty-path form
     // (a trailing dot would only match via the parent-segment fallback — fragile).
@@ -660,9 +691,12 @@ export function applyIgnores(
         (r.stackGlob === undefined || matchesGlob(r.stackGlob, stackName)) &&
         (r.accountGlob === undefined || matchesGlob(r.accountGlob, accountId)) &&
         (r.regionGlob === undefined || matchesGlob(r.regionGlob, region)) &&
+        (r.resourceTypeGlob === undefined || matchesGlob(r.resourceTypeGlob, f.resourceType)) &&
         targets.some((t) => pathMatches(r.pathPattern, t, wholeResource))
     );
     if (!hit) return f;
+    // #1969/#1970: acknowledge, never re-tag — the gap stays visible in its own tier.
+    if (gap) return { ...f, acknowledgedBy: hit.raw };
     // Clear the `unrecorded` flag (set by applyBaseline for a not-yet-recorded
     // undeclared/added value): an `ignored` finding is a DECIDED value — the user told
     // cdkrd to STOP reporting it — so it must not still surface under `[Potential Drift]`

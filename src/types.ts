@@ -97,6 +97,16 @@ export interface Finding {
   // AWS-managed KMS alias with kms:ListAliases unavailable). Like `writeOnly` it is not a gap
   // in the readable model, so it must NOT disqualify the resource from `completeResources`.
   compareOnly?: boolean;
+  // readGap tier only (#1970): the property is unverifiable because a READ FAILED (a supplement
+  // / enrichment call was denied or errored — AccessDenied, kms:Decrypt on a Lambda's
+  // environment, a throttle), NOT because AWS never returns it (write-only / not echoed /
+  // GetTemplate-masked). Like a `skipped` resource it is incomplete coverage, so `--strict`
+  // fails on it (see isCoverageReadGap); the by-nature readGaps stay informational.
+  readFailed?: boolean;
+  // skipped / readGap tiers only (#1969/#1970): the rendered `.cdkrd/ignore.yaml` rule that
+  // ACKNOWLEDGES this known coverage gap. The tier is unchanged (the gap stays listed — it is
+  // still unread), but an acknowledged gap no longer fails `--strict`. Set by applyIgnores.
+  acknowledgedBy?: string;
   // declared tier only (R111): set to 'unresolved' on an IAM Role `Policies` finding
   // when the role's sibling AWS::IAM::Policy names could NOT be resolved, so classify
   // left the sibling-managed (DefaultPolicy) entries in the live array. The revert plan
