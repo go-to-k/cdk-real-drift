@@ -72,14 +72,16 @@ function describeAssumeFailure(roleArn: string, e: unknown): string {
   );
 }
 
-// One provider per RESOLVED ARN for the whole run (not per client, not per stack): every
-// stack of one account shares a session. The STS client is built once inside
-// fromTemporaryCredentials from the FIRST stack's region; any regional STS endpoint issues
-// sessions valid in every region of the partition.
+// One provider per RESOLVED ARN and STS region for the whole run (not per client, not per
+// stack): every stack of one account and region shares a session. The region is part of the
+// key because fromTemporaryCredentials pins its STS client to the region it is built with —
+// keyed by ARN alone, a first stack in a region STS cannot serve (an opt-in region not
+// enabled for the caller) would fail every later stack of that ARN in any region.
 const providers = new Map<string, CredentialProvider>();
 
 function providerFor(roleArn: string, region: string, verb: Verb): CredentialProvider {
-  let p = providers.get(roleArn);
+  const key = `${roleArn}|${region}`;
+  let p = providers.get(key);
   if (!p) {
     const assume = fromTemporaryCredentials({
       params: { RoleArn: roleArn, RoleSessionName: `cdkrd-${verb}` },
@@ -96,7 +98,7 @@ function providerFor(roleArn: string, region: string, verb: Verb): CredentialPro
       }
     });
     p = () => memo();
-    providers.set(roleArn, p);
+    providers.set(key, p);
   }
   return p;
 }

@@ -10,8 +10,8 @@
 export const ASSUME_ROLE_PLACEHOLDERS = ['{account}', '{region}'] as const;
 
 // arn:<partition>:iam::<12-digit account>:role/<optional path/><name> — the IAM role-name
-// character set ([\w+=,.@-]) plus `/` for a path.
-const ROLE_ARN_RE = /^arn:aws(?:-[a-z]+)*:iam::\d{12}:role\/[\w+=,.@/-]+$/;
+// character set ([\w+=,.@-]); `/`-separated path segments, none empty.
+const ROLE_ARN_RE = /^arn:aws(?:-[a-z]+)*:iam::\d{12}:role\/(?:[\w+=,.@-]+\/)*[\w+=,.@-]+$/;
 
 function substitute(template: string, account: string, region: string): string {
   return template.replaceAll('{account}', account).replaceAll('{region}', region);

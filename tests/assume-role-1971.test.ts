@@ -78,6 +78,9 @@ describe('#1971 --assume-role parse', () => {
     expect(() =>
       parseCommonArgs(['--assume-role', 'arn:aws:iam::{Account}:role/R'], 'check')
     ).toThrow(/unknown placeholder "\{Account\}"/);
+    for (const bad of ['arn:aws:iam::123456789012:role//R', 'arn:aws:iam::123456789012:role/a/']) {
+      expect(() => parseCommonArgs(['--assume-role', bad], 'check')).toThrow(/not an IAM role ARN/);
+    }
     process.env.CDKRD_ASSUME_ROLE = 'arn:aws:iam::{acct}:role/R';
     expect(() => parseCommonArgs([], 'check')).toThrow(/unknown placeholder "\{acct\}"/);
   });
@@ -226,7 +229,10 @@ describe('#1971 end to end: which identity signs each request', () => {
         const params = new URLSearchParams(body);
         if (action === 'AssumeRole') {
           const arn = params.get('RoleArn') ?? '';
-          if (denied.has(arn)) {
+          const stsRegion = /Credential=[^/]+\/[^/]+\/([^/]+)\//.exec(
+            req.headers.authorization ?? ''
+          )?.[1];
+          if (denied.has(arn) || denied.has(`region:${stsRegion}`)) {
             res.writeHead(403, { 'content-type': 'text/xml' });
             res.end(
               `<ErrorResponse><Error><Type>Sender</Type><Code>AccessDenied</Code><Message>User: arn:aws:iam::${AMBIENT_ACCOUNT}:user/ci is not authorized to perform: sts:AssumeRole on resource: ${arn}</Message></Error><RequestId>r</RequestId></ErrorResponse>`
@@ -422,6 +428,33 @@ describe('#1971 end to end: which identity signs each request', () => {
     })();
     expect(errors[0]).toMatch(/cannot resolve \{account\} in --assume-role/);
     expect(errors[1]).toBe('');
+  });
+
+  it('the session is per ARN AND STS region: a region STS cannot serve does not poison the ARN elsewhere', async () => {
+    denied.add('region:me-central-1');
+    const errors: string[] = [];
+    await (async () => {
+      for (const region of ['me-central-1', 'us-east-1']) {
+        try {
+          enterRoleScope(
+            await stackRoleScope(
+              'arn:aws:iam::222222222222:role/R',
+              { account: '222222222222', region },
+              'check'
+            )
+          );
+          await describeStacks(region);
+          errors.push('');
+        } catch (e) {
+          errors.push((e as Error).message);
+        }
+      }
+    })();
+    expect(errors[0]).toMatch(/cannot assume role arn:aws:iam::222222222222:role\/R/);
+    expect(errors[1]).toBe('');
+    expect(seen.filter((s) => s.action === 'DescribeStacks').map((s) => s.keyId)).toEqual([
+      assumedKey('222222222222'),
+    ]);
   });
 
   it('a denied role fails the stack with the ARN in the message, and FAILS CLOSED (never the ambient key)', async () => {
