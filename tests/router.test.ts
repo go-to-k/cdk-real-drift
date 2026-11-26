@@ -1952,11 +1952,43 @@ describe('readLive (SDK supplement path — Lambda::Function code hash, #646)', 
     });
   };
 
+  const emptySchema: SchemaInfo = {
+    readOnly: new Set(),
+    writeOnly: new Set(),
+    createOnly: new Set(),
+    readOnlyPaths: [],
+    writeOnlyPaths: [],
+    createOnlyPaths: [],
+    defaults: {},
+    defaultPaths: {},
+  };
+
   it('Environment.Error (kms:Decrypt denied) → Environment is a read-gap, CC empty husk dropped', async () => {
     envErrorShapes();
+    const warn = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
     const r = await readLive(cc as unknown as CloudControlClient, fn(), 'us-east-1', '1');
     expect(r.live).toEqual({ FunctionName: 'my-fn', Runtime: 'nodejs20.x', CodeSha256: SHA });
     expect(r.readGapPaths).toEqual(['Environment']);
+    expect(String(warn.mock.calls[0]?.[0])).toContain('lacks kms:Decrypt');
+    warn.mockRestore();
+  });
+
+  it('a non-AccessDenied Environment.Error (key disabled) is a read-gap naming the KEY, not the caller', async () => {
+    envErrorShapes();
+    lambda.on(GetFunctionCommand).resolves({
+      Configuration: {
+        CodeSha256: SHA,
+        Environment: { Error: { ErrorCode: 'KMSDisabledException', Message: 'disabled' } },
+      },
+    });
+    const warn = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    const r = await readLive(cc as unknown as CloudControlClient, fn(), 'us-east-1', '1');
+    expect(r.readGapPaths).toEqual(['Environment']);
+    const msg = String(warn.mock.calls[0]?.[0]);
+    expect(msg).toContain('KMSDisabledException');
+    expect(msg).toContain('KMS key is unusable');
+    expect(msg).not.toContain('kms:Decrypt');
+    warn.mockRestore();
   });
 
   it('Environment.Error end to end: declared variables surface as ONE readGap, not declared drift', async () => {
@@ -1970,21 +2002,27 @@ describe('readLive (SDK supplement path — Lambda::Function code hash, #646)', 
         Environment: { Variables: { SECRET_ARN: 'arn:x', EXPECTED_BACKUP_RETENTION_DAYS: '7' } },
       },
     });
+    const warn = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
     const r = await readLive(cc as unknown as CloudControlClient, desired, 'us-east-1', '1');
-    const emptySchema: SchemaInfo = {
-      readOnly: new Set(),
-      writeOnly: new Set(),
-      createOnly: new Set(),
-      readOnlyPaths: [],
-      writeOnlyPaths: [],
-      createOnlyPaths: [],
-      defaults: {},
-      defaultPaths: {},
-    };
+    warn.mockRestore();
     const findings = classifyResource(desired, r.live ?? {}, emptySchema, {
       supplementReadGapPaths: r.readGapPaths,
     });
     // No `declared` finding on any Environment.Variables.* leaf (the #1964 false positive).
+    expect(findings.map((f) => `${f.tier}:${f.path}`)).toEqual([
+      'readGap:Environment',
+      'generated:CodeSha256',
+    ]);
+  });
+
+  it('Environment.Error with Environment UNDECLARED: still ONE readGap (unread, not clean)', async () => {
+    envErrorShapes();
+    const warn = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    const r = await readLive(cc as unknown as CloudControlClient, fn(), 'us-east-1', '1');
+    warn.mockRestore();
+    const findings = classifyResource(fn(), r.live ?? {}, emptySchema, {
+      supplementReadGapPaths: r.readGapPaths,
+    });
     expect(findings.map((f) => `${f.tier}:${f.path}`)).toEqual([
       'readGap:Environment',
       'generated:CodeSha256',

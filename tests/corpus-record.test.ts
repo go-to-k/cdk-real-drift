@@ -4,10 +4,12 @@ import {
   corpusFileName,
   decodeUnresolved,
   encodeUnresolved,
+  reviveOpts,
   reviveSchema,
   sanitizeAccountId,
   UNRESOLVED_SENTINEL,
 } from '../src/corpus/record.js';
+import { classifyResource } from '../src/diff/classify.js';
 import { UNRESOLVED } from '../src/normalize/intrinsic-resolver.js';
 import type { DesiredResource, Finding, SchemaInfo } from '../src/types.js';
 
@@ -102,6 +104,45 @@ describe('corpus recording (R63)', () => {
     defaults: {},
     defaultPaths: {},
   };
+
+  it('#1966: supplementReadGapPaths round-trips so replay reproduces the live readGap', () => {
+    const resource: DesiredResource = {
+      logicalId: 'Fn',
+      resourceType: 'AWS::Lambda::Function',
+      physicalId: 'my-fn',
+      declared: { FunctionName: 'my-fn', Environment: { Variables: { A: '1' } } },
+    };
+    const live = { FunctionName: 'my-fn' }; // Environment dropped: Environment.Error (#1964)
+    const opts = {
+      accountId: '123456789012',
+      region: 'us-east-1',
+      kmsAliasTargets: {},
+      oaiCanonicalIds: {},
+      supplementReadGapPaths: ['Environment'],
+    };
+    const findings = classifyResource(resource, structuredClone(live), baseSchema, opts);
+    expect(findings.map((f) => `${f.tier}:${f.path}`)).toEqual(['readGap:Environment']);
+    const c = JSON.parse(
+      JSON.stringify(buildCorpusCase(resource, live, baseSchema, opts, findings))
+    ) as ReturnType<typeof buildCorpusCase>;
+    expect(c.opts.supplementReadGapPaths).toEqual(['Environment']);
+    const replayed = classifyResource(
+      c.resource as DesiredResource,
+      structuredClone(c.liveRaw),
+      reviveSchema(c.schema),
+      reviveOpts(c.opts)
+    );
+    expect(replayed).toEqual(c.expected);
+    // an empty / absent list is not persisted
+    const bare = buildCorpusCase(
+      resource,
+      live,
+      baseSchema,
+      { ...opts, supplementReadGapPaths: [] },
+      findings
+    );
+    expect('supplementReadGapPaths' in bare.opts).toBe(false);
+  });
 
   it('buildCorpusCase persists ONLY this instance clusterEchoModel entry, sanitized', () => {
     // The key is the instance physical id, which for RDS never embeds the account id (same

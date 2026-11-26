@@ -133,6 +133,10 @@ export interface CorpusCase {
       dmsAllocatedStorageDefaults?: Record<string, number>;
       ebsEncryptionByDefault?: boolean;
     };
+    // #1966: the read's supplement read-gap paths (#849; #1964 Lambda Environment.Error) — present
+    // only when the live read hit one, so replay classifies the prop absent from liveRaw as the
+    // same `readGap` the live check did instead of a declared removal. Optional for back-compat.
+    supplementReadGapPaths?: string[];
     // This ClientVpnEndpoint's own sibling-derived VPC entry (keyed by logicalId, else physicalId —
     // classify's probe order), present only when a declared sibling target-network association
     // derives it, so replay reproduces the association-echoed `VpcId` fold. Optional for back-compat.
@@ -195,6 +199,7 @@ export function buildCorpusCase(
       dmsAllocatedStorageDefaults?: Record<string, number>;
       ebsEncryptionByDefault?: boolean;
     };
+    supplementReadGapPaths?: string[] | undefined;
     siblingClientVpnEndpointVpcs?: Record<string, string | null>;
     siblingCloudFrontCdPolicyIds?: Record<string, string | null>;
     siblingRdsSourceModels?: Record<string, Record<string, unknown>>;
@@ -389,6 +394,9 @@ export function buildCorpusCase(
         ? { rdsOptionSettingDefaults: { [resource.physicalId]: rdsOptCatalog } }
         : {}),
       ...(gaListenerPort ? { siblingListenerPorts: gaListenerPort } : {}),
+      ...(opts.supplementReadGapPaths && opts.supplementReadGapPaths.length > 0
+        ? { supplementReadGapPaths: [...opts.supplementReadGapPaths] }
+        : {}),
       ...(dmsStorageDefault || ebsEncDefault
         ? { accountDefaults: { ...(dmsStorageDefault ?? {}), ...(ebsEncDefault ?? {}) } }
         : {}),

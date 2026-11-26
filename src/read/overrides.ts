@@ -4171,8 +4171,14 @@ const supplementLambdaFunction: SupplementReader = async ({ physicalId, region }
   const extra = sha !== undefined ? { CodeSha256: sha } : undefined;
   const envError = r.Configuration?.Environment?.Error;
   if (envError === undefined) return extra;
+  // AccessDenied* = the caller lacks kms:Decrypt; any other code (KMSDisabledException,
+  // KMSNotFoundException, KMSInvalidStateException, …) = the key itself is unusable.
+  const code = envError.ErrorCode ?? 'unknown error';
+  const cause = /AccessDenied/i.test(code)
+    ? "the caller likely lacks kms:Decrypt on the function's key"
+    : "the function's KMS key is unusable";
   process.stderr.write(
-    `[cdkrd] warning: AWS::Lambda::Function ${name}: environment variables unreadable (${envError.ErrorCode ?? 'unknown error'} — the caller likely lacks kms:Decrypt on the function's key) — treating Environment as an unverifiable read-gap\n`
+    `[cdkrd] warning: AWS::Lambda::Function ${name}: environment variables unreadable (${code} — ${cause}) — treating Environment as an unverifiable read-gap\n`
   );
   return overrideReadGap(extra ?? {}, ['Environment']);
 };
