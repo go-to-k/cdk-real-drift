@@ -34,6 +34,7 @@ import {
   ignoreRuleFor,
 } from '../config/config-file.js';
 import { withinStackPath } from '../construct-path.js';
+import { isStrictCoverageGapFinding } from '../diff/coverage-gap.js';
 import { sanitizeForTerminal } from '../report/report.js';
 import { redactValue } from '../report/redact.js';
 import { style } from '../report/style.js';
@@ -793,9 +794,11 @@ export async function recordStack(p: RecordStackParams): Promise<RecordResult> {
 
 export interface IgnoreStackParams {
   stackName: string;
-  // baseline-reconciled findings — ignore targets the declared + undeclared tiers
+  // baseline-reconciled findings — ignore targets the declared + undeclared + added tiers
   // (the same set applyIgnores can re-tag). Already-ignored findings are tier
-  // `ignored`, so they never re-appear here.
+  // `ignored`, so they never re-appear here. #1976: the interactive picker ALSO offers the
+  // `--strict`-failing coverage gaps (isStrictCoverageGapFinding) to ACKNOWLEDGE; an
+  // already-acknowledged one carries `acknowledgedBy` and is not re-offered.
   findings: Finding[];
   yes: boolean;
   interactive: boolean; // whether the multiselect decision prompt may be shown (TTY only)
@@ -827,13 +830,21 @@ export interface IgnoreResult {
 
 /** Header for ignore's multiselect. The key hints are rendered by `bulkMultiselect`
  *  itself, so this is just the one-line prompt. Pure + exported for unit tests. */
-export function ignoreSelectMessage(stackName: string, region: string): string {
-  return `${stackLabel(stackName, region)}: select drift to ignore — stops reporting it (writes .cdkrd/ignore.yaml)`;
+export function ignoreSelectMessage(stackName: string, region: string, gaps = 0): string {
+  const base = `${stackLabel(stackName, region)}: select drift to ignore — stops reporting it (writes .cdkrd/ignore.yaml)`;
+  // #1976: a coverage-gap row does not stop reporting anything — say what picking one does.
+  return gaps > 0
+    ? `${base}; a [coverage gap] row is ACKNOWLEDGED instead — still listed, no longer fails --strict`
+    : base;
 }
 
 // Unique per-finding key for the multiselect (logicalId+path is unique within a stack;
 // the WRITTEN rule is ignoreRuleFor, which may instead use the friendlier constructPath).
-const ignoreFindingKey = (f: Finding): string => `${f.logicalId}::${f.path}`;
+// A coverage-gap row (#1976) is namespaced by its tier so it can never alias a drift row.
+const ignoreFindingKey = (f: Finding): string =>
+  f.tier === 'skipped' || f.tier === 'readGap'
+    ? `${f.tier}::${f.logicalId}::${f.path}`
+    : `${f.logicalId}::${f.path}`;
 
 /**
  * The ignore multiselect rows. EVERY row starts UNSELECTED (→ selects all) — mirroring
@@ -850,10 +861,33 @@ export function ignoreSelectOptions(
     const id = f.constructPath ? withinStackPath(f.constructPath, stackName) : f.logicalId;
     return {
       value: ignoreFindingKey(f),
-      label: `${id}${f.path ? `.${f.path}` : ''} (${f.tier})`,
+      label: `${id}${f.path ? `.${f.path}` : ''} ${ignoreRowKind(f)}`,
       selected: false,
     };
   });
+}
+
+/**
+ * The coverage gaps the `ignore` picker offers to ACKNOWLEDGE (#1976): exactly the findings
+ * `check --strict` fails on (isStrictCoverageGapFinding, deployed path) — an unacknowledged
+ * non-custom `skipped` resource, or a readGap whose read FAILED. A by-nature readGap
+ * (write-only / not returned) never fails `--strict`, a `Custom::*` skip is excluded from
+ * the gate (#724), and an acknowledged one already carries `acknowledgedBy` — none of them
+ * is offered. Pure + exported.
+ */
+export function acknowledgeableGaps(findings: Finding[]): Finding[] {
+  return findings.filter((f) => isStrictCoverageGapFinding(f));
+}
+
+// The picker row's kind suffix. A drift row names its tier; a coverage-gap row is labelled
+// apart (#1976) because picking it ACKNOWLEDGES rather than ignores: the gap stays listed.
+function ignoreRowKind(f: Finding): string {
+  if (f.tier === 'skipped') {
+    const why = f.note ? `: ${sanitizeForTerminal(f.note).slice(0, 80)}` : '';
+    return `[coverage gap — resource not read${why}]`;
+  }
+  if (f.tier === 'readGap') return '[coverage gap — property read failed]';
+  return `(${f.tier})`;
 }
 
 /**
@@ -861,7 +895,10 @@ export function ignoreSelectOptions(
  * findings — they stop being reported entirely (re-tagged `ignored` on the next check),
  * the "stop watching" counterpart to record's "keep watching". Interactive runs pick
  * WHICH findings to ignore (default NONE selected — → selects all, R137); `--yes`
- * ignores all shown.
+ * ignores all shown drift. The interactive picker also lists the `--strict`-failing
+ * coverage gaps (#1976, acknowledgeableGaps): a picked one gets the rule ignoreRuleFor
+ * writes for it — RESOURCE-level for a skip (empty path), property-level for a failed
+ * read — which applyIgnores matches to stamp `acknowledgedBy`. `--yes` never picks a gap.
  * Non-interactively without `--yes` it refuses (a required decision, like record, R38).
  * Idempotent: rules already in the file are reported, not duplicated. Shared by `cdkrd
  * ignore` and (PR-B2) check's interactive flow, so both write rules identically.
@@ -874,7 +911,17 @@ export async function ignoreStack(p: IgnoreStackParams): Promise<IgnoreResult> {
   const ignorable = findings.filter(
     (f) => f.tier === 'declared' || f.tier === 'undeclared' || f.tier === 'added'
   );
-  if (ignorable.length === 0) {
+  // #1976: acknowledging a coverage gap makes `--strict` stop failing on it, a decision
+  // distinct from ignoring drift — so ONLY the interactive picker offers gaps. `--yes`
+  // ("ignore ALL shown drift") and every non-interactive run leave them alone: a scripted
+  // `ignore --yes` must not silently disarm the CI gate it is run beside.
+  const gaps = acknowledgeableGaps(findings);
+  const pickGaps = !yes && interactive && gaps.length > 0;
+  if (gaps.length > 0 && !pickGaps)
+    console.error(
+      `note: ${stackName}: ${gaps.length} coverage gap(s) left unacknowledged — only the interactive picker acknowledges a gap (run \`cdkrd ignore\` in a terminal without --yes)`
+    );
+  if (ignorable.length === 0 && !pickGaps) {
     if (!p.json) console.log(style.clean(`${stackName}: no ignorable drift to ignore.`));
     return { wrote: false, refused: false, added: 0 };
   }
@@ -886,16 +933,17 @@ export async function ignoreStack(p: IgnoreStackParams): Promise<IgnoreResult> {
       );
       return { wrote: false, refused: true, added: 0 };
     }
+    const offered = [...ignorable, ...gaps];
     const picked = await bulkMultiselect(
-      ignoreSelectMessage(stackName, region),
-      ignoreSelectOptions(ignorable, stackName)
+      ignoreSelectMessage(stackName, region, gaps.length),
+      ignoreSelectOptions(offered, stackName)
     );
     if (picked === undefined) {
       console.error(`note: ${stackName}: ignore cancelled — config unchanged`);
       return { wrote: false, refused: false, added: 0 };
     }
     const set = new Set(picked);
-    chosen = ignorable.filter((f) => set.has(ignoreFindingKey(f)));
+    chosen = offered.filter((f) => set.has(ignoreFindingKey(f)));
     if (chosen.length === 0) {
       console.error(`note: ${stackName}: nothing selected — config unchanged`);
       return { wrote: false, refused: false, added: 0 };
