@@ -138,7 +138,7 @@ node dist/cli.js revert [<stack>...] [--all]   # write the desired value back to
   (`workflow_dispatch` exists for this) — release-please recomputes the same
   release from current `main`, idempotently. **Rule: after any PR that edits `CHANGELOG.md`, the version in
   `package.json`, or `.release-please-manifest.json`, check whether a release
-  PR is open (`gh pr list --state open --search "chore(release) in:title"`)
+  PR is open (`gh pr list --state open --search 'in:title "chore(release)"'`)
   and recreate it.**
 - Baseline files live at `.cdkrd/baselines/<stack>.<accountId>.<region>.json`,
   git-committed: a PR changing one is a reviewable change to what real state we

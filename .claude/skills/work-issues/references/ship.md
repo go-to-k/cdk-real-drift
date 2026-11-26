@@ -74,7 +74,9 @@ git -C "<MAIN_CHECKOUT>" pull origin main      # IN-PLACE instead, never both
 **Release** is BATCHED, and its rules live in `AGENTS.md` → "State of the Repo"
 (an ordinary merge publishes nothing; the standing release PR is never yours to
 merge). This stage owes one check —
-`gh pr list --state open --search "chore(release) in:title"` — and no
+`gh pr list --state open --search 'in:title "chore(release)"'` (keep the
+phrase quoted: bare, the parentheses break GitHub search and it prints `[]`
+while the PR is open — go-to-k/cdk-real-drift#1973) — and no
 `vp i -g cdk-real-drift` after an ordinary merge, since the installed binary is
 already the latest published version.
 

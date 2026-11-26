@@ -125,6 +125,14 @@ carries a `pull_request` rule (`required_approving_review_count: 0`,
 the ruleset. The evidence above is the ruleset JSON plus the workflow triggers,
 both read directly.
 
+## First occurrences from `/work-issues` runs
+
+One row per observed weakness; nothing is built until the same failure recurs.
+
+| Observed                                                                                                                                                    | What it cost, and what would show it again                                                                                                                                                                                                                                                                                                   |
+| ----------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A reviewer that asked for changes was not re-messaged on the fix delta (go-to-k/cdk-real-drift#1974: test reviewer; code + security reviewers did re-check) | The rule was already in `.claude/skills/work-issues/references/verify.md` ("re-check a fix round by MESSAGING the same reviewer") and was skipped for one of three reviewers, so the added tests merged unreviewed by the one who asked for them. Shows again when a PR's reviewer verdicts are listed against who re-checked the final sha. |
+
 ## Open issues whose subject is the tooling
 
 All 17 open issues at the time this file was written are about the tooling
