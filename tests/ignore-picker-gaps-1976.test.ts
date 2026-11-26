@@ -339,8 +339,7 @@ describe('#1976 ignoreStack — gap rows in the picker', () => {
     // rule (documented in the picker header and README — remove it once the read works)
     const subtreeDrift = after.find(
       (f) =>
-        f.logicalId === 'ClusterRestorerVerifierABCD1234' &&
-        f.path === 'Environment.Variables.MODE'
+        f.logicalId === 'ClusterRestorerVerifierABCD1234' && f.path === 'Environment.Variables.MODE'
     );
     expect(subtreeDrift?.tier).toBe('ignored');
     expect(strictCoverageExit(true, findings, [])).toBe(1);
