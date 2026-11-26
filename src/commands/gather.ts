@@ -2355,12 +2355,19 @@ export async function gatherFindings(
       classifyOpts
     );
     findings.push(...resourceFindings);
-    const live = reads.get(r.logicalId)?.live;
+    const read = reads.get(r.logicalId);
+    const live = read?.live;
     const schema = schemas.get(r.resourceType);
     if (corpusDir && live && schema) {
       await recordCorpusCase(
         corpusDir,
-        buildCorpusCase(r, live, schema, classifyOpts, resourceFindings)
+        buildCorpusCase(
+          r,
+          live,
+          schema,
+          { ...classifyOpts, supplementReadGapPaths: read?.readGapPaths },
+          resourceFindings
+        )
       );
     }
   }
