@@ -24,7 +24,11 @@ gh pr merge <n> --squash --delete-branch     # squash is the repo's only method
 ```
 
 Merge each verified PR; a local branch delete fails while its worktree exists,
-which the cleanup below clears. A later PR that is behind still merges when the
+which the cleanup below clears. **IN-PLACE, the merge command exits 1 with
+`fatal: 'main' is already used by worktree at '<MAIN_CHECKOUT>'` AFTER the
+server-side squash and the remote-branch delete have both landed** (its local
+post-step tries to check out `main`) — read `gh pr view <n> --json state` before
+treating it as a failure, and never re-run the merge. A later PR that is behind still merges when the
 files are disjoint — but if the PR that landed first added a repo-wide check,
 rebase and run it over your diff first (§7). **When one lane fixes a full-suite
 flake, merge THAT lane first**: every other lane's §6 run and `/verify-pr` roll
