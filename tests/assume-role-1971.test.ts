@@ -13,10 +13,15 @@
 import { createServer, type IncomingMessage, type Server } from 'node:http';
 import { CloudFormationClient, DescribeStacksCommand } from '@aws-sdk/client-cloudformation';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vite-plus/test';
-import { AssumeRoleError, isStackNotDeployed } from '../src/aws-errors.js';
+import { AssumeRoleError, isStackNotDeployed, topLevelErrorMessage } from '../src/aws-errors.js';
 import { parseCommonArgs, type Verb } from '../src/cli-args.js';
 import { resolveCallerAccount } from '../src/commands/account-gate.js';
-import { enterRoleScope, resetAssumeRoleState, stackRoleScope } from '../src/read/assume-role.js';
+import {
+  enterRoleScope,
+  memoizeCredentials,
+  resetAssumeRoleState,
+  stackRoleScope,
+} from '../src/read/assume-role.js';
 import { resolveAssumeRoleArn, validateAssumeRoleTemplate } from '../src/read/assume-role-arn.js';
 import {
   CLIENT_CREDENTIALS,
@@ -27,6 +32,8 @@ import {
   resetProxyConfig,
 } from '../src/read/client-config.js';
 import { fetchManagedAliasTargets } from '../src/read/kms-aliases.js';
+import { fetchDmsAllocatedStorageDefaults } from '../src/commands/gather.js';
+import { fetchS3Sha256Base64 } from '../src/read/deployed-source-hash.js';
 
 const ROLE = 'arn:aws:iam::{account}:role/cdkrd-read-{region}';
 
@@ -110,6 +117,55 @@ describe('#1971 every client shares the one scoped provider', () => {
   });
 });
 
+describe('#1971 top-level error line', () => {
+  it('passes an AssumeRoleError through verbatim, even when its STS text matches the generic hints', () => {
+    const e = new AssumeRoleError(
+      'cannot assume role arn:aws:iam::123456789012:role/R (--assume-role): The security token included in the request is expired'
+    );
+    expect(topLevelErrorMessage(e)).toBe(`error: ${e.message}`);
+    // control: the same text on a plain Error still gets the generic credentials hint
+    expect(topLevelErrorMessage(new Error(e.message))).toMatch(/no AWS credentials available/);
+  });
+});
+
+describe('#1971 memoizeCredentials', () => {
+  const creds = (expiresInMs: number | undefined) => ({
+    accessKeyId: 'A',
+    secretAccessKey: 'S',
+    ...(expiresInMs !== undefined && { expiration: new Date(Date.now() + expiresInMs) }),
+  });
+
+  it('reuses a session until it is within 5 minutes of expiry, then re-assumes', async () => {
+    let calls = 0;
+    const far = memoizeCredentials(() => (calls++, Promise.resolve(creds(10 * 60_000))));
+    await far();
+    await far();
+    expect(calls).toBe(1);
+    calls = 0;
+    const near = memoizeCredentials(() => (calls++, Promise.resolve(creds(4 * 60_000))));
+    await near();
+    await near();
+    expect(calls).toBe(2);
+  });
+
+  it('shares one in-flight call between concurrent first callers', async () => {
+    let calls = 0;
+    const m = memoizeCredentials(() => (calls++, Promise.resolve(creds(undefined))));
+    await Promise.all([m(), m(), m()]);
+    expect(calls).toBe(1);
+  });
+
+  it('does not cache a failure: the next call retries', async () => {
+    let calls = 0;
+    const m = memoizeCredentials(() =>
+      ++calls === 1 ? Promise.reject(new Error('throttled')) : Promise.resolve(creds(undefined))
+    );
+    await expect(m()).rejects.toThrow('throttled');
+    await expect(m()).resolves.toMatchObject({ accessKeyId: 'A' });
+    expect(calls).toBe(2);
+  });
+});
+
 // ---- end to end against a local stand-in for STS / CloudFormation / KMS ----
 
 const AMBIENT_KEY = 'AKIAAMBIENT0000000000';
@@ -132,6 +188,7 @@ describe('#1971 end to end: which identity signs each request', () => {
   let server: Server;
   let seen: Seen[] = [];
   const denied = new Set<string>();
+  let failCallerIdentity = 0; // fail the next N GetCallerIdentity calls
   const saved: Record<string, string | undefined> = {};
   const ENV_KEYS = [
     'AWS_ACCESS_KEY_ID',
@@ -146,6 +203,8 @@ describe('#1971 end to end: which identity signs each request', () => {
     'AWS_ENDPOINT_URL_STS',
     'AWS_ENDPOINT_URL_CLOUDFORMATION',
     'AWS_ENDPOINT_URL_KMS',
+    'AWS_ENDPOINT_URL_S3',
+    'AWS_ENDPOINT_URL_DATABASE_MIGRATION_SERVICE',
     'AWS_REGION',
     'AWS_DEFAULT_REGION',
     'AWS_EC2_METADATA_DISABLED',
@@ -181,6 +240,14 @@ describe('#1971 end to end: which identity signs each request', () => {
           );
           return;
         }
+        if (action === 'GetCallerIdentity' && failCallerIdentity > 0) {
+          failCallerIdentity--;
+          res.writeHead(400, { 'content-type': 'text/xml' });
+          res.end(
+            '<ErrorResponse><Error><Type>Sender</Type><Code>InvalidClientTokenId</Code><Message>blip</Message></Error><RequestId>r</RequestId></ErrorResponse>'
+          );
+          return;
+        }
         if (action === 'GetCallerIdentity') {
           const account = keyId === AMBIENT_KEY ? AMBIENT_ACCOUNT : keyId.slice(4, 16);
           res.writeHead(200, { 'content-type': 'text/xml' });
@@ -194,6 +261,17 @@ describe('#1971 end to end: which identity signs each request', () => {
           res.end(
             `<DescribeStacksResponse xmlns="http://cloudformation.amazonaws.com/doc/2010-05-15/"><DescribeStacksResult><Stacks/></DescribeStacksResult><ResponseMetadata><RequestId>r</RequestId></ResponseMetadata></DescribeStacksResponse>`
           );
+          return;
+        }
+        if (service === 's3') {
+          seen[seen.length - 1]!.action = `s3:${req.method} ${req.url}`;
+          res.writeHead(200, { 'content-type': 'application/octet-stream' });
+          res.end('package-bytes');
+          return;
+        }
+        if (action === 'DescribeOrderableReplicationInstances') {
+          res.writeHead(200, { 'content-type': 'application/x-amz-json-1.1' });
+          res.end(JSON.stringify({ OrderableReplicationInstances: [] }));
           return;
         }
         if (action === 'ListAliases') {
@@ -224,11 +302,14 @@ describe('#1971 end to end: which identity signs each request', () => {
     process.env.AWS_ENDPOINT_URL_STS = url;
     process.env.AWS_ENDPOINT_URL_CLOUDFORMATION = url;
     process.env.AWS_ENDPOINT_URL_KMS = url;
+    process.env.AWS_ENDPOINT_URL_S3 = url;
+    process.env.AWS_ENDPOINT_URL_DATABASE_MIGRATION_SERVICE = url;
     process.env.AWS_EC2_METADATA_DISABLED = 'true';
     resetProxyConfig();
     resetAssumeRoleState();
     seen = [];
     denied.clear();
+    failCallerIdentity = 0;
   });
 
   afterEach(() => {
@@ -324,6 +405,25 @@ describe('#1971 end to end: which identity signs each request', () => {
     expect(seen.at(-1)!.keyId).toBe(assumedKey(AMBIENT_ACCOUNT));
   });
 
+  it('a failed ambient GetCallerIdentity fails that env-agnostic stack only; the next one retries', async () => {
+    failCallerIdentity = 1;
+    const errors: string[] = [];
+    await (async () => {
+      for (let i = 0; i < 2; i++) {
+        try {
+          enterRoleScope(
+            await stackRoleScope(ROLE, { account: undefined, region: 'us-west-2' }, 'check')
+          );
+          errors.push('');
+        } catch (e) {
+          errors.push((e as Error).message);
+        }
+      }
+    })();
+    expect(errors[0]).toMatch(/cannot resolve \{account\} in --assume-role/);
+    expect(errors[1]).toBe('');
+  });
+
   it('a denied role fails the stack with the ARN in the message, and FAILS CLOSED (never the ambient key)', async () => {
     denied.add('arn:aws:iam::444444444444:role/cdkrd-read-us-east-1');
     let thrown: unknown;
@@ -365,6 +465,32 @@ describe('#1971 end to end: which identity signs each request', () => {
       }
     })();
     expect(seen.filter((s) => s.action === 'ListAliases').map((s) => s.keyId)).toEqual([
+      assumedKey('222222222222'),
+      assumedKey('333333333333'),
+    ]);
+  });
+
+  it('the gather.ts account-default caches are keyed by scope too (one shared scopedKey)', async () => {
+    await (async () => {
+      for (const account of ['222222222222', '333333333333', '222222222222']) {
+        enterRoleScope(await stackRoleScope(ROLE, { account, region: 'ca-central-1' }, 'check'));
+        await fetchDmsAllocatedStorageDefaults('ca-central-1');
+      }
+    })();
+    // the third stack (account 222 again) is served from 222's cache entry
+    expect(
+      seen.filter((s) => s.action === 'DescribeOrderableReplicationInstances').map((s) => s.keyId)
+    ).toEqual([assumedKey('222222222222'), assumedKey('333333333333')]);
+  });
+
+  it('the cached S3 client is per scope: stack 2 does not reuse stack 1 identity', async () => {
+    await (async () => {
+      for (const account of ['222222222222', '333333333333']) {
+        enterRoleScope(await stackRoleScope(ROLE, { account, region: 'sa-east-1' }, 'check'));
+        await fetchS3Sha256Base64({ bucket: 'assets', key: 'pkg.zip' }, 'sa-east-1');
+      }
+    })();
+    expect(seen.filter((s) => s.service === 's3').map((s) => s.keyId)).toEqual([
       assumedKey('222222222222'),
       assumedKey('333333333333'),
     ]);

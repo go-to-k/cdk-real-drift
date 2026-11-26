@@ -172,3 +172,20 @@ export function isResourceNotFoundError(e: unknown): boolean {
   const code = (e as { Code?: string })?.Code ?? '';
   return NOT_FOUND_ERROR_NAMES.has(code);
 }
+
+/**
+ * The stderr line for an error that escaped a verb (src/cli.ts' top-level catch). Pure so it
+ * is testable — cli.ts runs main() on import. An AssumeRoleError passes through verbatim: it
+ * names the role and the fix, and its STS text ("security token", "not authorized") would
+ * otherwise be rewritten into the generic credentials / access-denied hints, dropping both.
+ */
+export function topLevelErrorMessage(e: unknown): string {
+  const msg = (e as { message?: string })?.message ?? String(e);
+  if (e instanceof AssumeRoleError) return `error: ${msg}`;
+  if (/credential|could not load cred|security token/i.test(msg))
+    return 'error: no AWS credentials available. Configure them (aws configure / AWS_PROFILE / env vars) and retry.';
+  if (/stack/i.test(msg) && /(does not exist|ValidationError)/i.test(msg))
+    return 'error: stack not found in this account/region. Check the stack name and --region.';
+  if (/AccessDenied|not authorized/i.test(msg)) return `error: access denied — ${msg}`;
+  return `error: ${msg}`;
+}

@@ -3,7 +3,7 @@
 // check/record/ignore never write to AWS (record writes only the baseline FILE; ignore
 // writes only .cdkrd/ignore.yaml); revert is the one AWS-mutating command.
 import { readFileSync } from 'node:fs';
-import { AssumeRoleError } from './aws-errors.js';
+import { topLevelErrorMessage } from './aws-errors.js';
 import { flushAndExit } from './exit.js';
 import { installInterruptGuard } from './interrupt.js';
 import { runRecord } from './commands/record.js';
@@ -171,23 +171,7 @@ const argv = process.argv.slice(2);
 main(argv)
   .then((code) => flushAndExit(code))
   .catch((e: unknown) => {
-    const msg = (e as { message?: string })?.message ?? String(e);
-    if (e instanceof AssumeRoleError) {
-      // already names the role and the fix; the credential rewrite below would hide both
-      console.error(`error: ${msg}`);
-    } else if (/credential|could not load cred|security token/i.test(msg)) {
-      console.error(
-        'error: no AWS credentials available. Configure them (aws configure / AWS_PROFILE / env vars) and retry.'
-      );
-    } else if (/stack/i.test(msg) && /(does not exist|ValidationError)/i.test(msg)) {
-      console.error(
-        'error: stack not found in this account/region. Check the stack name and --region.'
-      );
-    } else if (/AccessDenied|not authorized/i.test(msg)) {
-      console.error(`error: access denied — ${msg}`);
-    } else {
-      console.error(`error: ${msg}`);
-    }
+    console.error(topLevelErrorMessage(e));
     // A throw that escapes a verb BEFORE it could emit its JSON — e.g. parseCommonArgs
     // rejecting a bad flag at the top of run*, or check's --pre-deploy second synth — must
     // still leave --json stdout a single JSON.parse-able value (`[]`), never empty bytes.

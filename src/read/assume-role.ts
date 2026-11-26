@@ -116,7 +116,11 @@ async function resolveAmbientAccount(region: string): Promise<string | undefined
       return undefined;
     }
   })();
-  return ambientAccount;
+  const account = await ambientAccount;
+  // like the provider memo: a failure is not cached, so one transient STS error does not
+  // fail every later env-agnostic stack of the run
+  if (account === undefined) ambientAccount = undefined;
+  return account;
 }
 
 const failing = (roleArn: string, error: Error): RoleScope => ({
