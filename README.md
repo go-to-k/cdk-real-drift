@@ -703,7 +703,9 @@ ignore:
   assembly without `aws:cdk:path` metadata). By-nature readGaps, `Custom::*` skips
   and already-acknowledged gaps are not offered, and `ignore --yes` (or any
   non-interactive run) never acknowledges a gap — it ignores the drift only and
-  notes how many gaps it left.
+  notes how many gaps it left. The rule is an ordinary ignore rule: once the read
+  succeeds (you grant the permission), it ignores drift on that resource / property
+  too, so remove it when the gap is fixed.
 
   ```yaml
   ignore:

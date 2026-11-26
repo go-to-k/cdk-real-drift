@@ -181,6 +181,12 @@ describe('#1976 ignoreSelectOptions labels a gap apart from drift', () => {
     expect(new Set(rows.map((r) => r.value)).size).toBe(rows.length);
   });
 
+  it('a resource-level failed read (empty path) says "resource read failed"', () => {
+    expect(ignoreSelectOptions([{ ...bareEnvReadGap(), path: '' }])[0]!.label).toBe(
+      'Fn9270CBC0 [coverage gap — resource read failed]'
+    );
+  });
+
   it('a readGap row never aliases a drift row at the same logicalId + path', () => {
     const drift: Finding = { ...envReadGap(), tier: 'declared', readFailed: undefined };
     const rows = ignoreSelectOptions([drift, envReadGap()]);
@@ -223,18 +229,30 @@ describe('#1976 ignoreStack — gap rows in the picker', () => {
     notReturnedGap(),
     customSkip(),
     { ...kmsAliasGap(), logicalId: 'Acked', acknowledgedBy: 'Acked' },
+    // drift UNDER an acknowledged gap's rule (same resource + property subtree)
+    {
+      tier: 'declared',
+      logicalId: 'ClusterRestorerVerifierABCD1234',
+      constructPath: 'MyStack/ClusterRestorer/Verifier',
+      resourceType: 'AWS::Lambda::Function',
+      path: 'Environment.Variables.MODE',
+      desired: 'a',
+      actual: 'b',
+    },
   ];
 
   it('offers drift + the --strict gaps only, and the header explains acknowledging', async () => {
     await ignoreStack({ stackName: 'MyStack', findings: all(), yes: false, interactive: true });
     expect(offered.map((o) => o.label)).toEqual([
       'Bucket/Resource.VersioningConfiguration.Status (declared)',
+      'ClusterRestorer/Verifier.Environment.Variables.MODE (declared)',
       'Database/Cluster/Secret/Attachment [coverage gap — resource not read: CC API: AccessDeniedException]',
       'Handle1A2B3C4D [coverage gap — resource not read: unsupported type (no Cloud Control read handler)]',
       'ClusterRestorer/Verifier.Environment [coverage gap — property read failed]',
       'Fn9270CBC0.Environment [coverage gap — property read failed]',
     ]);
     expect(header).toContain('ACKNOWLEDGED instead');
+    expect(header).toContain('remove it after granting the read');
   });
 
   it('a gaps-only stack still opens the picker (no "no ignorable drift" short-circuit)', async () => {
@@ -266,12 +284,15 @@ describe('#1976 ignoreStack — gap rows in the picker', () => {
       yes: true,
       interactive: true,
     });
-    expect(r.added).toBe(1);
+    expect(r.added).toBe(2);
     expect(offered).toEqual([]); // no picker under --yes
     expect((await loadConfig()).ignore.map((x) => (typeof x === 'string' ? x : x.path))).toEqual([
       'Bucket/Resource.VersioningConfiguration.Status',
+      'ClusterRestorer/Verifier.Environment.Variables.MODE',
     ]);
-    expect(err.join('\n')).toContain('4 coverage gap(s) left unacknowledged');
+    expect(err.join('\n')).toContain(
+      'note: MyStack: 4 coverage gap(s) left unacknowledged — only the interactive picker acknowledges a gap (run `cdkrd ignore MyStack` in a terminal without --yes)'
+    );
   });
 
   it('non-interactive with only gaps: not a refusal, nothing written, a note names the count', async () => {
@@ -312,8 +333,11 @@ describe('#1976 ignoreStack — gap rows in the picker', () => {
       ['CustomS3AutoDeleteObjects', '', false],
       ['Acked', 'BucketEncryption.KMSMasterKeyID', true],
     ]);
-    // the drift row was not picked, so it is still drift (a gap rule must not widen to it)
+    // the unpicked drift on ANOTHER resource stays drift…
     expect(after[0]!.tier).toBe('declared');
+    // …while drift inside a picked gap's subtree IS ignored: the rule is an ordinary ignore
+    // rule (documented in the picker header and README — remove it once the read works)
+    expect(after.at(-1)!.tier).toBe('ignored');
     expect(strictCoverageExit(true, findings, [])).toBe(1);
     expect(strictCoverageExit(true, after, [])).toBe(0);
   });

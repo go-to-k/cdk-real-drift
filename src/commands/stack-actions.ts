@@ -833,8 +833,9 @@ export interface IgnoreResult {
 export function ignoreSelectMessage(stackName: string, region: string, gaps = 0): string {
   const base = `${stackLabel(stackName, region)}: select drift to ignore — stops reporting it (writes .cdkrd/ignore.yaml)`;
   // #1976: a coverage-gap row does not stop reporting anything — say what picking one does.
+  // The rule is an ordinary ignore rule, so once the read succeeds it ignores that drift too.
   return gaps > 0
-    ? `${base}; a [coverage gap] row is ACKNOWLEDGED instead — still listed, no longer fails --strict`
+    ? `${base}; a [coverage gap] row is ACKNOWLEDGED instead — still listed, no longer fails --strict (once the read succeeds, the rule ignores drift there too — remove it after granting the read)`
     : base;
 }
 
@@ -886,7 +887,10 @@ function ignoreRowKind(f: Finding): string {
     const why = f.note ? `: ${sanitizeForTerminal(f.note).slice(0, 80)}` : '';
     return `[coverage gap — resource not read${why}]`;
   }
-  if (f.tier === 'readGap') return '[coverage gap — property read failed]';
+  if (f.tier === 'readGap')
+    return f.path
+      ? '[coverage gap — property read failed]'
+      : '[coverage gap — resource read failed]';
   return `(${f.tier})`;
 }
 
@@ -919,7 +923,7 @@ export async function ignoreStack(p: IgnoreStackParams): Promise<IgnoreResult> {
   const pickGaps = !yes && interactive && gaps.length > 0;
   if (gaps.length > 0 && !pickGaps)
     console.error(
-      `note: ${stackName}: ${gaps.length} coverage gap(s) left unacknowledged — only the interactive picker acknowledges a gap (run \`cdkrd ignore\` in a terminal without --yes)`
+      `note: ${stackName}: ${gaps.length} coverage gap(s) left unacknowledged — only the interactive picker acknowledges a gap (run \`cdkrd ignore ${stackName}\` in a terminal without --yes)`
     );
   if (ignorable.length === 0 && !pickGaps) {
     if (!p.json) console.log(style.clean(`${stackName}: no ignorable drift to ignore.`));
