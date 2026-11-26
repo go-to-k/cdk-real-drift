@@ -337,7 +337,12 @@ describe('#1976 ignoreStack — gap rows in the picker', () => {
     expect(after[0]!.tier).toBe('declared');
     // …while drift inside a picked gap's subtree IS ignored: the rule is an ordinary ignore
     // rule (documented in the picker header and README — remove it once the read works)
-    expect(after.at(-1)!.tier).toBe('ignored');
+    const subtreeDrift = after.find(
+      (f) =>
+        f.logicalId === 'ClusterRestorerVerifierABCD1234' &&
+        f.path === 'Environment.Variables.MODE'
+    );
+    expect(subtreeDrift?.tier).toBe('ignored');
     expect(strictCoverageExit(true, findings, [])).toBe(1);
     expect(strictCoverageExit(true, after, [])).toBe(0);
   });
