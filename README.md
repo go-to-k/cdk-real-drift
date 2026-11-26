@@ -225,6 +225,20 @@ tier, and step 3 confirms your declaration matches what's live.
 Run `npx cdkrd check --fail`. It's read-only, never prompts, and exits 1 on drift;
 it never writes a baseline (you record locally and commit the file).
 
+If the CI identity may only assume roles (no permissions of its own), name the
+role with `--assume-role` (or `$CDKRD_ASSUME_ROLE`). cdkrd assumes it from the
+ambient credentials before each stack's first AWS call; `{account}` and
+`{region}` are filled per stack, so one value covers a multi-account app:
+
+```bash
+npx cdkrd check --fail --assume-role 'arn:aws:iam::{account}:role/MyReadRole'
+```
+
+The session is named `cdkrd-<verb>` (visible in CloudTrail). Synthesis still
+runs with the ambient credentials, as `cdk synth` does. A role that cannot be
+assumed fails that stack (exit 2) with the role ARN in the error. Not named
+`--role-arn`, which in the CDK CLI means the CloudFormation execution role.
+
 ## The model: one verb you run, three it offers
 
 `cdkrd check` is the entry point: on a TTY it finds drift and offers the other
@@ -462,6 +476,7 @@ CI (with `--yes`).
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `--region <r>`             | a stack's own `env.region` ALWAYS wins; for an env-AGNOSTIC stack (no `env`) it falls back to `--region` (or `$AWS_REGION` / `$AWS_DEFAULT_REGION`), else the AWS-CLI/cdk region chain — the active profile's region, then the `[default]` profile's region, then EC2 IMDS                                                                             |
 | `--profile <p>`            | AWS profile (else `$AWS_PROFILE`, else `$AWS_DEFAULT_PROFILE` — same order `aws` and `cdk` use)                                                                                                                                                                                                                                                        |
+| `--assume-role <arn>`      | assume this IAM role from the ambient / `--profile` credentials and make **every** AWS call for a stack as it (else `$CDKRD_ASSUME_ROLE`); `{account}` / `{region}` are filled per stack from the CDK app (`env.account`, else the calling identity's account; the stack's region) — see [In CI](#in-ci). Session name `cdkrd-<verb>`                  |
 | `-a, --app <cmd\|cdk.out>` | CDK app command or pre-synthesized assembly dir (or `$CDKRD_APP` / cdk.json `"app"`); stack auto-discovery + construct paths                                                                                                                                                                                                                           |
 | `-c, --context key=value`  | context for synth (repeatable; cdk.json is the base layer)                                                                                                                                                                                                                                                                                             |
 | `--all`                    | target every stack the app defines (the default when no `<stack>` is named; cannot be combined with named stacks — a `<stack> ... --all` invocation errors)                                                                                                                                                                                            |
@@ -924,6 +939,9 @@ covers them. **If you never run `revert`, cdkrd needs no write permissions at al
   `DescribeType`; `DescribeStackResources` (the sibling-ownership check for the
   `added` tier — see the `added`-tier entry below); `ListExports` (only for
   templates using `Fn::ImportValue`)
+- with `--assume-role`: `sts:AssumeRole` on that role for the CALLING
+  identity (and the role's trust policy must allow it); everything else on this
+  list is then needed by the ROLE
 - `sts:GetCallerIdentity` (resolves the current account so every verb can tell a
   stack never deployed in THIS account from one deleted out of band, under the
   multi-account baseline pattern — `check`/`record`/`ignore` skip a stack pinned
