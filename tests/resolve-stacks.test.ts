@@ -18,6 +18,8 @@ describe('resolveProfileRegion', () => {
     'AWS_DEFAULT_PROFILE',
     'AWS_REGION',
     'AWS_DEFAULT_REGION',
+    'AWS_SHARED_CREDENTIALS_FILE',
+    'AWS_EC2_METADATA_DISABLED',
   ];
 
   beforeEach(() => {
@@ -39,6 +41,10 @@ describe('resolveProfileRegion', () => {
       ].join('\n')
     );
     process.env.AWS_CONFIG_FILE = configPath;
+    // The no-region cases fall through to the host's ~/.aws/credentials [default] and to
+    // IMDS; point both at nothing so a runner with either one cannot answer 'us-east-1'.
+    process.env.AWS_SHARED_CREDENTIALS_FILE = join(tmp, 'no-such-credentials');
+    process.env.AWS_EC2_METADATA_DISABLED = 'true';
   });
 
   afterEach(() => {
